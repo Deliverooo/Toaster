@@ -1,0 +1,3 @@
+[submodule "Toaster/thirdparty/spdlog"]
+	path = Toaster/thirdparty/spdlog
+	url = https://github.com/gabime/spdlog

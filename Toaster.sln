@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SandBox", "SandBox\SandBox.vcxproj", "{D43924E3-4019-A37E-4931-2E55B58F09E0}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Toaster", "Toaster\Toaster.vcxproj", "{E77DE44F-535D-63EB-5C75-EEC1C8D3C94C}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Dist|x64 = Dist|x64
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D43924E3-4019-A37E-4931-2E55B58F09E0}.Debug|x64.ActiveCfg = Debug|x64
+		{D43924E3-4019-A37E-4931-2E55B58F09E0}.Debug|x64.Build.0 = Debug|x64
+		{D43924E3-4019-A37E-4931-2E55B58F09E0}.Dist|x64.ActiveCfg = Dist|x64
+		{D43924E3-4019-A37E-4931-2E55B58F09E0}.Dist|x64.Build.0 = Dist|x64
+		{D43924E3-4019-A37E-4931-2E55B58F09E0}.Release|x64.ActiveCfg = Release|x64
+		{D43924E3-4019-A37E-4931-2E55B58F09E0}.Release|x64.Build.0 = Release|x64
+		{E77DE44F-535D-63EB-5C75-EEC1C8D3C94C}.Debug|x64.ActiveCfg = Debug|x64
+		{E77DE44F-535D-63EB-5C75-EEC1C8D3C94C}.Debug|x64.Build.0 = Debug|x64
+		{E77DE44F-535D-63EB-5C75-EEC1C8D3C94C}.Dist|x64.ActiveCfg = Dist|x64
+		{E77DE44F-535D-63EB-5C75-EEC1C8D3C94C}.Dist|x64.Build.0 = Dist|x64
+		{E77DE44F-535D-63EB-5C75-EEC1C8D3C94C}.Release|x64.ActiveCfg = Release|x64
+		{E77DE44F-535D-63EB-5C75-EEC1C8D3C94C}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
