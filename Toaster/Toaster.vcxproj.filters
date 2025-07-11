@@ -7,6 +7,9 @@
     <Filter Include="Toaster\Events">
       <UniqueIdentifier>{EB9F3227-D76D-262D-C001-9753AC6E0292}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Toaster\Layers">
+      <UniqueIdentifier>{C68A1536-B258-093C-9BEC-79628759E5A0}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Toaster\imgui">
       <UniqueIdentifier>{911CA7C5-FDDC-22FC-C617-6C79329767D8}</UniqueIdentifier>
     </Filter>
@@ -49,6 +52,9 @@
     <ClInclude Include="src\Toaster\LayerStack.hpp">
       <Filter>Toaster</Filter>
     </ClInclude>
+    <ClInclude Include="src\Toaster\Layers\OpenGlTestLayer.h">
+      <Filter>Toaster\Layers</Filter>
+    </ClInclude>
     <ClInclude Include="src\Toaster\Log.hpp">
       <Filter>Toaster</Filter>
     </ClInclude>
@@ -58,7 +64,7 @@
     <ClInclude Include="src\Toaster\imgui\ImguiLayer.hpp">
       <Filter>Toaster\imgui</Filter>
     </ClInclude>
-    <ClInclude Include="src\Toaster\platform\OpenGl\imgui_impl_opengl3.h">
+    <ClInclude Include="src\Toaster\platform\OpenGl\ImguiOpenGlRenderer.h">
       <Filter>Toaster\platform\OpenGl</Filter>
     </ClInclude>
     <ClInclude Include="src\Toaster\platform\windows\WindowsWindow.hpp">
@@ -76,13 +82,16 @@
     <ClCompile Include="src\Toaster\LayerStack.cpp">
       <Filter>Toaster</Filter>
     </ClCompile>
+    <ClCompile Include="src\Toaster\Layers\OpenGlTestLayer.cpp">
+      <Filter>Toaster\Layers</Filter>
+    </ClCompile>
     <ClCompile Include="src\Toaster\Log.cpp">
       <Filter>Toaster</Filter>
     </ClCompile>
     <ClCompile Include="src\Toaster\imgui\ImguiLayer.cpp">
       <Filter>Toaster\imgui</Filter>
     </ClCompile>
-    <ClCompile Include="src\Toaster\platform\OpenGl\imgui_impl_opengl3.cpp">
+    <ClCompile Include="src\Toaster\platform\OpenGl\ImguiOpenGlRenderer.cpp">
       <Filter>Toaster\platform\OpenGl</Filter>
     </ClCompile>
     <ClCompile Include="src\Toaster\platform\windows\WindowsWindow.cpp">

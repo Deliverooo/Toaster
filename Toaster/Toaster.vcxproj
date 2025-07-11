@@ -155,7 +155,6 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="src\Toaster\Layers\OpenGlTestLayer.h" />
     <ClInclude Include="src\Toaster.h" />
     <ClInclude Include="src\Toaster\Application.hpp" />
     <ClInclude Include="src\Toaster\Core.hpp" />
@@ -166,6 +165,7 @@
     <ClInclude Include="src\Toaster\Events\MouseEvent.hpp" />
     <ClInclude Include="src\Toaster\Layer.hpp" />
     <ClInclude Include="src\Toaster\LayerStack.hpp" />
+    <ClInclude Include="src\Toaster\Layers\OpenGlTestLayer.h" />
     <ClInclude Include="src\Toaster\Log.hpp" />
     <ClInclude Include="src\Toaster\Window.hpp" />
     <ClInclude Include="src\Toaster\imgui\ImguiLayer.hpp" />
@@ -174,10 +174,10 @@
     <ClInclude Include="src\tstpch.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\Toaster\Layers\OpenGlTestLayer.cpp" />
     <ClCompile Include="src\Toaster\Application.cpp" />
     <ClCompile Include="src\Toaster\Layer.cpp" />
     <ClCompile Include="src\Toaster\LayerStack.cpp" />
+    <ClCompile Include="src\Toaster\Layers\OpenGlTestLayer.cpp" />
     <ClCompile Include="src\Toaster\Log.cpp" />
     <ClCompile Include="src\Toaster\imgui\ImguiLayer.cpp" />
     <ClCompile Include="src\Toaster\platform\OpenGl\ImguiOpenGlRenderer.cpp" />
