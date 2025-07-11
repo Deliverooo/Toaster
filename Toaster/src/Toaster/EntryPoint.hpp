@@ -10,10 +10,8 @@ extern tst::Application* tst::CreateApplication();
 // the main function for the Toaster engine application
 int main() {
 
+	// Initializes the logging system
 	tst::Log::init();
-	
-	TST_CORE_INFO("Orbso!!");
-	TST_ERROR("Oh no...");
 
 	// Create an instance of the application and run it
 	// the instance is heap allocated because we will need to allocate a lot of resources

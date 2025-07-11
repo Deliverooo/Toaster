@@ -1,5 +1,4 @@
 #pragma once
-
 #include "Event.hpp"
 
 namespace tst {
@@ -9,7 +8,7 @@ namespace tst {
 
 		EVENT_CLASS_CATEGORY(EventCategoryInput | EventCategoryKeyboard);
 
-		int getKeycode() const { return m_keyCode; }
+		[[nodiscard]] int getKeycode() const { return m_keyCode; }
 
 	protected:
 		KeyEvent(int keycode) : m_keyCode(keycode){}
@@ -20,13 +19,13 @@ namespace tst {
 	class TST_API KeyPressedEvent : public KeyEvent {
 	public:
 
-		KeyPressedEvent(int keycode, bool repeating) : KeyEvent(keycode), m_repeating(repeating) {}
+		KeyPressedEvent(int keycode, bool repeating = false) : KeyEvent(keycode), m_repeating(repeating) {}
 
 		EVENT_CLASS_TYPE(KeyPressed);
 
-		bool getIsRepeating() const { return m_repeating; }
+		[[nodiscard]] bool getIsRepeating() const { return m_repeating; }
 
-		std::string toStr() const override {
+		[[nodiscard]] std::string toStr() const override {
 
 			return std::string("Key Pressed Event -> [" + std::to_string(m_keyCode) + "]\t[Repeating: " + std::to_string(m_repeating) + "]");
 		}
@@ -42,7 +41,7 @@ namespace tst {
 		
 		EVENT_CLASS_TYPE(KeyReleased);
 
-		std::string toStr() const override {
+		[[nodiscard]] std::string toStr() const override {
 
 			return std::string("Key Released Event -> [" + std::to_string(m_keyCode) + "]");
 		}

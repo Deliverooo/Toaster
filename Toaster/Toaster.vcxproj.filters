@@ -7,6 +7,18 @@
     <Filter Include="Toaster\Events">
       <UniqueIdentifier>{EB9F3227-D76D-262D-C001-9753AC6E0292}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Toaster\imgui">
+      <UniqueIdentifier>{911CA7C5-FDDC-22FC-C617-6C79329767D8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Toaster\platform">
+      <UniqueIdentifier>{3BEAB262-27E3-D1B4-5015-B7393C6DB1C0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Toaster\platform\OpenGl">
+      <UniqueIdentifier>{2F6390A8-9B9A-D83F-A4A4-3C63105BFF38}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Toaster\platform\windows">
+      <UniqueIdentifier>{953700B2-815C-4F32-AAA7-34C2962B4E50}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Toaster.h" />
@@ -31,16 +43,51 @@
     <ClInclude Include="src\Toaster\Events\MouseEvent.hpp">
       <Filter>Toaster\Events</Filter>
     </ClInclude>
+    <ClInclude Include="src\Toaster\Layer.hpp">
+      <Filter>Toaster</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Toaster\LayerStack.hpp">
+      <Filter>Toaster</Filter>
+    </ClInclude>
     <ClInclude Include="src\Toaster\Log.hpp">
       <Filter>Toaster</Filter>
     </ClInclude>
+    <ClInclude Include="src\Toaster\Window.hpp">
+      <Filter>Toaster</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Toaster\imgui\ImguiLayer.hpp">
+      <Filter>Toaster\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Toaster\platform\OpenGl\imgui_impl_opengl3.h">
+      <Filter>Toaster\platform\OpenGl</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Toaster\platform\windows\WindowsWindow.hpp">
+      <Filter>Toaster\platform\windows</Filter>
+    </ClInclude>
+    <ClInclude Include="src\tstpch.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Toaster\Application.cpp">
       <Filter>Toaster</Filter>
     </ClCompile>
+    <ClCompile Include="src\Toaster\Layer.cpp">
+      <Filter>Toaster</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Toaster\LayerStack.cpp">
+      <Filter>Toaster</Filter>
+    </ClCompile>
     <ClCompile Include="src\Toaster\Log.cpp">
       <Filter>Toaster</Filter>
     </ClCompile>
+    <ClCompile Include="src\Toaster\imgui\ImguiLayer.cpp">
+      <Filter>Toaster\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Toaster\platform\OpenGl\imgui_impl_opengl3.cpp">
+      <Filter>Toaster\platform\OpenGl</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Toaster\platform\windows\WindowsWindow.cpp">
+      <Filter>Toaster\platform\windows</Filter>
+    </ClCompile>
+    <ClCompile Include="src\tstpch.cpp" />
   </ItemGroup>
 </Project>

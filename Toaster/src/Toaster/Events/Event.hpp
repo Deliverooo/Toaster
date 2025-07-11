@@ -1,17 +1,18 @@
-#pragma once  
+#pragma once
 
+#include "tstpch.h"
 #include "Toaster/Core.hpp"
-#include <functional>
-#include <string>
+#include "Toaster/Log.hpp"
+
 
 namespace tst {  
 
 	enum class EventType  
 	{  
 		None = 0,  
-		WindowClosed, WindowResized, WindowMinimized, WindowMoved,  
+		WindowClosed, WindowResized, WindowLostFocus, WindowGainedFocus, WindowMoved, WindowMaximized,
 		KeyPressed, KeyReleased, KeyHeld,  
-		MouseButtonPressed, MouseButtonReleased, MouseButtonHeld, MouseMoved, MouseScrolled,  
+		MouseButtonPressed, MouseButtonReleased, MouseButtonHeld, MouseMoved, MouseScrolled,
 	};  
 
 	enum EventCategory  
@@ -37,35 +38,48 @@ namespace tst {
 	class TST_API Event {  
 	public:
 
-		virtual EventType getEventType() const = 0;  
-		virtual const char* getEventName() const = 0;  
-		virtual int getEventCategory() const = 0;
-		virtual std::string toStr() const = 0;
+		[[nodiscard]] virtual EventType getEventType() const = 0;  
+		[[nodiscard]] virtual const char* getEventName() const = 0;  
+		[[nodiscard]] virtual int getEventCategory() const = 0;
+		[[nodiscard]] virtual std::string toStr() const = 0;
 
-		bool inCategory(EventCategory category) {
+		[[nodiscard]] bool inCategory(const EventCategory category) const {
 			return getEventCategory() & category;
 		}
 
+		[[nodiscard]] bool isHandled() const { return m_isHandled; }
+
 	protected:  
 		bool m_isHandled = false;
+
+		friend class EventDispatcher;
 	};
 
-	std::string format_as(const Event& e) {
-		return e.toStr();
+	inline std::string format_as(const Event &event)
+	{
+		return event.toStr();
 	}
 
 	template<typename T>
 	using EventFunc = std::function<bool(T&)>;
 
+	// EventDispatcher is a utility class that allows for easy dispatching of events
+	// It takes an event and a function, and calls the function if the event type matches
 	class TST_API EventDispatcher {
 	public:
+		// Constructor that takes an event reference
 		EventDispatcher(Event& event) : m_event(event) {}
 
+		// Dispatch function that takes a function and calls it if the event type matches
 		template<typename T>
 		bool dispatch(EventFunc<T> func) {
 
-			if (m_event.getEventType == T::getStaticType()) {
-				m_event.m_isHandled = func(m_event);
+			TST_ASSERT((std::derived_from<T, Event>), "Event Dispatcher expected Event Type!");
+			
+			// Check if the event type matches the type T
+			if (m_event.getEventType() == T::getStaticType()) {
+				// Cast the event to type T and call the function with it
+				m_event.m_isHandled = func(static_cast<T&>(m_event));
 				return true;
 			}
 

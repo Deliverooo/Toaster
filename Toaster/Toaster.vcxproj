@@ -76,20 +76,22 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>tstpch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>TST_PLATFORM_WINDOWS;TST_BUILD_DLL;TST_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>src;thirdparty\spdlog\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>TST_PLATFORM_WINDOWS;TST_BUILD_DLL;GLFW_INCLUDE_NONE;TST_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>src;thirdparty\spdlog\include;thirdparty\GLFW\include;thirdparty\glad\include;thirdparty\imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <AdditionalOptions>/MDd /utf-8 %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <ExternalWarningLevel>Level3</ExternalWarningLevel>
-      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ImportLibrary>..\bin\Debug-windows-x86_64\Toaster\Toaster.lib</ImportLibrary>
     </Link>
     <PostBuildEvent>
@@ -98,24 +100,26 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>tstpch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>TST_PLATFORM_WINDOWS;TST_BUILD_DLL;TST_RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>src;thirdparty\spdlog\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>TST_PLATFORM_WINDOWS;TST_BUILD_DLL;GLFW_INCLUDE_NONE;TST_RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>src;thirdparty\spdlog\include;thirdparty\GLFW\include;thirdparty\glad\include;thirdparty\imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <MinimalRebuild>false</MinimalRebuild>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <AdditionalOptions>/MDd /utf-8 %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <ExternalWarningLevel>Level3</ExternalWarningLevel>
-      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalDependencies>opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ImportLibrary>..\bin\Release-windows-x86_64\Toaster\Toaster.lib</ImportLibrary>
     </Link>
     <PostBuildEvent>
@@ -124,24 +128,26 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Dist|x64'">
     <ClCompile>
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>tstpch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>TST_PLATFORM_WINDOWS;TST_BUILD_DLL;TST_DIST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>src;thirdparty\spdlog\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>TST_PLATFORM_WINDOWS;TST_BUILD_DLL;GLFW_INCLUDE_NONE;TST_DIST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>src;thirdparty\spdlog\include;thirdparty\GLFW\include;thirdparty\glad\include;thirdparty\imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <MinimalRebuild>false</MinimalRebuild>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <AdditionalOptions>/MDd /utf-8 %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <ExternalWarningLevel>Level3</ExternalWarningLevel>
-      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalDependencies>opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ImportLibrary>..\bin\Dist-windows-x86_64\Toaster\Toaster.lib</ImportLibrary>
     </Link>
     <PostBuildEvent>
@@ -149,6 +155,7 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="src\Toaster\Layers\OpenGlTestLayer.h" />
     <ClInclude Include="src\Toaster.h" />
     <ClInclude Include="src\Toaster\Application.hpp" />
     <ClInclude Include="src\Toaster\Core.hpp" />
@@ -157,11 +164,38 @@
     <ClInclude Include="src\Toaster\Events\Event.hpp" />
     <ClInclude Include="src\Toaster\Events\KeyEvent.hpp" />
     <ClInclude Include="src\Toaster\Events\MouseEvent.hpp" />
+    <ClInclude Include="src\Toaster\Layer.hpp" />
+    <ClInclude Include="src\Toaster\LayerStack.hpp" />
     <ClInclude Include="src\Toaster\Log.hpp" />
+    <ClInclude Include="src\Toaster\Window.hpp" />
+    <ClInclude Include="src\Toaster\imgui\ImguiLayer.hpp" />
+    <ClInclude Include="src\Toaster\platform\OpenGl\ImguiOpenGlRenderer.h" />
+    <ClInclude Include="src\Toaster\platform\windows\WindowsWindow.hpp" />
+    <ClInclude Include="src\tstpch.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\Toaster\Layers\OpenGlTestLayer.cpp" />
     <ClCompile Include="src\Toaster\Application.cpp" />
+    <ClCompile Include="src\Toaster\Layer.cpp" />
+    <ClCompile Include="src\Toaster\LayerStack.cpp" />
     <ClCompile Include="src\Toaster\Log.cpp" />
+    <ClCompile Include="src\Toaster\imgui\ImguiLayer.cpp" />
+    <ClCompile Include="src\Toaster\platform\OpenGl\ImguiOpenGlRenderer.cpp" />
+    <ClCompile Include="src\Toaster\platform\windows\WindowsWindow.cpp" />
+    <ClCompile Include="src\tstpch.cpp">
+      <PrecompiledHeader>Create</PrecompiledHeader>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="thirdparty\GLFW\GLFW.vcxproj">
+      <Project>{154B857C-0182-860D-AA6E-6C109684020F}</Project>
+    </ProjectReference>
+    <ProjectReference Include="thirdparty\glad\glad.vcxproj">
+      <Project>{DD62977C-C999-980D-7286-7E105E9C140F}</Project>
+    </ProjectReference>
+    <ProjectReference Include="thirdparty\imgui\imgui.vcxproj">
+      <Project>{0098A80F-6CAC-D0C0-352E-7420A101CDF1}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

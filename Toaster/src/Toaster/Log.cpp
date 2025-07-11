@@ -1,4 +1,4 @@
-#include "Log.hpp"
+#include "tstpch.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
 
 namespace tst {

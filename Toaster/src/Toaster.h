@@ -7,6 +7,15 @@
 // Toaster Engine Application Header
 #include "Toaster/Application.hpp"
 
+// Toaster Engine Layer Header
+#include "Toaster/Layer.hpp"
+
+// Toaster Engine ImGui Layer Header
+#include "Toaster/imgui/ImguiLayer.hpp"
+
+// Toaster Engine OpenGl Test Layer Header
+#include "Toaster/Layers/OpenGlTestLayer.h"
+
 // Toaster Engine Log Wrapper Header
 #include "Toaster/Log.hpp"
 

@@ -1,48 +1,46 @@
 #pragma once
 #include "Event.hpp"
 
-
 namespace tst {
 
 	class TST_API MouseMoveEvent : public Event {
 	public:
 
-		MouseMoveEvent(const float x, const float y) : m_mouseX(x), m_mouseY(y) {}
+		MouseMoveEvent(const double x, const double y) : m_mouseX(x), m_mouseY(y) {}
 
 		EVENT_CLASS_CATEGORY(EventCategoryInput | EventCategoryMouse);
 		EVENT_CLASS_TYPE(MouseMoved);
 
-		float getMouseX() const { return m_mouseX; }
-		float getMouseY() const { return m_mouseY; }
+		[[nodiscard]] double getMouseX() const { return m_mouseX; }
+		[[nodiscard]] double getMouseY() const { return m_mouseY; }
 
-		std::string toStr() const override {
-
+		[[nodiscard]] std::string toStr() const override {
 			return std::string("Mouse Move Event -> [" + std::to_string(m_mouseX) + "," + std::to_string(m_mouseY) + "]");
 		}
 
 	private:
-		float m_mouseX;
-		float m_mouseY;
+		double m_mouseX;
+		double m_mouseY;
 	};
 
 	class TST_API MouseScrollEvent : public Event {
 	public:
 
-		MouseScrollEvent(const float xOff, const float yOff) : m_scrollX(xOff), m_scrollY(yOff) {}
+		MouseScrollEvent(const double xOff, const double yOff) : m_scrollX(xOff), m_scrollY(yOff) {}
 
 		EVENT_CLASS_CATEGORY(EventCategoryInput | EventCategoryMouse);
 		EVENT_CLASS_TYPE(MouseScrolled);
 
-		float getScrollX() const { return m_scrollX; }
-		float getScrollY() const { return m_scrollY; }
+		[[nodiscard]] double getScrollX() const { return m_scrollX; }
+		[[nodiscard]] double getScrollY() const { return m_scrollY; }
 
-		std::string toStr() const override {
+		[[nodiscard]] std::string toStr() const override {
 			return std::string("Mouse Scroll Event -> [" + std::to_string(m_scrollX) + "," + std::to_string(m_scrollY) + "]");
 		}
 
 	private:
-		float m_scrollX;
-		float m_scrollY;
+		double m_scrollX;
+		double m_scrollY;
 	};
 
 	class TST_API MouseButtonEvent : public Event {
@@ -50,7 +48,7 @@ namespace tst {
 
 		EVENT_CLASS_CATEGORY(EventCategoryInput | EventCategoryMouse);
 
-		int getMouseButton() const { return m_mouseButton; }
+		[[nodiscard]] int getMouseButton() const { return m_mouseButton; }
 
 	protected:
 		MouseButtonEvent(int button) : m_mouseButton(button){}
@@ -65,8 +63,7 @@ namespace tst {
 
 		EVENT_CLASS_TYPE(MouseButtonPressed);
 
-		std::string toStr() const override {
-
+		[[nodiscard]] std::string toStr() const override {
 			return std::string("Mouse Button Pressed Event -> [" + std::to_string(m_mouseButton) + "]");
 		}
 	};
@@ -78,8 +75,7 @@ namespace tst {
 
 		EVENT_CLASS_TYPE(MouseButtonReleased);
 
-		std::string toStr() const override {
-
+		[[nodiscard]] std::string toStr() const override {
 			return std::string("Mouse Button Released Event -> [" + std::to_string(m_mouseButton) + "]");
 		}
 	};
@@ -91,8 +87,7 @@ namespace tst {
 
 		EVENT_CLASS_TYPE(MouseButtonHeld);
 
-		std::string toStr() const override {
-
+		[[nodiscard]] std::string toStr() const override {
 			return std::string("Mouse Button Held Event -> [" + std::to_string(m_mouseButton) + "]");
 		}
 	};

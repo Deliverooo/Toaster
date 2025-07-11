@@ -1,3 +1,9 @@
 [submodule "Toaster/thirdparty/spdlog"]
 	path = Toaster/thirdparty/spdlog
 	url = https://github.com/gabime/spdlog
+[submodule "Toaster/thirdparty/GLFW"]
+	path = Toaster/thirdparty/GLFW
+	url = https://github.com/glfw/glfw
+[submodule "Toaster/thirdparty/imgui"]
+	path = Toaster/thirdparty/imgui
+	url = https://github.com/ocornut/imgui
