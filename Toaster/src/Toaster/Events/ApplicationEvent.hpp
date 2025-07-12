@@ -56,6 +56,26 @@ namespace tst {
 		int m_maximized;
 	};
 
+	class TST_API FrameBufferResizeEvent : public Event {
+	public:
+
+		FrameBufferResizeEvent(int width, int height) : m_width(width), m_height(height) {}
+
+		EVENT_CLASS_CATEGORY(EventCategoryApplication);
+		EVENT_CLASS_TYPE(FramebufferResized);
+
+		[[nodiscard]] int getWidth() const { return m_width; }
+		[[nodiscard]] int getHeight() const { return m_height; }
+
+		[[nodiscard]] std::string toStr() const override {
+			return std::string("Framebuffer Resize Event -> [" + std::to_string(m_width) + "," + std::to_string(m_height) + "]");
+		}
+
+	private:
+		int m_width;
+		int m_height;
+	};
+
 	class TST_API WindowFocusEvent : public Event
 	{
 	public:
@@ -89,7 +109,6 @@ namespace tst {
 
 		[[nodiscard]] std::string toStr() const override {
 			return std::string("Window Focus Event -> [Gained Focus]");
-
 		}
 	};
 }

@@ -10,12 +10,22 @@ workspace "Toaster"
 outputDir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 
 IncludeDir = {}
-IncludeDir["GLFW"] = "Toaster/thirdparty/GLFW/include"
-IncludeDir["glad"] = "Toaster/thirdparty/glad/include"
-IncludeDir["imgui"] = "Toaster/thirdparty/imgui/"
-include "Toaster/thirdparty/GLFW"
-include "Toaster/thirdparty/glad"
-include "Toaster/thirdparty/imgui"
+-- IncludeDir["GLFW"] = "Toaster/thirdparty/GLFW/include"
+-- IncludeDir["Glad"] = "Toaster/thirdparty/glad/include"
+-- IncludeDir["ImGui"] = "Toaster/thirdparty/imgui/"
+-- include "Toaster/thirdparty/GLFW"
+-- include "Toaster/thirdparty/glad"
+-- include "Toaster/thirdparty/imgui"
+
+IncludeDir["GLFW"] = "dependencies/GLFW/include"
+IncludeDir["Glad"] = "dependencies/Glad/include"
+IncludeDir["ImGui"] = "dependencies/ImGui"
+IncludeDir["spdlog"] = "dependencies/spdlog/include"
+include "dependencies/GLFW/"
+include "dependencies/Glad/"
+include "dependencies/ImGui/"
+include "dependencies/spdlog/"
+
 
 project "Toaster"
 	location "Toaster"
@@ -39,16 +49,18 @@ project "Toaster"
 
 	includedirs{
 		"%{prj.name}/src",
-		"%{prj.name}/thirdparty/spdlog/include",
 		"%{IncludeDir.GLFW}",
-		"%{IncludeDir.glad}",
-		"%{IncludeDir.imgui}",
+		"%{IncludeDir.Glad}",
+		"%{IncludeDir.ImGui}",
+		"%{IncludeDir.spdlog}",
+		-- "%{prj.name}/dependencies/spdLog/include/spdlog/spdlog.h",
 	}
 
 	links{
 		"GLFW",
 		"glad",
 		"imgui",
+		"spdlog",
 		"opengl32.lib",
 	}
 	
@@ -100,8 +112,8 @@ project "SandBox"
 	}
 
 	includedirs{
-		"Toaster/thirdparty/spdlog/include",
-		"Toaster/src"
+		"Toaster/src",
+		"dependencies/spdlog/include",
 	}
 
 	links{

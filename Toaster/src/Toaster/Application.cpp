@@ -1,11 +1,12 @@
 #include "tstpch.h"
 
 #include "Application.hpp"
+
+#include "Input.hpp"
 #include "Events/ApplicationEvent.hpp"
-#include "GLFW/glfw3.h"
 
 #ifdef TST_PLATFORM_WINDOWS
-#include "platform/windows/WindowsWindow.hpp"
+#include "Window/Platform/Windows/WindowsWindow.hpp"
 #endif
 
 namespace tst
@@ -16,7 +17,7 @@ namespace tst
 
 		m_instance = this;
 
-		m_window = std::unique_ptr<Window>(Window::Create({600, 800, "Toester"}));
+		m_window = std::unique_ptr<Window>(Window::Create({1280, 720, "Toester"}));
 		m_window->setEventCallback([this](Event &e)
 		{
 				onEvent(e);

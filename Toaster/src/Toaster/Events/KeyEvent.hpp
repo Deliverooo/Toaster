@@ -19,19 +19,27 @@ namespace tst {
 	class TST_API KeyPressedEvent : public KeyEvent {
 	public:
 
-		KeyPressedEvent(int keycode, bool repeating = false) : KeyEvent(keycode), m_repeating(repeating) {}
+		KeyPressedEvent(int keycode) : KeyEvent(keycode) {}
 
 		EVENT_CLASS_TYPE(KeyPressed);
 
-		[[nodiscard]] bool getIsRepeating() const { return m_repeating; }
 
 		[[nodiscard]] std::string toStr() const override {
-
-			return std::string("Key Pressed Event -> [" + std::to_string(m_keyCode) + "]\t[Repeating: " + std::to_string(m_repeating) + "]");
+			return std::string("Key Pressed Event -> [" + std::to_string(m_keyCode) + "]");
 		}
+	};
 
-	private:
-		bool m_repeating;
+	class TST_API KeyTypedEvent : public KeyEvent {
+	public:
+
+		KeyTypedEvent(int keycode) : KeyEvent(keycode) {}
+
+		EVENT_CLASS_TYPE(KeyTyped);
+
+
+		[[nodiscard]] std::string toStr() const override {
+			return std::string("Key Typed Event -> [" + std::to_string(m_keyCode) + "]");
+		}
 	};
 
 	class TST_API KeyReleasedEvent: public KeyEvent{
@@ -42,9 +50,20 @@ namespace tst {
 		EVENT_CLASS_TYPE(KeyReleased);
 
 		[[nodiscard]] std::string toStr() const override {
-
 			return std::string("Key Released Event -> [" + std::to_string(m_keyCode) + "]");
 		}
-	private:
+	};
+
+	class TST_API KeyHeldEvent : public KeyEvent {
+	public:
+
+		KeyHeldEvent(int keycode) : KeyEvent(keycode) {}
+
+		EVENT_CLASS_TYPE(KeyHeld);
+
+		[[nodiscard]] std::string toStr() const override {
+			return std::string("Key Held Event -> [" + std::to_string(m_keyCode) + "]\t[Held]");
+		}
+
 	};
 }

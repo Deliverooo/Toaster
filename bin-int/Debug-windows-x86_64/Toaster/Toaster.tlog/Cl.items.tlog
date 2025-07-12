@@ -1,2 +1,10 @@
 C:\dev\Toaster\Toaster\src\Toaster\Application.cpp;C:\dev\Toaster\bin-int\Debug-windows-x86_64\Toaster\Application.obj
+C:\dev\Toaster\Toaster\src\Toaster\Layer.cpp;C:\dev\Toaster\bin-int\Debug-windows-x86_64\Toaster\Layer.obj
+C:\dev\Toaster\Toaster\src\Toaster\LayerStack.cpp;C:\dev\Toaster\bin-int\Debug-windows-x86_64\Toaster\LayerStack.obj
+C:\dev\Toaster\Toaster\src\Toaster\Layers\OpenGlTestLayer.cpp;C:\dev\Toaster\bin-int\Debug-windows-x86_64\Toaster\OpenGlTestLayer.obj
 C:\dev\Toaster\Toaster\src\Toaster\Log.cpp;C:\dev\Toaster\bin-int\Debug-windows-x86_64\Toaster\Log.obj
+C:\dev\Toaster\Toaster\src\Toaster\imgui\ImguiLayer.cpp;C:\dev\Toaster\bin-int\Debug-windows-x86_64\Toaster\ImguiLayer.obj
+C:\dev\Toaster\Toaster\src\Toaster\platform\OpenGl\ImguiOpenGlRenderer.cpp;C:\dev\Toaster\bin-int\Debug-windows-x86_64\Toaster\ImguiOpenGlRenderer.obj
+C:\dev\Toaster\Toaster\src\Toaster\Window\Platform\Windows\WindowsWindow.cpp;C:\dev\Toaster\bin-int\Debug-windows-x86_64\Toaster\WindowsWindow.obj
+C:\dev\Toaster\Toaster\src\tstpch.cpp;C:\dev\Toaster\bin-int\Debug-windows-x86_64\Toaster\tstpch.obj
+C:\dev\Toaster\Toaster\src\Toaster\Input\Platform\Windows\WindowsInput.cpp;C:\dev\Toaster\bin-int\Debug-windows-x86_64\Toaster\WindowsInput.obj

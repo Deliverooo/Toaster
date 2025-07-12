@@ -11,8 +11,9 @@ namespace tst {
 	{  
 		None = 0,  
 		WindowClosed, WindowResized, WindowLostFocus, WindowGainedFocus, WindowMoved, WindowMaximized,
-		KeyPressed, KeyReleased, KeyHeld,  
+		KeyPressed, KeyReleased, KeyHeld, KeyTyped,
 		MouseButtonPressed, MouseButtonReleased, MouseButtonHeld, MouseMoved, MouseScrolled,
+		FramebufferResized,
 	};  
 
 	enum EventCategory  
@@ -37,6 +38,8 @@ namespace tst {
 	// an abstract class defining the outline of what an event should have
 	class TST_API Event {  
 	public:
+
+		virtual ~Event(){}
 
 		[[nodiscard]] virtual EventType getEventType() const = 0;  
 		[[nodiscard]] virtual const char* getEventName() const = 0;  

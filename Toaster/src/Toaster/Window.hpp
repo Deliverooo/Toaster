@@ -30,6 +30,8 @@ namespace tst
 
 		virtual void setEventCallback(std::function<void(Event &)> e) = 0;
 
+		virtual void* getWindow() = 0;
+
 		//virtual bool getVsyncEnabled() const;
 
 

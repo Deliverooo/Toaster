@@ -80,7 +80,7 @@
       <PrecompiledHeaderFile>tstpch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>TST_PLATFORM_WINDOWS;TST_BUILD_DLL;GLFW_INCLUDE_NONE;TST_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>src;thirdparty\spdlog\include;thirdparty\GLFW\include;thirdparty\glad\include;thirdparty\imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>src;..\dependencies\GLFW\include;..\dependencies\Glad\include;..\dependencies\ImGui;..\dependencies\spdlog\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -104,7 +104,7 @@
       <PrecompiledHeaderFile>tstpch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>TST_PLATFORM_WINDOWS;TST_BUILD_DLL;GLFW_INCLUDE_NONE;TST_RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>src;thirdparty\spdlog\include;thirdparty\GLFW\include;thirdparty\glad\include;thirdparty\imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>src;..\dependencies\GLFW\include;..\dependencies\Glad\include;..\dependencies\ImGui;..\dependencies\spdlog\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -132,7 +132,7 @@
       <PrecompiledHeaderFile>tstpch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>TST_PLATFORM_WINDOWS;TST_BUILD_DLL;GLFW_INCLUDE_NONE;TST_DIST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>src;thirdparty\spdlog\include;thirdparty\GLFW\include;thirdparty\glad\include;thirdparty\imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>src;..\dependencies\GLFW\include;..\dependencies\Glad\include;..\dependencies\ImGui;..\dependencies\spdlog\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -163,38 +163,46 @@
     <ClInclude Include="src\Toaster\Events\Event.hpp" />
     <ClInclude Include="src\Toaster\Events\KeyEvent.hpp" />
     <ClInclude Include="src\Toaster\Events\MouseEvent.hpp" />
+    <ClInclude Include="src\Toaster\Input.hpp" />
+    <ClInclude Include="src\Toaster\Input\Platform\Windows\WindowsInput.hpp" />
+    <ClInclude Include="src\Toaster\KeyCodes.hpp" />
     <ClInclude Include="src\Toaster\Layer.hpp" />
     <ClInclude Include="src\Toaster\LayerStack.hpp" />
     <ClInclude Include="src\Toaster\Layers\OpenGlTestLayer.h" />
     <ClInclude Include="src\Toaster\Log.hpp" />
+    <ClInclude Include="src\Toaster\MouseCodes.hpp" />
     <ClInclude Include="src\Toaster\Window.hpp" />
+    <ClInclude Include="src\Toaster\Window\Platform\Windows\WindowsWindow.hpp" />
     <ClInclude Include="src\Toaster\imgui\ImguiLayer.hpp" />
     <ClInclude Include="src\Toaster\platform\OpenGl\ImguiOpenGlRenderer.h" />
-    <ClInclude Include="src\Toaster\platform\windows\WindowsWindow.hpp" />
     <ClInclude Include="src\tstpch.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Toaster\Application.cpp" />
+    <ClCompile Include="src\Toaster\Input\Platform\Windows\WindowsInput.cpp" />
     <ClCompile Include="src\Toaster\Layer.cpp" />
     <ClCompile Include="src\Toaster\LayerStack.cpp" />
     <ClCompile Include="src\Toaster\Layers\OpenGlTestLayer.cpp" />
     <ClCompile Include="src\Toaster\Log.cpp" />
+    <ClCompile Include="src\Toaster\Window\Platform\Windows\WindowsWindow.cpp" />
     <ClCompile Include="src\Toaster\imgui\ImguiLayer.cpp" />
     <ClCompile Include="src\Toaster\platform\OpenGl\ImguiOpenGlRenderer.cpp" />
-    <ClCompile Include="src\Toaster\platform\windows\WindowsWindow.cpp" />
     <ClCompile Include="src\tstpch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="thirdparty\GLFW\GLFW.vcxproj">
+    <ProjectReference Include="..\dependencies\GLFW\GLFW.vcxproj">
       <Project>{154B857C-0182-860D-AA6E-6C109684020F}</Project>
     </ProjectReference>
-    <ProjectReference Include="thirdparty\glad\glad.vcxproj">
-      <Project>{DD62977C-C999-980D-7286-7E105E9C140F}</Project>
+    <ProjectReference Include="..\dependencies\Glad\Glad.vcxproj">
+      <Project>{BDD6857C-A90D-870D-52FA-6C103E10030F}</Project>
     </ProjectReference>
-    <ProjectReference Include="thirdparty\imgui\imgui.vcxproj">
-      <Project>{0098A80F-6CAC-D0C0-352E-7420A101CDF1}</Project>
+    <ProjectReference Include="..\dependencies\ImGui\ImGui.vcxproj">
+      <Project>{C0FF640D-2C14-8DBE-F595-301E616989EF}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\dependencies\spdlog\spdlog.vcxproj">
+      <Project>{8EAD431C-7A4F-6EF2-630A-82464F4BF542}</Project>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

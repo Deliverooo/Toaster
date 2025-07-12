@@ -9,12 +9,16 @@ public:
 
 	void onUpdate() override
 	{
-		//TST_INFO("Layer Updating!");
+		
 	}
 
 	void onEvent(tst::Event& e) override
 	{
-		TST_TRACE("{0}", e);
+		if (e.getEventType() == tst::EventType::KeyPressed)
+		{
+			tst::KeyPressedEvent& key_pressed_event = static_cast<tst::KeyPressedEvent&>(e);
+			TST_TRACE("{0}", static_cast<char>(key_pressed_event.getKeycode()));
+		}
 	}
 };
 

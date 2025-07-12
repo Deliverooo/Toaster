@@ -7,8 +7,26 @@
     <Filter Include="Toaster\Events">
       <UniqueIdentifier>{EB9F3227-D76D-262D-C001-9753AC6E0292}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Toaster\Input">
+      <UniqueIdentifier>{26BF64C3-927F-E0F9-5BBA-2977C73925D6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Toaster\Input\Platform">
+      <UniqueIdentifier>{3A666BEB-2660-943D-0FCD-2A4EFB65FAA9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Toaster\Input\Platform\Windows">
+      <UniqueIdentifier>{74AAB0A5-60D0-7A0C-4916-00D835DB9FD8}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Toaster\Layers">
       <UniqueIdentifier>{C68A1536-B258-093C-9BEC-79628759E5A0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Toaster\Window">
+      <UniqueIdentifier>{EE004950-DACE-3C56-C362-AD7CAFCF18BB}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Toaster\Window\Platform">
+      <UniqueIdentifier>{0229EA0F-6E60-32A7-776A-96CAE32059A0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Toaster\Window\Platform\Windows">
+      <UniqueIdentifier>{3CB509B7-A898-18F7-B19B-46331DFEDE47}</UniqueIdentifier>
     </Filter>
     <Filter Include="Toaster\imgui">
       <UniqueIdentifier>{911CA7C5-FDDC-22FC-C617-6C79329767D8}</UniqueIdentifier>
@@ -18,9 +36,6 @@
     </Filter>
     <Filter Include="Toaster\platform\OpenGl">
       <UniqueIdentifier>{2F6390A8-9B9A-D83F-A4A4-3C63105BFF38}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Toaster\platform\windows">
-      <UniqueIdentifier>{953700B2-815C-4F32-AAA7-34C2962B4E50}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -46,6 +61,15 @@
     <ClInclude Include="src\Toaster\Events\MouseEvent.hpp">
       <Filter>Toaster\Events</Filter>
     </ClInclude>
+    <ClInclude Include="src\Toaster\Input.hpp">
+      <Filter>Toaster</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Toaster\Input\Platform\Windows\WindowsInput.hpp">
+      <Filter>Toaster\Input\Platform\Windows</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Toaster\KeyCodes.hpp">
+      <Filter>Toaster</Filter>
+    </ClInclude>
     <ClInclude Include="src\Toaster\Layer.hpp">
       <Filter>Toaster</Filter>
     </ClInclude>
@@ -58,8 +82,14 @@
     <ClInclude Include="src\Toaster\Log.hpp">
       <Filter>Toaster</Filter>
     </ClInclude>
+    <ClInclude Include="src\Toaster\MouseCodes.hpp">
+      <Filter>Toaster</Filter>
+    </ClInclude>
     <ClInclude Include="src\Toaster\Window.hpp">
       <Filter>Toaster</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Toaster\Window\Platform\Windows\WindowsWindow.hpp">
+      <Filter>Toaster\Window\Platform\Windows</Filter>
     </ClInclude>
     <ClInclude Include="src\Toaster\imgui\ImguiLayer.hpp">
       <Filter>Toaster\imgui</Filter>
@@ -67,14 +97,14 @@
     <ClInclude Include="src\Toaster\platform\OpenGl\ImguiOpenGlRenderer.h">
       <Filter>Toaster\platform\OpenGl</Filter>
     </ClInclude>
-    <ClInclude Include="src\Toaster\platform\windows\WindowsWindow.hpp">
-      <Filter>Toaster\platform\windows</Filter>
-    </ClInclude>
     <ClInclude Include="src\tstpch.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Toaster\Application.cpp">
       <Filter>Toaster</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Toaster\Input\Platform\Windows\WindowsInput.cpp">
+      <Filter>Toaster\Input\Platform\Windows</Filter>
     </ClCompile>
     <ClCompile Include="src\Toaster\Layer.cpp">
       <Filter>Toaster</Filter>
@@ -88,14 +118,14 @@
     <ClCompile Include="src\Toaster\Log.cpp">
       <Filter>Toaster</Filter>
     </ClCompile>
+    <ClCompile Include="src\Toaster\Window\Platform\Windows\WindowsWindow.cpp">
+      <Filter>Toaster\Window\Platform\Windows</Filter>
+    </ClCompile>
     <ClCompile Include="src\Toaster\imgui\ImguiLayer.cpp">
       <Filter>Toaster\imgui</Filter>
     </ClCompile>
     <ClCompile Include="src\Toaster\platform\OpenGl\ImguiOpenGlRenderer.cpp">
       <Filter>Toaster\platform\OpenGl</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Toaster\platform\windows\WindowsWindow.cpp">
-      <Filter>Toaster\platform\windows</Filter>
     </ClCompile>
     <ClCompile Include="src\tstpch.cpp" />
   </ItemGroup>

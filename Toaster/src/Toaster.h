@@ -13,6 +13,13 @@
 // Toaster Engine ImGui Layer Header
 #include "Toaster/imgui/ImguiLayer.hpp"
 
+// Toaster Engine Input Header
+#include "Toaster/Input.hpp"
+
+// Toaster Engine KeyCodes and MouseCodes Headers
+#include "Toaster/KeyCodes.hpp"
+#include "Toaster/MouseCodes.hpp"
+
 // Toaster Engine OpenGl Test Layer Header
 #include "Toaster/Layers/OpenGlTestLayer.h"
 

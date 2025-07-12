@@ -1,14 +1,2 @@
-﻿  Application.cpp
-C:\dev\Toaster\Toaster\src\Toaster\Log.hpp(22,42): warning C4251: 'tst::Log::m_coreLogger': 'std::shared_ptr<spdlog::logger>' needs to have dll-interface to be used by clients of 'tst::Log'
-  (compiling source file 'src/Toaster/Application.cpp')
-      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\memory(1565,7):
-      see declaration of 'std::shared_ptr<spdlog::logger>'
-  
-C:\dev\Toaster\Toaster\src\Toaster\Log.hpp(23,42): warning C4251: 'tst::Log::m_clientLogger': 'std::shared_ptr<spdlog::logger>' needs to have dll-interface to be used by clients of 'tst::Log'
-  (compiling source file 'src/Toaster/Application.cpp')
-      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\memory(1565,7):
-      see declaration of 'std::shared_ptr<spdlog::logger>'
-  
-     Creating library ..\bin\Debug-windows-x86_64\Toaster\Toaster.lib and object ..\bin\Debug-windows-x86_64\Toaster\Toaster.exp
-  Toaster.vcxproj -> C:\dev\Toaster\bin\Debug-windows-x86_64\Toaster\Toaster.dll
+﻿  Toaster.vcxproj -> C:\dev\Toaster\bin\Debug-windows-x86_64\Toaster\Toaster.dll
           1 file(s) copied.
