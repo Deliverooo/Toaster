@@ -14,5 +14,6 @@ namespace tst
 		virtual void onDetach();
 		virtual void onUpdate();
 		virtual void onEvent(Event &e);
+		virtual void onImguiRender(){};
 	};
 }

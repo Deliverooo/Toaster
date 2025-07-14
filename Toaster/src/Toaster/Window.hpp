@@ -11,8 +11,7 @@ namespace tst
 		unsigned int width{1280};
 		unsigned int height{720};
 		const char* title{ "Toaster" };
-
-		//bool vSyncEnabled{ true };
+		bool vSyncEnabled{ true };
 	};
 
 	class Window
@@ -32,9 +31,7 @@ namespace tst
 
 		virtual void* getWindow() = 0;
 
-		//virtual bool getVsyncEnabled() const;
-
-
-		//virtual void enableVsync(bool yn);
+		virtual bool getVsyncEnabled() const = 0;
+		virtual void enableVsync(bool yn) = 0;
 	};
 }

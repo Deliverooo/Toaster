@@ -10,6 +10,7 @@
 // Toaster Engine Layer Header
 #include "Toaster/Layer.hpp"
 
+
 // Toaster Engine ImGui Layer Header
 #include "Toaster/imgui/ImguiLayer.hpp"
 
@@ -21,7 +22,7 @@
 #include "Toaster/MouseCodes.hpp"
 
 // Toaster Engine OpenGl Test Layer Header
-#include "Toaster/Layers/OpenGlTestLayer.h"
+#include "platform/OpenGl/OpenGlTestLayer.h"
 
 // Toaster Engine Log Wrapper Header
 #include "Toaster/Log.hpp"

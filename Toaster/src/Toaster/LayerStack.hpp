@@ -24,7 +24,7 @@ namespace tst
 
 		std::vector<Layer*> m_layers;
 		// This iterator points to the position where the next layer will be inserted
-		std::vector<Layer*>::iterator m_layerInsertPos;
+		uint32_t m_layerInsertPos = 0;
 
 	};
 

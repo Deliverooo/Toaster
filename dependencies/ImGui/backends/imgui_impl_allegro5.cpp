@@ -8,8 +8,9 @@
 //  [X] Platform: Clipboard support (from Allegro 5.1.12).
 //  [X] Platform: Mouse cursor shape and visibility (ImGuiBackendFlags_HasMouseCursors). Disable with 'io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange'.
 // Missing features or Issues:
-//  [ ] Renderer: The renderer is suboptimal as we need to convert vertices manually.
+//  [ ] Renderer: The renderer is suboptimal as we need to unindex our buffers and convert vertices manually.
 //  [ ] Platform: Missing gamepad support.
+//  [ ] Renderer: Multi-viewport support (multiple windows).
 
 // You can use unmodified imgui_impl_* files in your project. See examples/ folder for examples of using this.
 // Prefer including the entire imgui/ repository into your project (either as a copy or as a submodule), and only build the backends you need.
@@ -160,8 +161,10 @@ void ImGui_ImplAllegro5_RenderDrawData(ImDrawData* draw_data)
     ImGui_ImplAllegro5_SetupRenderState(draw_data);
 
     // Render command lists
-    for (const ImDrawList* draw_list : draw_data->CmdLists)
+    for (int n = 0; n < draw_data->CmdListsCount; n++)
     {
+        const ImDrawList* draw_list = draw_data->CmdLists[n];
+
         ImVector<ImDrawVertAllegro>& vertices = bd->BufVertices;
 #if ALLEGRO_HAS_DRAW_INDEXED_PRIM
         vertices.resize(draw_list->VtxBuffer.Size);

@@ -2,8 +2,7 @@ project "spdlog"
 	kind "StaticLib"
 	language "C++"
 
-    staticruntime "off"
-	warnings "off"
+    staticruntime "on"
 
 	targetdir ("bin/" .. outputDir .. "/%{prj.name}")
 	objdir ("bin-int/" .. outputDir .. "/%{prj.name}")
@@ -27,3 +26,11 @@ project "spdlog"
     filter "system:windows"
         systemversion "latest"
         buildoptions {"/utf-8"}
+    
+    filter "configurations:Debug"
+		runtime "Debug"
+		symbols "on"
+
+	filter "configurations:Release"
+		runtime "Release"
+		optimize "on"

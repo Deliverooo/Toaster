@@ -3,8 +3,7 @@
 #include "Core.hpp"
 #include "spdlog/spdlog.h"
 #include "spdlog/fmt/ostr.h"
-
-
+#include "glm/fwd.hpp"
 
 namespace tst {
 
@@ -54,5 +53,9 @@ namespace tst {
 #define TST_ASSERT(expr, msg)
 #define TST_BREAKPOINT()
 
-
 #endif
+
+inline std::string format_as(glm::mat4& matrix)
+{
+	return "r";
+}

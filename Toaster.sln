@@ -11,7 +11,11 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SandBox", "SandBox\SandBox.
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Toaster", "Toaster\Toaster.vcxproj", "{E77DE44F-535D-63EB-5C75-EEC1C8D3C94C}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "glm", "dependencies\glm\glm.vcxproj", "{6577880B-D180-887C-5AFC-9E7CC604947C}"
+EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "spdlog", "dependencies\spdlog\spdlog.vcxproj", "{8EAD431C-7A4F-6EF2-630A-82464F4BF542}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "stbImage", "dependencies\stbImage\stbImage.vcxproj", "{916CA968-7D39-0474-A652-F21B927E3902}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -50,12 +54,24 @@ Global
 		{E77DE44F-535D-63EB-5C75-EEC1C8D3C94C}.Dist|x64.Build.0 = Dist|x64
 		{E77DE44F-535D-63EB-5C75-EEC1C8D3C94C}.Release|x64.ActiveCfg = Release|x64
 		{E77DE44F-535D-63EB-5C75-EEC1C8D3C94C}.Release|x64.Build.0 = Release|x64
+		{6577880B-D180-887C-5AFC-9E7CC604947C}.Debug|x64.ActiveCfg = Debug|x64
+		{6577880B-D180-887C-5AFC-9E7CC604947C}.Debug|x64.Build.0 = Debug|x64
+		{6577880B-D180-887C-5AFC-9E7CC604947C}.Dist|x64.ActiveCfg = Dist|x64
+		{6577880B-D180-887C-5AFC-9E7CC604947C}.Dist|x64.Build.0 = Dist|x64
+		{6577880B-D180-887C-5AFC-9E7CC604947C}.Release|x64.ActiveCfg = Release|x64
+		{6577880B-D180-887C-5AFC-9E7CC604947C}.Release|x64.Build.0 = Release|x64
 		{8EAD431C-7A4F-6EF2-630A-82464F4BF542}.Debug|x64.ActiveCfg = Debug|x64
 		{8EAD431C-7A4F-6EF2-630A-82464F4BF542}.Debug|x64.Build.0 = Debug|x64
 		{8EAD431C-7A4F-6EF2-630A-82464F4BF542}.Dist|x64.ActiveCfg = Dist|x64
 		{8EAD431C-7A4F-6EF2-630A-82464F4BF542}.Dist|x64.Build.0 = Dist|x64
 		{8EAD431C-7A4F-6EF2-630A-82464F4BF542}.Release|x64.ActiveCfg = Release|x64
 		{8EAD431C-7A4F-6EF2-630A-82464F4BF542}.Release|x64.Build.0 = Release|x64
+		{916CA968-7D39-0474-A652-F21B927E3902}.Debug|x64.ActiveCfg = Debug|x64
+		{916CA968-7D39-0474-A652-F21B927E3902}.Debug|x64.Build.0 = Debug|x64
+		{916CA968-7D39-0474-A652-F21B927E3902}.Dist|x64.ActiveCfg = Dist|x64
+		{916CA968-7D39-0474-A652-F21B927E3902}.Dist|x64.Build.0 = Dist|x64
+		{916CA968-7D39-0474-A652-F21B927E3902}.Release|x64.ActiveCfg = Release|x64
+		{916CA968-7D39-0474-A652-F21B927E3902}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

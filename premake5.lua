@@ -10,27 +10,26 @@ workspace "Toaster"
 outputDir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 
 IncludeDir = {}
--- IncludeDir["GLFW"] = "Toaster/thirdparty/GLFW/include"
--- IncludeDir["Glad"] = "Toaster/thirdparty/glad/include"
--- IncludeDir["ImGui"] = "Toaster/thirdparty/imgui/"
--- include "Toaster/thirdparty/GLFW"
--- include "Toaster/thirdparty/glad"
--- include "Toaster/thirdparty/imgui"
-
 IncludeDir["GLFW"] = "dependencies/GLFW/include"
 IncludeDir["Glad"] = "dependencies/Glad/include"
 IncludeDir["ImGui"] = "dependencies/ImGui"
 IncludeDir["spdlog"] = "dependencies/spdlog/include"
+IncludeDir["stbImage"] = "dependencies/stbImage/include"
+IncludeDir["glm"] = "dependencies/glm"
 include "dependencies/GLFW/"
 include "dependencies/Glad/"
 include "dependencies/ImGui/"
 include "dependencies/spdlog/"
-
+include "dependencies/stbImage/"
+include "dependencies/glm/"
 
 project "Toaster"
 	location "Toaster"
-	kind "SharedLib"
+	kind "StaticLib"
 	language "C++"
+	cppdialect "C++20"
+	staticruntime "On"
+
 
 	characterset ("Unicode")
 
@@ -53,20 +52,27 @@ project "Toaster"
 		"%{IncludeDir.Glad}",
 		"%{IncludeDir.ImGui}",
 		"%{IncludeDir.spdlog}",
-		-- "%{prj.name}/dependencies/spdLog/include/spdlog/spdlog.h",
+		"%{IncludeDir.stbImage}",
+		"%{IncludeDir.glm}",
+		"C:/VulkanSDK/1.4.313.2/Include",
+	}
+
+	libdirs{
+		"C:/VulkanSDK/1.4.313.2/Lib",
 	}
 
 	links{
+		"vulkan-1.lib",
 		"GLFW",
 		"glad",
 		"imgui",
 		"spdlog",
+		"stbImage",
+		"glm",
 		"opengl32.lib",
 	}
 	
 	filter "system:windows"
-		cppdialect "C++20"
-		staticruntime "On"
 		systemversion "latest"
 
 		defines{
@@ -75,32 +81,32 @@ project "Toaster"
 			"GLFW_INCLUDE_NONE",
 		}
 
-		postbuildcommands{
-			("{COPYFILE} %{cfg.buildtarget.relpath} ../bin/" .. outputDir .. "/SandBox")
-		}
-
 	filter "configurations:Debug"
 		defines "TST_DEBUG"
-		buildoptions {"/MDd", "/utf-8"}
-		symbols "On"
+		buildoptions {"/utf-8"}
+		runtime "Debug"
+		symbols "on"
 
 	filter "configurations:Release"
 		defines "TST_RELEASE"
-		buildoptions {"/MDd", "/utf-8"}
-		optimize "On"
+		buildoptions {"/utf-8"}
+		runtime "Release"
+		optimize "on"
 
 	filter "configurations:Dist"
 		defines "TST_DIST"
-		buildoptions {"/MDd", "/utf-8"}
-		optimize "On"
+		buildoptions {"/utf-8"}
+		runtime "Release"
+		optimize "on"
 
 project "SandBox"
 	location "SandBox"
 	kind "ConsoleApp"
 	language "C++"
-
+	cppdialect "C++20"
+	staticruntime "On"
+	
 	characterset ("Unicode")
-
 
 	targetdir ("bin/" .. outputDir .. "/%{prj.name}")
 	objdir ("bin-int/" .. outputDir .. "/%{prj.name}")
@@ -114,32 +120,37 @@ project "SandBox"
 	includedirs{
 		"Toaster/src",
 		"dependencies/spdlog/include",
+		"dependencies/imgui",
+		"%{IncludeDir.glm}",
+		"%{IncludeDir.ImGui}",
 	}
 
 	links{
-		"Toaster"
+		"Toaster",
 	}
 	
 	filter "system:windows"
-		cppdialect "C++20"
-		staticruntime "On"
 		systemversion "latest"
 
 		defines{
 			"TST_PLATFORM_WINDOWS"
 		}
 
+
 	filter "configurations:Debug"
 		defines "TST_DEBUG"
-		buildoptions {"/MDd", "/utf-8"}
-		symbols "On"
+		buildoptions {"/utf-8"}
+		runtime "Debug"
+		symbols "on"
 
 	filter "configurations:Release"
 		defines "TST_RELEASE"
-		buildoptions {"/MDd", "/utf-8"}
-		optimize "On"
+		buildoptions {"/utf-8"}
+		runtime "Release"
+		optimize "on"
 
 	filter "configurations:Dist"
 		defines "TST_DIST"
-		buildoptions {"/MDd", "/utf-8"}
-		optimize "On"
+		buildoptions {"/utf-8"}
+		runtime "Release"
+		optimize "on"

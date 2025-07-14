@@ -7,7 +7,7 @@ namespace tst
 
 	LayerStack::LayerStack()
 	{
-		m_layerInsertPos = m_layers.begin();
+		
 	}
 
 	LayerStack::~LayerStack()
@@ -22,7 +22,8 @@ namespace tst
 	void LayerStack::pushLayer(Layer* layer)
 	{
 		// Insert the layer at the current insert position
-		m_layerInsertPos = m_layers.emplace(m_layerInsertPos, layer);
+		m_layers.emplace(m_layers.begin() + m_layerInsertPos, layer);
+		m_layerInsertPos++;
 	}
 
 	void LayerStack::pushOverlay(Layer* overlay)

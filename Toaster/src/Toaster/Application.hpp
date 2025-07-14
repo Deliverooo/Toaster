@@ -4,6 +4,9 @@
 #include "LayerStack.hpp"
 #include "Window.hpp"
 #include "Events/Event.hpp"
+#include "imgui/ImguiLayer.hpp"
+#include "platform/OpenGl/OpenGlTestLayer.h"
+#include "Renderer/Shader.hpp"
 
 
 namespace tst {
@@ -14,12 +17,15 @@ namespace tst {
 		Application();
 		~Application();
 
+		void init();
 		void run();
 
 		void onEvent(Event &event);
 
 		void pushLayer(Layer* layer);
 		void pushOverlay(Layer* overlay);
+		void popLayer(Layer* layer);
+		void popOverlay(Layer* overlay);
 
 		Window& getWindow() { return *m_window; }
 
@@ -29,11 +35,20 @@ namespace tst {
 		}
 
 	private:
-		std::unique_ptr<Window> m_window;
 		bool m_running;
-		LayerStack m_layerStack;
-
 		static Application* m_instance;
+		std::unique_ptr<Window> m_window;
+
+
+		LayerStack m_layerStack;
+		ImguiLayer *m_imguiLayer = nullptr;
+		OpenGlTestLayer *m_openGlTestLayer = nullptr;
+
+		unsigned int m_Vao;
+		unsigned int m_Vbo;
+		unsigned int m_Ebo;
+
+		std::unique_ptr<Shader> m_basicShader;
 	};
 
 	// To be defined in CLIENT
