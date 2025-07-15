@@ -7,16 +7,13 @@ namespace tst
 	class TST_API Shader
 	{
 	public:
-		Shader(const std::string &vertexSource, const std::string &fragmentSource);
-		~Shader();
+		virtual ~Shader() {};
 
-		void bind() const;
-		void unbind() const;
+		static std::shared_ptr<Shader> create(const std::string& vertexPath, const std::string& fragmentPath);
 
-		uint32_t getId() const {return m_shaderId;}
+		virtual void bind() const = 0;
+		virtual void unbind() const = 0;
 
-	private:
-
-		uint32_t m_shaderId;
+		virtual uint32_t getId() const = 0;
 	};
 }

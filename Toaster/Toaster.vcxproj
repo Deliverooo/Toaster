@@ -149,6 +149,10 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="src\platform\OpenGl\OpenGLTexture.hpp" />
+    <ClInclude Include="src\platform\OpenGl\OpenGLShader.hpp" />
+    <ClInclude Include="src\platform\OpenGl\OpenGLBuffer.hpp" />
+    <ClInclude Include="src\platform\OpenGl\OpenGLVertexArray.hpp" />
     <ClInclude Include="src\Toaster.h" />
     <ClInclude Include="src\Toaster\Application.hpp" />
     <ClInclude Include="src\Toaster\Core.hpp" />
@@ -166,15 +170,22 @@
     <ClInclude Include="src\Toaster\Log.hpp" />
     <ClInclude Include="src\Toaster\MouseCodes.hpp" />
     <ClInclude Include="src\platform\OpenGl\OpenGLRenderingContext.hpp" />
+    <ClInclude Include="src\Toaster\Renderer\Buffer.hpp" />
     <ClInclude Include="src\Toaster\Renderer\Renderer.hpp" />
     <ClInclude Include="src\Toaster\Renderer\RenderingContext.hpp" />
     <ClInclude Include="src\Toaster\Renderer\Shader.hpp" />
+    <ClInclude Include="src\Toaster\Renderer\Texture.hpp" />
+    <ClInclude Include="src\Toaster\Renderer\VertexArray.hpp" />
     <ClInclude Include="src\Toaster\Window.hpp" />
     <ClInclude Include="src\platform\Windows\WindowsWindow.hpp" />
     <ClInclude Include="src\Toaster\imgui\ImguiLayer.hpp" />
     <ClInclude Include="src\tstpch.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\platform\OpenGl\OpenGLTexture.cpp" />
+    <ClCompile Include="src\platform\OpenGl\OpenGLShader.cpp" />
+    <ClCompile Include="src\platform\OpenGl\OpenGLBuffer.cpp" />
+    <ClCompile Include="src\platform\OpenGl\OpenGLVertexArray.cpp" />
     <ClCompile Include="src\Toaster\Application.cpp" />
     <ClCompile Include="src\platform\Windows\WindowsInput.cpp" />
     <ClCompile Include="src\Toaster\Layer.cpp" />
@@ -185,7 +196,11 @@
     <ClCompile Include="src\platform\Windows\WindowsWindow.cpp" />
     <ClCompile Include="src\Toaster\imgui\ImGuiBuild.cpp" />
     <ClCompile Include="src\Toaster\imgui\ImguiLayer.cpp" />
+    <ClCompile Include="src\Toaster\Renderer\Buffer.cpp" />
+    <ClCompile Include="src\Toaster\Renderer\Renderer.cpp" />
     <ClCompile Include="src\Toaster\Renderer\Shader.cpp" />
+    <ClCompile Include="src\Toaster\Renderer\Texture.cpp" />
+    <ClCompile Include="src\Toaster\Renderer\VertexArray.cpp" />
     <ClCompile Include="src\tstpch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
@@ -213,6 +228,9 @@
   <ItemGroup>
     <None Include="res\shaders\BasicShader.frag" />
     <None Include="res\shaders\BasicShader.vert" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="res\images\Global_illumination1.png" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

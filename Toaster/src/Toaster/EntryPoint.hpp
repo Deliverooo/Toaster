@@ -19,6 +19,7 @@ int main() {
 	app->run();
 	delete app;
 
+
 	return 0;
 }
 

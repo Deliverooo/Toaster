@@ -26,6 +26,7 @@ namespace tst
 		virtual unsigned int getWidth() const = 0;
 		virtual unsigned int getHeight() const = 0;
 		virtual const char* getTitle() const = 0;
+		virtual float getAspect() const = 0;
 
 		virtual void setEventCallback(std::function<void(Event &)> e) = 0;
 

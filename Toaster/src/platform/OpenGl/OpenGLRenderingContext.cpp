@@ -30,9 +30,6 @@ namespace tst {
 
 	void OpenGLRenderingContext::swapBuffers()
 	{
-		glBegin(GL_TRIANGLES);
-		glEnd();
-
 		glfwSwapBuffers(m_window);
 	}
 

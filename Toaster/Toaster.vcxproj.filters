@@ -93,6 +93,13 @@
     <ClInclude Include="src\platform\OpenGl\OpenGLRenderingContext.hpp" />
     <ClInclude Include="src\Toaster\Renderer\Renderer.hpp" />
     <ClInclude Include="src\Toaster\Renderer\Shader.hpp" />
+    <ClInclude Include="src\Toaster\Renderer\Buffer.hpp" />
+    <ClInclude Include="src\platform\OpenGl\OpenGLBuffer.hpp" />
+    <ClInclude Include="src\platform\OpenGl\OpenGLShader.hpp" />
+    <ClInclude Include="src\Toaster\Renderer\VertexArray.hpp" />
+    <ClInclude Include="src\platform\OpenGl\OpenGLVertexArray.hpp" />
+    <ClInclude Include="src\Toaster\Renderer\Texture.hpp" />
+    <ClInclude Include="src\platform\OpenGl\OpenGLTexture.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Toaster\Application.cpp">
@@ -125,9 +132,20 @@
     <ClCompile Include="src\tstpch.cpp" />
     <ClCompile Include="src\platform\OpenGl\OpenGLRenderingContext.cpp" />
     <ClCompile Include="src\Toaster\Renderer\Shader.cpp" />
+    <ClCompile Include="src\Toaster\Renderer\Buffer.cpp" />
+    <ClCompile Include="src\platform\OpenGl\OpenGLBuffer.cpp" />
+    <ClCompile Include="src\Toaster\Renderer\Renderer.cpp" />
+    <ClCompile Include="src\platform\OpenGl\OpenGLShader.cpp" />
+    <ClCompile Include="src\Toaster\Renderer\VertexArray.cpp" />
+    <ClCompile Include="src\platform\OpenGl\OpenGLVertexArray.cpp" />
+    <ClCompile Include="src\Toaster\Renderer\Texture.cpp" />
+    <ClCompile Include="src\platform\OpenGl\OpenGLTexture.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="res\shaders\BasicShader.vert" />
     <None Include="res\shaders\BasicShader.frag" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="res\images\Global_illumination1.png" />
   </ItemGroup>
 </Project>

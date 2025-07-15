@@ -4,34 +4,19 @@
 
 namespace tst
 {
-
-	LayerStack::LayerStack()
-	{
-		
-	}
-
-	LayerStack::~LayerStack()
-	{
-		// Clean up all layers in the stack
-		for (Layer* layer : m_layers)
-		{
-			delete layer;
-		}
-	}
-
-	void LayerStack::pushLayer(Layer* layer)
+	void LayerStack::pushLayer(std::shared_ptr<Layer> layer)
 	{
 		// Insert the layer at the current insert position
 		m_layers.emplace(m_layers.begin() + m_layerInsertPos, layer);
 		m_layerInsertPos++;
 	}
 
-	void LayerStack::pushOverlay(Layer* overlay)
+	void LayerStack::pushOverlay(std::shared_ptr<Layer> overlay)
 	{
 		m_layers.emplace_back(overlay);
 	}
 
-	void LayerStack::popLayer(Layer* layer)
+	void LayerStack::popLayer(std::shared_ptr<Layer> layer)
 	{
 		// Find the layer in the stack and remove it
 		auto it = std::find(m_layers.begin(), m_layers.end(), layer);
@@ -42,7 +27,7 @@ namespace tst
 		}
 	}
 
-	void LayerStack::popOverlay(Layer* overlay)
+	void LayerStack::popOverlay(std::shared_ptr<Layer> overlay)
 	{
 		auto it = std::find(m_layers.begin(), m_layers.end(), overlay);
 		if (it != m_layers.end())

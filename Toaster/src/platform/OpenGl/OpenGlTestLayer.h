@@ -24,10 +24,10 @@ namespace tst
         ~OpenGlTestLayer();
 
 
-        void onAttach() override;
-        void onDetach() override;
-        void onUpdate() override;
-        void onEvent(Event& e) override;
+        virtual void onAttach() override;
+        virtual void onDetach() override;
+        virtual void onUpdate() override;
+        virtual void onEvent(Event& e) override;
 
 	private:
         const char* vertexShaderSource = "#version 450 core\n"

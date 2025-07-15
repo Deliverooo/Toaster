@@ -1,7 +1,6 @@
 #include "tstpch.h"
 
 #include "Application.hpp"
-
 #include "Events/ApplicationEvent.hpp"
 
 #define GLM_ENABLE_EXPERIMENTAL
@@ -16,6 +15,7 @@ namespace tst
 {
 	Application* Application::m_instance = nullptr;
 
+	
 	void Application::init()
 	{
 		m_window = std::unique_ptr<Window>(Window::Create({ 1280, 720, "Toaster", true}));
@@ -24,27 +24,21 @@ namespace tst
 				onEvent(e);
 			});
 
-		m_imguiLayer = new ImguiLayer();
+		m_imguiLayer = std::make_shared<ImguiLayer>();
 		pushOverlay(m_imguiLayer);
 
-		glGenVertexArrays(1, &m_Vao);
-		glGenBuffers(1, &m_Vbo);
-		glGenBuffers(1, &m_Ebo);
-		 
-		glBindVertexArray(m_Vao);
 
 		float vertices[] = {
-			// Position           // Colour          // Normal
-			-1.0f, -1.0f, -1.0f,   1.0f, 0.0f, 0.0f,  -0.577f, -0.577f, -0.577f,  // 0
-			 1.0f, -1.0f, -1.0f,   0.0f, 1.0f, 0.0f,   0.577f, -0.577f, -0.577f,  // 1
-			 1.0f,  1.0f, -1.0f,   0.0f, 0.0f, 1.0f,   0.577f,  0.577f, -0.577f,  // 2
-			-1.0f,  1.0f, -1.0f,   1.0f, 1.0f, 0.0f,  -0.577f,  0.577f, -0.577f,  // 3
-			-1.0f, -1.0f,  1.0f,   0.0f, 1.0f, 1.0f,  -0.577f, -0.577f,  0.577f,  // 4
-			 1.0f, -1.0f,  1.0f,   1.0f, 0.0f, 1.0f,   0.577f, -0.577f,  0.577f,  // 5
-			 1.0f,  1.0f,  1.0f,   0.5f, 0.5f, 0.5f,   0.577f,  0.577f,  0.577f,  // 6
-			-1.0f,  1.0f,  1.0f,   1.0f, 1.0f, 1.0f,  -0.577f,  0.577f,  0.577f   // 7
+			// Position           // Colour         // Normal                  // TexCoords
+			-1.0f, -1.0f, -1.0f,   1.0f, 0.0f, 0.0f,  -0.577f, -0.577f, -0.577f,  0.0f, 0.0f,  // 0
+			 1.0f, -1.0f, -1.0f,   0.0f, 1.0f, 0.0f,   0.577f, -0.577f, -0.577f,  1.0f, 0.0f,  // 1
+			 1.0f,  1.0f, -1.0f,   0.0f, 0.0f, 1.0f,   0.577f,  0.577f, -0.577f,  1.0f, 1.0f,  // 2
+			-1.0f,  1.0f, -1.0f,   1.0f, 1.0f, 0.0f,  -0.577f,  0.577f, -0.577f,  0.0f, 1.0f,  // 3
+			-1.0f, -1.0f,  1.0f,   0.0f, 1.0f, 1.0f,  -0.577f, -0.577f,  0.577f,  0.0f, 0.0f,  // 4
+			 1.0f, -1.0f,  1.0f,   1.0f, 0.0f, 1.0f,   0.577f, -0.577f,  0.577f,  1.0f, 0.0f,  // 5
+			 1.0f,  1.0f,  1.0f,   0.5f, 0.5f, 0.5f,   0.577f,  0.577f,  0.577f,  1.0f, 1.0f,  // 6
+			-1.0f,  1.0f,  1.0f,   1.0f, 1.0f, 1.0f,  -0.577f,  0.577f,  0.577f,  0.0f, 1.0f   // 7
 		};
-
 
 		uint32_t indices[] = {
 			0, 1, 2, 2, 3, 0,  // -Z
@@ -55,30 +49,29 @@ namespace tst
 			3, 2, 6, 6, 7, 3   // +Y
 		};
 
-		glBindBuffer(GL_ARRAY_BUFFER, m_Vbo);
-		glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_DYNAMIC_DRAW);
+		m_Vao = VertexArray::create();
+		m_Vbo = VertexBuffer::create(vertices, sizeof(vertices));
 
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_Ebo);
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_DYNAMIC_DRAW);
+		BufferLayout bufferLayout = {
+			{"VertexPosition", ShaderDataType::Float3},
+			{"VertexColour", ShaderDataType::Float3},
+			{"VertexNormal", ShaderDataType::Float3},
+			{"TextureCoords", ShaderDataType::Float2},
+		};
 
-		// position
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(float), nullptr);
-		glEnableVertexAttribArray(0);
+		m_Vbo->setLayout(bufferLayout);
+		m_Vao->addVertexBuffer(m_Vbo);
 
-		// colour
-		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(float), (void*)(3 * sizeof(float)));
-		glEnableVertexAttribArray(1);
+		m_Ebo = IndexBuffer::create(indices, 36);
+		m_Vao->addIndexBuffer(m_Ebo);
 
-		// normal
-		glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(float), (void*)(6 * sizeof(float)));
-		glEnableVertexAttribArray(2);
-
-		glBindVertexArray(0);
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-
-		m_basicShader = std::make_unique<Shader>("C:/dev/Toaster/Toaster/res/shaders/BasicShader.vert",
+		m_basicShader = Shader::create("C:/dev/Toaster/Toaster/res/shaders/BasicShader.vert",
 			"C:/dev/Toaster/Toaster/res/shaders/BasicShader.frag");
+
+		m_texture0 = Texture::create("C:/dev/Toaster/Toaster/res/images/Global_illumination1.png");
+
+		m_basicShader->bind();
+		glUniform1i(glGetUniformLocation(m_basicShader->getId(), "tex1"), 0);
 
 		glEnable(GL_DEPTH_TEST);
 	}
@@ -120,6 +113,8 @@ namespace tst
 		}
 	}
 
+#define TST_SHADER_UNIFORM_MAT4(name, value) glUniformMatrix4fv(glGetUniformLocation(m_basicShader->getId(), name), 1, GL_FALSE, glm::value_ptr(value));
+
 	void Application::run() {
 
 		m_running = true;
@@ -131,36 +126,33 @@ namespace tst
 			glClearColor(0.21f, 0.21f, 0.21f, 1.0f);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+			m_basicShader->bind();
+			glm::mat4 projection = glm::perspective(glm::radians(90.0f), m_window->getAspect(), 0.1f, 100.0f);
+			glm::mat4 view = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -3.0f));
+
+			TST_SHADER_UNIFORM_MAT4("projection", projection);
+			TST_SHADER_UNIFORM_MAT4("view", view);
+
+
+			m_Vao->bind();
+			m_texture0->bind();
 			glm::mat4 trans = glm::mat4(1.0f);
-			trans = glm::rotate(trans, glm::radians((float)glfwGetTime() * 20.0f), glm::vec3(1.0, 0.0, 1.0));
+			trans = glm::rotate(trans, glm::radians(static_cast<float>(glfwGetTime() * 20.0f)), glm::vec3(1.0, 0.0, 1.0));
 			trans = glm::scale(trans, glm::vec3(0.5f));
 
-			glm::mat4 projection = glm::perspective(glm::radians(90.0f), (float)m_window->getWidth() / (float)m_window->getHeight(), 0.1f, 100.0f);
+			TST_SHADER_UNIFORM_MAT4("transform", trans);
+			glDrawElements(GL_TRIANGLES, m_Ebo->count(), GL_UNSIGNED_INT, nullptr);
 
-			glm::mat4 view = glm::mat4(1.0f);
-			view = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));
 
-			unsigned int transformLoc = glGetUniformLocation(m_basicShader->getId(), "transform");
-			glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans));
 
-			unsigned int projectionLoc = glGetUniformLocation(m_basicShader->getId(), "projection");
-			glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
 
-			unsigned int viewLoc = glGetUniformLocation(m_basicShader->getId(), "view");
-			glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-
-			m_basicShader->bind();
-			glBindVertexArray(m_Vao);
-			glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, nullptr);
-			glBindVertexArray(0);
-
-			for (Layer* layer : m_layerStack)
+			for (std::shared_ptr<Layer> layer : m_layerStack)
 			{
 				layer->onUpdate();
 			}
 
 			m_imguiLayer->begin();
-			for (Layer* layer : m_layerStack)
+			for (std::shared_ptr<Layer> layer : m_layerStack)
 			{
 				layer->onImguiRender();
 			}
@@ -171,22 +163,22 @@ namespace tst
 
 	}
 
-	void Application::pushLayer(Layer* layer)
+	void Application::pushLayer(std::shared_ptr<Layer> layer)
 	{
 		m_layerStack.pushLayer(layer);
 		layer->onAttach();
 	}
-	void Application::pushOverlay(Layer* overlay)
+	void Application::pushOverlay(std::shared_ptr<Layer> overlay)
 	{
 		m_layerStack.pushOverlay(overlay);
 		overlay->onAttach();
 	}
-	void Application::popLayer(Layer* layer)
+	void Application::popLayer(std::shared_ptr<Layer> layer)
 	{
 		m_layerStack.popLayer(layer);
 		layer->onDetach();
 	}
-	void Application::popOverlay(Layer* overlay)
+	void Application::popOverlay(std::shared_ptr<Layer> overlay)
 	{
 		m_layerStack.popOverlay(overlay);
 		overlay->onDetach();

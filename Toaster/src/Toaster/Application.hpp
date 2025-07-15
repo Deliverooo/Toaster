@@ -5,8 +5,10 @@
 #include "Window.hpp"
 #include "Events/Event.hpp"
 #include "imgui/ImguiLayer.hpp"
-#include "platform/OpenGl/OpenGlTestLayer.h"
 #include "Renderer/Shader.hpp"
+#include "Renderer/Buffer.hpp"
+#include "Renderer/Texture.hpp"
+#include "Renderer/VertexArray.hpp"
 
 
 namespace tst {
@@ -22,10 +24,10 @@ namespace tst {
 
 		void onEvent(Event &event);
 
-		void pushLayer(Layer* layer);
-		void pushOverlay(Layer* overlay);
-		void popLayer(Layer* layer);
-		void popOverlay(Layer* overlay);
+		void pushLayer(std::shared_ptr<Layer> layer);
+		void pushOverlay(std::shared_ptr<Layer> overlay);
+		void popLayer(std::shared_ptr<Layer> layer);
+		void popOverlay(std::shared_ptr<Layer> overlay);
 
 		Window& getWindow() { return *m_window; }
 
@@ -39,16 +41,15 @@ namespace tst {
 		static Application* m_instance;
 		std::unique_ptr<Window> m_window;
 
-
 		LayerStack m_layerStack;
-		ImguiLayer *m_imguiLayer = nullptr;
-		OpenGlTestLayer *m_openGlTestLayer = nullptr;
+		std::shared_ptr<ImguiLayer> m_imguiLayer;
 
-		unsigned int m_Vao;
-		unsigned int m_Vbo;
-		unsigned int m_Ebo;
+		std::shared_ptr<VertexArray> m_Vao;
+		std::shared_ptr<VertexBuffer> m_Vbo;
+		std::shared_ptr<IndexBuffer> m_Ebo;
 
-		std::unique_ptr<Shader> m_basicShader;
+		std::shared_ptr<Texture> m_texture0;
+		std::shared_ptr<Shader> m_basicShader;
 	};
 
 	// To be defined in CLIENT

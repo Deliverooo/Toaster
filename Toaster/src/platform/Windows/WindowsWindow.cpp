@@ -25,7 +25,6 @@ namespace tst
 
 	WindowsWindow::WindowsWindow(const WindowAttribArray& window_attributes)
 	{
-
 		m_windowData.width = window_attributes.width;
 		m_windowData.height = window_attributes.height;
 		m_windowData.title = window_attributes.title;
@@ -194,6 +193,11 @@ namespace tst
 	const char* WindowsWindow::getTitle() const
 	{
 		return m_windowData.title;
+	}
+
+	float WindowsWindow::getAspect() const
+	{
+		return static_cast<float>(getWidth()) / static_cast<float>(getHeight());
 	}
 
 	void WindowsWindow::update()

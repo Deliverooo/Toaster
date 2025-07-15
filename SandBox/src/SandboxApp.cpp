@@ -26,7 +26,7 @@ public:
 		if (e.getEventType() == tst::EventType::KeyPressed)
 		{
 			tst::KeyPressedEvent& key_pressed_event = static_cast<tst::KeyPressedEvent&>(e);
-			TST_TRACE("{0}", static_cast<char>(key_pressed_event.getKeycode()));
+			TST_TRACE("{0}", key_pressed_event);
 		}
 	}
 
@@ -66,7 +66,7 @@ class SandboxApp : public tst::Application
 {
 public:
 	SandboxApp() {
-		pushLayer(new TestLayer());
+		pushLayer(std::make_shared<TestLayer>());
 	}
 	~SandboxApp() {
 		// Destructor implementation
