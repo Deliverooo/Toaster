@@ -100,6 +100,11 @@
     <ClInclude Include="src\platform\OpenGl\OpenGLVertexArray.hpp" />
     <ClInclude Include="src\Toaster\Renderer\Texture.hpp" />
     <ClInclude Include="src\platform\OpenGl\OpenGLTexture.hpp" />
+    <ClInclude Include="src\Toaster\Renderer\RendererAPI.hpp" />
+    <ClInclude Include="src\Toaster\Renderer\RenderCommand.hpp" />
+    <ClInclude Include="src\platform\OpenGl\OpenGLRendererAPI.hpp" />
+    <ClInclude Include="src\platform\Vulkan\VulkanBuffer.hpp" />
+    <ClInclude Include="src\Toaster\Renderer\Camera.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Toaster\Application.cpp">
@@ -140,6 +145,11 @@
     <ClCompile Include="src\platform\OpenGl\OpenGLVertexArray.cpp" />
     <ClCompile Include="src\Toaster\Renderer\Texture.cpp" />
     <ClCompile Include="src\platform\OpenGl\OpenGLTexture.cpp" />
+    <ClCompile Include="src\Toaster\Renderer\RendererAPI.cpp" />
+    <ClCompile Include="src\Toaster\Renderer\RenderCommand.cpp" />
+    <ClCompile Include="src\platform\OpenGl\OpenGLRendererAPI.cpp" />
+    <ClCompile Include="src\platform\Vulkan\VulkanBuffer.cpp" />
+    <ClCompile Include="src\Toaster\Renderer\Camera.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="res\shaders\BasicShader.vert" />
@@ -147,5 +157,7 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\images\Global_illumination1.png" />
+    <Image Include="res\images\Absolute_Cinema.jpg" />
+    <Image Include="res\images\One_Leg_Bird.png" />
   </ItemGroup>
 </Project>

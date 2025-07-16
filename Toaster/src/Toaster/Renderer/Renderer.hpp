@@ -1,21 +1,29 @@
 #pragma once
+#include "Camera.hpp"
+#include "RendererAPI.hpp"
+#include "Shader.hpp"
 
 namespace tst
 {
-	enum class RenderApi
-	{
-		None, OpenGL, Vulkan, DirectX,
-	};
-
 	class TST_API Renderer
 	{
 	public:
+		static RendererAPI::API getApi() { return RendererAPI::getApi(); }
 
-		static Renderer& getInstance() { return m_instance; }
-		static RenderApi getApi() { return m_renderApi; }
+
+		static void begin(const std::shared_ptr<Camera>& camera);
+		//static void begin(const std::shared_ptr<Camera>& camera);
+		static void end();
+
+		static void submit(const std::shared_ptr<VertexArray>& vertexArray, const glm::mat4& transform, const std::shared_ptr<Shader>& shader);
 
 	private:
-		static Renderer m_instance;
-		static RenderApi m_renderApi;
+		struct SceneData
+		{
+			glm::mat4 projectionMatrix;
+			glm::mat4 viewMatrix;
+		};
+
+		static SceneData* m_sceneData;
 	};
 }

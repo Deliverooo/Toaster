@@ -7,6 +7,15 @@
 
 namespace tst
 {
+	struct TstFont
+	{
+		ImFont* font{ nullptr };
+		bool isLoaded{ false };
+		bool isPoped{ false };
+		const char* fontFilepath{ "" };
+	};
+
+
 	class TST_API ImguiLayer : public Layer
 	{
 	public:

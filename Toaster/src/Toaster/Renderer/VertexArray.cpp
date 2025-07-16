@@ -9,16 +9,16 @@ namespace tst
 	{
 		switch (Renderer::getApi())
 		{
-		case RenderApi::None:
+		case RendererAPI::API::None:
 		{
 			TST_ASSERT(false, "Render Api cannot be None!");
 			return nullptr;
 		}
-		case RenderApi::OpenGL:
+		case RendererAPI::API::OpenGL:
 		{
 			return std::make_shared<OpenGLVertexArray>();
 		}
-		case RenderApi::Vulkan:
+		case RendererAPI::API::Vulkan:
 		{
 			TST_ASSERT(false, "Render Api [Vulkan] has not yet been implemented...");
 			return nullptr;

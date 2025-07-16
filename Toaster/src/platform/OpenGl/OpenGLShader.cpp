@@ -2,6 +2,10 @@
 #include "OpenGLShader.hpp"
 #include <glad/glad.h>
 
+#include <glm/vec3.hpp>
+
+#include "glm/gtc/type_ptr.hpp"
+
 namespace tst
 {
 	OpenGLShader::OpenGLShader(const std::string& vertexPath, const std::string& FragmentPath)
@@ -131,6 +135,24 @@ namespace tst
 		return m_shaderId;
 	}
 
-
-
+	void OpenGLShader::uploadUniform3fv(const glm::vec3& uni, const char* name) const
+	{
+		glUniform3fv(glGetUniformLocation(m_shaderId, name), 1, glm::value_ptr(uni));
+	}
+	void OpenGLShader::uploadUniformMatrix4f(const glm::mat4& uni, const char* name) const
+	{
+		glUniformMatrix4fv(glGetUniformLocation(m_shaderId, name), 1, GL_FALSE,  glm::value_ptr(uni));
+	}
+	void OpenGLShader::uploadUniform1i(const int uni, const char* name) const
+	{
+		glUniform1i(glGetUniformLocation(m_shaderId, name), uni);
+	}
+	void OpenGLShader::uploadUniform1f(const float uni, const char* name) const
+	{
+		glUniform1f(glGetUniformLocation(m_shaderId, name), uni);
+	}
+	void OpenGLShader::uploadUniform1d(const double uni, const char* name) const
+	{
+		glUniform1d(glGetUniformLocation(m_shaderId, name), uni);
+	}
 }

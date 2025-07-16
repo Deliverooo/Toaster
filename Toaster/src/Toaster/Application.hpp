@@ -7,6 +7,7 @@
 #include "imgui/ImguiLayer.hpp"
 #include "Renderer/Shader.hpp"
 #include "Renderer/Buffer.hpp"
+#include "Renderer/Camera.hpp"
 #include "Renderer/Texture.hpp"
 #include "Renderer/VertexArray.hpp"
 
@@ -44,12 +45,7 @@ namespace tst {
 		LayerStack m_layerStack;
 		std::shared_ptr<ImguiLayer> m_imguiLayer;
 
-		std::shared_ptr<VertexArray> m_Vao;
-		std::shared_ptr<VertexBuffer> m_Vbo;
-		std::shared_ptr<IndexBuffer> m_Ebo;
-
-		std::shared_ptr<Texture> m_texture0;
-		std::shared_ptr<Shader> m_basicShader;
+		
 	};
 
 	// To be defined in CLIENT

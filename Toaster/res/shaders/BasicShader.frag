@@ -10,7 +10,7 @@ uniform sampler2D tex1;
 
 void main(){
 	
-	float diff = max(dot(VertexNormal, lightPos), 0.05f);
+	float diff = max(dot(VertexNormal, lightPos), 0.12f);
 	vec3 diffuse = vec3(texture(tex1, TextureCoords)) * diff;
 	FragColour = vec4(diffuse, 1.0f);
 }
