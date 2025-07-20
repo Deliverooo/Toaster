@@ -1,0 +1,216 @@
+#pragma once
+#include <glm/glm.hpp>
+
+namespace tst
+{
+
+	class TST_API Camera
+	{
+	public:
+
+		enum class CameraMode
+		{
+			PERSPECTIVE, ORTHOGRAPHIC, ISOMETRIC,
+		};
+
+
+		Camera(float fov, float aspect, float zNear = 0.1f, float zFar = 100.0f);
+		Camera(float left, float right, float bottom, float top, float zNear = 0.1f, float zFar = 100.0f);
+
+		~Camera() {}
+
+		void setPosition(const glm::vec3& newPosition) { position = newPosition; calcViewMatrix(); }
+		void setRotation(const glm::vec3& newRotation) { rotation = newRotation; calcViewMatrix(); }
+		void setCameraMode(CameraMode cameraMode) { m_cameraMode = cameraMode; }
+		void setAspect(float aspect);
+
+		void move(const glm::vec3& translation) { position += translation; }
+		void rotate(const glm::vec3& rot) { rotation += rot; }
+
+
+		void updateCameraMode(CameraMode mode);
+
+		[[nodiscard]] const glm::mat4& getProjectionMatrix() const { return m_projectionMatrix; }
+		[[nodiscard]] const glm::mat4& getViewMatrix() { calcViewMatrix(); return m_viewMatrix; }
+
+		[[nodiscard]] const glm::vec3& getPosition() const { return position; }
+		[[nodiscard]] const glm::vec3& getRotation() const { return rotation; }
+
+		[[nodiscard]] const glm::vec3 front() const;
+		[[nodiscard]] const glm::vec3 right() const;
+		[[nodiscard]] const glm::vec3 up()	  const;
+
+		[[nodiscard]] const float& getYaw()		const { return yaw; }
+		[[nodiscard]] const float& getPitch()	const { return pitch; }
+		[[nodiscard]] const float& getRoll()	const { return roll; }
+
+		[[nodiscard]] const CameraMode& getCameraMode() const { return m_cameraMode; }
+
+
+		void setFov(const float fovy) { fov = fovy; }
+		const float& getFov() const { return fov; }
+
+		float fov{90.0f};
+		float zNear;
+		float zFar;
+
+
+		float leftPlane{-1.0f};
+		float rightPlane{1.0f};
+		float bottomPlane{-1.0f};
+		float topPlane{1.0f};
+
+		glm::vec3 position;
+
+		union
+		{
+			glm::vec3 rotation;
+			struct
+			{
+				float yaw;
+				float pitch;
+				float roll;
+			};
+		};
+
+
+	protected:
+
+		void calcViewMatrix();
+
+		glm::mat4 m_projectionMatrix;
+		glm::mat4 m_viewMatrix;
+
+		float m_aspect{ 16.0f / 9.0f };
+
+		CameraMode m_cameraMode;
+	};
+
+
+	class TST_API PerspectiveCamera
+	{
+	public:
+		PerspectiveCamera(float fov, float aspect, float zNear = 0.1f, float zFar = 100.0f);
+
+		[[nodiscard]] const glm::mat4& getProjectionMatrix() const { return m_projectionMatrix; }
+		[[nodiscard]] const glm::mat4& getViewMatrix() { recalculateViewMatrix(); return m_viewMatrix; }
+
+		//[[nodiscard]] const glm::vec3& getPosition() const { return m_position; }
+		//[[nodiscard]] const glm::vec3& getRotation() const { return m_rotation; }
+		//[[nodiscard]] const float& getZNear() const { return m_zNear; }
+		//[[nodiscard]] const float& getZFar() const { return m_zFar; }
+
+		//[[nodiscard]] const glm::vec3 front() const;
+		//[[nodiscard]] const glm::vec3 right() const;
+		//[[nodiscard]] const glm::vec3 up()	const;	
+
+		//[[nodiscard]] const float& getYaw()		const { return m_yaw; }
+		//[[nodiscard]] const float& getPitch()	const { return m_pitch; }
+		//[[nodiscard]] const float& getRoll()	const { return m_roll; }
+
+		//[[nodiscard]] const float& getFov() const { return m_fov; }
+
+		void setPosition(const glm::vec3& newPosition) { m_position = newPosition; recalculateViewMatrix(); }
+		void setRotation(const glm::vec3& newRotation) { m_rotation = newRotation; recalculateViewMatrix(); }
+		//void setAspect(float aspect) {m_aspect = aspect; recalculateProjectionMatrix(); }
+
+		//void move(const glm::vec3& translation) { m_position += translation; }
+		//void rotate(const glm::vec3& rot) { m_rotation += rot; }
+
+		//void setFov(const float fovy) { m_fov = fovy; }
+
+	private:
+
+		void recalculateViewMatrix();
+		void recalculateProjectionMatrix(float fov, float aspect, float zNear, float zFar);
+
+		glm::mat4 m_projectionMatrix;
+		glm::mat4 m_viewMatrix;
+
+		glm::vec3 m_position;
+
+		union
+		{
+			glm::vec3 m_rotation;
+			struct
+			{
+				float m_yaw;
+				float m_pitch;
+				float m_roll;
+			};
+		};
+
+		friend class PerspectiveCameraController;
+
+		//float m_zNear;
+		//float m_zFar;
+
+		//float m_aspect{ 16.0f / 9.0f };
+
+		//float m_fov{ 90.0f };
+	};
+
+	class TST_API OrthoCamera
+	{
+	public:
+		OrthoCamera(const float left, const float right, const float bottom, const float top, const float zNear = -1.0f, const float zFar = 10.0f);
+
+		[[nodiscard]] const glm::mat4& getProjectionMatrix() const { return m_projectionMatrix; }
+		[[nodiscard]] const glm::mat4& getViewMatrix() { recalculateViewMatrix(); return m_viewMatrix; }
+
+		//[[nodiscard]] const glm::vec3& getPosition() const { return m_position; }
+		//[[nodiscard]] const glm::vec3& getRotation() const { return m_rotation; }
+		//[[nodiscard]] const float& getZNear() const { return m_zNear; }
+		//[[nodiscard]] const float& getZFar() const { return m_zFar; }
+
+		//[[nodiscard]] const glm::vec3 front() const;
+		//[[nodiscard]] const glm::vec3 right() const;
+		//[[nodiscard]] const glm::vec3 up()	  const;
+
+		//[[nodiscard]] const float& getYaw()		const { return m_yaw; }
+		//[[nodiscard]] const float& getPitch()	const { return m_pitch; }
+		//[[nodiscard]] const float& getRoll()	const { return m_roll; }
+
+		void setPosition(const glm::vec3& newPosition) { m_position = newPosition; recalculateViewMatrix(); }
+		void setRotation(const glm::vec3& newRotation) { m_rotation = newRotation; recalculateViewMatrix(); }
+		//void setAspect(float aspect) { m_aspect = aspect; recalculateProjectionMatrix(); }
+
+		//void move(const glm::vec3& translation) { m_position += translation; }
+		//void rotate(const glm::vec3& rot) { m_rotation += rot; }
+
+	private:
+
+		void recalculateViewMatrix();
+		void recalculateProjectionMatrix(const float left, const float right, const float bottom, const float top);
+
+		glm::mat4 m_projectionMatrix;
+		glm::mat4 m_viewMatrix;
+
+		glm::vec3 m_position;
+
+		union
+		{
+			glm::vec3 m_rotation;
+			struct
+			{
+				float m_yaw;
+				float m_pitch;
+				float m_roll;
+			};
+		};
+
+		friend class OrthoCameraController;
+
+		//float m_zNear;
+		//float m_zFar;
+
+		//float m_aspect{ 16.0f / 9.0f };
+
+		//float m_leftPlane{ -1.0f };
+		//float m_rightPlane{ 1.0f };
+		//float m_bottomPlane{ -1.0f };
+		//float m_topPlane{ 1.0f };
+	};
+}
+
+
