@@ -8,14 +8,20 @@ namespace tst
 	class TST_API Renderer
 	{
 	public:
+
+		static void init();
+
 		static RendererAPI::API getApi() { return RendererAPI::getApi(); }
 
+		static void begin(const RefPtr<Camera>& camera);
+		static void begin(const RefPtr<PerspectiveCamera>& camera);
+		static void begin(const RefPtr<OrthoCamera>& camera);
 
-		static void begin(const std::shared_ptr<Camera>& camera);
-		//static void begin(const std::shared_ptr<Camera>& camera);
 		static void end();
 
-		static void submit(const std::shared_ptr<VertexArray>& vertexArray, const glm::mat4& transform, const std::shared_ptr<Shader>& shader);
+		static void submit(const RefPtr<VertexArray>& vertexArray, const RefPtr<Shader>& shader, const glm::mat4& transform);
+
+		static void resizeViewport(uint32_t width, uint32_t height);
 
 	private:
 		struct SceneData

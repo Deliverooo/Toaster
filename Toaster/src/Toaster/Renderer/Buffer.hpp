@@ -66,7 +66,7 @@ namespace tst
 		case ShaderDataType::Ushort3: return 6;
 		case ShaderDataType::Ushort4: return 8;
 
-		case ShaderDataType::Float: return 4;
+		case ShaderDataType::Float: return  4;
 		case ShaderDataType::Float2: return 8;
 		case ShaderDataType::Float3: return 12;
 		case ShaderDataType::Float4: return 16;
@@ -169,10 +169,13 @@ namespace tst
 
 		void calcOffsets()
 		{
-			for (int i = 0; i < m_bufferAttributes.size(); i++)
+			uint32_t offset = 0;
+			m_stride = 0;
+			for (auto &attrib : m_bufferAttributes)
 			{
-				m_bufferAttributes[i].offset = m_bufferAttributes[i].size * i;
-				m_stride += m_bufferAttributes[i].size;
+				attrib.offset = offset;
+				offset += attrib.size;
+				m_stride += attrib.size;
 			}
 		}
 
@@ -196,7 +199,7 @@ namespace tst
 	public:
 		virtual ~VertexBuffer() {}
 
-		static std::shared_ptr<VertexBuffer> create(float *vertices, uint32_t size);
+		static RefPtr<VertexBuffer> create(float *vertices, uint32_t size);
 
 		virtual void bind() const = 0;
 		virtual void unbind() const = 0;
@@ -210,7 +213,7 @@ namespace tst
 	public:
 		virtual ~IndexBuffer() {}
 
-		static std::shared_ptr<IndexBuffer> create(uint32_t* indices, uint32_t count);
+		static RefPtr<IndexBuffer> create(uint32_t* indices, uint32_t count);
 
 		virtual void bind() const = 0;
 		virtual void unbind() const = 0;

@@ -14,7 +14,7 @@ namespace tst
 		glDeleteVertexArrays(1, &m_Vao);
 	}
 
-	void OpenGLVertexArray::addVertexBuffer(const std::shared_ptr<VertexBuffer> &buffer)
+	void OpenGLVertexArray::addVertexBuffer(const RefPtr<VertexBuffer> &buffer)
 	{
 		glBindVertexArray(m_Vao);
 		buffer->bind();
@@ -26,8 +26,7 @@ namespace tst
 		for (const auto& attrib : layout)
 		{
 			glEnableVertexAttribArray(index);
-			glVertexAttribPointer(index, attrib.getAttribCount(), toastDataTypeToOpenGL(attrib.type), attrib.normalized, layout.getStride(),
-				reinterpret_cast<void*>(static_cast<uint64_t>(attrib.offset)));
+			glVertexAttribPointer(index, attrib.getAttribCount(), toastDataTypeToOpenGL(attrib.type), attrib.normalized ? GL_TRUE : GL_FALSE, layout.getStride(), (const void*)attrib.offset);
 			TST_CORE_INFO("Attrib {0} : {1}", index, attrib.name);
 			index++;
 		}
@@ -35,7 +34,7 @@ namespace tst
 		m_vertexBuffers.push_back(buffer);
 	}
 
-	void OpenGLVertexArray::addIndexBuffer(const std::shared_ptr<IndexBuffer> &buffer)
+	void OpenGLVertexArray::addIndexBuffer(const RefPtr<IndexBuffer> &buffer)
 	{
 		glBindVertexArray(m_Vao);
 		buffer->bind();
@@ -52,12 +51,12 @@ namespace tst
 		glBindVertexArray(0);
 	}
 
-	const std::vector<std::shared_ptr<VertexBuffer>>& OpenGLVertexArray::getVertexBuffers() const
+	const std::vector<RefPtr<VertexBuffer>>& OpenGLVertexArray::getVertexBuffers() const
 	{
 		return m_vertexBuffers;
 	}
 
-	const std::shared_ptr<IndexBuffer>& OpenGLVertexArray::getIndexBuffer() const
+	const RefPtr<IndexBuffer>& OpenGLVertexArray::getIndexBuffer() const
 	{
 		return m_indexBuffer;
 	}

@@ -33,6 +33,8 @@ namespace tst
 		virtual bool getVsyncEnabled() const override;
 		virtual void enableVsync(bool yn) override;
 
+		virtual std::pair<int, int> getPosition() const override;
+
 		// Sets the callback function for handling events
 		// The callback should accept an Event reference and return void
 		virtual void setEventCallback(std::function<void(Event&)> callback) override { m_windowData.eventCallback = callback; }
@@ -59,5 +61,7 @@ namespace tst
 
 		WindowData m_windowData;      // Current window data
 		GLFWwindow* m_window;       // Pointer to the GLFW window
+
+		std::pair<int, int> m_windowPos;
 	};
 }

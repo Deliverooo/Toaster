@@ -12,17 +12,17 @@ namespace tst
 		LayerStack() = default;
 		~LayerStack() {}
 
-		void pushLayer(std::shared_ptr<Layer> layer);
-		void pushOverlay(std::shared_ptr<Layer> overlay);
-		void popLayer(std::shared_ptr<Layer> layer);
-		void popOverlay(std::shared_ptr<Layer> overlay);
+		void pushLayer(RefPtr<Layer> layer);
+		void pushOverlay(RefPtr<Layer> overlay);
+		void popLayer(RefPtr<Layer> layer);
+		void popOverlay(RefPtr<Layer> overlay);
 
-		std::vector<std::shared_ptr<Layer>>::iterator begin() { return m_layers.begin(); }
-		std::vector<std::shared_ptr<Layer>>::iterator end() { return m_layers.end(); }
+		std::vector<RefPtr<Layer>>::iterator begin() { return m_layers.begin(); }
+		std::vector<RefPtr<Layer>>::iterator end() { return m_layers.end(); }
 
 	private:
 
-		std::vector<std::shared_ptr<Layer>> m_layers;
+		std::vector<RefPtr<Layer>> m_layers;
 		// This iterator points to the position where the next layer will be inserted
 		uint32_t m_layerInsertPos = 0;
 

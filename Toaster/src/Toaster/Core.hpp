@@ -15,3 +15,13 @@
 #endif
 
 #define BIT(x) (1 << (x))
+
+namespace tst
+{
+	template<typename T>
+	using ScopedPtr = std::unique_ptr<T>;
+
+	template<typename T>
+	using RefPtr = std::shared_ptr<T>;
+
+}

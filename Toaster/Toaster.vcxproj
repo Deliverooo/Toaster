@@ -149,9 +149,16 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="src\Toaster\CameraController.hpp" />
+    <ClInclude Include="src\platform\OpenGl\OpenGLImage.hpp" />
+    <ClInclude Include="src\platform\Vulkan\VulkanDevice.hpp" />
+    <ClInclude Include="src\platform\Vulkan\VulkanImage.hpp" />
+    <ClInclude Include="src\platform\Vulkan\VulkanRenderingContext.hpp" />
+    <ClInclude Include="src\Toaster\Core\Time.hpp" />
     <ClInclude Include="src\Toaster\Renderer\Camera.hpp" />
     <ClInclude Include="src\platform\OpenGl\OpenGLRendererAPI.hpp" />
     <ClInclude Include="src\platform\Vulkan\VulkanBuffer.hpp" />
+    <ClInclude Include="src\Toaster\Renderer\Material.hpp" />
     <ClInclude Include="src\Toaster\Renderer\RenderCommand.hpp" />
     <ClInclude Include="src\platform\OpenGl\OpenGLTexture.hpp" />
     <ClInclude Include="src\platform\OpenGl\OpenGLShader.hpp" />
@@ -187,9 +194,16 @@
     <ClInclude Include="src\tstpch.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\Toaster\CameraController.cpp" />
+    <ClCompile Include="src\platform\OpenGl\OpenGLImage.cpp" />
+    <ClCompile Include="src\platform\Vulkan\VulkanDevice.cpp" />
+    <ClCompile Include="src\platform\Vulkan\VulkanImage.cpp" />
+    <ClCompile Include="src\platform\Vulkan\VulkanRenderingContext.cpp" />
+    <ClCompile Include="src\Toaster\Core\Time.cpp" />
     <ClCompile Include="src\Toaster\Renderer\Camera.cpp" />
     <ClCompile Include="src\platform\OpenGl\OpenGLRendererAPI.cpp" />
     <ClCompile Include="src\platform\Vulkan\VulkanBuffer.cpp" />
+    <ClCompile Include="src\Toaster\Renderer\Material.cpp" />
     <ClCompile Include="src\Toaster\Renderer\RenderCommand.cpp" />
     <ClCompile Include="src\platform\OpenGl\OpenGLTexture.cpp" />
     <ClCompile Include="src\platform\OpenGl\OpenGLShader.cpp" />
@@ -234,15 +248,6 @@
     <ProjectReference Include="..\dependencies\glm\glm.vcxproj">
       <Project>{6577880B-D180-887C-5AFC-9E7CC604947C}</Project>
     </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="res\shaders\BasicShader.frag" />
-    <None Include="res\shaders\BasicShader.vert" />
-  </ItemGroup>
-  <ItemGroup>
-    <Image Include="res\images\Absolute_Cinema.jpg" />
-    <Image Include="res\images\Global_illumination1.png" />
-    <Image Include="res\images\One_Leg_Bird.png" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

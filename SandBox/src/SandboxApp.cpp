@@ -1,10 +1,18 @@
+#include <random>
+
 #include "Toaster.h"
 #include "imgui.h"
-#include "../../dependencies/GLFW/include/GLFW/glfw3.h"
+#include "Toaster/CameraController.hpp"
 
 struct Transform2D
 {
 
+};
+
+struct Particle3D
+{
+	glm::vec3 position{ 0.0f };
+	glm::vec3 velocity{ 0.0f };
 };
 
 struct Transform3D
@@ -13,157 +21,402 @@ struct Transform3D
 	glm::vec3 rotation{ 0.0f, 1.0f, 0.0f };
 	glm::vec3 scale{ 1.0f };
 
-	const glm::mat4 &matrix() const
+	const glm::mat4 matrix() const
 	{
-		return glm::translate(glm::rotate(glm::scale(glm::mat4(1.0f), scale), glm::length(rotation), glm::normalize(rotation)), position);
+		glm::mat4 sca = glm::scale(glm::mat4(1.0f), scale);
+		glm::mat4 rot = (glm::length(rotation) <= 0.0f) ? glm::mat4(1.0f) : glm::rotate(glm::mat4(1.0f), glm::length(rotation), glm::normalize(rotation));
+		glm::mat4 trans = glm::translate(glm::mat4(1.0f), position);
+		return trans * rot * sca;
+	}
+
+	static const glm::mat4 constructMatrix(const glm::vec3 &p, const glm::vec3& r, const glm::vec3& s)
+	{
+		glm::mat4 sca = glm::scale(glm::mat4(1.0f), s);
+		glm::mat4 rot = (glm::length(r) <= 0.0f) ? glm::mat4(1.0f) : glm::rotate(glm::mat4(1.0f), glm::length(r), glm::normalize(r));
+		glm::mat4 trans = glm::translate(glm::mat4(1.0f), p);
+		return trans * rot * sca;
 	}
 };
+
 
 class TestLayer : public tst::Layer
 {
 public:
 	TestLayer()
 	{
-		m_Camera = std::make_shared<tst::PerspectiveCamera>(glm::radians(90.0f), 16.0f / 9.0f, 0.1f, 100.0f);
-		m_Camera->setPosition({ 0.0f, 0.0f, 2.5f });
-		
 
+		m_PerspectiveCameraController = std::make_shared<tst::PerspectiveCameraController>(90.0f, 1.77f);
+		//m_PerspectiveCameraController = std::make_shared<tst::PerspectiveCameraController>(90.0f, 1.77f);
 
 		float vertices[] = {
-			// Position           // Colour         // Normal                  // TexCoords
-			-1.0f, -1.0f, -1.0f,   1.0f, 0.0f, 0.0f,  -0.577f, -0.577f, -0.577f,  0.0f, 0.0f,  // 0
-			 1.0f, -1.0f, -1.0f,   0.0f, 1.0f, 0.0f,   0.577f, -0.577f, -0.577f,  1.0f, 0.0f,  // 1
-			 1.0f,  1.0f, -1.0f,   0.0f, 0.0f, 1.0f,   0.577f,  0.577f, -0.577f,  1.0f, 1.0f,  // 2
-			-1.0f,  1.0f, -1.0f,   1.0f, 1.0f, 0.0f,  -0.577f,  0.577f, -0.577f,  0.0f, 1.0f,  // 3
-			-1.0f, -1.0f,  1.0f,   0.0f, 1.0f, 1.0f,  -0.577f, -0.577f,  0.577f,  0.0f, 0.0f,  // 4
-			 1.0f, -1.0f,  1.0f,   1.0f, 0.0f, 1.0f,   0.577f, -0.577f,  0.577f,  1.0f, 0.0f,  // 5
-			 1.0f,  1.0f,  1.0f,   0.5f, 0.5f, 0.5f,   0.577f,  0.577f,  0.577f,  1.0f, 1.0f,  // 6
-			-1.0f,  1.0f,  1.0f,   1.0f, 1.0f, 1.0f,  -0.577f,  0.577f,  0.577f,  0.0f, 1.0f   // 7
+
+			/*POSITION				COLOUR				NORMAL		 TEXTURE COORDS*/
+		 1.0f, -1.0f, -1.0f,   1.0f, 0.0f, 0.0f,   1.0f, 0.0f, 0.0f,   0.0f, 0.0f,
+		 1.0f, -1.0f,  1.0f,   1.0f, 0.0f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 0.0f,
+		 1.0f,  1.0f,  1.0f,   1.0f, 0.0f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f,
+		 1.0f,  1.0f, -1.0f,   1.0f, 0.0f, 0.0f,   1.0f, 0.0f, 0.0f,   0.0f, 1.0f,
+
+		-1.0f, -1.0f,  1.0f,   0.0f, 1.0f, 0.0f,  -1.0f, 0.0f, 0.0f,   0.0f, 0.0f,
+		-1.0f, -1.0f, -1.0f,   0.0f, 1.0f, 0.0f,  -1.0f, 0.0f, 0.0f,   1.0f, 0.0f,
+		-1.0f,  1.0f, -1.0f,   0.0f, 1.0f, 0.0f,  -1.0f, 0.0f, 0.0f,   1.0f, 1.0f,
+		-1.0f,  1.0f,  1.0f,   0.0f, 1.0f, 0.0f,  -1.0f, 0.0f, 0.0f,   0.0f, 1.0f,
+
+		-1.0f,  1.0f, -1.0f,   0.0f, 0.0f, 1.0f,   0.0f, 1.0f, 0.0f,   0.0f, 0.0f,
+		 1.0f,  1.0f, -1.0f,   0.0f, 0.0f, 1.0f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f,
+		 1.0f,  1.0f,  1.0f,   0.0f, 0.0f, 1.0f,   0.0f, 1.0f, 0.0f,   1.0f, 1.0f,
+		-1.0f,  1.0f,  1.0f,   0.0f, 0.0f, 1.0f,   0.0f, 1.0f, 0.0f,   0.0f, 1.0f,
+
+		-1.0f, -1.0f,  1.0f,   1.0f, 1.0f, 0.0f,   0.0f,-1.0f, 0.0f,   0.0f, 0.0f,
+		 1.0f, -1.0f,  1.0f,   1.0f, 1.0f, 0.0f,   0.0f,-1.0f, 0.0f,   1.0f, 0.0f,
+		 1.0f, -1.0f, -1.0f,   1.0f, 1.0f, 0.0f,   0.0f,-1.0f, 0.0f,   1.0f, 1.0f,
+		-1.0f, -1.0f, -1.0f,   1.0f, 1.0f, 0.0f,   0.0f,-1.0f, 0.0f,   0.0f, 1.0f,
+
+		 1.0f, -1.0f,  1.0f,   1.0f, 0.0f, 1.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f,
+		-1.0f, -1.0f,  1.0f,   1.0f, 0.0f, 1.0f,   0.0f, 0.0f, 1.0f,   1.0f, 0.0f,
+		-1.0f,  1.0f,  1.0f,   1.0f, 0.0f, 1.0f,   0.0f, 0.0f, 1.0f,   1.0f, 1.0f,
+		 1.0f,  1.0f,  1.0f,   1.0f, 0.0f, 1.0f,   0.0f, 0.0f, 1.0f,   0.0f, 1.0f,
+
+		-1.0f, -1.0f, -1.0f,   0.0f, 1.0f, 1.0f,   0.0f, 0.0f,-1.0f,   0.0f, 0.0f,
+		 1.0f, -1.0f, -1.0f,   0.0f, 1.0f, 1.0f,   0.0f, 0.0f,-1.0f,   1.0f, 0.0f,
+		 1.0f,  1.0f, -1.0f,   0.0f, 1.0f, 1.0f,   0.0f, 0.0f,-1.0f,   1.0f, 1.0f,
+		-1.0f,  1.0f, -1.0f,   0.0f, 1.0f, 1.0f,   0.0f, 0.0f,-1.0f,   0.0f, 1.0f,
 		};
 
 		uint32_t indices[] = {
-			0, 1, 2, 2, 3, 0,  // -Z
-			4, 5, 6, 6, 7, 4,  // +Z
-			0, 3, 7, 7, 4, 0,  // -X
-			1, 5, 6, 6, 2, 1,  // +X
-			0, 4, 5, 5, 1, 0,  // -Y
-			3, 2, 6, 6, 7, 3   // +Y
+			0,  1,  2,    0,  2,  3,
+			4,  5,  6,    4,  6,  7,
+			8,  9, 10,    8, 10, 11,
+			12, 13, 14,   12, 14, 15,
+			16, 17, 18,   16, 18, 19,
+			20, 21, 22,   20, 22, 23
 		};
+
+
+		float planeVertices[] = {
+			-1.0f,  0.0f,  1.0f,   0.0f, 1.0f,
+			 1.0f,  0.0f,  1.0f,   1.0f, 1.0f,
+			 1.0f,  0.0f, -1.0f,   1.0f, 0.0f,
+			-1.0f,  0.0f, -1.0f,   0.0f, 0.0f,
+		};
+
+		uint32_t planeIndices[] = {
+			0,  1,  2,    0,  2,  3
+		};
+
+
 
 		m_Vao = tst::VertexArray::create();
-		std::shared_ptr<tst::VertexBuffer> vertexBuffer = tst::VertexBuffer::create(vertices, sizeof(vertices));
-
+		tst::RefPtr<tst::VertexBuffer> vertexBuffer = tst::VertexBuffer::create(vertices, sizeof(vertices));
 		tst::BufferLayout bufferLayout = {
-			{"VertexPosition", tst::ShaderDataType::Float3},
-			{"VertexColour", tst::ShaderDataType::Float3},
-			{"VertexNormal", tst::ShaderDataType::Float3},
-			{"TextureCoords", tst::ShaderDataType::Float2},
+			{"VertexPosition",	 tst::ShaderDataType::Float3},
+			{"VertexColour",	 tst::ShaderDataType::Float3},
+			{"VertexNormal",	 tst::ShaderDataType::Float3},
+			{"TextureCoords",	 tst::ShaderDataType::Float2},
 		};
-
 		vertexBuffer->setLayout(bufferLayout);
 		m_Vao->addVertexBuffer(vertexBuffer);
-
 		auto indexBuffer = tst::IndexBuffer::create(indices, 36);
 		m_Vao->addIndexBuffer(indexBuffer);
 
-		m_basicShader = tst::Shader::create("C:/dev/Toaster/Toaster/res/shaders/BasicShader.vert",
-		                                    "C:/dev/Toaster/Toaster/res/shaders/BasicShader.frag");
 
-		m_texture0 = tst::Texture::create("C:/dev/Toaster/Toaster/res/images/Global_illumination1.png");
+
+		m_PlaneVao = tst::VertexArray::create();
+		tst::RefPtr<tst::VertexBuffer> planeVertexBuffer = tst::VertexBuffer::create(planeVertices, sizeof(planeVertices));
+		tst::BufferLayout planeBufferLayout = {
+			{"VertexPosition",	 tst::ShaderDataType::Float3},
+			{"TextureCoords",	 tst::ShaderDataType::Float2},
+		};
+		planeVertexBuffer->setLayout(planeBufferLayout);
+		m_PlaneVao->addVertexBuffer(planeVertexBuffer);
+		auto planeIndexBuffer = tst::IndexBuffer::create(planeIndices, 6);
+		m_PlaneVao->addIndexBuffer(planeIndexBuffer);
+
+
+		for (int i = 0; i < 5; i++)
+		{
+			m_particles.push_back(std::make_shared<Particle3D>());
+		}
+
+		auto basicShader = m_shaderLib.loadShader("BasicShader", "assets/shaders/TestShader.glsl");
+		auto flatTextureShader = m_shaderLib.loadShader("FlatTextureShader", "assets/shaders/FlatTextureShader.glsl");
+
+		m_PlaneTexture = tst::Texture2D::create("assets/textures/Global_illumination1.png");
+		m_texture0 = tst::Texture2D::create("assets/textures/orbo0.png");
 	}
 
-	void onUpdate() override
+	void onUpdate(tst::DeltaTime dt) override
 	{
-		static float dt = 0.02f;
+		float deltaTime = dt * 3.0f;
+
 
 		tst::RenderCommand::setClearColour(m_clearColour);
 		tst::RenderCommand::clear();
 
-		auto& activeCamera = m_Camera;
+		m_PerspectiveCameraController->onUpdate(dt);
 
-		if (tst::Input::isKeyPressed(TST_KEY_W))			{ cameraTransform.position += dt * activeCamera->front(); }
-		if (tst::Input::isKeyPressed(TST_KEY_A))			{ cameraTransform.position -= dt * activeCamera->right(); }
-		if (tst::Input::isKeyPressed(TST_KEY_S))			{ cameraTransform.position -= dt * activeCamera->front(); }
-		if (tst::Input::isKeyPressed(TST_KEY_D))			{ cameraTransform.position += dt * activeCamera->right(); }
+		tst::Renderer::begin(m_PerspectiveCameraController->getCamera());
 
-		if (tst::Input::isKeyPressed(TST_KEY_SPACE))		{ cameraTransform.position += dt * glm::vec3(0.0f, 1.0f, 0.0f); }
-		if (tst::Input::isKeyPressed(TST_KEY_LEFT_SHIFT))	{ cameraTransform.position -= dt * glm::vec3(0.0f, 1.0f, 0.0f); }
-
-		if (tst::Input::isKeyPressed(TST_KEY_LEFT))			{ cameraTransform.rotation.y -= dt * m_cameraSpeed; }
-		if (tst::Input::isKeyPressed(TST_KEY_RIGHT))		{ cameraTransform.rotation.y += dt * m_cameraSpeed; }
-		if (tst::Input::isKeyPressed(TST_KEY_UP))			{ cameraTransform.rotation.x += dt * m_cameraSpeed; }
-		if (tst::Input::isKeyPressed(TST_KEY_DOWN))			{ cameraTransform.rotation.x -= dt * m_cameraSpeed; }
+		auto basicShader		= m_shaderLib.getShader("BasicShader");
+		auto flatTextureShader  = m_shaderLib.getShader("FlatTextureShader");
 
 
-		activeCamera->setPosition(cameraTransform.position);
-		activeCamera->setRotation(cameraTransform.rotation);
+		m_PlaneTexture->bind();
 
-		tst::Renderer::begin(activeCamera);
+		basicShader->bind();
+		tst::Renderer::submit(m_Vao, basicShader, m_modelTransform.matrix());
 
-		Transform3D modelTransform = {
-			glm::vec3{0.0f, 0.0f, 0.0f}, // pos
-			glm::vec3{0.0f, 1.0f, 0.0f}, // rot
-			glm::vec3{1.0f, 1.0f, 1.0f}};// sca
+		//for (auto& particle : m_particles)
+		//{
+		//	if (particle->position.y < -3.0f)
+		//	{
+		//		particle->velocity.y *= -1.0f;
+		//	}
+		//	particle->velocity += glm::vec3(0.0f, -1.0f, 0.0f) * 1.0f * deltaTime;
+		//	particle->position += particle->velocity * deltaTime;
+		//	tst::Renderer::submit(m_Vao, basicShader, glm::translate(glm::mat4(1.0f), particle->position));
+		//}
 
 		m_texture0->bind();
-		tst::Renderer::submit(m_Vao, modelTransform.matrix(), m_basicShader);
+		flatTextureShader->bind();
+		tst::Renderer::submit(m_PlaneVao, flatTextureShader, m_planeTransform.matrix());
 
 		tst::Renderer::end();
 	}
 
-#define TST_BIND_EVENT(func) std::bind(&func, this, std::placeholders::_1)
-
 	void onEvent(tst::Event& e) override
 	{
+		m_PerspectiveCameraController->onEvent(e);
+
 		tst::EventDispatcher event_dispatcher(e);
-		event_dispatcher.dispatch<tst::KeyPressedEvent>(TST_BIND_EVENT(TestLayer::onKeyPressedEvent));
+		event_dispatcher.dispatch<tst::KeyPressedEvent>([this](tst::KeyPressedEvent& e)
+			{
+				return onKeyPressedEvent(e);
+			});
+		event_dispatcher.dispatch<tst::MouseMoveEvent>([this](tst::MouseMoveEvent& e)
+			{
+				return onMouseMoveEvent(e);
+			});
+		event_dispatcher.dispatch<tst::MouseScrollEvent>([this](tst::MouseScrollEvent& e)
+			{
+				return onMouseScrollEvent(e);
+			});
+		event_dispatcher.dispatch<tst::WindowResizedEvent>([this](tst::WindowResizedEvent& e)
+			{
+				return onWindowResizedEvent(e);
+			});
 	}
 
 	bool onKeyPressedEvent(tst::KeyPressedEvent &e)
 	{
-		TST_TRACE("{0}", e);
 
-		if (e.getKeycode() == TST_KEY_P)
-		{
-			m_Camera = std::make_shared<tst::PerspectiveCamera>(90.0f, 16.0f / 9.0f, 0.1f, 100.0f);
-			m_Camera->setPosition(cameraTransform.position);
-			m_Camera->setRotation(cameraTransform.rotation);
-		} else if (e.getKeycode() == TST_KEY_O)
-		{
-			m_Camera = std::make_shared<tst::OrthoCamera>(-1.0f, 1.0f, -1.0f, 1.0f);
-			m_Camera->setPosition(cameraTransform.position);
-			m_Camera->setRotation(cameraTransform.rotation);
-		}
 		return false;
 	}
 
+	bool onMouseMoveEvent(tst::MouseMoveEvent& e)
+	{
+
+		return false;
+	}
+
+	bool onMouseScrollEvent(tst::MouseScrollEvent &e)
+	{
+
+		return false;
+	}
+
+	bool onWindowResizedEvent(tst::WindowResizedEvent& e)
+	{
+
+		return false;
+	}
 	void onImguiRender() override
+	{
+		static bool PreferencesOpen = false;
+
+		if (ImGui::BeginMainMenuBar())
+		{
+			if (ImGui::BeginMenu("File"))
+			{
+				if (ImGui::MenuItem("Save", "Ctrl+S"))
+				{
+
+				}
+				if (ImGui::MenuItem("Import"))
+				{
+
+				}
+
+				ImGui::EndMenu();
+			}
+			if (ImGui::BeginMenu("Edit"))
+			{
+				if (ImGui::MenuItem("Preferences", "Ctrl+,"))
+				{
+					PreferencesOpen = true;
+				}
+
+				ImGui::EndMenu();
+			}
+
+			if (ImGui::BeginMenu("View"))
+			{
+
+
+				ImGui::EndMenu();
+			}
+
+			ImGui::EndMainMenuBar();
+		}
+
+		ImGui::Begin("Properties");
+		if (ImGui::CollapsingHeader("Transform"))
+		{
+			if (ImGui::Button("Reset"))
+			{
+				m_modelTransform.position.x = 0.0f;
+				m_modelTransform.position.y = 0.0f;
+				m_modelTransform.position.z = 0.0f;
+
+				m_modelTransform.rotation.x = 0.0f;
+				m_modelTransform.rotation.y = 0.0f;
+				m_modelTransform.rotation.z = 0.0f;
+
+				m_modelTransform.scale.x = 1.0f;
+				m_modelTransform.scale.y = 1.0f;
+				m_modelTransform.scale.z = 1.0f;
+			}
+
+			ImGui::Text("Position");
+			ImGui::Spacing();
+
+			ImGui::SliderFloat("X", &m_modelTransform.position.x, -10.0f, 10.0f);
+			ImGui::SliderFloat("Y", &m_modelTransform.position.y, -10.0f, 10.0f);
+			ImGui::SliderFloat("Z", &m_modelTransform.position.z, -10.0f, 10.0f);
+
+
+			ImGui::Text("Rotation");
+			ImGui::Spacing();
+
+
+			ImGui::SliderFloat("X##1", &m_modelTransform.rotation.x, -6.29f, 6.29f);
+			ImGui::SliderFloat("Y##2", &m_modelTransform.rotation.y, -6.29f, 6.29f);
+			ImGui::SliderFloat("Z##3", &m_modelTransform.rotation.z, -6.29f, 6.29f);
+
+
+			ImGui::Text("Scale");
+			ImGui::Spacing();
+
+			ImGui::SliderFloat("X##4", &m_modelTransform.scale.x, -10.0f, 10.0f);
+			ImGui::SliderFloat("Y##5", &m_modelTransform.scale.y, -10.0f, 10.0f);
+			ImGui::SliderFloat("Z##6", &m_modelTransform.scale.z, -10.0f, 10.0f);
+		}
+
+		if (ImGui::CollapsingHeader("Environment"))
+		{
+			if (ImGui::Button("Reset##1"))
+			{
+				m_clearColour.r = 0.15f;
+				m_clearColour.g = 0.15f;
+				m_clearColour.b = 0.15f;
+			}
+
+			ImGui::Text("Colour");
+			ImGui::Spacing();
+
+			ImGui::SliderFloat("R", &m_clearColour.r, 0.0f, 1.0f);
+			ImGui::SliderFloat("G", &m_clearColour.g, 0.0f, 1.0f);
+			ImGui::SliderFloat("B", &m_clearColour.b, 0.0f, 1.0f);
+		}
+
+		if (ImGui::CollapsingHeader("Material"))
+		{
+			if (ImGui::Button("Reset##2"))
+			{
+				cubeColour = { 1.0f, 1.0f, 1.0f };
+			}
+			ImGui::Spacing();
+
+			ImGui::Text("Colour");
+			ImGui::Spacing();
+			ImGui::ColorPicker3("Colour Picker", &cubeColour[0]);
+		}
+		ImGui::End();
+
+		if (PreferencesOpen)
+		{
+			ImGui::Begin("Preferences", &PreferencesOpen);
+
+			if (ImGui::Button("CameraMode"))
+			{
+
+			}
+
+			ImGui::End();
+		}
+
+
+
+		m_viewportWidth =	static_cast<uint32_t>(ImGui::GetContentRegionAvail().x);
+		m_viewportHeight =	static_cast<uint32_t>(ImGui::GetContentRegionAvail().y);
+
+
+
+	}
+
+	void preferencesWindow()
+	{
+
+	}
+
+	void render()
 	{
 		
 	}
+
 private:
+	glm::vec4 m_clearColour{ 0.15f };
 
-	std::shared_ptr<tst::VertexArray> m_Vao;
+	tst::RefPtr<tst::PerspectiveCameraController> m_PerspectiveCameraController;
 
-	std::shared_ptr<tst::Texture> m_texture0;
-	std::shared_ptr<tst::Shader> m_basicShader;
+	std::vector<tst::RefPtr<Particle3D>> m_particles;
+	tst::RefPtr<tst::VertexArray> m_Vao;
+	tst::RefPtr<tst::VertexArray> m_PlaneVao;
 
-	std::shared_ptr<tst::Camera> m_Camera;
+	Transform3D m_modelTransform = {
+	glm::vec3{0.0f, 0.0f, 0.0f}, // position
+	glm::vec3{0.0f, 0.0f, 0.0f}, // rotation
+	glm::vec3{0.15f, 0.15f, 0.15f}  // scale
+	};
 
-	Transform3D cameraTransform{};
+	Transform3D m_planeTransform = {
+	glm::vec3{0.0f, 0.0f, 3.0f}, // position
+	glm::vec3{0.0f, 0.0f, 6.28f}, // rotation
+	glm::vec3{1.0f, 1.0f, 1.0f}  // scale
+	};
 
-	float m_cameraSpeed = 0.5f;
 
-	glm::vec4 m_clearColour{ 1.0f };
+	tst::ShaderLib m_shaderLib;
+
+
+	tst::RefPtr<tst::Texture2D> m_texture0;
+	tst::RefPtr<tst::Texture2D> m_PlaneTexture;
+
+	glm::vec3 cubeColour{1.0f, 1.0f, 1.0f};
+
+	uint32_t m_viewportWidth = 0;
+	uint32_t m_viewportHeight = 0;
 };
+
+
 
 class SandboxApp : public tst::Application
 {
 public:
 	SandboxApp() {
-			
+
 		pushLayer(std::make_shared<TestLayer>());
-	}	
+	}
+
 	~SandboxApp() {
 
 	}

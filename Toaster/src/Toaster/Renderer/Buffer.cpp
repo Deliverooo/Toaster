@@ -6,7 +6,7 @@
 
 namespace tst
 {
-	std::shared_ptr<VertexBuffer> VertexBuffer::create(float* vertices, uint32_t size)
+	RefPtr<VertexBuffer> VertexBuffer::create(float* vertices, uint32_t size)
 	{
 		switch (Renderer::getApi())
 		{
@@ -32,7 +32,7 @@ namespace tst
 		}
 	}
 
-	std::shared_ptr<IndexBuffer> IndexBuffer::create(uint32_t* indices, uint32_t count)
+	RefPtr<IndexBuffer> IndexBuffer::create(uint32_t* indices, uint32_t count)
 	{
 		switch (Renderer::getApi())
 		{

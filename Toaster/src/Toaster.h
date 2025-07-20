@@ -33,6 +33,10 @@
 #include "Toaster/Renderer/Shader.hpp"
 #include "Toaster/Renderer/Texture.hpp"
 #include "Toaster/Renderer/VertexArray.hpp"
+#include "Toaster/Renderer/Material.hpp"
+
+// Toaster OpenGL API functions
+#include "platform/OpenGl/OpenGLShader.hpp"
 
 // Toaster Engine Input Header
 #include "Toaster/Input.hpp"

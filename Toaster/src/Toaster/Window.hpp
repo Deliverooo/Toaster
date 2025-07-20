@@ -28,6 +28,8 @@ namespace tst
 		virtual const char* getTitle() const = 0;
 		virtual float getAspect() const = 0;
 
+		virtual std::pair<int, int> getPosition() const = 0;
+
 		virtual void setEventCallback(std::function<void(Event &)> e) = 0;
 
 		virtual void* getWindow() = 0;

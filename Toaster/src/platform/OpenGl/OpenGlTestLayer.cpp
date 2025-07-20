@@ -39,7 +39,7 @@ namespace tst
 		auto image = loadImage("C:/Users/oocon/Downloads/Orbo_blue.png");
 	}
 
-	void OpenGlTestLayer::onUpdate()
+	void OpenGlTestLayer::onUpdate(DeltaTime dt)
 	{
 	}
 

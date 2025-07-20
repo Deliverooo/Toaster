@@ -134,37 +134,5 @@ namespace tst
 
 	void ImguiLayer::onImguiRender() {
 
-		static bool show = true;
-
-		ImGui::ShowDemoWindow(&show);
-
-
-		ImGuiIO& io = ImGui::GetIO();
-
-		static TstFont tstFonts[3] = {
-			{nullptr, false, false, "C:\\Users\\oocon\\AppData\\Local\\Microsoft\\Windows\\Fonts\\JetBrainsMono-Medium.ttf"},
-			{nullptr, false, false, "C:\\Users\\oocon\\AppData\\Local\\Microsoft\\Windows\\Fonts\\Overload.otf"},
-			{nullptr, false, false, "C:\\Users\\oocon\\AppData\\Local\\Microsoft\\Windows\\Fonts\\Monocraft.ttf"} };
-
-
-		for (int i = 0; i < 3; i++)
-		{
-			if (!tstFonts[i].isLoaded)
-			{
-				tstFonts[i].font = io.Fonts->AddFontFromFileTTF(tstFonts[i].fontFilepath, 16);
-				ImGui::PushFont(tstFonts[i].font);
-				tstFonts[i].isLoaded = true;
-			}
-		}
-
-
-		for (int i = 0; i < 3; i++)
-		{
-			if (!tstFonts[i].isPoped)
-			{
-				ImGui::PopFont();
-				tstFonts[i].isPoped = true;
-			}
-		}
 	}
 }

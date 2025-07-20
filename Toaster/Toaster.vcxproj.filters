@@ -105,6 +105,13 @@
     <ClInclude Include="src\platform\OpenGl\OpenGLRendererAPI.hpp" />
     <ClInclude Include="src\platform\Vulkan\VulkanBuffer.hpp" />
     <ClInclude Include="src\Toaster\Renderer\Camera.hpp" />
+    <ClInclude Include="src\Toaster\Core\Time.hpp" />
+    <ClInclude Include="src\platform\Vulkan\VulkanImage.hpp" />
+    <ClInclude Include="src\platform\OpenGl\OpenGLImage.hpp" />
+    <ClInclude Include="src\platform\Vulkan\VulkanRenderingContext.hpp" />
+    <ClInclude Include="src\platform\Vulkan\VulkanDevice.hpp" />
+    <ClInclude Include="src\Toaster\Renderer\Material.hpp" />
+    <ClInclude Include="src\Toaster\CameraController.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Toaster\Application.cpp">
@@ -150,14 +157,12 @@
     <ClCompile Include="src\platform\OpenGl\OpenGLRendererAPI.cpp" />
     <ClCompile Include="src\platform\Vulkan\VulkanBuffer.cpp" />
     <ClCompile Include="src\Toaster\Renderer\Camera.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="res\shaders\BasicShader.vert" />
-    <None Include="res\shaders\BasicShader.frag" />
-  </ItemGroup>
-  <ItemGroup>
-    <Image Include="res\images\Global_illumination1.png" />
-    <Image Include="res\images\Absolute_Cinema.jpg" />
-    <Image Include="res\images\One_Leg_Bird.png" />
+    <ClCompile Include="src\Toaster\Core\Time.cpp" />
+    <ClCompile Include="src\platform\Vulkan\VulkanImage.cpp" />
+    <ClCompile Include="src\platform\OpenGl\OpenGLImage.cpp" />
+    <ClCompile Include="src\platform\Vulkan\VulkanRenderingContext.cpp" />
+    <ClCompile Include="src\platform\Vulkan\VulkanDevice.cpp" />
+    <ClCompile Include="src\Toaster\Renderer\Material.cpp" />
+    <ClCompile Include="src\Toaster\CameraController.cpp" />
   </ItemGroup>
 </Project>

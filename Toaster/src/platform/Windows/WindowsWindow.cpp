@@ -1,6 +1,8 @@
 #include "tstpch.h"
 #include "WindowsWindow.hpp"
 
+#include <stb_image.h>
+
 #include "Toaster/Events/ApplicationEvent.hpp"
 #include "Toaster/Events/KeyEvent.hpp"
 #include "Toaster/Events/MouseEvent.hpp"
@@ -39,13 +41,10 @@ namespace tst
 			TST_ERROR("[FATAL ERROR] -> FAILED TO INITIALIZE GLFW API!!!");
 			return;
 		}
-		
-		m_window = glfwCreateWindow(
-			static_cast<int>(m_windowData.width),
-			static_cast<int>(m_windowData.height),
-			m_windowData.title,
-			nullptr, nullptr
-		);
+
+		m_window = glfwCreateWindow(m_windowData.width, m_windowData.height, m_windowData.title, nullptr, nullptr);
+
+		glfwGetWindowPos(m_window, &m_windowPos.first, &m_windowPos.second);
 
 		m_renderingContext = new OpenGLRenderingContext(m_window);
 		m_renderingContext->init();
@@ -54,6 +53,8 @@ namespace tst
 
 		TST_CORE_INFO("V-Sync Enabled: {0}", m_windowData.vSyncEnabled);
 		glfwSetWindowUserPointer(m_window, &m_windowData);
+
+		glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
 		glfwSetErrorCallback([](int errorCode, const char* description){
 
@@ -179,6 +180,12 @@ namespace tst
 			window_data.eventCallback(frameBufferResizeEvent);
 		});
 	}
+
+	std::pair<int, int> WindowsWindow::getPosition() const
+	{
+		return m_windowPos;
+	}
+
 
 	unsigned int WindowsWindow::getWidth() const
 	{

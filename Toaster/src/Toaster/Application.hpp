@@ -3,6 +3,7 @@
 #include "Core.hpp"
 #include "LayerStack.hpp"
 #include "Window.hpp"
+#include "Core/Time.hpp"
 #include "Events/Event.hpp"
 #include "imgui/ImguiLayer.hpp"
 #include "Renderer/Shader.hpp"
@@ -25,10 +26,10 @@ namespace tst {
 
 		void onEvent(Event &event);
 
-		void pushLayer(std::shared_ptr<Layer> layer);
-		void pushOverlay(std::shared_ptr<Layer> overlay);
-		void popLayer(std::shared_ptr<Layer> layer);
-		void popOverlay(std::shared_ptr<Layer> overlay);
+		void pushLayer(RefPtr<Layer> layer);
+		void pushOverlay(RefPtr<Layer> overlay);
+		void popLayer(RefPtr<Layer> layer);
+		void popOverlay(RefPtr<Layer> overlay);
 
 		Window& getWindow() { return *m_window; }
 
@@ -37,15 +38,17 @@ namespace tst {
 			return *m_instance;
 		}
 
+		static bool uiMode;
 	private:
 		bool m_running;
 		static Application* m_instance;
-		std::unique_ptr<Window> m_window;
+		ScopedPtr<Window> m_window;
 
 		LayerStack m_layerStack;
-		std::shared_ptr<ImguiLayer> m_imguiLayer;
+		RefPtr<ImguiLayer> m_imguiLayer;
 
-		
+		float m_lastFrameTime{0.0f};
+
 	};
 
 	// To be defined in CLIENT

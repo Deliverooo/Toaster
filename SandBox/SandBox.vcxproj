@@ -144,6 +144,29 @@
       <Project>{E77DE44F-535D-63EB-5C75-EEC1C8D3C94C}</Project>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup>
+    <Image Include="assets\cubemaps\back.jpg" />
+    <Image Include="assets\cubemaps\bottom.jpg" />
+    <Image Include="assets\cubemaps\front.jpg" />
+    <Image Include="assets\cubemaps\left.jpg" />
+    <Image Include="assets\cubemaps\right.jpg" />
+    <Image Include="assets\cubemaps\top.jpg" />
+    <Image Include="assets\textures\Absolute_Cinema.jpg" />
+    <Image Include="assets\textures\Global_illumination1.png" />
+    <Image Include="assets\textures\One_Leg_Bird.png" />
+    <Image Include="assets\textures\orbo0.png" />
+    <Image Include="assets\textures\rocky_terrain_02_diff_2k.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="assets\shaders\BasicShader.frag.glsl" />
+    <None Include="assets\shaders\BasicShader.vert.glsl" />
+    <None Include="assets\shaders\FlatShader.frag.glsl" />
+    <None Include="assets\shaders\FlatShader.vert.glsl" />
+    <None Include="assets\shaders\FlatTextureShader.glsl" />
+    <None Include="assets\shaders\SkyboxShader.frag.glsl" />
+    <None Include="assets\shaders\SkyboxShader.vert.glsl" />
+    <None Include="assets\shaders\TestShader.glsl" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

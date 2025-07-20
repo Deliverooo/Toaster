@@ -26,7 +26,7 @@ namespace tst
 
         virtual void onAttach() override;
         virtual void onDetach() override;
-        virtual void onUpdate() override;
+        virtual void onUpdate(DeltaTime dt) override;
         virtual void onEvent(Event& e) override;
 
 	private:

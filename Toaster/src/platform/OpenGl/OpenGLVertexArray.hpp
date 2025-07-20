@@ -74,16 +74,16 @@ namespace tst
 		virtual void bind() const override;
 		virtual void unbind() const override;
 
-		virtual void addVertexBuffer(const std::shared_ptr<VertexBuffer> &buffer) override;
-		virtual void addIndexBuffer(const std::shared_ptr<IndexBuffer> &buffer) override;
+		virtual void addVertexBuffer(const RefPtr<VertexBuffer> &buffer) override;
+		virtual void addIndexBuffer(const RefPtr<IndexBuffer> &buffer) override;
 
-		virtual const std::vector<std::shared_ptr<VertexBuffer>>& getVertexBuffers() const override;
-		virtual const std::shared_ptr<IndexBuffer>& getIndexBuffer() const override;
+		virtual const std::vector<RefPtr<VertexBuffer>>& getVertexBuffers() const override;
+		virtual const RefPtr<IndexBuffer>& getIndexBuffer() const override;
 
 	private:
 		unsigned int m_Vao;
 
-		std::vector<std::shared_ptr<VertexBuffer>> m_vertexBuffers;
-		std::shared_ptr<IndexBuffer> m_indexBuffer;
+		std::vector<RefPtr<VertexBuffer>> m_vertexBuffers;
+		RefPtr<IndexBuffer> m_indexBuffer;
 	};
 }

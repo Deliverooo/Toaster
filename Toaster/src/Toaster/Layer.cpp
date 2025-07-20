@@ -1,6 +1,7 @@
 #include "tstpch.h"
 #include "Layer.hpp"
 
+
 namespace tst
 {
 	Layer::Layer(){}
@@ -11,7 +12,7 @@ namespace tst
 
 	void Layer::onDetach(){}
 
-	void Layer::onUpdate(){}
+	void Layer::onUpdate(DeltaTime dt){}
 
 	void Layer::onEvent(Event &e){}
 }
