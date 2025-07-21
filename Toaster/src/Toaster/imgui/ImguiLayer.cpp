@@ -23,6 +23,8 @@ namespace tst
 
 	void ImguiLayer::onAttach()
 	{
+		TST_PROFILE_FN();
+
 		IMGUI_CHECKVERSION();
 		ImGui::CreateContext();
 
@@ -96,6 +98,8 @@ namespace tst
 
 	void ImguiLayer::onDetach()
 	{
+		TST_PROFILE_FN();
+
 		ImGui_ImplOpenGL3_Shutdown();
 		ImGui_ImplGlfw_Shutdown();
 		ImGui::DestroyContext();
@@ -103,20 +107,27 @@ namespace tst
 
 	void ImguiLayer::begin() {
 
+		TST_PROFILE_FN();
+
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 	}
 
-	void ImguiLayer::end(){
+	void ImguiLayer::end() {
+
+		TST_PROFILE_FN();
 
 		ImGuiIO& io = ImGui::GetIO();
+
+
 		auto& app = Application::getInstance();
 		io.DisplaySize = { (float)app.getWindow().getWidth(), (float)app.getWindow().getHeight() };
-
-		ImGui::Render();
-		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
+		{
+			TST_PROFILE_SCP("ImGuiLayer::end - rendering the glfw draw data!");
+			ImGui::Render();
+			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+		}
 		if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
 		{
 			ImGui::UpdatePlatformWindows();

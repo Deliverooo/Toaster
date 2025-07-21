@@ -22,7 +22,6 @@ namespace tst
 		virtual uint32_t getWidth()  const override { return m_textureWidth; }
 		virtual uint32_t getHeight() const override { return m_textureHeight; }
 
-		virtual TextureFormat getFormat() const override { return m_textureFormat; }
 
 		virtual void bind(uint32_t slot = 0) const override;
 		virtual void setData(void *data, size_t size) override;
@@ -37,7 +36,8 @@ namespace tst
 		uint32_t m_textureWidth;
 		uint32_t m_textureHeight;
 
-		TextureFormat m_textureFormat{TextureFormat::RGB};	
+		unsigned int m_dataFormat;
+		unsigned int m_internalFormat;
 	};
 
 	class TST_API OpenGLTexture3D : public Texture3D
@@ -56,7 +56,7 @@ namespace tst
 		virtual uint32_t getHeight() const override { return m_textureHeight; }
 		virtual void setData(void* data, size_t size) override{}
 
-		virtual TextureFormat getFormat() const override { return m_textureFormat; }
+		//virtual TextureFormat getFormat() const override { return m_textureFormat; }
 
 	private:	
 

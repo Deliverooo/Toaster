@@ -6,6 +6,8 @@ namespace tst
 {
 	OpenGLVertexBuffer::OpenGLVertexBuffer(float* vertices, uint32_t count) : m_count(count)
 	{
+		TST_PROFILE_FN();
+
 		glGenBuffers(1, &m_Vbo);
 		glBindBuffer(GL_ARRAY_BUFFER, m_Vbo);
 		glBufferData(GL_ARRAY_BUFFER, sizeof(float) * count, vertices, GL_STATIC_DRAW);
@@ -13,11 +15,15 @@ namespace tst
 
 	OpenGLVertexBuffer::~OpenGLVertexBuffer()
 	{
+		TST_PROFILE_FN();
+
 		glDeleteBuffers(1, &m_Vbo);
 	}
 
 	void OpenGLVertexBuffer::bind() const
 	{
+		TST_PROFILE_FN();
+
 		glBindBuffer(GL_ARRAY_BUFFER, m_Vbo);
 	}
 

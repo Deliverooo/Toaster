@@ -8,9 +8,15 @@ namespace tst
 {
 	OpenGLTexture2D::OpenGLTexture2D(const std::string& filepath) : m_texturePath(filepath)
 	{
+		TST_PROFILE_FN();
 
 		int width, height, nrChannels;
-		unsigned char* data = stbi_load(filepath.c_str(), &width, &height, &nrChannels, 0);
+
+		unsigned char* data = nullptr;
+		{
+			TST_PROFILE_SCP("stbi_load - OpenGLTexture2D::OpenGLTexture2D(const std::string& filepath) : m_texturePath(filepath)");
+			data = stbi_load(filepath.c_str(), &width, &height, &nrChannels, 0);
+		}
 
 		if (!data)
 		{
@@ -39,16 +45,13 @@ namespace tst
 		m_textureWidth	= width;
 		m_textureHeight = height;
 
-		GLenum format = 0;
-		GLenum internalFormat = 0;
-
 		switch (nrChannels)
 		{
-		case 3: format = GL_RGB; internalFormat = GL_RGB8; break;
-		case 4: format = GL_RGBA; internalFormat = GL_RGBA8; break;
+		case 3: m_dataFormat = GL_RGB; m_internalFormat = GL_RGB8; break;
+		case 4: m_dataFormat = GL_RGBA; m_internalFormat = GL_RGBA8; break;
 		}
 
-		TST_ASSERT(format, "Invalid Texture Colour format");
+		TST_ASSERT(m_dataFormat && m_internalFormat, "Invalid Texture Colour format");
 
 		glGenTextures(1, &m_textureId);
 		glBindTexture(GL_TEXTURE_2D, m_textureId);
@@ -58,19 +61,23 @@ namespace tst
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-		glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, m_textureWidth, m_textureHeight, 0, format, GL_UNSIGNED_BYTE, &data[0]);
+		glTexImage2D(GL_TEXTURE_2D, 0, m_internalFormat, m_textureWidth, m_textureHeight, 0, m_dataFormat, GL_UNSIGNED_BYTE, &data[0]);
 		glGenerateMipmap(GL_TEXTURE_2D);
 
 		stbi_image_free(data);
 	}
 
-	OpenGLTexture2D::OpenGLTexture2D(const ColourRgba& colour)
+	OpenGLTexture2D::OpenGLTexture2D(const ColourRgba& colour) : m_textureWidth(1), m_textureHeight(1)
 	{
+		TST_PROFILE_FN();
+
 		glGenTextures(1, &m_textureId);
 		glBindTexture(GL_TEXTURE_2D, m_textureId);
 
-		m_textureWidth	= 1;
-		m_textureHeight = 1;
+		m_dataFormat = GL_RGBA;
+		m_internalFormat = GL_RGBA8;
+
+		TST_ASSERT(m_dataFormat && m_internalFormat, "Invalid Texture Colour format");
 
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
@@ -86,13 +93,17 @@ namespace tst
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_textureWidth, m_textureHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, &data[0]);
 	}
 
-	OpenGLTexture2D::OpenGLTexture2D(const ColourFloat& colour)
+	OpenGLTexture2D::OpenGLTexture2D(const ColourFloat& colour) : m_textureWidth(1), m_textureHeight(1)
 	{
+		TST_PROFILE_FN();
+
 		glGenTextures(1, &m_textureId);
 		glBindTexture(GL_TEXTURE_2D, m_textureId);
 
-		m_textureWidth	= 1;
-		m_textureHeight = 1;
+		m_dataFormat = GL_RGBA;
+		m_internalFormat = GL_RGBA8;
+
+		TST_ASSERT(m_dataFormat && m_internalFormat, "Invalid Texture Colour format");
 
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
@@ -105,16 +116,20 @@ namespace tst
 		data[2] = static_cast<unsigned char>(colour.b * 255.0f);
 		data[3] = static_cast<unsigned char>(colour.a * 255.0f);
 
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_textureWidth, m_textureHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, &data[0]);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, m_textureWidth, m_textureHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, &data[0]);
 	}
 
-	OpenGLTexture2D::OpenGLTexture2D(const uint32_t colour)
+	OpenGLTexture2D::OpenGLTexture2D(const uint32_t colour) : m_textureWidth(1), m_textureHeight(1)
 	{
+		TST_PROFILE_FN();
+
 		glGenTextures(1, &m_textureId);
 		glBindTexture(GL_TEXTURE_2D, m_textureId);
 
-		m_textureWidth	= 1;
-		m_textureHeight = 1;
+		m_dataFormat = GL_RGBA;
+		m_internalFormat = GL_RGBA8;
+
+		TST_ASSERT(m_dataFormat && m_internalFormat, "Invalid Texture Colour format");
 
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
@@ -127,18 +142,17 @@ namespace tst
 		data[2] = static_cast<unsigned char>((colour & (0x0000ff00)) >> 6);
 		data[3] = static_cast<unsigned char>((colour & (0x000000ff)) >> 0);
 
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_textureWidth, m_textureHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, &data[0]);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, m_textureWidth, m_textureHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, &data[0]);
 	}
 
-	OpenGLTexture2D::OpenGLTexture2D(const uint32_t width, const uint32_t height)
+	OpenGLTexture2D::OpenGLTexture2D(const uint32_t width, const uint32_t height) : m_textureWidth(width), m_textureHeight(height)
 	{
-		m_textureWidth = width;
-		m_textureHeight = height;
+		TST_PROFILE_FN();
 
-		GLenum format = GL_RGBA;
-		GLenum internalFormat = GL_RGBA8;
+		m_dataFormat = GL_RGBA;
+		m_internalFormat = GL_RGBA8;
 
-		TST_ASSERT(format, "Invalid Texture Colour format");
+		TST_ASSERT(m_dataFormat && m_internalFormat, "Invalid Texture Colour format");
 
 		glGenTextures(1, &m_textureId);
 		glBindTexture(GL_TEXTURE_2D, m_textureId);
@@ -148,12 +162,12 @@ namespace tst
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-
 	}
 
 
 	void OpenGLTexture2D::setData(void* data, size_t size)
 	{
+		TST_PROFILE_FN();
 
 		glBindTexture(GL_TEXTURE_2D, m_textureId);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, m_textureWidth, m_textureHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
@@ -163,17 +177,23 @@ namespace tst
 
 	OpenGLTexture2D::~OpenGLTexture2D()
 	{
+		TST_PROFILE_FN();
+
         glDeleteTextures(1, &m_textureId);
 	}
 
 	void OpenGLTexture2D::bind(uint32_t slot) const
 	{
+		TST_PROFILE_FN();
+
         glActiveTexture(GL_TEXTURE0 + slot);
         glBindTexture(GL_TEXTURE_2D, m_textureId);
 	}
 
 	void OpenGLTexture2D::unbind() const
 	{
+		TST_PROFILE_FN();
+
         glActiveTexture(0);
         glBindTexture(GL_TEXTURE_2D, 0);
 	}
@@ -181,13 +201,20 @@ namespace tst
 
 	OpenGLTexture3D::OpenGLTexture3D(const std::vector<std::string>& texturePaths)
 	{
+		TST_PROFILE_FN();
+
 		glGenTextures(1, &m_textureId);
 		glBindTexture(GL_TEXTURE_CUBE_MAP, m_textureId);
 
 		int width, height, nrChannels;
 		for (unsigned int i = 0; i < texturePaths.size(); i++)
 		{
-			unsigned char* data = stbi_load(texturePaths[i].c_str(), &width, &height, &nrChannels, 0);
+			unsigned char* data = nullptr;
+			{
+				TST_PROFILE_SCP("stbi_load - OpenGLTexture3D::OpenGLTexture3D(const std::vector<std::string>& texturePaths)");
+				data = stbi_load(texturePaths[i].c_str(), &width, &height, &nrChannels, 0);
+			}
+
 			if (data)
 			{
 				glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,

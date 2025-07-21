@@ -9,6 +9,8 @@ namespace tst
 {
 	std::optional<std::string> readFile(const std::string& filePath)
 	{
+        TST_PROFILE_FN();
+
         std::ifstream fileObj(filePath, std::ios::ate | std::ios::binary);
 
         if (!fileObj.is_open()) {

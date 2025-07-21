@@ -14,14 +14,25 @@ namespace tst
 
 	void Renderer::init()
 	{
+		TST_PROFILE_FN();
+
 		RenderCommand::init();
+#ifdef TST_RENDER_2D
 		Renderer2D::init();
-		//Renderer3D::init();
+#endif
+#ifdef TST_RENDER_3D
+		Renderer3D::init();
+#endif
 	}
 
 	void Renderer::terminate()
 	{
+#ifdef TST_RENDER_2D
 		Renderer2D::terminate();
+#endif
+#ifdef TST_RENDER_3D
+		Renderer3D::terminate();
+#endif
 	}
 
 

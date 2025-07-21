@@ -86,6 +86,7 @@ namespace tst
 
 	void PerspectiveCamera::recalculateViewMatrix()
 	{
+		TST_PROFILE_FN();
 
 		float cosPitch = glm::cos(m_rotation.x);
 		float sinPitch = glm::sin(m_rotation.x);
@@ -103,6 +104,8 @@ namespace tst
 
 	void PerspectiveCamera::recalculateProjectionMatrix(float fov, float aspect, float zNear, float zFar)
 	{
+		TST_PROFILE_FN();
+
 		m_projectionMatrix = glm::perspective(fov, aspect, zNear, zFar);
 	}
 
@@ -122,6 +125,8 @@ namespace tst
 
 	void OrthoCamera::recalculateViewMatrix()
 	{
+		TST_PROFILE_FN();
+
 		float cosPitch = glm::cos(m_rotation.x);
 		float sinPitch = glm::sin(m_rotation.x);
 		float cosYaw = glm::cos(m_rotation.y);
@@ -138,6 +143,8 @@ namespace tst
 
 	void OrthoCamera::recalculateProjectionMatrix(const float left, const float right, const float bottom, const float top)
 	{
+		TST_PROFILE_FN();
+
 		m_projectionMatrix = glm::ortho(left, right, bottom, top, -1.0f, 10.0f);
 	}
 
@@ -147,6 +154,8 @@ namespace tst
 
 	OrthoCamera2D::OrthoCamera2D(const float left, const float right, const float bottom, const float top, const float zNear, const float zFar)
 	{
+		TST_PROFILE_FN();
+
 		m_position = { 0.0f, 0.0f, 0.0f };
 		m_rotation = { 0.0f };
 
@@ -155,6 +164,7 @@ namespace tst
 
 	void OrthoCamera2D::recalculateViewMatrix()
 	{
+		TST_PROFILE_FN();
 
 		glm::mat4 trans = glm::translate(glm::mat4(1.0f), m_position);
 		glm::mat4 rot = glm::rotate(glm::mat4(1.0f), glm::radians(m_rotation), {0.0f, 0.0f, 1.0f});
@@ -164,6 +174,8 @@ namespace tst
 
 	void OrthoCamera2D::recalculateProjectionMatrix(const float left, const float right, const float bottom, const float top)
 	{
+		TST_PROFILE_FN();
+
 		m_projectionMatrix = glm::ortho(left, right, bottom, top, -1.0f, 10.0f);
 	}
 }

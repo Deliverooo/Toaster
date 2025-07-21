@@ -111,6 +111,8 @@ namespace tst
 
 	bool PerspectiveCameraController::onMouseScrollEvent(MouseScrollEvent& e)
 	{
+		TST_PROFILE_FN();
+
 		m_fov -= glm::radians(static_cast<float>(e.getScrollY())) * 3.0f;
 
 		if (m_fov < 1.0f) {
@@ -127,6 +129,8 @@ namespace tst
 
 	bool PerspectiveCameraController::onWindowResizedEvent(WindowResizedEvent& e)
 	{
+		TST_PROFILE_FN();
+
 		m_aspectRatio = static_cast<float>(e.getWidth()) / static_cast<float>(e.getHeight());
 		m_Camera->recalculateProjectionMatrix(m_fov, m_aspectRatio, 0.1f, 1000.0f);
 
@@ -163,6 +167,7 @@ namespace tst
 
 	void OrthoCameraController::onUpdate(DeltaTime dt)
 	{
+		TST_PROFILE_FN();
 
 		float cameraSpeed = m_cameraSpeed * (Input::isKeyPressed(TST_KEY_LEFT_CONTROL) ? 3.0f : 1.0f);
 
@@ -259,6 +264,8 @@ namespace tst
 
 	bool OrthoCameraController::onMouseScrollEvent(MouseScrollEvent& e)
 	{
+		TST_PROFILE_FN();
+
 		m_zoom -= static_cast<float>(e.getScrollY());
 
 		if (m_zoom > 5.0f) { m_zoom = 5.0f; }
@@ -271,6 +278,8 @@ namespace tst
 
 	bool OrthoCameraController::onWindowResizedEvent(WindowResizedEvent& e)
 	{
+		TST_PROFILE_FN();
+
 		m_aspectRatio = static_cast<float>(e.getWidth()) / static_cast<float>(e.getHeight());
 		m_Camera->recalculateProjectionMatrix(-m_aspectRatio * m_zoom, m_aspectRatio * m_zoom, -m_zoom, m_zoom);
 
@@ -305,6 +314,7 @@ namespace tst
 
 	void OrthoCamera2DController::onUpdate(DeltaTime dt)
 	{
+		TST_PROFILE_FN();
 
 		if (Input::isKeyPressed(TST_KEY_R)) { m_cameraRotation += m_cameraRotationSpeed * dt; }
 		m_cameraRotation = glm::mod(m_cameraRotation, 360.0f);
@@ -334,6 +344,8 @@ namespace tst
 
 	void OrthoCamera2DController::onEvent(Event& e)
 	{
+		TST_PROFILE_FN();
+
 		EventDispatcher dispatcher(e);
 		dispatcher.dispatch<KeyPressedEvent>([this](KeyPressedEvent& e)
 			{
@@ -359,6 +371,8 @@ namespace tst
 
 	bool OrthoCamera2DController::onKeyPressedEvent(KeyPressedEvent& e)
 	{
+		TST_PROFILE_FN();
+
 		if (e.getKeycode() == TST_KEY_Q)
 		{
 			m_cameraRotation = 0.0f;
@@ -381,6 +395,8 @@ namespace tst
 
 	bool OrthoCamera2DController::onMouseScrollEvent(MouseScrollEvent& e)
 	{
+		TST_PROFILE_FN();
+
 		m_zoom -= static_cast<float>(e.getScrollY());
 
 		if (m_zoom > 5.0f) { m_zoom = 5.0f; }
@@ -393,6 +409,8 @@ namespace tst
 
 	bool OrthoCamera2DController::onWindowResizedEvent(WindowResizedEvent& e)
 	{
+		TST_PROFILE_FN();
+
 		m_aspectRatio = static_cast<float>(e.getWidth()) / static_cast<float>(e.getHeight());
 		m_Camera->recalculateProjectionMatrix(-m_aspectRatio * m_zoom, m_aspectRatio * m_zoom, -m_zoom, m_zoom);
 

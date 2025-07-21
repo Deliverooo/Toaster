@@ -20,6 +20,7 @@ namespace tst
 
 	WindowsWindow::~WindowsWindow() 
 	{
+		TST_PROFILE_FN();
 
 		assert(m_window != nullptr && "Found You!");
 		TST_CORE_INFO("Destroyed Window!");
@@ -34,6 +35,9 @@ namespace tst
 
 	WindowsWindow::WindowsWindow(const WindowAttribArray& window_attributes)
 	{
+
+		TST_PROFILE_FN();
+
 		m_windowData.width = window_attributes.width;
 		m_windowData.height = window_attributes.height;
 		m_windowData.title = window_attributes.title;
@@ -216,6 +220,8 @@ namespace tst
 
 	void WindowsWindow::update()
 	{
+		TST_PROFILE_FN();
+
 		glfwPollEvents();
 		m_renderingContext->swapBuffers();
 	}

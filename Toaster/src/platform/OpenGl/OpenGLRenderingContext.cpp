@@ -16,6 +16,8 @@ namespace tst {
 
 	void OpenGLRenderingContext::init()
 	{
+		TST_PROFILE_FN();
+
 		glfwMakeContextCurrent(m_window);
 
 		int success = gladLoadGL();
@@ -29,6 +31,8 @@ namespace tst {
 
 	void OpenGLRenderingContext::swapBuffers()
 	{
+		TST_PROFILE_FN();
+
 		glfwSwapBuffers(m_window);
 	}
 

@@ -13,6 +13,8 @@ namespace tst
 
 	uint32_t OpenGLShader::compileShader(const std::string &shaderSrc, const unsigned int shaderType)
 	{
+		TST_PROFILE_FN();
+
 		uint32_t shader = glCreateShader(shaderType);
 
 		const char* source = shaderSrc.c_str();
@@ -42,6 +44,8 @@ namespace tst
 
 	OpenGLShader::OpenGLShader(const std::string &name, const std::string& vertexPath, const std::string& FragmentPath)
 	{
+		TST_PROFILE_FN();
+
 		m_shaderName = name;
 		auto vertexSource = readFile(vertexPath);
 		auto fragmentSource = readFile(FragmentPath);
@@ -93,6 +97,8 @@ namespace tst
 
 	std::unordered_map<unsigned int, std::string> OpenGLShader::processShader(const std::string& shaderSrc)
 	{
+		TST_PROFILE_FN();
+
 		std::unordered_map<unsigned int, std::string> shaderSources;
 
 
@@ -117,6 +123,8 @@ namespace tst
 
 	OpenGLShader::OpenGLShader(const std::string& shaderPath)
 	{
+		TST_PROFILE_FN();
+
 		std::filesystem::path p(shaderPath);
 		m_shaderName = p.stem().string();
 		auto shaderSrc = readFile(shaderPath);
@@ -172,6 +180,8 @@ namespace tst
 
 	OpenGLShader::OpenGLShader(const std::string& shaderName, const std::string& shaderPath)
 	{
+		TST_PROFILE_FN();
+
 		auto shaderSrc = readFile(shaderPath);
 		TST_ASSERT(shaderSrc.has_value(), "Failed to Read Shader File!");
 
@@ -227,17 +237,23 @@ namespace tst
 
 	OpenGLShader::~OpenGLShader()
 	{
+		TST_PROFILE_FN();
+
 		glDeleteProgram(m_shaderId);
 	}
 
 
 	void OpenGLShader::bind() const
 	{
+		TST_PROFILE_FN();
+
 		glUseProgram(m_shaderId);
 	}
 
 	void OpenGLShader::unbind() const
 	{
+		TST_PROFILE_FN();
+
 		glUseProgram(0);
 	}
 
@@ -260,6 +276,8 @@ namespace tst
 
 	int OpenGLShader::getUniformLocation(const char* name)
 	{
+		TST_PROFILE_FN();
+
 		if (m_uniformLocations.find(name) != m_uniformLocations.end())
 		{
 			return m_uniformLocations[name];

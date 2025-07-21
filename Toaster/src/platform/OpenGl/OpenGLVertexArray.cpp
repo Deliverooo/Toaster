@@ -6,16 +6,22 @@ namespace tst
 {
 	OpenGLVertexArray::OpenGLVertexArray()
 	{
+		TST_PROFILE_FN();
+
 		glGenVertexArrays(1, &m_Vao);
 	}
 
 	OpenGLVertexArray::~OpenGLVertexArray()
 	{
+		TST_PROFILE_FN();
+
 		glDeleteVertexArrays(1, &m_Vao);
 	}
 
 	void OpenGLVertexArray::addVertexBuffer(const RefPtr<VertexBuffer> &buffer)
 	{
+		TST_PROFILE_FN();
+
 		glBindVertexArray(m_Vao);
 		buffer->bind();
 
@@ -36,6 +42,8 @@ namespace tst
 
 	void OpenGLVertexArray::addIndexBuffer(const RefPtr<IndexBuffer> &buffer)
 	{
+		TST_PROFILE_FN();
+
 		glBindVertexArray(m_Vao);
 		buffer->bind();
 		m_indexBuffer = buffer;
@@ -43,11 +51,15 @@ namespace tst
 
 	void OpenGLVertexArray::bind() const
 	{
+		TST_PROFILE_FN();
+
 		glBindVertexArray(m_Vao);
 	}
 
 	void OpenGLVertexArray::unbind() const
 	{
+		TST_PROFILE_FN();
+
 		glBindVertexArray(0);
 	}
 

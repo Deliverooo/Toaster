@@ -6,6 +6,7 @@
 
 
 
+#include "Toaster/Core/Core.hpp"
 
 // Toaster Engine Application Header
 #include "Toaster/Core/Application.hpp"

@@ -9,26 +9,19 @@
 #include "Toaster/CameraController.hpp"
 #include "Sandbox3D.hpp"
 
-class TestLayer : public tst::Layer
-{
-public:
-	TestLayer()
-	{
-
-
-	}
-
-};
-
-
 
 class SandboxApp : public tst::Application
 {
 public:
 	SandboxApp() {
 
-		//pushLayer(std::make_shared<SandBox3DLayer>());
+#ifdef TST_RENDER_2D
 		pushLayer(std::make_shared<SandBox2DLayer>());
+#endif
+#ifdef TST_RENDER_3D
+		pushLayer(std::make_shared<SandBox3DLayer>());
+#endif
+
 	}
 
 	~SandboxApp() {
