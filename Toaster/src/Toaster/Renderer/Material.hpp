@@ -1,4 +1,5 @@
 #pragma once
+#include "Toaster/Core/Log.hpp"
 
 #include "Shader.hpp"
 

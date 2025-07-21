@@ -14,4 +14,5 @@
 #include <cassert>
 #include <exception>
 
-#include "Toaster/Log.hpp"
+#include "Toaster/Core/Log.hpp"
+#include "Toaster/Debug/Instrumentor.h"

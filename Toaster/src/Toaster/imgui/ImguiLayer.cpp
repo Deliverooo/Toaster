@@ -6,7 +6,7 @@
 #include "backends/imgui_impl_opengl3.h"
 
 
-#include "Toaster/Application.hpp"
+#include "Toaster/Core/Application.hpp"
 
 #include <GLFW/glfw3.h>
 #include <glad/glad.h>
@@ -17,11 +17,6 @@ namespace tst
 {
 
 	ImguiLayer::ImguiLayer()
-	{
-		
-	}
-
-	ImguiLayer::~ImguiLayer()
 	{
 		
 	}
@@ -124,15 +119,12 @@ namespace tst
 
 		if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
 		{
-			GLFWwindow* currentContext = glfwGetCurrentContext();
 			ImGui::UpdatePlatformWindows();
 			ImGui::RenderPlatformWindowsDefault();
-			glfwMakeContextCurrent(currentContext);
+			glfwMakeContextCurrent(glfwGetCurrentContext());
 		}
 
 	}
 
-	void ImguiLayer::onImguiRender() {
 
-	}
 }

@@ -79,12 +79,8 @@ namespace tst
 	//-----------------------Perspective Camera-----------------------
 	//----------------------------------------------------------------
 
-	PerspectiveCamera::PerspectiveCamera(float fov, float aspect, float zNear, float zFar)
+	PerspectiveCamera::PerspectiveCamera(float fov, float aspect, float zNear, float zFar) : m_position(0.0f), m_viewMatrix(1.0f), m_rotation(0.0f)
 	{
-		m_position = { 0.0f, 0.0f, 0.0f };
-		m_rotation = { 0.0f, glm::two_pi<float>(), 0.0f };
-
-		m_viewMatrix = glm::mat4(1.0f);
 		m_projectionMatrix = glm::perspective(fov, aspect, zNear, zFar);
 	}
 
@@ -111,14 +107,14 @@ namespace tst
 	}
 
 
-	////-----------------------------------------------------------------
-	////-----------------------Orthographic Camera-----------------------
-	////-----------------------------------------------------------------
+	//-----------------------------------------------------------------
+	//-----------------------Orthographic Camera-----------------------
+	//-----------------------------------------------------------------
 
 	OrthoCamera::OrthoCamera(const float left, const float right, const float bottom, const float top, const float zNear, const float zFar)
 	{
 		m_position = { 0.0f, 0.0f, 0.0f};
-		m_rotation = { 0.0f, glm::two_pi<float>(), 0.0f };
+		m_rotation = { 0.0f, 0.0f, 0.0f };
 
 		m_projectionMatrix = glm::ortho(left, right, bottom, top, -1.0f, 10.0f);
 		m_viewMatrix = glm::mat4(1.0f);
@@ -145,32 +141,29 @@ namespace tst
 		m_projectionMatrix = glm::ortho(left, right, bottom, top, -1.0f, 10.0f);
 	}
 
+	//--------------------------------------------------------------------
+	//-----------------------Orthographic 2D Camera-----------------------
+	//--------------------------------------------------------------------
 
-	//const glm::vec3 OrthoCamera::front() const
-	//{
-	//	float cosPitch = glm::cos(m_rotation.x);
-	//	float sinPitch = glm::sin(m_rotation.x);
-	//	float cosYaw   = glm::cos(m_rotation.y);
-	//	float sinYaw   = glm::sin(m_rotation.y);
+	OrthoCamera2D::OrthoCamera2D(const float left, const float right, const float bottom, const float top, const float zNear, const float zFar)
+	{
+		m_position = { 0.0f, 0.0f, 0.0f };
+		m_rotation = { 0.0f };
 
-	//	return glm::normalize(glm::vec3(
-	//		cosYaw * cosPitch,
-	//		sinPitch,
-	//		sinYaw * cosPitch
-	//	));
-	//}
+		m_projectionMatrix = glm::ortho(left, right, bottom, top, -1.0f, 10.0f);
+	}
 
-	//const glm::vec3 OrthoCamera::right() const
-	//{
-	//	glm::vec3 f = front();
-	//	return glm::normalize(glm::cross(f, glm::vec3(0.0f, 1.0f, 0.0f)));
-	//}
+	void OrthoCamera2D::recalculateViewMatrix()
+	{
 
-	//const glm::vec3 OrthoCamera::up() const
-	//{
-	//	return glm::normalize(glm::cross(right(), front()));
-	//}
+		glm::mat4 trans = glm::translate(glm::mat4(1.0f), m_position);
+		glm::mat4 rot = glm::rotate(glm::mat4(1.0f), glm::radians(m_rotation), {0.0f, 0.0f, 1.0f});
 
+		m_viewMatrix = glm::inverse(trans * rot);
+	}
 
-
+	void OrthoCamera2D::recalculateProjectionMatrix(const float left, const float right, const float bottom, const float top)
+	{
+		m_projectionMatrix = glm::ortho(left, right, bottom, top, -1.0f, 10.0f);
+	}
 }

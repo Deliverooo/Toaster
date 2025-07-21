@@ -4,6 +4,7 @@
 #include "Events/Event.hpp"
 #include "Events/KeyEvent.hpp"
 #include "Events/MouseEvent.hpp"
+#include "glm/gtc/constants.hpp"
 #include "Renderer/Camera.hpp"
 
 namespace tst
@@ -50,7 +51,6 @@ namespace tst
 		RefPtr<PerspectiveCamera> m_Camera;
 	};
 
-	// 
 
 	class OrthoCameraController
 	{
@@ -84,7 +84,7 @@ namespace tst
 		glm::vec3 m_cameraVelocity { 0.0f };
 
 		glm::vec3 m_cameraPosition { 0.0f };
-		glm::vec3 m_cameraRotation { 0.0f };
+		glm::vec3 m_cameraRotation { 0.0f, 0.0f, 0.0f };
 		glm::mat4 m_cameraTransform{ 1.0f };
 
 		glm::vec3 m_CameraFront{ 0.0f, 0.0f, -1.0f };
@@ -93,4 +93,46 @@ namespace tst
 
 		RefPtr<OrthoCamera> m_Camera;
 	};
+
+
+
+	class OrthoCamera2DController
+	{
+	public:
+
+		OrthoCamera2DController(float aspectRatio);
+
+		void onUpdate(DeltaTime dt);
+		void onEvent(Event& e);
+
+		const RefPtr<OrthoCamera2D>& getCamera() const { return m_Camera; }
+
+	private:
+
+		bool onKeyPressedEvent(KeyPressedEvent& e);
+		bool onKeyReleasedEvent(KeyReleasedEvent& e);
+		bool onMouseMoveEvent(MouseMoveEvent& e);
+		bool onMouseScrollEvent(MouseScrollEvent& e);
+		bool onWindowResizedEvent(WindowResizedEvent& e);
+
+		float m_aspectRatio{ 1.77f };
+
+		float m_zoom{ 1.0f };
+
+		float m_cameraSpeed{ 3.0f };
+		float m_cameraRotationSpeed{ 180.0f };
+		float m_acceleration{ 10.0f };
+		float m_damping{ 1.0f };
+
+		glm::vec2 m_cameraVelocity{ 0.0f };
+
+		glm::vec3 m_cameraPosition{ 0.0f };
+		float m_cameraRotation{ 0.0f };
+
+		glm::mat4 m_cameraTransform{ 1.0f };
+
+
+		RefPtr<OrthoCamera2D> m_Camera;
+	};
+
 }

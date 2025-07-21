@@ -271,6 +271,36 @@ namespace tst
 		return location;
 	}
 
+	void OpenGLShader::uploadMatrix2f(const glm::mat2& mat, const char* name) { uploadUniformMatrix2f(mat, name); }
+	void OpenGLShader::uploadMatrix3f(const glm::mat3& mat, const char* name) { uploadUniformMatrix3f(mat, name); }
+	void OpenGLShader::uploadMatrix4f(const glm::mat4& mat, const char* name) { uploadUniformMatrix4f(mat, name); }
+
+
+	void OpenGLShader::uploadVector1f(const glm::vec1& vec, const char* name) { uploadUniform1fv(vec, name); }
+	void OpenGLShader::uploadVector2f(const glm::vec2& vec, const char* name) { uploadUniform2fv(vec, name); }
+	void OpenGLShader::uploadVector3f(const glm::vec3& vec, const char* name) { uploadUniform3fv(vec, name); }
+	void OpenGLShader::uploadVector4f(const glm::vec4& vec, const char* name) { uploadUniform4fv(vec, name); }
+
+	void OpenGLShader::uploadBool(const bool b, const char* name) { uploadUniform1i(b, name); }
+
+	void OpenGLShader::uploadInt1(const int x, const char* name) { uploadUniform1i(x, name); }
+	void OpenGLShader::uploadInt2(const int x, const int y, const char* name) { uploadUniform2i(x, y, name); }
+	void OpenGLShader::uploadInt3(const int x, const int y, const int z, const char* name) { uploadUniform3i(x, y, z, name); }
+	void OpenGLShader::uploadInt4(const int x, const int y, const int z, const int w, const char* name) { uploadUniform4i(x, y, z, w, name); }
+
+	void OpenGLShader::uploadFloat1(const float x, const char* name) { uploadUniform1f(x, name); }
+	void OpenGLShader::uploadFloat2(const float x, const float y, const char* name) { uploadUniform2f(x, y, name); }
+	void OpenGLShader::uploadFloat3(const float x, const float y, const float z, const char* name) { uploadUniform3f(x, y, z, name); }
+	void OpenGLShader::uploadFloat4(const float x, const float y, const float z, const float w, const char* name) { uploadUniform4f(x, y, z, w, name); }
+
+	void OpenGLShader::uploadDouble1(const double x, const char* name) { uploadUniform1d(x, name); }
+	void OpenGLShader::uploadDouble2(const double x, const double y, const char* name) { uploadUniform2d(x, y, name); }
+	void OpenGLShader::uploadDouble3(const double x, const double y, const double z, const char* name) { uploadUniform3d(x, y, z, name); }
+	void OpenGLShader::uploadDouble4(const double x, const double y, const double z, const double w, const char* name) { uploadUniform4d(x, y, z, w, name); }
+
+	//---------------------------------------------------------------------------------------------------------------------------
+	//---------------------------------------------------------------------------------------------------------------------------
+	//---------------------------------------------------------------------------------------------------------------------------
 
 	void OpenGLShader::uploadUniform1i(const int x, const char* name) { glUniform1i(getUniformLocation(name), x); }
 	void OpenGLShader::uploadUniform2i(const int x, const int y, const char* name) { glUniform2i(getUniformLocation(name), x, y); }

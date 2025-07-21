@@ -2,6 +2,7 @@
 #include "Toaster/Renderer/RenderingContext.hpp"
 #include "Glad/glad.h"
 #include "GLFW/glfw3.h"
+#include "Toaster/Core/Log.hpp"
 
 namespace tst
 {

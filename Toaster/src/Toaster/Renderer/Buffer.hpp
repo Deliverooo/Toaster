@@ -1,6 +1,8 @@
 #pragma once
 #include <string>
 
+#include "Toaster/Core/Log.hpp"
+
 namespace tst
 {
 	enum class ShaderDataType

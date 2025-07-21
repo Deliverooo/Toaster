@@ -34,13 +34,13 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Toaster.h" />
-    <ClInclude Include="src\Toaster\Application.hpp">
+    <ClInclude Include="src\Toaster\Core\Application.hpp">
       <Filter>Toaster</Filter>
     </ClInclude>
-    <ClInclude Include="src\Toaster\Core.hpp">
+    <ClInclude Include="src\Toaster\Core\Core.hpp">
       <Filter>Toaster</Filter>
     </ClInclude>
-    <ClInclude Include="src\Toaster\EntryPoint.hpp">
+    <ClInclude Include="src\Toaster\Core\EntryPoint.hpp">
       <Filter>Toaster</Filter>
     </ClInclude>
     <ClInclude Include="src\Toaster\Events\ApplicationEvent.hpp">
@@ -55,31 +55,31 @@
     <ClInclude Include="src\Toaster\Events\MouseEvent.hpp">
       <Filter>Toaster\Events</Filter>
     </ClInclude>
-    <ClInclude Include="src\Toaster\Input.hpp">
+    <ClInclude Include="src\Toaster\Core\Input.hpp">
       <Filter>Toaster</Filter>
     </ClInclude>
     <ClInclude Include="src\platform\Windows\WindowsInput.hpp">
       <Filter>Toaster\Input\Platform\Windows</Filter>
     </ClInclude>
-    <ClInclude Include="src\Toaster\KeyCodes.hpp">
+    <ClInclude Include="src\Toaster\Core\KeyCodes.hpp">
       <Filter>Toaster</Filter>
     </ClInclude>
-    <ClInclude Include="src\Toaster\Layer.hpp">
+    <ClInclude Include="src\Toaster\Core\Layer.hpp">
       <Filter>Toaster</Filter>
     </ClInclude>
-    <ClInclude Include="src\Toaster\LayerStack.hpp">
+    <ClInclude Include="src\Toaster\Core\LayerStack.hpp">
       <Filter>Toaster</Filter>
     </ClInclude>
     <ClInclude Include="src\platform\OpenGl\OpenGlTestLayer.h">
       <Filter>Toaster\Layers</Filter>
     </ClInclude>
-    <ClInclude Include="src\Toaster\Log.hpp">
+    <ClInclude Include="src\Toaster\Core\Log.hpp">
       <Filter>Toaster</Filter>
     </ClInclude>
-    <ClInclude Include="src\Toaster\MouseCodes.hpp">
+    <ClInclude Include="src\Toaster\Core\MouseCodes.hpp">
       <Filter>Toaster</Filter>
     </ClInclude>
-    <ClInclude Include="src\Toaster\Window.hpp">
+    <ClInclude Include="src\Toaster\Core\Window.hpp">
       <Filter>Toaster</Filter>
     </ClInclude>
     <ClInclude Include="src\platform\Windows\WindowsWindow.hpp">
@@ -112,24 +112,27 @@
     <ClInclude Include="src\platform\Vulkan\VulkanDevice.hpp" />
     <ClInclude Include="src\Toaster\Renderer\Material.hpp" />
     <ClInclude Include="src\Toaster\CameraController.hpp" />
+    <ClInclude Include="src\Toaster\Renderer\Renderer3D.hpp" />
+    <ClInclude Include="src\Toaster\Renderer\Renderer2D.hpp" />
+    <ClInclude Include="src\Toaster\Debug\Instrumentor.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\Toaster\Application.cpp">
+    <ClCompile Include="src\Toaster\Core\Application.cpp">
       <Filter>Toaster</Filter>
     </ClCompile>
     <ClCompile Include="src\platform\Windows\WindowsInput.cpp">
       <Filter>Toaster\Input\Platform\Windows</Filter>
     </ClCompile>
-    <ClCompile Include="src\Toaster\Layer.cpp">
+    <ClCompile Include="src\Toaster\Core\Layer.cpp">
       <Filter>Toaster</Filter>
     </ClCompile>
-    <ClCompile Include="src\Toaster\LayerStack.cpp">
+    <ClCompile Include="src\Toaster\Core\LayerStack.cpp">
       <Filter>Toaster</Filter>
     </ClCompile>
     <ClCompile Include="src\platform\OpenGl\OpenGlTestLayer.cpp">
       <Filter>Toaster\Layers</Filter>
     </ClCompile>
-    <ClCompile Include="src\Toaster\Log.cpp">
+    <ClCompile Include="src\Toaster\Core\Log.cpp">
       <Filter>Toaster</Filter>
     </ClCompile>
     <ClCompile Include="src\platform\Windows\WindowsWindow.cpp">
@@ -164,5 +167,7 @@
     <ClCompile Include="src\platform\Vulkan\VulkanDevice.cpp" />
     <ClCompile Include="src\Toaster\Renderer\Material.cpp" />
     <ClCompile Include="src\Toaster\CameraController.cpp" />
+    <ClCompile Include="src\Toaster\Renderer\Renderer3D.cpp" />
+    <ClCompile Include="src\Toaster\Renderer\Renderer2D.cpp" />
   </ItemGroup>
 </Project>

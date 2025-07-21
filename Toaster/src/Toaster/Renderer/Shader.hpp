@@ -1,5 +1,6 @@
 #pragma once
-#include "Toaster/Core.hpp"
+#include "Toaster/Core/Log.hpp"
+
 
 namespace tst
 {
@@ -20,6 +21,32 @@ namespace tst
 		virtual void unbind() const = 0;
 
 		virtual std::string getName() const = 0;
+
+		virtual void uploadMatrix2f(const glm::mat2& mat, const char* name) = 0;
+		virtual void uploadMatrix3f(const glm::mat3& mat, const char* name) = 0;
+		virtual void uploadMatrix4f(const glm::mat4& mat, const char* name) = 0;
+
+		virtual void uploadVector1f(const glm::vec1& vec, const char* name) = 0;
+		virtual void uploadVector2f(const glm::vec2& vec, const char* name) = 0;
+		virtual void uploadVector3f(const glm::vec3& vec, const char* name) = 0;
+		virtual void uploadVector4f(const glm::vec4& vec, const char* name) = 0;
+
+		virtual void uploadBool(const bool b, const char* name) = 0;
+
+		virtual void uploadInt1(const int x, const char* name) = 0;
+		virtual void uploadInt2(const int x, const int y, const char* name) = 0;
+		virtual void uploadInt3(const int x, const int y, const int z, const char* name) = 0;
+		virtual void uploadInt4(const int x, const int y, const int z, const int w, const char* name) = 0;
+
+		virtual void uploadFloat1(const float x, const char* name) = 0;
+		virtual void uploadFloat2(const float x, const float y, const char* name) = 0;
+		virtual void uploadFloat3(const float x, const float y, const float z, const char* name) = 0;
+		virtual void uploadFloat4(const float x, const float y, const float z, const float w, const char* name) = 0;
+
+		virtual void uploadDouble1(const double x, const char* name) = 0;
+		virtual void uploadDouble2(const double x, const double y, const char* name) = 0;
+		virtual void uploadDouble3(const double x, const double y, const double z, const char* name) = 0;
+		virtual void uploadDouble4(const double x, const double y, const double z, const double w, const char* name) = 0;
 	};
 
 	class TST_API ShaderLib

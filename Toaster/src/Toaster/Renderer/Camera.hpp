@@ -86,6 +86,9 @@ namespace tst
 		CameraMode m_cameraMode;
 	};
 
+	//----------------------------------------------------------------
+	//-----------------------Perspective Camera-----------------------
+	//----------------------------------------------------------------
 
 	class TST_API PerspectiveCamera
 	{
@@ -95,29 +98,9 @@ namespace tst
 		[[nodiscard]] const glm::mat4& getProjectionMatrix() const { return m_projectionMatrix; }
 		[[nodiscard]] const glm::mat4& getViewMatrix() { recalculateViewMatrix(); return m_viewMatrix; }
 
-		//[[nodiscard]] const glm::vec3& getPosition() const { return m_position; }
-		//[[nodiscard]] const glm::vec3& getRotation() const { return m_rotation; }
-		//[[nodiscard]] const float& getZNear() const { return m_zNear; }
-		//[[nodiscard]] const float& getZFar() const { return m_zFar; }
-
-		//[[nodiscard]] const glm::vec3 front() const;
-		//[[nodiscard]] const glm::vec3 right() const;
-		//[[nodiscard]] const glm::vec3 up()	const;	
-
-		//[[nodiscard]] const float& getYaw()		const { return m_yaw; }
-		//[[nodiscard]] const float& getPitch()	const { return m_pitch; }
-		//[[nodiscard]] const float& getRoll()	const { return m_roll; }
-
-		//[[nodiscard]] const float& getFov() const { return m_fov; }
-
 		void setPosition(const glm::vec3& newPosition) { m_position = newPosition; recalculateViewMatrix(); }
 		void setRotation(const glm::vec3& newRotation) { m_rotation = newRotation; recalculateViewMatrix(); }
-		//void setAspect(float aspect) {m_aspect = aspect; recalculateProjectionMatrix(); }
 
-		//void move(const glm::vec3& translation) { m_position += translation; }
-		//void rotate(const glm::vec3& rot) { m_rotation += rot; }
-
-		//void setFov(const float fovy) { m_fov = fovy; }
 
 	private:
 
@@ -141,14 +124,11 @@ namespace tst
 		};
 
 		friend class PerspectiveCameraController;
-
-		//float m_zNear;
-		//float m_zFar;
-
-		//float m_aspect{ 16.0f / 9.0f };
-
-		//float m_fov{ 90.0f };
 	};
+
+	//-----------------------------------------------------------------
+	//-----------------------Orthographic Camera-----------------------
+	//-----------------------------------------------------------------
 
 	class TST_API OrthoCamera
 	{
@@ -158,25 +138,10 @@ namespace tst
 		[[nodiscard]] const glm::mat4& getProjectionMatrix() const { return m_projectionMatrix; }
 		[[nodiscard]] const glm::mat4& getViewMatrix() { recalculateViewMatrix(); return m_viewMatrix; }
 
-		//[[nodiscard]] const glm::vec3& getPosition() const { return m_position; }
-		//[[nodiscard]] const glm::vec3& getRotation() const { return m_rotation; }
-		//[[nodiscard]] const float& getZNear() const { return m_zNear; }
-		//[[nodiscard]] const float& getZFar() const { return m_zFar; }
-
-		//[[nodiscard]] const glm::vec3 front() const;
-		//[[nodiscard]] const glm::vec3 right() const;
-		//[[nodiscard]] const glm::vec3 up()	  const;
-
-		//[[nodiscard]] const float& getYaw()		const { return m_yaw; }
-		//[[nodiscard]] const float& getPitch()	const { return m_pitch; }
-		//[[nodiscard]] const float& getRoll()	const { return m_roll; }
 
 		void setPosition(const glm::vec3& newPosition) { m_position = newPosition; recalculateViewMatrix(); }
 		void setRotation(const glm::vec3& newRotation) { m_rotation = newRotation; recalculateViewMatrix(); }
-		//void setAspect(float aspect) { m_aspect = aspect; recalculateProjectionMatrix(); }
 
-		//void move(const glm::vec3& translation) { m_position += translation; }
-		//void rotate(const glm::vec3& rot) { m_rotation += rot; }
 
 	private:
 
@@ -200,16 +165,38 @@ namespace tst
 		};
 
 		friend class OrthoCameraController;
+	};
 
-		//float m_zNear;
-		//float m_zFar;
 
-		//float m_aspect{ 16.0f / 9.0f };
+	//--------------------------------------------------------------------
+	//-----------------------Orthographic 2D Camera-----------------------
+	//--------------------------------------------------------------------
 
-		//float m_leftPlane{ -1.0f };
-		//float m_rightPlane{ 1.0f };
-		//float m_bottomPlane{ -1.0f };
-		//float m_topPlane{ 1.0f };
+	class TST_API OrthoCamera2D
+	{
+	public:
+		OrthoCamera2D(const float left, const float right, const float bottom, const float top, const float zNear = -1.0f, const float zFar = 10.0f);
+
+		[[nodiscard]] const glm::mat4& getProjectionMatrix() const { return m_projectionMatrix; }
+		[[nodiscard]] const glm::mat4& getViewMatrix() { recalculateViewMatrix(); return m_viewMatrix; }
+
+
+		void setPosition(const glm::vec3& newPosition) { m_position = newPosition; recalculateViewMatrix(); }
+		void setRotation(const float newRotation) { m_rotation = newRotation; recalculateViewMatrix(); }
+
+
+	private:
+
+		void recalculateViewMatrix();
+		void recalculateProjectionMatrix(const float left, const float right, const float bottom, const float top);
+
+		glm::mat4 m_projectionMatrix;
+		glm::mat4 m_viewMatrix{ 1.0f };
+
+		glm::vec3 m_position;
+		float m_rotation;
+
+		friend class OrthoCamera2DController;
 	};
 }
 

@@ -1,5 +1,5 @@
 #pragma once
-#include "Toaster/Window.hpp"
+#include "Toaster/Core/Window.hpp"
 
 #define TST_USE_VULKAN
 
@@ -20,7 +20,7 @@ namespace tst
 		// Constructs a window with the given attributes (width, height, title)
 		WindowsWindow(const WindowAttribArray& window_attributes);
 
-		~WindowsWindow();
+		~WindowsWindow() override;
 
 		// Updates the window (polls events, swaps buffers, etc.)
 		virtual void update() override;

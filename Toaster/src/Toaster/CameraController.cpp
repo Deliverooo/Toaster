@@ -1,8 +1,8 @@
 #include "tstpch.h"
 #include "CameraController.hpp"
 
-#include "Application.hpp"
-#include "Input.hpp"
+#include "Core/Application.hpp"
+#include "Core/Input.hpp"
 #include "glm/gtc/constants.hpp"
 
 namespace tst
@@ -15,8 +15,8 @@ namespace tst
 		: m_fov(fov), m_aspectRatio(aspectRatio), m_cameraSpeed(cameraSpeed), m_acceleration(acceleration), m_damping(damping)
 	{
 		m_Camera = std::make_shared<PerspectiveCamera>(m_fov, m_aspectRatio);
-		m_Camera->setPosition(glm::vec3(0.0f, 0.0f, 3.0f));
-		m_Camera->setRotation(glm::vec3(0.0f, 0.0f, 0.0f));
+		m_Camera->setPosition(m_cameraPosition);
+		recalculateCameraVectors();
 	}
 
 	void PerspectiveCameraController::onUpdate(DeltaTime dt)
@@ -163,17 +163,17 @@ namespace tst
 
 	void OrthoCameraController::onUpdate(DeltaTime dt)
 	{
-		recalculateCameraVectors();
 
 		float cameraSpeed = m_cameraSpeed * (Input::isKeyPressed(TST_KEY_LEFT_CONTROL) ? 3.0f : 1.0f);
 
-		TST_CORE_INFO("{0}, {1}", m_zoom, m_aspectRatio);
+		recalculateCameraVectors();
+
 		glm::vec3 cameraDirection{ 0.0f };
-		if (Input::isKeyPressed(TST_KEY_W))			 { cameraDirection += glm::vec3(m_CameraFront.x, 0.0f, m_CameraFront.z); }
-		if (Input::isKeyPressed(TST_KEY_S))			 { cameraDirection -= glm::vec3(m_CameraFront.x, 0.0f, m_CameraFront.z); }
-		if (Input::isKeyPressed(TST_KEY_A))			 { cameraDirection -= glm::vec3(m_CameraRight.x, 0.0f, m_CameraRight.z); }
-		if (Input::isKeyPressed(TST_KEY_D))			 { cameraDirection += glm::vec3(m_CameraRight.x, 0.0f, m_CameraRight.z); }
-		if (Input::isKeyPressed(TST_KEY_SPACE))		 { cameraDirection += glm::vec3(0.0f, 1.0f, 0.0f); }
+		if (Input::isKeyPressed(TST_KEY_W)) { cameraDirection += glm::vec3(m_CameraFront.x, 0.0f, m_CameraFront.z); }
+		if (Input::isKeyPressed(TST_KEY_S)) { cameraDirection -= glm::vec3(m_CameraFront.x, 0.0f, m_CameraFront.z); }
+		if (Input::isKeyPressed(TST_KEY_A)) { cameraDirection -= glm::vec3(m_CameraRight.x, 0.0f, m_CameraRight.z); }
+		if (Input::isKeyPressed(TST_KEY_D)) { cameraDirection += glm::vec3(m_CameraRight.x, 0.0f, m_CameraRight.z); }
+		if (Input::isKeyPressed(TST_KEY_SPACE)) { cameraDirection += glm::vec3(0.0f, 1.0f, 0.0f); }
 		if (Input::isKeyPressed(TST_KEY_LEFT_SHIFT)) { cameraDirection -= glm::vec3(0.0f, 1.0f, 0.0f); }
 
 		if (glm::length(cameraDirection) > std::numeric_limits<float>::epsilon()) { cameraDirection = glm::normalize(cameraDirection); }
@@ -182,6 +182,7 @@ namespace tst
 		m_cameraVelocity = glm::mix(m_cameraVelocity, startingVelocity, dt * m_acceleration);
 		m_cameraVelocity *= std::exp(-m_damping * dt);
 		m_cameraPosition += m_cameraVelocity * dt.getTime_s();
+
 
 		m_Camera->setPosition(m_cameraPosition);
 		m_Camera->setRotation(m_cameraRotation);
@@ -260,7 +261,8 @@ namespace tst
 	{
 		m_zoom -= static_cast<float>(e.getScrollY());
 
-
+		if (m_zoom > 5.0f) { m_zoom = 5.0f; }
+		if (m_zoom < 0.1f) { m_zoom = 0.1f; }
 
 		m_Camera->recalculateProjectionMatrix(-m_aspectRatio * m_zoom, m_aspectRatio * m_zoom, -m_zoom, m_zoom);
 
@@ -292,6 +294,109 @@ namespace tst
 		m_CameraRight = glm::normalize(glm::cross(m_CameraFront, glm::vec3(0.0f, 1.0f, 0.0f)));
 
 		m_CameraUp = glm::normalize(glm::cross(m_CameraRight, m_CameraFront));
+	}
+
+
+
+	OrthoCamera2DController::OrthoCamera2DController(float aspectRatio) : m_aspectRatio(aspectRatio)
+	{
+		m_Camera = std::make_shared<OrthoCamera2D>(-m_aspectRatio * m_zoom, m_aspectRatio * m_zoom, -m_zoom, m_zoom);
+	}
+
+	void OrthoCamera2DController::onUpdate(DeltaTime dt)
+	{
+
+		if (Input::isKeyPressed(TST_KEY_R)) { m_cameraRotation += m_cameraRotationSpeed * dt; }
+		m_cameraRotation = glm::mod(m_cameraRotation, 360.0f);
+
+		float cameraSpeed = m_cameraSpeed * (Input::isKeyPressed(TST_KEY_LEFT_CONTROL) ? 6.0f : 1.0f);
+
+		glm::vec2 cameraDirection{ 0.0f };
+		if (Input::isKeyPressed(TST_KEY_W))			 { cameraDirection += glm::vec2(0.0f, 1.0f); }
+		if (Input::isKeyPressed(TST_KEY_S))			 { cameraDirection -= glm::vec2(0.0f, 1.0f); }
+		if (Input::isKeyPressed(TST_KEY_A))			 { cameraDirection -= glm::vec2(1.0f, 0.0f); }
+		if (Input::isKeyPressed(TST_KEY_D))			 { cameraDirection += glm::vec2(1.0f, 0.0f); }
+		if (Input::isKeyPressed(TST_KEY_SPACE))		 { cameraDirection += glm::vec2(0.0f, 1.0f); }
+		if (Input::isKeyPressed(TST_KEY_LEFT_SHIFT)) { cameraDirection -= glm::vec2(0.0f, 1.0f); }
+
+		if (glm::length(cameraDirection) > std::numeric_limits<float>::epsilon()) { cameraDirection = glm::normalize(cameraDirection); }
+
+		glm::vec2 startingVelocity = cameraDirection * cameraSpeed;
+		m_cameraVelocity = glm::mix(m_cameraVelocity, startingVelocity, dt * m_acceleration);
+		m_cameraVelocity *= std::exp(-m_damping * dt);
+		m_cameraPosition += glm::vec3(m_cameraVelocity.x, m_cameraVelocity.y, 0.0f) * dt.getTime_s();
+
+
+		m_Camera->setPosition(m_cameraPosition);
+		m_Camera->setRotation(m_cameraRotation);
+
+	}
+
+	void OrthoCamera2DController::onEvent(Event& e)
+	{
+		EventDispatcher dispatcher(e);
+		dispatcher.dispatch<KeyPressedEvent>([this](KeyPressedEvent& e)
+			{
+				return onKeyPressedEvent(e);
+			});
+		dispatcher.dispatch<KeyReleasedEvent>([this](KeyReleasedEvent& e)
+			{
+				return onKeyReleasedEvent(e);
+			});
+		dispatcher.dispatch<MouseMoveEvent>([this](MouseMoveEvent& e)
+			{
+				return onMouseMoveEvent(e);
+			});
+		dispatcher.dispatch<MouseScrollEvent>([this](MouseScrollEvent& e)
+			{
+				return onMouseScrollEvent(e);
+			});
+		dispatcher.dispatch<WindowResizedEvent>([this](WindowResizedEvent& e)
+			{
+				return onWindowResizedEvent(e);
+			});
+	}
+
+	bool OrthoCamera2DController::onKeyPressedEvent(KeyPressedEvent& e)
+	{
+		if (e.getKeycode() == TST_KEY_Q)
+		{
+			m_cameraRotation = 0.0f;
+		}
+		return false;
+	}
+
+	bool OrthoCamera2DController::onKeyReleasedEvent(KeyReleasedEvent& e)
+	{
+
+		return false;
+	}
+
+	bool OrthoCamera2DController::onMouseMoveEvent(MouseMoveEvent& e)
+	{
+
+
+		return false;
+	}
+
+	bool OrthoCamera2DController::onMouseScrollEvent(MouseScrollEvent& e)
+	{
+		m_zoom -= static_cast<float>(e.getScrollY());
+
+		if (m_zoom > 5.0f) { m_zoom = 5.0f; }
+		if (m_zoom < 0.1f) { m_zoom = 0.1f; }
+
+		m_Camera->recalculateProjectionMatrix(-m_aspectRatio * m_zoom, m_aspectRatio * m_zoom, -m_zoom, m_zoom);
+
+		return false;
+	}
+
+	bool OrthoCamera2DController::onWindowResizedEvent(WindowResizedEvent& e)
+	{
+		m_aspectRatio = static_cast<float>(e.getWidth()) / static_cast<float>(e.getHeight());
+		m_Camera->recalculateProjectionMatrix(-m_aspectRatio * m_zoom, m_aspectRatio * m_zoom, -m_zoom, m_zoom);
+
+		return false;
 	}
 
 }

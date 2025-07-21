@@ -1,6 +1,6 @@
 #pragma once
 #include "Event.hpp"
-#include "Toaster/KeyCodes.hpp"
+#include "Toaster/Core/KeyCodes.hpp"
 
 namespace tst {
 

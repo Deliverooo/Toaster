@@ -3,7 +3,7 @@
 
 #include "VulkanDevice.hpp"
 #include "platform/Windows/WindowsWindow.hpp"
-#include "Toaster/Window.hpp"
+#include "Toaster/Core/Window.hpp"
 #include "Toaster/Renderer/RenderingContext.hpp"
 
 namespace tst

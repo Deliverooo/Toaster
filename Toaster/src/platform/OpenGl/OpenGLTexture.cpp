@@ -130,6 +130,36 @@ namespace tst
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_textureWidth, m_textureHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, &data[0]);
 	}
 
+	OpenGLTexture2D::OpenGLTexture2D(const uint32_t width, const uint32_t height)
+	{
+		m_textureWidth = width;
+		m_textureHeight = height;
+
+		GLenum format = GL_RGBA;
+		GLenum internalFormat = GL_RGBA8;
+
+		TST_ASSERT(format, "Invalid Texture Colour format");
+
+		glGenTextures(1, &m_textureId);
+		glBindTexture(GL_TEXTURE_2D, m_textureId);
+
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+
+	}
+
+
+	void OpenGLTexture2D::setData(void* data, size_t size)
+	{
+
+		glBindTexture(GL_TEXTURE_2D, m_textureId);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, m_textureWidth, m_textureHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+
+	}
+
 
 	OpenGLTexture2D::~OpenGLTexture2D()
 	{

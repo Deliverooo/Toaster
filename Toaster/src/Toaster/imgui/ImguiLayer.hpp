@@ -1,5 +1,5 @@
 #pragma once
-#include "Toaster/Layer.hpp"
+#include "Toaster/Core/Layer.hpp"
 #include "Toaster/Events/ApplicationEvent.hpp"
 #include "Toaster/Events/KeyEvent.hpp"
 #include "Toaster/Events/MouseEvent.hpp"
@@ -20,11 +20,11 @@ namespace tst
 	{
 	public:
 		ImguiLayer();
-		~ImguiLayer();
+		~ImguiLayer() = default;
 
 		virtual void onAttach() override;
 		virtual void onDetach() override;
-		virtual void onImguiRender() override;
+		virtual void onImguiRender() override{};
 
 		void begin();
 		void end();

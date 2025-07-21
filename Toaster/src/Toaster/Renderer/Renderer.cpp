@@ -3,6 +3,8 @@
 #include "Renderer.hpp"
 
 #include "RenderCommand.hpp"
+#include "Renderer2D.hpp"
+#include "Renderer3D.hpp"
 #include "platform/OpenGl/OpenGLShader.hpp"
 
 namespace tst
@@ -13,7 +15,15 @@ namespace tst
 	void Renderer::init()
 	{
 		RenderCommand::init();
+		Renderer2D::init();
+		//Renderer3D::init();
 	}
+
+	void Renderer::terminate()
+	{
+		Renderer2D::terminate();
+	}
+
 
 
 	void Renderer::begin(const RefPtr<Camera>& camera)
@@ -27,6 +37,11 @@ namespace tst
 		m_sceneData->viewMatrix		  = camera->getViewMatrix();
 	}
 	void Renderer::begin(const RefPtr<OrthoCamera>& camera)
+	{
+		m_sceneData->projectionMatrix = camera->getProjectionMatrix();
+		m_sceneData->viewMatrix		  = camera->getViewMatrix();
+	}
+	void Renderer::begin(const RefPtr<OrthoCamera2D>& camera)
 	{
 		m_sceneData->projectionMatrix = camera->getProjectionMatrix();
 		m_sceneData->viewMatrix		  = camera->getViewMatrix();

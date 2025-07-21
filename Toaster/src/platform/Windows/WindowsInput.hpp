@@ -1,5 +1,5 @@
 #pragma once
-#include "Toaster/Input.hpp"
+#include "Toaster/Core/Input.hpp"
 
 #ifdef TST_PLATFORM_WINDOWS
 namespace tst

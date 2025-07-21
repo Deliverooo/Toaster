@@ -137,6 +137,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\Sandbox2D.cpp" />
+    <ClCompile Include="src\Sandbox3D.cpp" />
     <ClCompile Include="src\SandboxApp.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -166,6 +168,10 @@
     <None Include="assets\shaders\SkyboxShader.frag.glsl" />
     <None Include="assets\shaders\SkyboxShader.vert.glsl" />
     <None Include="assets\shaders\TestShader.glsl" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\Sandbox2D.hpp" />
+    <ClInclude Include="src\Sandbox3D.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

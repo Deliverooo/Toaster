@@ -1,8 +1,7 @@
 #pragma once
 
 #include "tstpch.h"
-#include "Toaster/Core.hpp"
-#include "Toaster/Log.hpp"
+#include "Toaster/Core/Core.hpp"
 
 
 namespace tst {  

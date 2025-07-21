@@ -1,4 +1,5 @@
 #pragma once
+#include "Toaster/Core/Log.hpp"
 
 namespace tst
 {
@@ -40,6 +41,8 @@ namespace tst
 
 		virtual TextureFormat getFormat() const = 0;
 			
+		virtual void setData(void *data, size_t size) = 0;
+
 		virtual void bind(uint32_t slot = 0) const = 0;
 		virtual void unbind() const = 0;
 	};
@@ -54,6 +57,8 @@ namespace tst
 		static RefPtr<Texture2D> create(const ColourRgba &colour);
 		static RefPtr<Texture2D> create(const ColourFloat &colour);
 		static RefPtr<Texture2D> create(const uint32_t colour);
+
+		static RefPtr<Texture2D> create(const uint32_t width, const uint32_t height);
 	};
 
 	class TST_API Texture3D : public Texture

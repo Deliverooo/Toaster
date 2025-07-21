@@ -1,5 +1,6 @@
 #pragma once
 #include "Toaster/Renderer/Texture.hpp"
+#include "Toaster/Core/Log.hpp"
 
 namespace tst
 {
@@ -16,12 +17,15 @@ namespace tst
 		OpenGLTexture2D(const ColourFloat& colour);
 		OpenGLTexture2D(const uint32_t colour);
 
+		OpenGLTexture2D(const uint32_t width, const uint32_t height);
+
 		virtual uint32_t getWidth()  const override { return m_textureWidth; }
 		virtual uint32_t getHeight() const override { return m_textureHeight; }
 
 		virtual TextureFormat getFormat() const override { return m_textureFormat; }
 
-		virtual void bind(uint32_t slot = 0)   const override;
+		virtual void bind(uint32_t slot = 0) const override;
+		virtual void setData(void *data, size_t size) override;
 		virtual void unbind() const override;
 
 	private:
@@ -50,6 +54,7 @@ namespace tst
 
 		virtual uint32_t getWidth()  const override { return m_textureWidth; }
 		virtual uint32_t getHeight() const override { return m_textureHeight; }
+		virtual void setData(void* data, size_t size) override{}
 
 		virtual TextureFormat getFormat() const override { return m_textureFormat; }
 

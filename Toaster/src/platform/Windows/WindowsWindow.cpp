@@ -20,8 +20,15 @@ namespace tst
 
 	WindowsWindow::~WindowsWindow() 
 	{
+
+		assert(m_window != nullptr && "Found You!");
+		TST_CORE_INFO("Destroyed Window!");
+
 		glfwDestroyWindow(m_window);
 		glfwTerminate();
+		TST_CORE_INFO("Terminated GLFW!");
+
+
 	}
 
 

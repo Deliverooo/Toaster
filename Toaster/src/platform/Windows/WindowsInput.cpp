@@ -2,7 +2,7 @@
 #include "WindowsInput.hpp"
 
 #include "GLFW/glfw3.h"
-#include "Toaster/Application.hpp"
+#include "Toaster/Core/Application.hpp"
 
 #ifdef TST_PLATFORM_WINDOWS
 namespace tst
