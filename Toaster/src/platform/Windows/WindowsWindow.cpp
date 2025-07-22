@@ -18,7 +18,7 @@ namespace tst
 		return new WindowsWindow(window_attribs);
 	}
 
-	WindowsWindow::~WindowsWindow() 
+	void WindowsWindow::shutdown()
 	{
 		TST_PROFILE_FN();
 
@@ -29,7 +29,16 @@ namespace tst
 		glfwTerminate();
 		TST_CORE_INFO("Terminated GLFW!");
 
+		m_window = nullptr;
 
+		delete m_renderingContext;
+	}
+
+
+	WindowsWindow::~WindowsWindow() 
+	{
+		TST_PROFILE_FN();
+		shutdown();
 	}
 
 
@@ -57,8 +66,10 @@ namespace tst
 
 		glfwGetWindowPos(m_window, &m_windowPos.first, &m_windowPos.second);
 
+
 		m_renderingContext = new OpenGLRenderingContext(m_window);
 		m_renderingContext->init();
+
 
 		glfwSwapInterval(m_windowData.vSyncEnabled);
 

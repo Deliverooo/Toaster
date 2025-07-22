@@ -21,6 +21,15 @@ namespace tst
 
 		const RefPtr<PerspectiveCamera>& getCamera() const { return m_Camera; }
 
+		const glm::vec3& getVelocity() const { return m_cameraVelocity; }
+		const glm::vec3& getPosition() const { return m_cameraPosition; }
+		const glm::vec3& getRotation() const { return m_cameraRotation; }
+
+		const glm::vec3& getFrontVector() const { return m_CameraFront; }
+		const glm::vec3& getRightVector() const { return m_CameraRight; }
+		const glm::vec3& getUpVector()	  const { return m_CameraUp; }
+
+
 	private:
 
 		bool onKeyPressedEvent(KeyPressedEvent& e);
@@ -106,6 +115,11 @@ namespace tst
 		void onEvent(Event& e);
 
 		const RefPtr<OrthoCamera2D>& getCamera() const { return m_Camera; }
+
+		const glm::vec2& getVelocity() const { return m_cameraVelocity; }
+		const glm::vec2& getPosition() const { return m_cameraPosition; }
+		const float& getRotation() const	 { return m_cameraRotation; }
+
 
 	private:
 

@@ -22,6 +22,8 @@ namespace tst
 
 		~WindowsWindow() override;
 
+		virtual void shutdown() override;
+
 		// Updates the window (polls events, swaps buffers, etc.)
 		virtual void update() override;
 

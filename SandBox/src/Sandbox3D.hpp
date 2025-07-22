@@ -4,6 +4,7 @@
 
 #include "Toaster.h"
 #include "imgui.h"
+#include "ParticleSystem3D.hpp"
 #include "Toaster/CameraController.hpp"
 
 struct Transform3D
@@ -50,24 +51,19 @@ public:
 
 private:
 
+	bool onKeyPressedEvent(tst::KeyPressedEvent& e);
+	bool onKeyHeldEvent(tst::KeyHeldEvent& e);
 
-
-
-	tst::RefPtr<tst::PerspectiveCameraController> m_PerspectiveCameraCtrl;
-
-	tst::ShaderLib m_ShaderLibrary;
-
-	tst::RefPtr<tst::VertexArray> m_Vao;
-	tst::RefPtr<tst::Texture2D> m_Texture0;
-
-
-	glm::vec4 m_CubeColour{ 1.0f, 1.0f, 1.0f, 1.0f };
+	enum class GameState
+	{
+		Play = 0, MainMenu = 1, GameOver = 2
+	};
 
 	glm::vec4 m_clearColour{ 0.15f };
+	tst::RefPtr<tst::PerspectiveCameraController> m_PerspectiveCameraCtrl;
 
-	Transform3D m_modelTransform = {
-		glm::vec3{0.0f, 0.0f, 0.0f}, // position
-		glm::vec3{0.0f, 0.0f, 0.0f}, // rotation
-		glm::vec3{1.0f, 1.0f, 1.0f}  // scale
-	};
+	tst::RefPtr<tst::Texture2D> m_Texture0;
+	glm::vec4 m_CubeColour{ 1.0f, 1.0f, 1.0f, 1.0f };
+
+	ParticleSystem3D m_ParticleSystem;
 };

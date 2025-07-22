@@ -54,4 +54,3 @@
 
 // Toaster Engine Log Wrapper Header
 #include "Toaster/Core/Log.hpp"
-

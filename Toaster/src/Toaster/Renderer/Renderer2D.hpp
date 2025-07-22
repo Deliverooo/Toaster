@@ -29,12 +29,13 @@ namespace tst
 		static void terminate();
 
 		static void begin(const RefPtr<OrthoCamera2D>& camera);
+		static void begin(const ScopedPtr<OrthoCamera2D>& camera);
 		static void end();
 
-		static void drawQuad(const glm::vec3& position, const glm::vec2& scale, const float rotation, const glm::vec4& colour);
-		static void drawQuad(const glm::vec2& position, const glm::vec2& scale, const float rotation, const glm::vec4& colour);
-		static void drawQuad(const glm::vec3& position, const glm::vec2& scale, const float rotation, const RefPtr<Texture2D> &texture);
-		static void drawQuad(const glm::vec2& position, const glm::vec2& scale, const float rotation, const RefPtr<Texture2D> &texture);
+		static void drawQuad(const glm::vec3& position, const float rotation, const glm::vec2& scale, const glm::vec4& colour);
+		static void drawQuad(const glm::vec2& position, const float rotation, const glm::vec2& scale, const glm::vec4& colour);
+		static void drawQuad(const glm::vec3& position, const float rotation, const glm::vec2& scale, const RefPtr<Texture2D>& texture, const float tilingScale = 1.0f, const glm::vec4& tintColour = glm::vec4(1.0f));
+		static void drawQuad(const glm::vec2& position, const float rotation, const glm::vec2& scale, const RefPtr<Texture2D> &texture, const float tilingScale = 1.0f, const glm::vec4 &tintColour = glm::vec4(1.0f));
 
 		static void drawTri(const glm::vec3& position, const glm::vec2& scale, const float rotation, const glm::vec4& colour);
 		static void drawTri(const glm::vec2& position, const glm::vec2& scale, const float rotation, const glm::vec4& colour);

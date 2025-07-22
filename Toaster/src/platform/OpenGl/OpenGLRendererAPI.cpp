@@ -21,9 +21,13 @@ namespace tst
 		glClearColor(colour.r, colour.g, colour.b, colour.a);
 	}
 
-	void OpenGLRendererAPI::drawIndexed(const RefPtr<VertexArray>& vertexArray)
+	void OpenGLRendererAPI::drawIndexed(const RefPtr<VertexArray>& vertexArray, uint32_t count)
 	{
-		glDrawElements(GL_TRIANGLES, vertexArray->getIndexBuffer()->count(), GL_UNSIGNED_INT, nullptr);
+		vertexArray->bind();
+
+		uint32_t indexCount = count ? vertexArray->getIndexBuffer()->count() : count;
+		glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, nullptr);
+		glBindTexture(GL_TEXTURE_2D, 0);
 	}
 
 	void OpenGLRendererAPI::drawArrays(const RefPtr<VertexArray>& vertexArray)

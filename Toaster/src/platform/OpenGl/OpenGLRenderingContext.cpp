@@ -11,7 +11,7 @@ namespace tst {
 
 	OpenGLRenderingContext::~OpenGLRenderingContext()
 	{
-		
+		m_window = nullptr;
 	}
 
 	void OpenGLRenderingContext::init()

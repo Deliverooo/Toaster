@@ -13,9 +13,9 @@ namespace tst
 	}
 
 
-	void RenderCommand::drawIndexed(const RefPtr<VertexArray>& vertexArray)
+	void RenderCommand::drawIndexed(const RefPtr<VertexArray>& vertexArray, uint32_t count)
 	{
-		m_rendererApi->drawIndexed(vertexArray);
+		m_rendererApi->drawIndexed(vertexArray, count);
 	}
 
 	void RenderCommand::drawArrays(const RefPtr<VertexArray>& vertexArray)

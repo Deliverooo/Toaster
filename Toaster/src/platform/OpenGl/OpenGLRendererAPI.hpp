@@ -10,7 +10,7 @@ namespace tst
 		virtual void clear() override;
 		virtual void setClearColour(const glm::vec4 &colour) override;
 
-		virtual void drawIndexed(const RefPtr<VertexArray>& vertexArray) override;
+		virtual void drawIndexed(const RefPtr<VertexArray>& vertexArray, uint32_t count = 0) override;
 		virtual void drawArrays(const RefPtr<VertexArray>& vertexArray) override;
 
 		virtual void resizeViewport(uint32_t width, uint32_t height) override;

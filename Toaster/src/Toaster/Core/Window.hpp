@@ -20,6 +20,8 @@ namespace tst
 
 		static Window* Create(const WindowAttribArray& window_attributes = WindowAttribArray());
 		virtual ~Window(){}
+
+		virtual void shutdown() = 0;
 		
 		virtual void update() = 0;
 

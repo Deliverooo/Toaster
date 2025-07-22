@@ -7,11 +7,13 @@ namespace tst
 	{
 	public:
 		OpenGLVertexBuffer(float* vertices, uint32_t count);
+		OpenGLVertexBuffer(uint32_t count);
 		virtual ~OpenGLVertexBuffer() override;
 
 		virtual void bind() const override;
 		virtual void unbind() const override;
 
+		virtual void setData(const void* data, const uint32_t size) override;
 		virtual void setLayout(const BufferLayout& layout) override;
 		virtual const BufferLayout &getLayout() const override;
 

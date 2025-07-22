@@ -12,12 +12,26 @@ namespace tst
 		glBindBuffer(GL_ARRAY_BUFFER, m_Vbo);
 		glBufferData(GL_ARRAY_BUFFER, sizeof(float) * count, vertices, GL_STATIC_DRAW);
 	}
+	OpenGLVertexBuffer::OpenGLVertexBuffer(uint32_t count) : m_count(count)
+	{
+		TST_PROFILE_FN();
+
+		glGenBuffers(1, &m_Vbo);
+		glBindBuffer(GL_ARRAY_BUFFER, m_Vbo);
+		glBufferData(GL_ARRAY_BUFFER, count, nullptr, GL_DYNAMIC_DRAW);
+	}
 
 	OpenGLVertexBuffer::~OpenGLVertexBuffer()
 	{
 		TST_PROFILE_FN();
 
 		glDeleteBuffers(1, &m_Vbo);
+	}
+
+	void OpenGLVertexBuffer::setData(const void* data, const uint32_t size)
+	{
+		glBindBuffer(GL_ARRAY_BUFFER, m_Vbo);
+		glBufferSubData(GL_ARRAY_BUFFER, 0, size, data);
 	}
 
 	void OpenGLVertexBuffer::bind() const

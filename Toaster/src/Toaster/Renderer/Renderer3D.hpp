@@ -34,8 +34,9 @@ namespace tst
 		static void end();
 
 		static void drawQuad(const glm::vec3& position, const glm::vec3 &rotation, const glm::vec3& scale, const glm::vec4& colour);
-
-		static void drawQuad(const glm::vec3& position, const glm::vec3& rotation, const glm::vec3& scale, const RefPtr<Texture2D>& texture);
+		static void drawCube(const glm::vec3& position, const glm::vec3 &rotation, const glm::vec3& scale, const glm::vec4& colour);
+		static void drawQuad(const glm::vec3& position, const glm::vec3& rotation, const glm::vec3& scale, const RefPtr<Texture2D>& texture, float tilingScale = 1.0f, const glm::vec4& tintColour = glm::vec4(1.0f));
+		static void drawCube(const glm::vec3& position, const glm::vec3& rotation, const glm::vec3& scale, const RefPtr<Texture2D>& texture, float tilingScale = 1.0f, const glm::vec4& tintColour = glm::vec4(1.0f));
 
 	};
 }

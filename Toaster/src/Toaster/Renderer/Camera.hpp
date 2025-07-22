@@ -182,13 +182,14 @@ namespace tst
 
 
 		void setPosition(const glm::vec3& newPosition) { m_position = newPosition; recalculateViewMatrix(); }
+		void setPosition(const glm::vec2& newPosition) { m_position = glm::vec3(newPosition.x, newPosition.y, 0.0f); recalculateViewMatrix(); }
 		void setRotation(const float newRotation) { m_rotation = newRotation; recalculateViewMatrix(); }
 
+		void recalculateProjectionMatrix(const float left, const float right, const float bottom, const float top);
 
 	private:
 
 		void recalculateViewMatrix();
-		void recalculateProjectionMatrix(const float left, const float right, const float bottom, const float top);
 
 		glm::mat4 m_projectionMatrix;
 		glm::mat4 m_viewMatrix{ 1.0f };

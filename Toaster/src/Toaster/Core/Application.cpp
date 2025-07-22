@@ -12,7 +12,7 @@ namespace tst
 {
 	Application* Application::m_instance = nullptr;
 	bool Application::uiMode = false;
-	
+
 	void Application::init()
 	{
 		TST_PROFILE_FN();
@@ -38,7 +38,6 @@ namespace tst
 
 	Application::~Application() {
 
-		Renderer::terminate();
 		// Destructor implementation
 	}
 
@@ -83,24 +82,6 @@ namespace tst
 			}
 			if (e.getKeycode() == TST_KEY_F11)
 			{
-				/*static bool fullscreen = false;
-
-				if (!fullscreen)
-				{
-					const GLFWvidmode* mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
-					glfwSetWindowMonitor((GLFWwindow*)m_window->getWindow(), glfwGetPrimaryMonitor(), 0, 0, mode->width, mode->height, mode->refreshRate);
-
-					fullscreen = true;
-				} else
-				{
-					int xpos, ypos;
-					glfwGetWindowPos((GLFWwindow*)m_window->getWindow(), &xpos, &ypos);
-					int xscale, yscale;
-					glfwGetWindowSize((GLFWwindow*)m_window->getWindow(), &xscale, &yscale);
-					glfwSetWindowMonitor((GLFWwindow*)m_window->getWindow(), nullptr, xpos, ypos, xscale, yscale, 0);
-
-					fullscreen = false;
-				}*/
 
 			}
 			return false;
@@ -150,6 +131,8 @@ namespace tst
 
 			m_window->update();
 		}
+		Renderer::terminate();
+
 
 	}
 

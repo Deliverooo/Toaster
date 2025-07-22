@@ -201,11 +201,13 @@ namespace tst
 	public:
 		virtual ~VertexBuffer() {}
 
+		static RefPtr<VertexBuffer> create(uint32_t size);
 		static RefPtr<VertexBuffer> create(float *vertices, uint32_t size);
 
 		virtual void bind() const = 0;
 		virtual void unbind() const = 0;
 
+		virtual void setData(const void* data, const uint32_t size) = 0;
 		virtual void setLayout(const BufferLayout& layout) = 0;
 		virtual const BufferLayout &getLayout() const = 0;
 	};

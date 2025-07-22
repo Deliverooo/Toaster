@@ -1,10 +1,10 @@
 #pragma once
-
 #include <random>
 
 #include "Toaster.h"
 #include "imgui.h"
 #include "Toaster/CameraController.hpp"
+#include "ParticleSystem.hpp"
 
 struct Transform2D
 {
@@ -23,16 +23,10 @@ struct Transform2D
 	}
 };
 
-struct Particle2D
-{
-	glm::vec2 position{ 0.0f };
-	glm::vec2 velocity{ 0.0f };
-};
-
 class SandBox2DLayer : public tst::Layer
 {
 public:
-	SandBox2DLayer() = default;
+	SandBox2DLayer();
 
 	virtual ~SandBox2DLayer() override = default;
 
@@ -44,25 +38,21 @@ public:
 
 private:
 
+	bool onKeyPressedEvent(tst::KeyPressedEvent& e);
+	bool onKeyHeldEvent(tst::KeyHeldEvent& e);
 
-	tst::RefPtr<tst::OrthoCamera2DController> m_OrthoCameraCtrl;
+	float m_WindowWidth{ 1920 };
+	float m_WindowHeight{ 1080 };
 
-	tst::ShaderLib m_ShaderLibrary;
-
-	tst::RefPtr<tst::VertexArray> m_Vao;
-
-	tst::RefPtr<tst::Texture2D> m_Texture0;
-	tst::RefPtr<tst::Texture2D> m_Texture1;
-
-
-	glm::vec4 m_quadColour{ 1.0f, 1.0f, 1.0f, 1.0f };
-
-	glm::vec4 m_clearColour{ 0.15f, 0.15f, 0.15f, 0.0f };
-
-	Transform2D m_modelTransform = {
-		glm::vec2{0.0f, 0.0f}, // position
-		glm::vec2{1.0f, 1.0f},
-		180.0f
+	enum class GameState
+	{
+		Play = 0, MainMenu = 1, GameOver = 2
 	};
 
+	tst::OrthoCamera2DController m_OrthoCameraCtrl;
+
+	tst::RefPtr<tst::Texture2D> m_Texture0;
+	glm::vec4 m_clearColour{ 0.15f, 0.15f, 0.15f, 0.0f };
+
+	ParticleSystem m_ParticleSystem;
 };

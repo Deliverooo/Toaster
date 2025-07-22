@@ -57,8 +57,9 @@ namespace tst
 		static RefPtr<Texture2D> create(const ColourRgba &colour);
 		static RefPtr<Texture2D> create(const ColourFloat &colour);
 		static RefPtr<Texture2D> create(const uint32_t colour);
-
 		static RefPtr<Texture2D> create(const uint32_t width, const uint32_t height);
+
+
 	};
 
 	class TST_API Texture3D : public Texture
