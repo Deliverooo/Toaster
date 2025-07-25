@@ -1,9 +1,25 @@
 #pragma once
 #include "Toaster/Renderer/Texture.hpp"
 #include "Toaster/Core/Log.hpp"
+#include <glad/glad.h>
 
 namespace tst
 {
+
+	// Texture utility class
+	// I suppose it could have just been a namespace
+	class TextureUtils
+	{
+	public:
+
+		TextureUtils operator=(TextureUtils& other) = delete;
+
+		static GLenum toGLWrap(const TextureWrapping wrapping);
+		static GLenum toGLFilter(const TextureFiltering filtering);
+
+		static TextureWrapping fromGLWrap(const GLenum wrapping);
+		static TextureFiltering fromGLFilter(const GLenum filtering);
+	};
 
 
 	class TST_API OpenGLTexture2D : public Texture2D
@@ -12,32 +28,41 @@ namespace tst
 
 		virtual ~OpenGLTexture2D() override;
 
-		OpenGLTexture2D(const std::string& filepath);
-		OpenGLTexture2D(const ColourRgba& colour);
-		OpenGLTexture2D(const ColourFloat& colour);
-		OpenGLTexture2D(const uint32_t colour);
-
-		OpenGLTexture2D(const uint32_t width, const uint32_t height);
+		OpenGLTexture2D(const std::string& filepath, const TextureParams &params = {});
+		OpenGLTexture2D(const ColourRgba& colour, const TextureParams& params = {});
+		OpenGLTexture2D(const ColourFloat& colour, const TextureParams& params = {});
+		OpenGLTexture2D(const uint32_t colour, const TextureParams& params = {});
+		OpenGLTexture2D(const uint32_t width, const uint32_t height, const TextureParams& params = {});
 
 		virtual uint32_t getWidth()  const override { return m_textureWidth; }
 		virtual uint32_t getHeight() const override { return m_textureHeight; }
-
 
 		virtual void bind(uint32_t slot = 0) const override;
 		virtual void setData(void *data, size_t size) override;
 		virtual void unbind() const override;
 
+		virtual uint32_t getId() const override { return m_textureId; }
+
+		virtual void  setParameters(const TextureParams &params) override;
+		virtual void  setWrapMode(const TextureWrapping wrapS, const TextureWrapping wrapT) override;
+		virtual void  setFilterMode(const TextureFiltering minFilter, const TextureFiltering magFilter) override;
+		virtual const TextureParams& getParams() const override { return m_textureParameters; }
+
+		virtual bool operator==(const Texture2D& other) const override { return (m_textureId == ((OpenGLTexture2D&)other).m_textureId); }
+
 	private:
 
+		void applyParams();
+		void createTexture(const void* data = nullptr);
+
 		std::optional<std::string> m_texturePath;
-
 		uint32_t m_textureId;
-
 		uint32_t m_textureWidth;
 		uint32_t m_textureHeight;
+		int m_dataFormat;
+		int m_internalFormat;
 
-		unsigned int m_dataFormat;
-		unsigned int m_internalFormat;
+		TextureParams m_textureParameters;
 	};
 
 	class TST_API OpenGLTexture3D : public Texture3D
@@ -46,28 +71,49 @@ namespace tst
 
 		virtual ~OpenGLTexture3D() override;
 
-		OpenGLTexture3D(const std::vector<std::string>& texturePaths);
-		OpenGLTexture3D(const ColourRgba& colour);
+		OpenGLTexture3D(const std::vector<std::string>& texturePaths, const TextureParams& params = {});
+		OpenGLTexture3D(const ColourRgba& colour, const TextureParams& params = {});
+		OpenGLTexture3D(const ColourFloat& colour, const TextureParams& params = {});
+		OpenGLTexture3D(const uint32_t colour, const TextureParams& params = {});
+		OpenGLTexture3D(const uint32_t width, const uint32_t height, const TextureParams& params = {});
 
 		virtual void bind(uint32_t slot = 0)   const override;
 		virtual void unbind() const override;
 
-		virtual uint32_t getWidth()  const override { return m_textureWidth; }
-		virtual uint32_t getHeight() const override { return m_textureHeight; }
+		virtual uint32_t getWidth()  const override { return m_textureDimensions[0].first; }
+		virtual uint32_t getHeight() const override { return m_textureDimensions[0].second; }
+
+		std::pair<uint32_t, uint32_t> getFaceDimensions(uint32_t faceIndex) const { return ((faceIndex < 6) ? m_textureDimensions[faceIndex] : std::pair<uint32_t, uint32_t>(0, 0)); }
+
 		virtual void setData(void* data, size_t size) override{}
 
-		//virtual TextureFormat getFormat() const override { return m_textureFormat; }
+		virtual void setFaceData(uint32_t faceIndex, const void* data, uint32_t width, uint32_t height) override;
+
+		virtual uint32_t getId() const override { return m_textureId; }
+
+		virtual void  setParameters(const TextureParams& params) override;
+		virtual void  setWrapMode(const TextureWrapping wrapS, const TextureWrapping wrapT) override;
+		virtual void  setFilterMode(const TextureFiltering minFilter, const TextureFiltering magFilter) override;
+		virtual const TextureParams& getParams() const override { return m_textureParameters; }
+
+		virtual bool operator==(const Texture3D& other) const override { return (m_textureId == ((OpenGLTexture3D&)other).m_textureId); }
 
 	private:	
 
-		std::optional<std::vector<std::string>> m_texturePaths;
+		void applyParams();
 
+		std::optional<std::vector<std::string>> m_texturePaths;
 		uint32_t m_textureId;
 
-		uint32_t m_textureWidth{10};
-		uint32_t m_textureHeight{10};
+		std::array<std::pair<uint32_t, uint32_t>, 6> m_textureDimensions;
+		uint32_t m_textureWidth{1};
+		uint32_t m_textureHeight{1};
+		int m_dataFormat;
+		int m_internalFormat;
 
-		TextureFormat m_textureFormat{ TextureFormat::RGB };
+		TextureParams m_textureParameters;
 	};
 
+
+	
 }

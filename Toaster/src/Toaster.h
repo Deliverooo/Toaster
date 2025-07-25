@@ -38,6 +38,7 @@
 #include "Toaster/CameraController.hpp"
 #include "Toaster/Renderer/Renderer2D.hpp"
 #include "Toaster/Renderer/Renderer3D.hpp"
+#include "Toaster/Renderer/Framebuffer.hpp"
 
 // Toaster OpenGL API functions
 #include "platform/OpenGl/OpenGLShader.hpp"

@@ -8,7 +8,7 @@ void SandBox3DLayer::onAttach()
 
 	m_PerspectiveCameraCtrl = std::make_shared<tst::PerspectiveCameraController>(90.0f, 1.77f);
 
-	m_Texture0 = tst::Texture2D::create("assets/textures/One_Leg_Bird.png");
+	m_Texture0 = tst::Texture2D::create("assets/textures/orbo0.png");
 
 
 }
@@ -19,38 +19,16 @@ void SandBox3DLayer::onDetach()
 void SandBox3DLayer::onUpdate(tst::DeltaTime dt)
 {
 
+	tst::Renderer3D::resetStats();
 	m_PerspectiveCameraCtrl->onUpdate(dt);
-	m_ParticleSystem.onUpdate(dt);
 
 	tst::RenderCommand::setClearColour(m_clearColour);
 	tst::RenderCommand::clear();
+
 	tst::Renderer3D::begin(m_PerspectiveCameraCtrl->getCamera());
 
-	if (tst::Input::isKeyPressed(TST_KEY_F))
-	{
-		Particle3DCreateInfo particle_create_info{};
-
-		particle_create_info.Position = { 0.0f, 2.0f, 0.0f };
-		particle_create_info.Velocity = { 0.2f, 1.0f, 0.2f };
-		particle_create_info.VelocityVariation = { 1.0f, 0.05f, 1.0f };
-
-		particle_create_info.SizeBegin = { 0.07f, 0.07f, 0.07f };
-		particle_create_info.SizeEnd = { 0.025f, 0.025f, 0.025f };
-		particle_create_info.SizeVariation = { 0.1f, 0.1f, 0.1f };
-
-		particle_create_info.ColourBegin = { 1.0f, 0.2f, 0.2f, 1.0f };
-		particle_create_info.ColourEnd = { 0.2f, 0.0f, 0.0f, 1.0f };
-		particle_create_info.ColourVariation = { 0.35f, 0.325f, 0.025f, 0.0f };
-
-		particle_create_info.Lifetime = 2.0f;
-
-		m_ParticleSystem.emit(particle_create_info);
-	}
-
-	m_ParticleSystem.onRender();
-
-	tst::Renderer3D::drawCube({ 0.0f, 0.0f, 0.0f }, glm::vec3(0.0f), glm::vec3(1.0f), m_Texture0);
-	tst::Renderer3D::drawCube({ 1.0f, 0.0f, 1.5f }, glm::vec3(0.0f), glm::vec3(0.8f), m_CubeColour);
+	tst::Renderer3D::drawCube({ 0.0f, 0.0f, 0.0f }, glm::vec3(1.0f), glm::vec3(1.0f), {0.5f, 1.0f, 0.6f, 1.0f});
+	tst::Renderer3D::drawCube({ 1.0f, 1.0f, 1.5f }, glm::vec3(0.0f), glm::vec3(0.8f), m_Texture0);
 
 
 	tst::Renderer3D::end();
@@ -70,24 +48,6 @@ void SandBox3DLayer::onEvent(tst::Event& e)
 bool SandBox3DLayer::onKeyPressedEvent(tst::KeyPressedEvent& e)
 {
 
-	if (e.getKeycode() == TST_KEY_E)
-	{
-		Particle3DCreateInfo particle_create_info{};
-		particle_create_info.Position = m_PerspectiveCameraCtrl->getPosition() + (m_PerspectiveCameraCtrl->getFrontVector() * 0.5f);
-		particle_create_info.Velocity = m_PerspectiveCameraCtrl->getFrontVector();
-
-		particle_create_info.SizeBegin = { 0.2f, 0.2f, 0.2f };
-		particle_create_info.SizeEnd = { 0.025f, 0.025f, 0.025f };
-		particle_create_info.SizeVariation = { 0.1f, 0.1f, 0.1f };
-
-		particle_create_info.ColourBegin = { 1.0f, 0.2f, 0.2f, 1.0f };
-		particle_create_info.ColourEnd = { 0.2f, 0.0f, 0.0f, 1.0f };
-		particle_create_info.ColourVariation = { 0.35f, 0.325f, 0.025f, 0.0f };
-
-		particle_create_info.Lifetime = 2.0f;
-
-		m_ParticleSystem.emit(particle_create_info);
-	}
 
 	return false;
 }

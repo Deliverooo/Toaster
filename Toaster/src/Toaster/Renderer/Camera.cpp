@@ -159,7 +159,7 @@ namespace tst
 		m_position = { 0.0f, 0.0f, 0.0f };
 		m_rotation = { 0.0f };
 
-		m_projectionMatrix = glm::ortho(left, right, bottom, top, -1.0f, 10.0f);
+		m_projectionMatrix = glm::ortho(left, right, bottom, top, -1.0f, 1.0f);
 	}
 
 	void OrthoCamera2D::recalculateViewMatrix()
@@ -176,6 +176,6 @@ namespace tst
 	{
 		TST_PROFILE_FN();
 
-		m_projectionMatrix = glm::ortho(left, right, bottom, top, -1.0f, 10.0f);
+		m_projectionMatrix = glm::ortho(left, right, bottom, top, -1.0f, 1.0f);
 	}
 }

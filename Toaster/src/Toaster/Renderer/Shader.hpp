@@ -33,6 +33,7 @@ namespace tst
 
 		virtual void uploadBool(const bool b, const char* name) = 0;
 
+		virtual void uploadIntArray(int* arr, const uint32_t count, const char* name) = 0;
 		virtual void uploadInt1(const int x, const char* name) = 0;
 		virtual void uploadInt2(const int x, const int y, const char* name) = 0;
 		virtual void uploadInt3(const int x, const int y, const int z, const char* name) = 0;

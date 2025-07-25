@@ -32,6 +32,11 @@ public:
 	void onUpdate(tst::DeltaTime dt);
 	void onRender();
 
+	void reset();
+
+	uint32_t m_ParticleIndex = 499;
+
+
 private:
 	struct Particle
 	{
@@ -45,12 +50,11 @@ private:
 		glm::vec2 SizeBegin;
 		glm::vec2 SizeEnd;
 
-		float Lifetime{ 1.0f };
-		float LifeRemaining{ 0.0f };
+		float Lifetime = 1.0f;
+		float LifeRemaining = 0.0f;
 
-		bool Active{ false };
+		bool Active = false;
 	};
 
 	std::vector<Particle> m_Particles;
-	uint32_t m_ParticleIndex = 999;
 };

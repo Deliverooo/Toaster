@@ -149,6 +149,7 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="src\platform\OpenGl\OpenGLFramebuffer.hpp" />
     <ClInclude Include="src\Toaster\CameraController.hpp" />
     <ClInclude Include="src\platform\OpenGl\OpenGLImage.hpp" />
     <ClInclude Include="src\platform\Vulkan\VulkanDevice.hpp" />
@@ -159,6 +160,7 @@
     <ClInclude Include="src\Toaster\Renderer\Camera.hpp" />
     <ClInclude Include="src\platform\OpenGl\OpenGLRendererAPI.hpp" />
     <ClInclude Include="src\platform\Vulkan\VulkanBuffer.hpp" />
+    <ClInclude Include="src\Toaster\Renderer\Framebuffer.hpp" />
     <ClInclude Include="src\Toaster\Renderer\Material.hpp" />
     <ClInclude Include="src\Toaster\Renderer\RenderCommand.hpp" />
     <ClInclude Include="src\platform\OpenGl\OpenGLTexture.hpp" />
@@ -197,6 +199,7 @@
     <ClInclude Include="src\tstpch.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\platform\OpenGl\OpenGLFramebuffer.cpp" />
     <ClCompile Include="src\Toaster\CameraController.cpp" />
     <ClCompile Include="src\platform\OpenGl\OpenGLImage.cpp" />
     <ClCompile Include="src\platform\Vulkan\VulkanDevice.cpp" />
@@ -206,6 +209,7 @@
     <ClCompile Include="src\Toaster\Renderer\Camera.cpp" />
     <ClCompile Include="src\platform\OpenGl\OpenGLRendererAPI.cpp" />
     <ClCompile Include="src\platform\Vulkan\VulkanBuffer.cpp" />
+    <ClCompile Include="src\Toaster\Renderer\Framebuffer.cpp" />
     <ClCompile Include="src\Toaster\Renderer\Material.cpp" />
     <ClCompile Include="src\Toaster\Renderer\RenderCommand.cpp" />
     <ClCompile Include="src\platform\OpenGl\OpenGLTexture.cpp" />

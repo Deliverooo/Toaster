@@ -24,6 +24,8 @@ namespace tst {
 		void init();
 		void run();
 
+		void close();
+
 		void onEvent(Event &event);
 
 		void pushLayer(RefPtr<Layer> layer);

@@ -20,12 +20,14 @@ namespace tst
 
 	void OpenGLVertexArray::addVertexBuffer(const RefPtr<VertexBuffer> &buffer)
 	{
-		TST_PROFILE_FN();
+		if (buffer->getLayout().getAttributes().empty())
+		{
+			TST_ASSERT(false, "Vertex buffer layouts have not been initialized!");
+		}
 
 		glBindVertexArray(m_Vao);
 		buffer->bind();
 
-		TST_ASSERT(buffer->getLayout().getAttributes().size(), "Vertex Buffer layout not initialized!");
 
 		uint32_t index = 0;
 		const auto& layout = buffer->getLayout();

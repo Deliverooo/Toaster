@@ -28,6 +28,16 @@ namespace tst
 		m_rendererApi->clear();
 	}
 
+	void RenderCommand::disableDepthTesting()
+	{
+		m_rendererApi->disableDepthTesting();
+	}
+
+	void RenderCommand::enableDepthTesting()
+	{
+		m_rendererApi->enableDepthTesting();
+	}
+
 	void RenderCommand::setClearColour(const glm::vec4& colour)
 	{
 		m_rendererApi->setClearColour(colour);

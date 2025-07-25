@@ -93,7 +93,7 @@ namespace tst
 	class TST_API PerspectiveCamera
 	{
 	public:
-		PerspectiveCamera(float fov, float aspect, float zNear = 0.1f, float zFar = 100.0f);
+		PerspectiveCamera(float fov, float aspect, float zNear = 0.1f, float zFar = 10.0f);
 
 		[[nodiscard]] const glm::mat4& getProjectionMatrix() const { return m_projectionMatrix; }
 		[[nodiscard]] const glm::mat4& getViewMatrix() { recalculateViewMatrix(); return m_viewMatrix; }

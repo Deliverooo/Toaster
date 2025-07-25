@@ -113,6 +113,7 @@ namespace tst
 
 		void onUpdate(DeltaTime dt);
 		void onEvent(Event& e);
+		void onImGuiRender();
 
 		const RefPtr<OrthoCamera2D>& getCamera() const { return m_Camera; }
 
@@ -135,8 +136,8 @@ namespace tst
 
 		float m_cameraSpeed{ 3.0f };
 		float m_cameraRotationSpeed{ 180.0f };
-		float m_acceleration{ 10.0f };
-		float m_damping{ 1.0f };
+		float m_acceleration{ 20.0f };
+		float m_damping{ 5.0f };
 
 		glm::vec2 m_cameraVelocity{ 0.0f };
 

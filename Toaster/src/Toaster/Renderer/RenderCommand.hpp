@@ -11,6 +11,8 @@ namespace tst
 		static void init();
 		
 		static void clear();
+		static void disableDepthTesting();
+		static void enableDepthTesting();
 		static void setClearColour(const glm::vec4& colour);
 
 		static void drawIndexed(const RefPtr<VertexArray>& vertexArray, uint32_t count = 0);

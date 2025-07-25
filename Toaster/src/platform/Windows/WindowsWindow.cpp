@@ -61,7 +61,7 @@ namespace tst
 			TST_ERROR("[FATAL ERROR] -> FAILED TO INITIALIZE GLFW API!!!");
 			return;
 		}
-
+		glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_TRUE);
 		m_window = glfwCreateWindow(m_windowData.width, m_windowData.height, m_windowData.title, nullptr, nullptr);
 
 		glfwGetWindowPos(m_window, &m_windowPos.first, &m_windowPos.second);

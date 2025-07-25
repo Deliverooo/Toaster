@@ -32,11 +32,25 @@ namespace tst
 		static void begin(const RefPtr<OrthoCamera>& camera);
 
 		static void end();
+		static void flush();
+		static void beginNewBatch();
 
 		static void drawQuad(const glm::vec3& position, const glm::vec3 &rotation, const glm::vec3& scale, const glm::vec4& colour);
 		static void drawCube(const glm::vec3& position, const glm::vec3 &rotation, const glm::vec3& scale, const glm::vec4& colour);
 		static void drawQuad(const glm::vec3& position, const glm::vec3& rotation, const glm::vec3& scale, const RefPtr<Texture2D>& texture, float tilingScale = 1.0f, const glm::vec4& tintColour = glm::vec4(1.0f));
 		static void drawCube(const glm::vec3& position, const glm::vec3& rotation, const glm::vec3& scale, const RefPtr<Texture2D>& texture, float tilingScale = 1.0f, const glm::vec4& tintColour = glm::vec4(1.0f));
 
+		struct Stats
+		{
+			uint32_t drawCallCount{ 0 };
+			uint32_t quadCount{ 0 };
+			uint32_t batchesPerFrame{ 1 };
+
+			uint32_t totalVertexCount() { return quadCount * 4; }
+			uint32_t totalIndexCount() { return quadCount * 6; }
+		};
+
+		static Stats getStats();
+		static void resetStats();
 	};
 }

@@ -38,6 +38,8 @@ namespace tst
 
 	Application::~Application() {
 
+		Renderer::terminate();
+
 		// Destructor implementation
 	}
 
@@ -131,9 +133,13 @@ namespace tst
 
 			m_window->update();
 		}
-		Renderer::terminate();
 
 
+	}
+
+	void Application::close()
+	{
+		m_running = false;
 	}
 
 	void Application::pushLayer(RefPtr<Layer> layer)

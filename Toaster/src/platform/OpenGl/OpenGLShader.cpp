@@ -301,6 +301,11 @@ namespace tst
 
 	void OpenGLShader::uploadBool(const bool b, const char* name) { uploadUniform1i(b, name); }
 
+	void OpenGLShader::uploadIntArray(int* arr, const uint32_t count, const char* name)
+	{
+		glUniform1iv(glGetUniformLocation(m_shaderId, name), count, arr);
+	}
+
 	void OpenGLShader::uploadInt1(const int x, const char* name) { uploadUniform1i(x, name); }
 	void OpenGLShader::uploadInt2(const int x, const int y, const char* name) { uploadUniform2i(x, y, name); }
 	void OpenGLShader::uploadInt3(const int x, const int y, const int z, const char* name) { uploadUniform3i(x, y, z, name); }

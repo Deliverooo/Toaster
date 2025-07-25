@@ -5,7 +5,7 @@
 
 ParticleSystem::ParticleSystem()
 {
-	m_Particles.resize(1000);
+	m_Particles.resize(500);
 }
 
 void ParticleSystem::emit(const ParticleCreateInfo& createInfo)
@@ -37,42 +37,65 @@ void ParticleSystem::emit(const ParticleCreateInfo& createInfo)
 	particle.Lifetime = createInfo.Lifetime;
 	particle.LifeRemaining = createInfo.Lifetime;
 
-	m_ParticleIndex = --m_ParticleIndex % m_Particles.size();
+	m_ParticleIndex = (m_ParticleIndex - 1) % m_Particles.size();
+
+}
+void ParticleSystem::reset()
+{
+	m_ParticleIndex = 499;
+	for (auto &p : m_Particles)
+	{
+		p.LifeRemaining = 0.0f;
+		p.Position = { 0.0f, 0.0f }; // Reset position
+		p.Velocity = { 0.0f, 0.0f }; // Reset velocity
+		p.Active = false;
+	}
 }
 
 void ParticleSystem::onUpdate(tst::DeltaTime dt)
 {
+
 	for (auto& particle : m_Particles)
 	{
-		if (!particle.Active)
+		if (!particle.Active) {
 			continue;
-
-		if (particle.LifeRemaining <= 0.0f)
+		} else if (particle.LifeRemaining <= 0.0f)
 		{
+			particle.LifeRemaining = 0.0f;
 			particle.Active = false;
+			particle.Position = { 0.0f, 0.0f }; // Reset position
+			particle.Velocity = { 0.0f, 0.0f }; // Reset velocity
 			continue;
+		} else
+		{
+			particle.LifeRemaining -= dt;
+			particle.Position += particle.Velocity * static_cast<float>(dt);
+			particle.Rotation += 0.01f * dt;
 		}
-
-		particle.LifeRemaining -= dt;
-		particle.Position += particle.Velocity * static_cast<float>(dt);
-		particle.Rotation += 0.01f * dt;
 	}
 }
 
 void ParticleSystem::onRender()
 {
+
 	for (auto& particle : m_Particles)
 	{
-		if (!particle.Active)
+		if (!particle.Active) {
+			// Debug inactive particles
 			continue;
+		} else
+		{
+			float lifePercent = particle.LifeRemaining / particle.Lifetime;
+			glm::vec4 Colour = glm::mix(particle.ColourEnd, particle.ColourBegin, lifePercent);
 
-		float lifePercent = particle.LifeRemaining / particle.Lifetime;
-		glm::vec4 Colour = glm::mix(particle.ColourEnd, particle.ColourBegin, lifePercent);
+			// Fades the particle based on its life remaining
+			Colour.a *= lifePercent;
 
-		// Fades the particle based on its life remaining
-		Colour.a *= lifePercent;
-
-		glm::vec2 size = glm::mix(particle.SizeEnd, particle.SizeBegin, lifePercent);
-		//tst::Renderer2D::drawQuad(particle.Position, particle.Rotation, size, Colour);
+			glm::vec2 size = glm::mix(particle.SizeEnd, particle.SizeBegin, lifePercent);
+			tst::Renderer2D::drawQuad({ particle.Position.x, particle.Position.y }, 0.0f, size, Colour);
+		}
 	}
+
+
+
 }

@@ -154,3 +154,60 @@ project "SandBox"
 		buildoptions {"/utf-8"}
 		runtime "Release"
 		optimize "on"
+
+
+project "ToasterEditor"
+	location "ToasterEditor"
+	kind "ConsoleApp"
+	language "C++"
+	cppdialect "C++20"
+	staticruntime "On"
+	
+	characterset ("Unicode")
+
+	targetdir ("bin/" .. outputDir .. "/%{prj.name}")
+	objdir ("bin-int/" .. outputDir .. "/%{prj.name}")
+
+	files{
+		"%{prj.name}/src/**.h",
+		"%{prj.name}/src/**.hpp",
+		"%{prj.name}/src/**.cpp",
+	}
+
+	includedirs{
+		"Toaster/src",
+		"dependencies/spdlog/include",
+		"dependencies/imgui",
+		"%{IncludeDir.glm}",
+		"%{IncludeDir.ImGui}",
+	}
+
+	links{
+		"Toaster",
+	}
+	
+	filter "system:windows"
+		systemversion "latest"
+
+		defines{
+			"TST_PLATFORM_WINDOWS"
+		}
+
+
+	filter "configurations:Debug"
+		defines "TST_DEBUG"
+		buildoptions {"/utf-8"}
+		runtime "Debug"
+		symbols "on"
+
+	filter "configurations:Release"
+		defines "TST_RELEASE"
+		buildoptions {"/utf-8"}
+		runtime "Release"
+		optimize "on"
+
+	filter "configurations:Dist"
+		defines "TST_DIST"
+		buildoptions {"/utf-8"}
+		runtime "Release"
+		optimize "on"

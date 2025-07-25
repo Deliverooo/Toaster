@@ -52,7 +52,15 @@ private:
 	tst::OrthoCamera2DController m_OrthoCameraCtrl;
 
 	tst::RefPtr<tst::Texture2D> m_Texture0;
-	glm::vec4 m_clearColour{ 0.15f, 0.15f, 0.15f, 0.0f };
+	tst::RefPtr<tst::Texture2D> m_Texture1;
+	tst::RefPtr<tst::Texture2D> m_Texture2;
+	tst::RefPtr<tst::SubTexture2D> m_Texture3;
+
+
+	tst::RefPtr<tst::Framebuffer> m_Framebuffer;
+
+
+	glm::vec4 m_clearColour{ 0.15f, 0.15f, 0.15f, 1.0f };
 
 	ParticleSystem m_ParticleSystem;
 };

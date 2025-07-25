@@ -28,18 +28,44 @@ namespace tst
 		static void init();
 		static void terminate();
 
+
 		static void begin(const RefPtr<OrthoCamera2D>& camera);
 		static void begin(const ScopedPtr<OrthoCamera2D>& camera);
 		static void end();
 
+		static void flush();
+		static void beginNewBatch();
+
 		static void drawQuad(const glm::vec3& position, const float rotation, const glm::vec2& scale, const glm::vec4& colour);
 		static void drawQuad(const glm::vec2& position, const float rotation, const glm::vec2& scale, const glm::vec4& colour);
-		static void drawQuad(const glm::vec3& position, const float rotation, const glm::vec2& scale, const RefPtr<Texture2D>& texture, const float tilingScale = 1.0f, const glm::vec4& tintColour = glm::vec4(1.0f));
+		static void drawQuad(const glm::vec3& position, const float rotation, const glm::vec2& scale, const RefPtr<Texture2D>& texture, const float tilingScale = 1.0f, const glm::vec4 &tintColour = glm::vec4(1.0f));
 		static void drawQuad(const glm::vec2& position, const float rotation, const glm::vec2& scale, const RefPtr<Texture2D> &texture, const float tilingScale = 1.0f, const glm::vec4 &tintColour = glm::vec4(1.0f));
+		static void drawQuad(const glm::vec3& position, const float rotation, const glm::vec2& scale, const RefPtr<SubTexture2D>& texture, const float tilingScale = 1.0f, const glm::vec4 &tintColour = glm::vec4(1.0f));
+		static void drawQuad(const glm::vec2& position, const float rotation, const glm::vec2& scale, const RefPtr<SubTexture2D> &texture, const float tilingScale = 1.0f, const glm::vec4 &tintColour = glm::vec4(1.0f));
 
-		static void drawTri(const glm::vec3& position, const glm::vec2& scale, const float rotation, const glm::vec4& colour);
-		static void drawTri(const glm::vec2& position, const glm::vec2& scale, const float rotation, const glm::vec4& colour);
+		static void drawTri(const glm::vec3& position, const float rotation, const glm::vec2& scale, const glm::vec4& colour);
+		static void drawTri(const glm::vec2& position, const float rotation, const glm::vec2& scale, const glm::vec4& colour);
+		static void drawTri(const glm::vec3& position, const float rotation, const glm::vec2& scale, const RefPtr<Texture2D>& texture, const float tilingScale = 1.0f, const glm::vec4 &tintColour = glm::vec4(1.0f));
+		static void drawTri(const glm::vec2& position, const float rotation, const glm::vec2& scale, const RefPtr<Texture2D> &texture, const float tilingScale = 1.0f, const glm::vec4 &tintColour = glm::vec4(1.0f));
 
+		struct Stats
+		{
+			uint32_t drawCallCount{ 0 };
+			uint32_t quadCount{ 0 };
+			uint32_t triangleCount{ 0 };
+			uint32_t circleCount{ 0 };
+			uint32_t lineCount{ 0 };
+			uint32_t batchesPerFrame{ 1 };
+			uint32_t textureBindings{ 0 };
+			uint32_t verticesSubmitted{ 0 };
+
+			uint32_t totalVertexCount() { return quadCount * 4 + triangleCount * 3 + circleCount * 4 + lineCount * 4; }
+			uint32_t totalIndexCount() { return quadCount * 6 + triangleCount * 6 + circleCount * 6 + lineCount * 6; }
+			float batchEfficiency() { return drawCallCount > 0 ? static_cast<float>(quadCount) / static_cast<float>(drawCallCount) : 0.0f; }
+		};
+
+		static Stats getStats();
+		static void resetStats();
 
 	};
 }

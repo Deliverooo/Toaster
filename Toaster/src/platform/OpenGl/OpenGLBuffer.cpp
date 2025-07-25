@@ -10,7 +10,7 @@ namespace tst
 
 		glGenBuffers(1, &m_Vbo);
 		glBindBuffer(GL_ARRAY_BUFFER, m_Vbo);
-		glBufferData(GL_ARRAY_BUFFER, sizeof(float) * count, vertices, GL_STATIC_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(float) * count, vertices, GL_DYNAMIC_DRAW);
 	}
 	OpenGLVertexBuffer::OpenGLVertexBuffer(uint32_t count) : m_count(count)
 	{
@@ -31,7 +31,17 @@ namespace tst
 	void OpenGLVertexBuffer::setData(const void* data, const uint32_t size)
 	{
 		glBindBuffer(GL_ARRAY_BUFFER, m_Vbo);
-		glBufferSubData(GL_ARRAY_BUFFER, 0, size, data);
+		void* buffer = glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
+		if (buffer)
+		{
+			memcpy(buffer, data, size);
+			glUnmapBuffer(GL_ARRAY_BUFFER);
+		}
+		GLenum error = glGetError();
+		if (error != GL_NO_ERROR)
+		{
+			std::cerr << "OpenGL Error: " << error << " in setData()" << std::endl;
+		}
 	}
 
 	void OpenGLVertexBuffer::bind() const
@@ -45,6 +55,14 @@ namespace tst
 	{
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 	}
+
+	void OpenGLVertexBuffer::resize(uint32_t newSize)
+	{
+		glBindBuffer(GL_ARRAY_BUFFER, m_Vbo);
+		glBufferData(GL_ARRAY_BUFFER, newSize, nullptr, GL_DYNAMIC_DRAW);
+		m_count = newSize / sizeof(float);
+	}
+
 
 	void OpenGLVertexBuffer::setLayout(const BufferLayout &layout)
 	{
@@ -61,7 +79,7 @@ namespace tst
 	{
 		glGenBuffers(1, &m_Ebo);
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_Ebo);
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, count * sizeof(uint32_t), indices, GL_STATIC_DRAW);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, count * sizeof(uint32_t), indices, GL_DYNAMIC_DRAW);
 	}
 
 	OpenGLIndexBuffer::~OpenGLIndexBuffer()

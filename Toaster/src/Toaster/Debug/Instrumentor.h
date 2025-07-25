@@ -20,6 +20,7 @@
 #include <fstream>
 
 #include <thread>
+#include "Toaster/Core/Core.hpp"
 
 namespace tst
 {
@@ -138,9 +139,7 @@ namespace tst
     };
 }
 
-#define TST_ENABLE_PROFILING 1
-
-#if TST_ENABLE_PROFILING
+#ifdef TST_ENABLE_PROFILING
 #define TST_PROFILE_BEGIN(name, fp) tst::Instrumentor::Get().BeginSession(name, fp)
 #define TST_PROFILE_END() tst::Instrumentor::Get().EndSession()
 #define TST_PROFILE_SCP(name) tst::InstrumentationTimer timer##__LINE__(name)

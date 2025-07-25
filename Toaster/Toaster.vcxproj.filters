@@ -115,6 +115,8 @@
     <ClInclude Include="src\Toaster\Renderer\Renderer3D.hpp" />
     <ClInclude Include="src\Toaster\Renderer\Renderer2D.hpp" />
     <ClInclude Include="src\Toaster\Debug\Instrumentor.h" />
+    <ClInclude Include="src\Toaster\Renderer\Framebuffer.hpp" />
+    <ClInclude Include="src\platform\OpenGl\OpenGLFramebuffer.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Toaster\Core\Application.cpp">
@@ -169,5 +171,7 @@
     <ClCompile Include="src\Toaster\CameraController.cpp" />
     <ClCompile Include="src\Toaster\Renderer\Renderer3D.cpp" />
     <ClCompile Include="src\Toaster\Renderer\Renderer2D.cpp" />
+    <ClCompile Include="src\Toaster\Renderer\Framebuffer.cpp" />
+    <ClCompile Include="src\platform\OpenGl\OpenGLFramebuffer.cpp" />
   </ItemGroup>
 </Project>

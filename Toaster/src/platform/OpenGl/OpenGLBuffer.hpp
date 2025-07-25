@@ -13,6 +13,7 @@ namespace tst
 		virtual void bind() const override;
 		virtual void unbind() const override;
 
+		virtual void resize(uint32_t newSize) override;
 		virtual void setData(const void* data, const uint32_t size) override;
 		virtual void setLayout(const BufferLayout& layout) override;
 		virtual const BufferLayout &getLayout() const override;

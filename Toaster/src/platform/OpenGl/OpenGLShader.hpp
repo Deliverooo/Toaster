@@ -31,6 +31,7 @@ namespace tst
 		virtual void uploadBool(const bool b, const char* name) override;
 
 		virtual void uploadInt1(const int x, const char* name) override;
+		virtual void uploadIntArray(int* arr, const uint32_t count, const char* name) override;
 		virtual void uploadInt2(const int x, const int y, const char* name) override;
 		virtual void uploadInt3(const int x, const int y, const int z, const char* name) override;
 		virtual void uploadInt4(const int x, const int y, const int z, const int w, const char* name) override;

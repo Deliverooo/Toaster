@@ -13,20 +13,33 @@ namespace tst
 
 	void OpenGLRendererAPI::clear()
 	{
+		TST_PROFILE_FN();
+
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	}
 
 	void OpenGLRendererAPI::setClearColour(const glm::vec4& colour)
 	{
+		TST_PROFILE_FN();
+
 		glClearColor(colour.r, colour.g, colour.b, colour.a);
+	}
+
+	void OpenGLRendererAPI::disableDepthTesting()
+	{
+		glDisable(GL_DEPTH_TEST);
+	}
+
+	void OpenGLRendererAPI::enableDepthTesting()
+	{
+		glEnable(GL_DEPTH_TEST);
 	}
 
 	void OpenGLRendererAPI::drawIndexed(const RefPtr<VertexArray>& vertexArray, uint32_t count)
 	{
-		vertexArray->bind();
+		uint32_t indexCount = (count == 0) ? vertexArray->getIndexBuffer()->count() : count;
+		glDrawElements(GL_TRIANGLES, static_cast<int>(indexCount), GL_UNSIGNED_INT, nullptr);
 
-		uint32_t indexCount = count ? vertexArray->getIndexBuffer()->count() : count;
-		glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, nullptr);
 		glBindTexture(GL_TEXTURE_2D, 0);
 	}
 

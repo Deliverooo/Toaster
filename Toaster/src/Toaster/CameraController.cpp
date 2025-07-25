@@ -316,10 +316,12 @@ namespace tst
 	{
 		TST_PROFILE_FN();
 
+		m_cameraSpeed = m_zoom;
+
 		if (Input::isKeyPressed(TST_KEY_R)) { m_cameraRotation += m_cameraRotationSpeed * dt; }
 		m_cameraRotation = glm::mod(m_cameraRotation, 360.0f);
 
-		float cameraSpeed = m_cameraSpeed * (Input::isKeyPressed(TST_KEY_LEFT_CONTROL) ? 6.0f : 1.0f);
+		float cameraSpeed = m_cameraSpeed * (Input::isKeyPressed(TST_KEY_LEFT_CONTROL) ? 3.0f : 1.0f);
 
 		glm::vec2 cameraDirection{ 0.0f };
 		if (Input::isKeyPressed(TST_KEY_W))			 { cameraDirection += glm::vec2(0.0f, 1.0f); }
@@ -339,7 +341,6 @@ namespace tst
 
 		m_Camera->setPosition(m_cameraPosition);
 		m_Camera->setRotation(m_cameraRotation);
-
 	}
 
 	void OrthoCamera2DController::onEvent(Event& e)
@@ -397,7 +398,7 @@ namespace tst
 	{
 		TST_PROFILE_FN();
 
-		m_zoom -= static_cast<float>(e.getScrollY());
+		m_zoom -= 0.25f * static_cast<float>(e.getScrollY());
 
 		if (m_zoom > 5.0f) { m_zoom = 5.0f; }
 		if (m_zoom < 0.1f) { m_zoom = 0.1f; }
@@ -416,5 +417,16 @@ namespace tst
 
 		return false;
 	}
+
+	void OrthoCamera2DController::onImGuiRender()
+	{
+		
+		ImGui::Begin("Camera Controls");
+		ImGui::SliderFloat("Damping", &m_damping, 0.001f, 100.0f);
+		ImGui::SliderFloat("Camera Speed", &m_cameraSpeed, 0.1f, 20.0f);
+		ImGui::SliderFloat("Acceleration", &m_acceleration, 0.1f, 100.0f);
+		ImGui::End();
+	}
+
 
 }

@@ -65,5 +65,4 @@ private:
 	tst::RefPtr<tst::Texture2D> m_Texture0;
 	glm::vec4 m_CubeColour{ 1.0f, 1.0f, 1.0f, 1.0f };
 
-	ParticleSystem3D m_ParticleSystem;
 };

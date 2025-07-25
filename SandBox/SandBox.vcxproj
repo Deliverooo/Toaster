@@ -138,11 +138,11 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\ParticleSystem3D.cpp" />
-    <ClCompile Include="src\Player.cpp" />
     <ClCompile Include="src\ParticleSystem.cpp" />
     <ClCompile Include="src\Sandbox2D.cpp" />
     <ClCompile Include="src\Sandbox3D.cpp" />
     <ClCompile Include="src\SandboxApp.cpp" />
+    <ClCompile Include="src\Utils\Maths.cpp" />
     <ClCompile Include="src\Utils\Random.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -151,6 +151,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <Image Include="..\..\..\Users\oocon\Downloads\orbo.gif" />
     <Image Include="assets\cubemaps\back.jpg" />
     <Image Include="assets\cubemaps\bottom.jpg" />
     <Image Include="assets\cubemaps\front.jpg" />
@@ -162,6 +163,7 @@
     <Image Include="assets\textures\One_Leg_Bird.png" />
     <Image Include="assets\textures\orbo0.png" />
     <Image Include="assets\textures\rocky_terrain_02_diff_2k.png" />
+    <Image Include="assets\textures\sprite sheets\Tiles_0.png" />
   </ItemGroup>
   <ItemGroup>
     <None Include="assets\shaders\BasicShader.frag.glsl" />
@@ -175,10 +177,10 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\ParticleSystem3D.hpp" />
-    <ClInclude Include="src\Player.hpp" />
     <ClInclude Include="src\ParticleSystem.hpp" />
     <ClInclude Include="src\Sandbox2D.hpp" />
     <ClInclude Include="src\Sandbox3D.hpp" />
+    <ClInclude Include="src\Utils\Maths.hpp" />
     <ClInclude Include="src\Utils\Random.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

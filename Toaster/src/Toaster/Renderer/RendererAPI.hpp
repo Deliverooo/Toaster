@@ -17,6 +17,9 @@ namespace tst
 		virtual void clear() = 0;
 		virtual void setClearColour(const glm::vec4 &colour) = 0;
 
+		virtual void disableDepthTesting() = 0;
+		virtual void enableDepthTesting() = 0;
+
 		virtual void drawIndexed(const RefPtr<VertexArray>& vertexArray, uint32_t count) = 0;
 
 		virtual void drawArrays(const RefPtr<VertexArray>& vertexArray) = 0;

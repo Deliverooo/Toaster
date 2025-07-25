@@ -1,3 +1,4 @@
+#pragma once
 #include "Toaster/Renderer/RendererAPI.hpp"
 
 namespace tst
@@ -9,6 +10,9 @@ namespace tst
 
 		virtual void clear() override;
 		virtual void setClearColour(const glm::vec4 &colour) override;
+
+		virtual void disableDepthTesting() override;
+		virtual void enableDepthTesting() override;
 
 		virtual void drawIndexed(const RefPtr<VertexArray>& vertexArray, uint32_t count = 0) override;
 		virtual void drawArrays(const RefPtr<VertexArray>& vertexArray) override;

@@ -27,5 +27,13 @@ namespace tst
 }
 
 
+
 #define TST_RENDER_2D
 //#define TST_RENDER_3D
+
+#define TST_REL_PATH "C:/dev/Toaster/SandBox/assets/"
+
+
+#ifndef NDEBUG
+#define TST_ENABLE_PROFILING
+#endif

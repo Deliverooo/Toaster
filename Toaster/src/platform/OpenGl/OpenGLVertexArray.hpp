@@ -6,63 +6,68 @@ namespace tst
 {
 	static GLenum toastDataTypeToOpenGL(ShaderDataType type)
 	{
-		switch (type)
+
+		static const std::unordered_map<ShaderDataType, GLenum> shaderTypeMap = {
+			{ShaderDataType::Bool,		GL_BOOL},
+
+			{ShaderDataType::Int,		GL_INT},
+			{ShaderDataType::Int2,		GL_INT},
+			{ShaderDataType::Int3,		GL_INT},
+			{ShaderDataType::Int4,		GL_INT},
+
+			{ShaderDataType::Uint,		GL_UNSIGNED_INT},
+			{ShaderDataType::Uint2,		GL_UNSIGNED_INT},
+			{ShaderDataType::Uint3,		GL_UNSIGNED_INT},
+			{ShaderDataType::Uint4,		GL_UNSIGNED_INT},
+
+			{ShaderDataType::Long,		GL_INT},
+			{ShaderDataType::Long2,		GL_INT},
+			{ShaderDataType::Long3,		GL_INT},
+			{ShaderDataType::Long4,		GL_INT},
+
+			{ShaderDataType::Ulong,		GL_UNSIGNED_INT},
+			{ShaderDataType::Ulong2,	GL_UNSIGNED_INT},
+			{ShaderDataType::Ulong3,	GL_UNSIGNED_INT},
+			{ShaderDataType::Ulong4,	GL_UNSIGNED_INT},
+
+			{ShaderDataType::LongLong,	GL_INT},
+			{ShaderDataType::LongLong2,	GL_INT},
+			{ShaderDataType::LongLong3,	GL_INT},
+			{ShaderDataType::LongLong4,	GL_INT},
+
+			{ShaderDataType::UlongLong,	GL_UNSIGNED_INT},
+			{ShaderDataType::UlongLong2,GL_UNSIGNED_INT},
+			{ShaderDataType::UlongLong3,GL_UNSIGNED_INT},
+			{ShaderDataType::UlongLong4,GL_UNSIGNED_INT},
+
+			{ShaderDataType::Short,		GL_SHORT},
+			{ShaderDataType::Short2,	GL_SHORT},
+			{ShaderDataType::Short3,	GL_SHORT},
+			{ShaderDataType::Short4,	GL_SHORT},
+
+			{ShaderDataType::Ushort,	GL_UNSIGNED_SHORT},
+			{ShaderDataType::Ushort2,	GL_UNSIGNED_SHORT},
+			{ShaderDataType::Ushort3,	GL_UNSIGNED_SHORT},
+			{ShaderDataType::Ushort4,	GL_UNSIGNED_SHORT},
+
+			{ShaderDataType::Float,		GL_FLOAT},
+			{ShaderDataType::Float2,	GL_FLOAT},
+			{ShaderDataType::Float3,	GL_FLOAT},
+			{ShaderDataType::Float4,	GL_FLOAT},
+
+			{ShaderDataType::Double,	GL_DOUBLE},
+			{ShaderDataType::Double2,	GL_DOUBLE},
+			{ShaderDataType::Double3,	GL_DOUBLE},
+			{ShaderDataType::Double4,	GL_DOUBLE},
+		};
+
+		auto it = shaderTypeMap.find(type);
+		if (it != shaderTypeMap.end())
 		{
-		case ShaderDataType::Bool: return GL_BOOL;
-
-		case ShaderDataType::Int:  return GL_INT;
-		case ShaderDataType::Int3: return GL_INT;
-		case ShaderDataType::Int2: return GL_INT;
-		case ShaderDataType::Int4: return GL_INT;
-
-		case ShaderDataType::Uint:  return GL_UNSIGNED_INT;
-		case ShaderDataType::Uint2: return GL_UNSIGNED_INT;
-		case ShaderDataType::Uint3: return GL_UNSIGNED_INT;
-		case ShaderDataType::Uint4: return GL_UNSIGNED_INT;
-
-		case ShaderDataType::Long:  return GL_INT;
-		case ShaderDataType::Long2: return GL_INT;
-		case ShaderDataType::Long3: return GL_INT;
-		case ShaderDataType::Long4: return GL_INT;
-
-		case ShaderDataType::LongLong:  return GL_INT;
-		case ShaderDataType::LongLong2: return GL_INT;
-		case ShaderDataType::LongLong3: return GL_INT;
-		case ShaderDataType::LongLong4: return GL_INT;
-
-		case ShaderDataType::UlongLong:  return GL_UNSIGNED_INT;
-		case ShaderDataType::UlongLong2: return GL_UNSIGNED_INT;
-		case ShaderDataType::UlongLong3: return GL_UNSIGNED_INT;
-		case ShaderDataType::UlongLong4: return GL_UNSIGNED_INT;
-
-		case ShaderDataType::Ulong:  return GL_UNSIGNED_INT;
-		case ShaderDataType::Ulong2: return GL_UNSIGNED_INT;
-		case ShaderDataType::Ulong3: return GL_UNSIGNED_INT;
-		case ShaderDataType::Ulong4: return GL_UNSIGNED_INT;
-
-		case ShaderDataType::Short:  return GL_SHORT;
-		case ShaderDataType::Short2: return GL_SHORT;
-		case ShaderDataType::Short3: return GL_SHORT;
-		case ShaderDataType::Short4: return GL_SHORT;
-
-		case ShaderDataType::Ushort:  return GL_UNSIGNED_SHORT;
-		case ShaderDataType::Ushort2: return GL_UNSIGNED_SHORT;
-		case ShaderDataType::Ushort3: return GL_UNSIGNED_SHORT;
-		case ShaderDataType::Ushort4: return GL_UNSIGNED_SHORT;
-
-		case ShaderDataType::Float:  return GL_FLOAT;
-		case ShaderDataType::Float2: return GL_FLOAT;
-		case ShaderDataType::Float3: return GL_FLOAT;
-		case ShaderDataType::Float4: return GL_FLOAT;
-
-		case ShaderDataType::Double:  return GL_DOUBLE;
-		case ShaderDataType::Double2: return GL_DOUBLE;
-		case ShaderDataType::Double3: return GL_DOUBLE;
-		case ShaderDataType::Double4: return GL_DOUBLE;
-
-		default: TST_ASSERT(false, "Invalid Shader Data Type!");
+			return it->second;
 		}
-		return 0;
+
+		TST_ASSERT(false, "Invalid shader data type provided to vertex buffer layout!");
 	}
 
 	class OpenGLVertexArray : public VertexArray

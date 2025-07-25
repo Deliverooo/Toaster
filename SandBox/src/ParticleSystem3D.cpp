@@ -76,6 +76,6 @@ void ParticleSystem3D::onRender()
 		Colour.a *= lifePercent;
 
 		glm::vec3 size = glm::mix(particle.SizeEnd, particle.SizeBegin, lifePercent);
-		tst::Renderer3D::drawCube(particle.Position, particle.Rotation, size, Colour);
+		tst::Renderer3D::drawQuad(particle.Position, particle.Rotation, size, Colour);
 	}
 }
