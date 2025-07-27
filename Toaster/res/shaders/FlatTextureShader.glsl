@@ -11,6 +11,7 @@ layout(location = 4) in float inTilingFactor;
 uniform mat4 u_Projection;
 uniform mat4 u_View;
 
+
 out vec4  v_Colour;
 out vec2  v_TextureCoords;
 out float v_TextureIndex;
@@ -35,6 +36,7 @@ in vec4  v_Colour;
 in vec2  v_TextureCoords;
 flat in float v_TextureIndex;
 in float v_TilingFactor;
+
 
 out vec4 FragColour;
 

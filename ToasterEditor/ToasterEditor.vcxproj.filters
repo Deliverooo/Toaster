@@ -18,4 +18,28 @@
       <Filter>util</Filter>
     </ClCompile>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="res\shaders\BasicShader.frag.glsl" />
+    <None Include="res\shaders\BasicShader.vert.glsl" />
+    <None Include="res\shaders\FlatShader.frag.glsl" />
+    <None Include="res\shaders\FlatShader.vert.glsl" />
+    <None Include="res\shaders\FlatTextureShader.glsl" />
+    <None Include="res\shaders\SkyboxShader.frag.glsl" />
+    <None Include="res\shaders\SkyboxShader.vert.glsl" />
+    <None Include="res\shaders\TestShader.glsl" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="res\textures\sprite sheets\Tiles_0.png" />
+    <Image Include="res\textures\Absolute_Cinema.jpg" />
+    <Image Include="res\textures\Grass2K.png" />
+    <Image Include="res\textures\One_Leg_Bird.png" />
+    <Image Include="res\textures\orbo0.png" />
+    <Image Include="res\textures\RayTraceRoom.png" />
+    <Image Include="res\cubemaps\back.jpg" />
+    <Image Include="res\cubemaps\bottom.jpg" />
+    <Image Include="res\cubemaps\front.jpg" />
+    <Image Include="res\cubemaps\left.jpg" />
+    <Image Include="res\cubemaps\right.jpg" />
+    <Image Include="res\cubemaps\top.jpg" />
+  </ItemGroup>
 </Project>

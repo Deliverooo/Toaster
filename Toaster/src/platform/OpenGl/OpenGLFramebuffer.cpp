@@ -89,7 +89,12 @@ namespace tst
 
 		if (width == 0 || height == 0 || width > 4096 || height > 4096)
 		{
-			TST_ASSERT(false, "Cannot resize framebuffer to zero dimensions!");
+			TST_CORE_ERROR("Cannot resize framebuffer to zero dimensions!");
+			m_info.width = 1;
+			m_info.height = 1;
+
+			invalidate();
+
 			return;
 		}
 
@@ -98,4 +103,5 @@ namespace tst
 
 		invalidate();
 	}
+
 }

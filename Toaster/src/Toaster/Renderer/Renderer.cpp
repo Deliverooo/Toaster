@@ -1200,9 +1200,7 @@ namespace tst
 			render_data.textureSlotIndex++;
 		}
 
-		glm::mat4 transformation = glm::translate(glm::mat4(1.0f), position)
-			* ((glm::length(rotation) == 0.0f) ? glm::mat4(1.0f) : glm::rotate(glm::mat4(1.0f), glm::length(rotation), glm::normalize(rotation)))
-			* glm::scale(glm::mat4(1.0f), scale);
+		glm::mat4 transformation = transformationMat(position, rotation, scale);
 
 		float texIndexf = static_cast<float>(texIndex);
 

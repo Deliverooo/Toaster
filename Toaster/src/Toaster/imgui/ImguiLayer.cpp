@@ -30,8 +30,11 @@ namespace tst
 
 		ImGuiIO& io = ImGui::GetIO(); (void)io;
 
+		
+
 		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+		io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 
 		ImGuiStyle &style = ImGui::GetStyle();
 
@@ -130,16 +133,20 @@ namespace tst
 
 		auto& app = Application::getInstance();
 		io.DisplaySize = { (float)app.getWindow().getWidth(), (float)app.getWindow().getHeight() };
-		{
-			TST_PROFILE_SCP("ImGuiLayer::end - rendering the glfw draw data!");
-			ImGui::Render();
-			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-		}
+
+		ImGui::Render();
+		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+		
 		if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
 		{
+
+			// -- Fixed Bug where the app would crash if I dragged one of the viewport windows --
+			// apparently I thought I could omit the context variable in place of a direct function call in glfwMakeContextCurrent
+			// little did I know, ImGui::UpdatePlatformWindows() would have updated the context, meaning a backup context is necessary.
+			GLFWwindow* context = glfwGetCurrentContext();
 			ImGui::UpdatePlatformWindows();
 			ImGui::RenderPlatformWindowsDefault();
-			glfwMakeContextCurrent(glfwGetCurrentContext());
+			glfwMakeContextCurrent(context);
 		}
 
 	}

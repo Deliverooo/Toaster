@@ -182,6 +182,8 @@
     <ClInclude Include="src\Toaster\Renderer\Texture.hpp" />
     <ClInclude Include="src\Toaster\Renderer\Transform.hpp" />
     <ClInclude Include="src\Toaster\Renderer\VertexArray.hpp" />
+    <ClInclude Include="src\Toaster\Scene\Components.hpp" />
+    <ClInclude Include="src\Toaster\Scene\Entity.hpp" />
     <ClInclude Include="src\Toaster\Scene\Scene.hpp" />
     <ClInclude Include="src\Toaster\Util\MathUtil.hpp" />
     <ClInclude Include="src\Toaster\imgui\ImguiLayer.hpp" />
@@ -214,6 +216,7 @@
     <ClCompile Include="src\Toaster\Renderer\Framebuffer.cpp" />
     <ClCompile Include="src\Toaster\Renderer\Material.cpp" />
     <ClCompile Include="src\Toaster\Renderer\RenderCommand.cpp" />
+    <ClCompile Include="src\Toaster\Renderer\RenderCore.cpp" />
     <ClCompile Include="src\Toaster\Renderer\Renderer.cpp" />
     <ClCompile Include="src\Toaster\Renderer\Renderer2D.cpp" />
     <ClCompile Include="src\Toaster\Renderer\Renderer3D.cpp" />
@@ -238,6 +241,8 @@
     <ClCompile Include="src\platform\Vulkan\VulkanRenderingContext.cpp" />
     <ClCompile Include="src\platform\Windows\WindowsInput.cpp" />
     <ClCompile Include="src\platform\Windows\WindowsWindow.cpp" />
+    <ClCompile Include="src\Toaster\Scene\Components.cpp" />
+    <ClCompile Include="src\Toaster\Scene\Entity.cpp" />
     <ClCompile Include="src\Toaster\Scene\Scene.cpp" />
     <ClCompile Include="src\tstpch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
@@ -262,6 +267,10 @@
     <ProjectReference Include="..\dependencies\glm\glm.vcxproj">
       <Project>{6577880B-D180-887C-5AFC-9E7CC604947C}</Project>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="res\shaders\FlatTextureShader.glsl" />
+    <None Include="res\shaders\LightingShader.glsl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

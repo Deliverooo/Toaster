@@ -21,6 +21,7 @@ namespace tst
 		virtual const uint32_t &getColourAttachmentId() const override { return m_colourAttachmentId; }
 		virtual const uint32_t &getDepthAttachmentId() const override { return m_depthAttachmentId; }
 
+
 	private:
 
 		void invalidate();

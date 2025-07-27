@@ -40,6 +40,11 @@
 #include "Toaster/Renderer/Renderer3D.hpp"
 #include "Toaster/Renderer/Framebuffer.hpp"
 
+// Toaster Engine Scene Header
+#include "Toaster/Scene/Scene.hpp"
+#include "Toaster/Scene/Components.hpp"
+#include "Toaster/Scene/Entity.hpp"
+
 // Toaster OpenGL API functions
 #include "platform/OpenGl/OpenGLShader.hpp"
 

@@ -186,6 +186,8 @@
     </ClInclude>
     <ClInclude Include="src\tstpch.h" />
     <ClInclude Include="src\Toaster\Scene\Scene.hpp" />
+    <ClInclude Include="src\Toaster\Scene\Components.hpp" />
+    <ClInclude Include="src\Toaster\Scene\Entity.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Toaster\CameraController.cpp">
@@ -295,5 +297,12 @@
     </ClCompile>
     <ClCompile Include="src\tstpch.cpp" />
     <ClCompile Include="src\Toaster\Scene\Scene.cpp" />
+    <ClCompile Include="src\Toaster\Scene\Components.cpp" />
+    <ClCompile Include="src\Toaster\Renderer\RenderCore.cpp" />
+    <ClCompile Include="src\Toaster\Scene\Entity.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="res\shaders\FlatTextureShader.glsl" />
+    <None Include="res\shaders\LightingShader.glsl" />
   </ItemGroup>
 </Project>

@@ -89,8 +89,8 @@ namespace tst
 
 	glm::vec4 ToasterEditorLayer::screenSpaceToWorldSpace(glm::vec2 screenCoords, float depth)
 	{
-		float vX = static_cast<float>(m_ViewportSize.x) * 0.5f;
-		float vY = static_cast<float>(m_ViewportSize.y) * 0.5f;
+		float vX = static_cast<float>(m_Framebuffer->getInfo().width) * 0.5f;
+		float vY = static_cast<float>(m_Framebuffer->getInfo().height) * 0.5f;
 
 		float mX = screenCoords.x - vX;
 		float mY = screenCoords.y - vY;
@@ -118,33 +118,59 @@ namespace tst
 		FramebufferCreateInfo framebufferCreateInfo{ 1280, 720 };
 		m_Framebuffer = Framebuffer::create(framebufferCreateInfo);
 
+		//m_RenderOutputFramebuffer = Framebuffer::create(FramebufferCreateInfo{ 300, 600 });
+
 		TextureParams defaultParams{};
-		defaultParams.minFilter			= TextureFiltering::LinearMipmapLinear;
-		defaultParams.magFilter			= TextureFiltering::Linear;
-		defaultParams.wrapS				= TextureWrapping::Repeat;
-		defaultParams.wrapT				= TextureWrapping::Repeat;
-		defaultParams.generateMipmaps	= true;
+		defaultParams.minFilter = TextureFiltering::LinearMipmapLinear;
+		defaultParams.magFilter = TextureFiltering::Linear;
+		defaultParams.wrapS = TextureWrapping::Repeat;
+		defaultParams.wrapT = TextureWrapping::Repeat;
+		defaultParams.generateMipmaps = true;
 
 		TextureParams pixelTextureParams{};
-		pixelTextureParams.minFilter		= TextureFiltering::LinearMipmapNearest;
-		pixelTextureParams.magFilter		= TextureFiltering::Nearest;
-		pixelTextureParams.wrapS			= TextureWrapping::Repeat;
-		pixelTextureParams.wrapT			= TextureWrapping::Repeat;
-		pixelTextureParams.generateMipmaps	= true;
+		pixelTextureParams.minFilter = TextureFiltering::LinearMipmapNearest;
+		pixelTextureParams.magFilter = TextureFiltering::Nearest;
+		pixelTextureParams.wrapS = TextureWrapping::Repeat;
+		pixelTextureParams.wrapT = TextureWrapping::Repeat;
+		pixelTextureParams.generateMipmaps = true;
 
 		RefPtr<Texture2D> dirtSheet = Texture2D::create(TST_EDITOR_REL_PATH"textures/sprite sheets/Tiles_0.png", pixelTextureParams);
 
-		m_OrboTexture			= Texture2D::create(TST_EDITOR_REL_PATH"textures/orbo0.png",			pixelTextureParams);
-		m_GrassTexture			= Texture2D::create(TST_EDITOR_REL_PATH"textures/Grass2K.png",			defaultParams);
-		m_BirdTexture			= Texture2D::create(TST_EDITOR_REL_PATH"textures/One_Leg_Bird.png",		defaultParams);
-		m_RayTraceRoomTexture	= Texture2D::create(TST_EDITOR_REL_PATH"textures/RayTraceRoom.png",		defaultParams);
+		m_OrboTexture = Texture2D::create(TST_EDITOR_REL_PATH"textures/orbo0.png", pixelTextureParams);
+		m_GrassTexture = Texture2D::create(TST_EDITOR_REL_PATH"textures/Grass2K.png", defaultParams);
+		m_BirdTexture = Texture2D::create(TST_EDITOR_REL_PATH"textures/One_Leg_Bird.png", defaultParams);
+		m_RayTraceRoomTexture = Texture2D::create(TST_EDITOR_REL_PATH"textures/RayTraceRoom.png", defaultParams);
 
 		m_Texture0 = SubTexture2D::createPixelPerfect(dirtSheet, 0, 2, 16, 16);
+
+		//m_renderTexture = Texture2D::create(300, 600);
+
+		//unsigned char* data = new unsigned char[300 * 600 * 4];
+		//for (int i = 0; i < 300 * 600 * 4; i++)
+		//{
+		//	data[i] = static_cast<unsigned char>(0xff);
+		//}
+		//m_renderTexture->setData(data, 300 * 600 * 4);
+		//delete[] data;
+
+
+		m_Scene = std::make_shared<Scene>();
+
+		Entity entity = m_Scene->createEntity();
+
+		glm::mat4 mat{4.0f};
+		entity.addComponent<TransformComponent>(mat);
+		entity.addComponent<SpriteRendererComponent>();
+
+
+		TST_TRACE("{0}", entity.hasComponent<TransformComponent>());
+
+		auto& colour = entity.getComponent<SpriteRendererComponent>();
+		colour.colour = { 1.0f, 0.9f, 1.0f, 1.0f };
 	}
 
 	void ToasterEditorLayer::onUpdate(DeltaTime dt)
 	{
-
 
 		if (m_ViewportFocused)
 		{
@@ -166,11 +192,10 @@ namespace tst
 				particleCreateInfo.SizeBegin = { 0.07f, 0.07f, 0.07f };
 				particleCreateInfo.SizeEnd = { 0.025f, 0.025f, 0.025f };
 				particleCreateInfo.SizeVariation = { 0.001f, 0.001f, 0.001f };
-				particleCreateInfo.Lifetime = { 2.0f };
+				particleCreateInfo.Lifetime = { 0.8f };
 
 				m_particleSystem.emit(particleCreateInfo);
 			}
-			
 		}
 
 
@@ -204,10 +229,12 @@ namespace tst
 		RenderCommand::setClearColour(m_clearColour);
 		RenderCommand::clear();
 
+
 		Renderer3D::begin(m_PerspectiveCameraCtrl.getCamera());
 
 		Renderer3D::drawCube({ 0.0f, 0.0f, -1.0f }, { 0.0f, 0.0f, 0.0f }, { 10.0f, 10.0f, 10.0f }, m_OrboTexture);
 
+		m_Scene->onUpdate(dt);
 
 		m_particleSystem.onRender();
 
@@ -320,6 +347,55 @@ namespace tst
 
 		ImGui::End();
 
+		//ImGui::Begin("Render Output");
+
+		//ImVec2 imageSize = ImGui::GetContentRegionAvail();
+		//ImGui::Image(m_RenderOutputFramebuffer->getColourAttachmentId(), imageSize);
+
+		//static glm::vec4 v1{ 1.0f, 0.0f, 0.0f, 0.0f };
+		//static glm::vec4 v2{ 0.0f, 1.0f, 0.0f, 0.0f };
+		//static glm::vec4 v3{ 0.0f, 0.0f, 1.0f, 0.0f };
+		//static glm::vec4 v4{ 0.0f, 0.0f, 0.0f, 1.0f };
+
+		//ImGui::SliderFloat("Matrix column 0##0", &v1.x, 0.0f, 2.0f);
+		//ImGui::SliderFloat("Matrix column 1##0", &v2.x, 0.0f, 2.0f);
+		//ImGui::SliderFloat("Matrix column 2##0", &v3.x, 0.0f, 2.0f);
+		//ImGui::SliderFloat("Matrix column 3##0", &v4.x, 0.0f, 2.0f);
+
+		//ImGui::SliderFloat("Matrix column 0##1", &v1.y, 0.0f, 2.0f);
+		//ImGui::SliderFloat("Matrix column 1##1", &v2.y, 0.0f, 2.0f);
+		//ImGui::SliderFloat("Matrix column 2##1", &v3.y, 0.0f, 2.0f);
+		//ImGui::SliderFloat("Matrix column 3##1", &v4.y, 0.0f, 2.0f);
+
+		//ImGui::SliderFloat("Matrix column 0##2", &v1.z, 0.0f, 2.0f);
+		//ImGui::SliderFloat("Matrix column 1##2", &v2.z, 0.0f, 2.0f);
+		//ImGui::SliderFloat("Matrix column 2##2", &v3.z, 0.0f, 2.0f);
+		//ImGui::SliderFloat("Matrix column 3##2", &v4.z, 0.0f, 2.0f);
+
+		//ImGui::SliderFloat("Matrix column 0##3", &v1.w, 0.0f, 2.0f);
+		//ImGui::SliderFloat("Matrix column 1##3", &v2.w, 0.0f, 2.0f);
+		//ImGui::SliderFloat("Matrix column 2##3", &v3.w, 0.0f, 2.0f);
+		//ImGui::SliderFloat("Matrix column 3##3", &v4.w, 0.0f, 2.0f);
+
+		//glm::mat4 matrix = glm::mat4(v1, v2, v3, v4);
+
+		//if (ImGui::Button("Render"))
+		//{
+
+		//}
+
+		//m_RenderOutputFramebuffer->bind();
+		//RenderCommand::setClearColour({ 0.15f, 0.15f, 0.15f, 1.0f });
+		//RenderCommand::clear();
+		//Renderer3D::begin(m_PerspectiveCameraCtrl.getCamera());
+
+		//Renderer3D::drawCube(matrix, m_BirdTexture);
+		//Renderer3D::drawQuad(glm::mat4(1.0f), m_BirdTexture);
+		//Renderer3D::end();
+		//m_RenderOutputFramebuffer->unbind();
+
+		//ImGui::End();
+
 		ImGui::Begin("3D Renderer Stats");
 
 		ImGui::Text("Draw Calls:			%d", Renderer3D::getStats().drawCallCount);
@@ -347,6 +423,7 @@ namespace tst
 		if (m_ViewportSize.x != viewportSize.x || m_ViewportSize.y != viewportSize.y)
 		{
 			m_Framebuffer->resize(static_cast<uint32_t>(viewportSize.x), static_cast<uint32_t>(viewportSize.y));
+			//m_RenderOutputFramebuffer->resize(static_cast<uint32_t>(viewportSize.x), static_cast<uint32_t>(viewportSize.y));
 			m_ViewportSize = { viewportSize.x, viewportSize.y };
 
 			m_PerspectiveCameraCtrl.resize(static_cast<uint32_t>(m_ViewportSize.x), static_cast<uint32_t>(m_ViewportSize.y));

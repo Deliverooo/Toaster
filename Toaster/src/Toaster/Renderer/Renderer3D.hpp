@@ -8,6 +8,8 @@ namespace tst
 	class TST_API Renderer3D
 	{
 	public:
+
+
 		
 		static glm::mat4 constructMatrix(const glm::vec3& p, const glm::vec3& r, const glm::vec3& s)
 		{
@@ -44,6 +46,11 @@ namespace tst
 		static void drawQuad(const glm::vec3& position, const glm::vec3& rotation, const glm::vec2& scale, const RefPtr<Texture2D>& texture, const float tilingScale = 1.0f, const glm::vec4& tintColour = glm::vec4(1.0f));
 		static void drawQuad(const glm::vec3& position, const glm::vec3& rotation, const glm::vec2& scale, const RefPtr<SubTexture2D>& texture, const float tilingScale = 1.0f, const glm::vec4& tintColour = glm::vec4(1.0f));
 
+		static void drawQuad(const glm::mat4 &transform, const glm::vec4& colour);
+		static void drawQuad(const glm::mat4 &transform, const RefPtr<Texture2D>& texture, const float tilingScale = 1.0f, const glm::vec4& tintColour = glm::vec4(1.0f));
+		static void drawQuad(const glm::mat4 &transform, const RefPtr<SubTexture2D>& texture, const float tilingScale = 1.0f, const glm::vec4& tintColour = glm::vec4(1.0f));
+
+
 		// Quads with 3 scale parameters
 		static void drawQuad(const glm::vec3& position, const glm::vec3& rotation, const glm::vec3& scale, const glm::vec4& colour);
 		static void drawQuad(const glm::vec3& position, const glm::vec3& rotation, const glm::vec3& scale, const RefPtr<Texture2D>& texture, const float tilingScale = 1.0f, const glm::vec4& tintColour = glm::vec4(1.0f));
@@ -67,6 +74,10 @@ namespace tst
 		static void drawCube(const glm::vec3& position, const glm::vec3& rotation, const glm::vec3& scale, const RefPtr<Texture2D>& texture, const float tilingScale = 1.0f, const glm::vec4& tintColour = glm::vec4(1.0f));
 		static void drawCube(const glm::vec3& position, const glm::vec3& rotation, const glm::vec3& scale, const RefPtr<SubTexture2D>& texture, const float tilingScale = 1.0f, const glm::vec4& tintColour = glm::vec4(1.0f));
 
+		static void drawCube(const glm::mat4& transform, const glm::vec4& colour);
+		static void drawCube(const glm::mat4& transform, const RefPtr<Texture2D>& texture, const float tilingScale = 1.0f, const glm::vec4& tintColour = glm::vec4(1.0f));
+		static void drawCube(const glm::mat4& transform, const RefPtr<SubTexture2D>& texture, const float tilingScale = 1.0f, const glm::vec4& tintColour = glm::vec4(1.0f));
+
 		struct Stats
 		{
 			uint32_t drawCallCount{ 0 };
@@ -85,6 +96,9 @@ namespace tst
 
 		static Stats getStats();
 		static void resetStats();
+
+	private:
+		static uint32_t enumerateTextureIndex(const RefPtr<Texture2D>& texture);
 		
 	};
 	

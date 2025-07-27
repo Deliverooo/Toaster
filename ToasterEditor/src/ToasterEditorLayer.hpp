@@ -88,18 +88,21 @@ namespace tst
 
 		RefPtr<SubTexture2D> m_Texture0;
 
+		//RefPtr<Texture2D> m_renderTexture;
+
 		RefPtr<Framebuffer> m_Framebuffer;
+
+		//RefPtr<Framebuffer> m_RenderOutputFramebuffer;
 
 		glm::vec4 m_clearColour{ 0.15f, 0.15f, 0.15f, 1.0f };
 
 		glm::vec2 m_ViewportSize{1280, 720};
-
 		ParticleSystem3D m_particleSystem;
 
+		RefPtr<Scene> m_Scene;
 
 		bool m_ViewportFocused = false;
 		bool m_ViewportHovered = false;
-
 		bool m_particleDrawMode = false;
 
 	};

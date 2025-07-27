@@ -34,6 +34,6 @@ namespace tst
 #define TST_REL_PATH "C:/dev/Toaster/SandBox/assets/"
 
 
-#ifndef NDEBUG
+#ifdef NO_THANKS
 #define TST_ENABLE_PROFILING
 #endif

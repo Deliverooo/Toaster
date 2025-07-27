@@ -5,11 +5,12 @@
 #include "Shader.hpp"
 #include "VertexArray.hpp"
 #include "platform/OpenGl/OpenGLShader.hpp"
+#include "Toaster/Util/MathUtil.hpp"
 
 
 namespace tst
 {
-	
+
 	struct QuadVertex
 	{
 		glm::vec3 position;
@@ -30,6 +31,7 @@ namespace tst
 		RefPtr<VertexBuffer> quadVertexBuffer;
 		RefPtr<IndexBuffer> quadIndexBuffer;
 		RefPtr<Shader> flatTextureShader;
+
 		RefPtr<Texture2D> whiteTexture;
 
 		uint32_t quadIndex = 0;
@@ -114,7 +116,6 @@ namespace tst
 
 		render_data.textureSlots[0] = render_data.whiteTexture;
 
-
 		render_data.quadVertexPositions[0] = { -0.5f, -0.5f, 0.0f, 1.0f };
 		render_data.quadVertexPositions[1] = { 0.5f, -0.5f, 0.0f, 1.0f };
 		render_data.quadVertexPositions[2] = { 0.5f,  0.5f, 0.0f, 1.0f };
@@ -173,9 +174,12 @@ namespace tst
 	{
 		TST_PROFILE_FN();
 
+		auto& projection = camera->getProjectionMatrix();
+		auto& view = camera->getViewMatrix();
+
 		render_data.flatTextureShader->bind();
-		render_data.flatTextureShader->uploadMatrix4f(camera->getProjectionMatrix(), "u_Projection");
-		render_data.flatTextureShader->uploadMatrix4f(camera->getViewMatrix(), "u_View");
+		render_data.flatTextureShader->uploadMatrix4f(projection, "u_Projection");
+		render_data.flatTextureShader->uploadMatrix4f(view, "u_View");
 
 		render_data.quadIndex = 0;
 		render_data.quadVertexPtr = render_data.quadVertexBufferBase;
@@ -186,9 +190,13 @@ namespace tst
 	{
 		TST_PROFILE_FN();
 
+		auto& projection = camera->getProjectionMatrix();
+		auto& view = camera->getViewMatrix();
+
+
 		render_data.flatTextureShader->bind();
-		render_data.flatTextureShader->uploadMatrix4f(camera->getProjectionMatrix(), "u_Projection");
-		render_data.flatTextureShader->uploadMatrix4f(camera->getViewMatrix(), "u_View");
+		render_data.flatTextureShader->uploadMatrix4f(projection, "u_Projection");
+		render_data.flatTextureShader->uploadMatrix4f(view, "u_View");
 
 		render_data.quadIndex = 0;
 		render_data.quadVertexPtr = render_data.quadVertexBufferBase;
@@ -231,64 +239,10 @@ namespace tst
 		render_data.stats.batchesPerFrame++;
 	}
 
-	void Renderer3D::drawQuad(const glm::vec3& position, const glm::vec3& rotation, const glm::vec3& scale, const glm::vec4& colour)
+	uint32_t Renderer3D::enumerateTextureIndex(const RefPtr<Texture2D>& texture)
 	{
-		TST_PROFILE_FN();
-
-		if (!render_data.quadVertexPtr) {
-			TST_ASSERT(false, "quadVertexPtr is nullptr! Did you forget to call Renderer2D::begin()?");
-			return;
-		}
-
-		if (render_data.quadIndex >= render_data.maxIndices)
-		{
-			beginNewBatch();
-		}
-
-		// There is no texture being bound, so it will be white (slot 0)
-		float texIndex = 0.0f;
-
-
-		glm::mat4 transformation = glm::translate(glm::mat4(1.0f), position)
-			* ((glm::length(rotation) == 0.0f) ? glm::mat4(1.0f) : glm::rotate(glm::mat4(1.0f), glm::length(rotation), glm::normalize(rotation)))
-			* glm::scale(glm::mat4(1.0f), scale);
-
-
-		// for each vertex of the quad :)
-		for (int i = 0; i < 4; i++)
-		{
-			render_data.quadVertexPtr->position = transformation * render_data.quadVertexPositions[i];
-			render_data.quadVertexPtr->colour = colour;
-			render_data.quadVertexPtr->textureCoords = render_data.quadVertexUvs[i];
-			render_data.quadVertexPtr->textureIndex = texIndex;
-			render_data.quadVertexPtr->tilingFactor = 1.0f;
-			render_data.quadVertexPtr++;
-		}
-
-		render_data.quadIndex += 6;
-
-		render_data.stats.quadCount++;
-	}
-
-	void Renderer3D::drawQuad(const glm::vec3& position, const glm::vec3& rotation, const glm::vec3& scale, const RefPtr<Texture2D>& texture, float tilingScale, const glm::vec4& tintColour)
-	{
-		TST_PROFILE_FN();
-
-		if (!render_data.quadVertexPtr) {
-			TST_ASSERT(false, "quadVertexPtr is nullptr! Did you forget to call Renderer2D::begin()?");
-			return;
-		}
-
-		if (render_data.quadIndex >= render_data.maxIndices)
-		{
-			beginNewBatch();
-		}
-
-		constexpr glm::vec4 whiteColour = { 1.0f, 1.0f, 1.0f, 1.0f };
-
 		if (render_data.textureSlotIndex >= RenderData::maxTextureSlots) {
-			// Flush the batch and start a new one
-			TST_ERROR("yes");
+			beginNewBatch();
 		}
 
 		int texIndex = 0;
@@ -309,19 +263,133 @@ namespace tst
 			render_data.textureSlotIndex++;
 		}
 
-		glm::mat4 transformation = glm::translate(glm::mat4(1.0f), position)
-			* ((glm::length(rotation) == 0.0f) ? glm::mat4(1.0f) : glm::rotate(glm::mat4(1.0f), glm::length(rotation), glm::normalize(rotation)))
-			* glm::scale(glm::mat4(1.0f), scale);
+		return texIndex;
+	}
 
-		float texIndexf = static_cast<float>(texIndex);
+
+	void Renderer3D::drawQuad(const glm::vec3& position, const glm::vec3& rotation, const glm::vec3& scale, const glm::vec4& colour)
+	{
+		glm::mat4 transform = transformationMat(position, rotation, scale);
+		drawQuad(transform, colour);
+	}
+
+	void Renderer3D::drawQuad(const glm::vec3& position, const glm::vec3& rotation, const glm::vec3& scale, const RefPtr<Texture2D>& texture, float tilingScale, const glm::vec4& tintColour)
+	{
+
+		glm::mat4 transform = transformationMat(position, rotation, scale);
+		drawQuad(transform, texture, tilingScale, tintColour);
+	}
+
+	void Renderer3D::drawQuad(const glm::vec3& position, const glm::vec3& rotation, const glm::vec3& scale, const RefPtr<SubTexture2D>& texture, const float tilingScale, const glm::vec4& tintColour)
+	{
+		glm::mat4 transform = transformationMat(position, rotation, scale);
+		drawQuad(transform, texture, tilingScale, tintColour);
+	}
+
+
+	void Renderer3D::drawQuad(const glm::vec3& position, const glm::vec3& rotation, const glm::vec2& scale, const RefPtr<Texture2D>& texture, float tilingScale, const glm::vec4& tintColour)
+	{
+		drawQuad(position, rotation, { scale.x, scale.y, 1.0f }, texture, tilingScale, tintColour);
+	}
+
+	void Renderer3D::drawQuad(const glm::vec3& position, const glm::vec3& rotation, const glm::vec2& scale, const glm::vec4& colour)
+	{
+		drawQuad(position, rotation, {scale.x, scale.y, 1.0f}, colour);
+	}
+
+	void Renderer3D::drawQuad(const glm::vec3& position, const glm::vec3& rotation, const glm::vec2& scale, const RefPtr<SubTexture2D>& texture, const float tilingScale, const glm::vec4& tintColour)
+	{
+		drawQuad(position, rotation, { scale.x, scale.y, 1.0f }, texture, tilingScale, tintColour);
+	}
+
+	void Renderer3D::drawQuad(const glm::mat4& transform, const glm::vec4& colour)
+	{
+		TST_PROFILE_FN();
+
+		if (!render_data.quadVertexPtr) {
+			TST_ASSERT(false, "quadVertexPtr is nullptr! Did you forget to call Renderer2D::begin()?");
+			return;
+		}
+
+		if (render_data.quadIndex >= render_data.maxIndices)
+		{
+			beginNewBatch();
+		}
+
+		// There is no texture being bound, so it will be white (slot 0)
+		float texIndex = 0.0f;
 
 		// for each vertex of the quad :)
 		for (int i = 0; i < 4; i++)
 		{
-			render_data.quadVertexPtr->position = transformation * render_data.quadVertexPositions[i];
-			render_data.quadVertexPtr->colour = whiteColour;
+			render_data.quadVertexPtr->position = transform * render_data.quadVertexPositions[i];
+			render_data.quadVertexPtr->colour = colour;
 			render_data.quadVertexPtr->textureCoords = render_data.quadVertexUvs[i];
-			render_data.quadVertexPtr->textureIndex = texIndexf;
+			render_data.quadVertexPtr->textureIndex = texIndex;
+			render_data.quadVertexPtr->tilingFactor = 1.0f;
+			render_data.quadVertexPtr++;
+		}
+
+		render_data.quadIndex += 6;
+
+		render_data.stats.quadCount++;
+	}
+
+	void Renderer3D::drawQuad(const glm::mat4& transform, const RefPtr<Texture2D>& texture, const float tilingScale, const glm::vec4& tintColour)
+	{
+		if (!render_data.quadVertexPtr) {
+			TST_ASSERT(false, "quadVertexPtr is nullptr! Did you forget to call Renderer2D::begin()?");
+			return;
+		}
+
+		if (render_data.quadIndex >= render_data.maxIndices)
+		{
+			beginNewBatch();
+		}
+
+		constexpr glm::vec4 whiteColour = { 1.0f, 1.0f, 1.0f, 1.0f };
+
+		float texIndex = static_cast<float>(enumerateTextureIndex(texture));
+
+		// for each vertex of the quad :)
+		for (int i = 0; i < 4; i++)
+		{
+			render_data.quadVertexPtr->position = transform * render_data.quadVertexPositions[i];
+			render_data.quadVertexPtr->colour = whiteColour * tintColour;
+			render_data.quadVertexPtr->textureCoords = render_data.quadVertexUvs[i];
+			render_data.quadVertexPtr->textureIndex = texIndex;
+			render_data.quadVertexPtr->tilingFactor = tilingScale;
+			render_data.quadVertexPtr++;
+		}
+
+		render_data.quadIndex += 6;
+
+		render_data.stats.quadCount++;
+	}
+
+	void Renderer3D::drawQuad(const glm::mat4& transform, const RefPtr<SubTexture2D>& texture, const float tilingScale, const glm::vec4& tintColour)
+	{
+		if (!render_data.quadVertexPtr) {
+			TST_ASSERT(false, "quadVertexPtr is nullptr! Did you forget to call Renderer2D::begin()?");
+			return;
+		}
+
+		if (render_data.quadIndex >= render_data.maxIndices)
+		{
+			beginNewBatch();
+		}
+
+		constexpr glm::vec4 whiteColour = { 1.0f, 1.0f, 1.0f, 1.0f };
+
+		float texIndex = static_cast<float>(enumerateTextureIndex(texture->getBaseTexture()));
+
+		// for each vertex of the quad :)
+		for (int i = 0; i < 4; i++)
+		{
+			render_data.quadVertexPtr->position = transform * render_data.quadVertexPositions[i];
+			render_data.quadVertexPtr->colour = whiteColour * tintColour;
+			render_data.quadVertexPtr->textureCoords = render_data.quadVertexUvs[i];
+			render_data.quadVertexPtr->textureIndex = texIndex;
 			render_data.quadVertexPtr->tilingFactor = tilingScale;
 			render_data.quadVertexPtr++;
 		}
@@ -334,8 +402,24 @@ namespace tst
 
 	void Renderer3D::drawCube(const glm::vec3& position, const glm::vec3& rotation, const glm::vec3& scale, const glm::vec4& colour)
 	{
+		glm::mat4 transform = transformationMat(position, rotation, scale);
+		drawCube(transform, colour);
+	}
 
-		TST_PROFILE_FN();
+	void Renderer3D::drawCube(const glm::vec3& position, const glm::vec3& rotation, const glm::vec3& scale, const RefPtr<Texture2D>& texture, const float tilingScale, const glm::vec4& tintColour)
+	{
+		glm::mat4 transform = transformationMat(position, rotation, scale);
+		drawCube(transform, texture, tilingScale, tintColour);
+	}
+
+	void Renderer3D::drawCube(const glm::vec3& position, const glm::vec3& rotation, const glm::vec3& scale, const RefPtr<SubTexture2D>& texture, const float tilingScale, const glm::vec4& tintColour)
+	{
+		glm::mat4 transform = transformationMat(position, rotation, scale);
+		drawCube(transform, texture, tilingScale, tintColour);
+	}
+
+	void Renderer3D::drawCube(const glm::mat4& transform, const glm::vec4& colour)
+	{
 
 		if (!render_data.quadVertexPtr) {
 			TST_ASSERT(false, "quadVertexPtr is nullptr! Did you forget to call Renderer3D::begin()?");
@@ -348,10 +432,6 @@ namespace tst
 		}
 
 		float texIndex = 0.0f;
-
-		glm::mat4 transformation = glm::translate(glm::mat4(1.0f), position)
-			* ((glm::length(rotation) == 0.0f) ? glm::mat4(1.0f) : glm::rotate(glm::mat4(1.0f), glm::length(rotation), glm::normalize(rotation)))
-			* glm::scale(glm::mat4(1.0f), scale);
 
 		// Define cube faces as quads with proper normals and UVs
 		struct CubeFace {
@@ -401,7 +481,7 @@ namespace tst
 		{
 			for (int vertex = 0; vertex < 4; vertex++)
 			{
-				render_data.quadVertexPtr->position = transformation * glm::vec4(faces[face].vertices[vertex], 1.0f);
+				render_data.quadVertexPtr->position = transform * glm::vec4(faces[face].vertices[vertex], 1.0f);
 				render_data.quadVertexPtr->colour = colour;
 				render_data.quadVertexPtr->textureCoords = faces[face].uvs[vertex];
 				render_data.quadVertexPtr->textureIndex = texIndex;
@@ -414,11 +494,155 @@ namespace tst
 		render_data.stats.quadCount += 6;
 	}
 
-	void Renderer3D::drawCube(const glm::vec3& position, const glm::vec3& rotation, const glm::vec3& scale, const RefPtr<Texture2D>& texture, float tilingScale, const glm::vec4& tintColour)
+	void Renderer3D::drawCube(const glm::mat4& transform, const RefPtr<Texture2D>& texture, float tilingScale, const glm::vec4& tintColour)
 	{
+		if (!render_data.quadVertexPtr) {
+			TST_ASSERT(false, "quadVertexPtr is nullptr! Did you forget to call Renderer3D::begin()?");
+			return;
+		}
+
+		if (render_data.quadIndex + 36 >= render_data.maxIndices) {	beginNewBatch(); }
+
+		constexpr glm::vec4 whiteColour = { 1.0f, 1.0f, 1.0f, 1.0f };
+
+		float texIndex = static_cast<float>(enumerateTextureIndex(texture));
+
+		// Define cube faces as quads with proper normals and UVs
+		struct CubeFace {
+			glm::vec3 vertices[4];
+			glm::vec2 uvs[4];
+		};
+
+		CubeFace faces[6] = {
+			// Front face
+			{{{-0.5f, -0.5f,  0.5f}, { 0.5f, -0.5f,  0.5f}, { 0.5f,  0.5f,  0.5f}, {-0.5f,  0.5f,  0.5f}},
+			{{ 0.0f,  0.0f}, { 1.0f,  0.0f}, { 1.0f,  1.0f}, { 0.0f,  1.0f}}},
+			// Back face
+			{{{ 0.5f, -0.5f, -0.5f}, {-0.5f, -0.5f, -0.5f}, {-0.5f,  0.5f, -0.5f}, { 0.5f,  0.5f, -0.5f}},
+			{{ 0.0f,  0.0f}, { 1.0f,  0.0f}, { 1.0f,  1.0f}, { 0.0f,  1.0f}}},
+			// Left face
+			{{{-0.5f, -0.5f, -0.5f}, {-0.5f, -0.5f,  0.5f}, {-0.5f,  0.5f,  0.5f}, {-0.5f,  0.5f, -0.5f}},
+			{{ 0.0f,  0.0f}, { 1.0f,  0.0f}, { 1.0f,  1.0f}, { 0.0f,  1.0f}}},
+			// Right face
+			{{{ 0.5f, -0.5f,  0.5f}, { 0.5f, -0.5f, -0.5f}, { 0.5f,  0.5f, -0.5f}, { 0.5f,  0.5f,  0.5f}},
+			{{ 0.0f,  0.0f}, { 1.0f,  0.0f}, { 1.0f,  1.0f}, { 0.0f,  1.0f}}},
+			// Top face
+			{{{-0.5f,  0.5f,  0.5f}, { 0.5f,  0.5f,  0.5f}, { 0.5f,  0.5f, -0.5f}, {-0.5f,  0.5f, -0.5f}},
+			{{ 0.0f,  0.0f}, { 1.0f,  0.0f}, { 1.0f,  1.0f}, { 0.0f,  1.0f}}},
+			// Bottom face
+			{{{-0.5f, -0.5f, -0.5f}, { 0.5f, -0.5f, -0.5f}, { 0.5f, -0.5f,  0.5f}, {-0.5f, -0.5f,  0.5f}},
+			{{ 0.0f,  0.0f}, { 1.0f,  0.0f}, { 1.0f,  1.0f}, { 0.0f,  1.0f}}}
+		};
 
 
-		drawQuad(position, rotation, scale, texture, tilingScale, tintColour);
+		uint32_t cubeIndices[36] = {
+			// Back face
+			0, 1, 2, 2, 3, 0,
+			// Front face
+			4, 5, 6, 6, 7, 4,
+			// Left face
+			0, 4, 7, 7, 3, 0,
+			// Right face
+			1, 5, 6, 6, 2, 1,
+			// Bottom face
+			0, 1, 5, 5, 4, 0,
+			// Top face
+			3, 2, 6, 6, 7, 3
+		};
+
+		// Draw each face as a quad
+		for (int face = 0; face < 6; face++)
+		{
+			for (int vertex = 0; vertex < 4; vertex++)
+			{
+				render_data.quadVertexPtr->position = transform * glm::vec4(faces[face].vertices[vertex], 1.0f);
+				render_data.quadVertexPtr->colour = whiteColour * tintColour;
+				render_data.quadVertexPtr->textureCoords = faces[face].uvs[vertex];
+				render_data.quadVertexPtr->textureIndex = texIndex;
+				render_data.quadVertexPtr->tilingFactor = 1.0f;
+				render_data.quadVertexPtr++;
+			}
+		}
+
+		render_data.quadIndex += 36; // Cube indices
+		render_data.stats.quadCount += 6;
+
+	}
+
+
+	void Renderer3D::drawCube(const glm::mat4 &transform, const RefPtr<SubTexture2D>& texture, float tilingScale, const glm::vec4& tintColour)
+	{
+		if (!render_data.quadVertexPtr) {
+			TST_ASSERT(false, "quadVertexPtr is nullptr! Did you forget to call Renderer3D::begin()?");
+			return;
+		}
+
+		if (render_data.quadIndex + 36 >= render_data.maxIndices) { beginNewBatch(); }
+
+		constexpr glm::vec4 whiteColour = { 1.0f, 1.0f, 1.0f, 1.0f };
+
+		float texIndex = static_cast<float>(enumerateTextureIndex(texture->getBaseTexture()));
+
+		// Define cube faces as quads with proper normals and UVs
+		struct CubeFace {
+			glm::vec3 vertices[4];
+			glm::vec2 uvs[4];
+		};
+
+		CubeFace faces[6] = {
+			// Front face
+			{{{-0.5f, -0.5f,  0.5f}, { 0.5f, -0.5f,  0.5f}, { 0.5f,  0.5f,  0.5f}, {-0.5f,  0.5f,  0.5f}},
+			{{ 0.0f,  0.0f}, { 1.0f,  0.0f}, { 1.0f,  1.0f}, { 0.0f,  1.0f}}},
+			// Back face
+			{{{ 0.5f, -0.5f, -0.5f}, {-0.5f, -0.5f, -0.5f}, {-0.5f,  0.5f, -0.5f}, { 0.5f,  0.5f, -0.5f}},
+			{{ 0.0f,  0.0f}, { 1.0f,  0.0f}, { 1.0f,  1.0f}, { 0.0f,  1.0f}}},
+			// Left face
+			{{{-0.5f, -0.5f, -0.5f}, {-0.5f, -0.5f,  0.5f}, {-0.5f,  0.5f,  0.5f}, {-0.5f,  0.5f, -0.5f}},
+			{{ 0.0f,  0.0f}, { 1.0f,  0.0f}, { 1.0f,  1.0f}, { 0.0f,  1.0f}}},
+			// Right face
+			{{{ 0.5f, -0.5f,  0.5f}, { 0.5f, -0.5f, -0.5f}, { 0.5f,  0.5f, -0.5f}, { 0.5f,  0.5f,  0.5f}},
+			{{ 0.0f,  0.0f}, { 1.0f,  0.0f}, { 1.0f,  1.0f}, { 0.0f,  1.0f}}},
+			// Top face
+			{{{-0.5f,  0.5f,  0.5f}, { 0.5f,  0.5f,  0.5f}, { 0.5f,  0.5f, -0.5f}, {-0.5f,  0.5f, -0.5f}},
+			{{ 0.0f,  0.0f}, { 1.0f,  0.0f}, { 1.0f,  1.0f}, { 0.0f,  1.0f}}},
+			// Bottom face
+			{{{-0.5f, -0.5f, -0.5f}, { 0.5f, -0.5f, -0.5f}, { 0.5f, -0.5f,  0.5f}, {-0.5f, -0.5f,  0.5f}},
+			{{ 0.0f,  0.0f}, { 1.0f,  0.0f}, { 1.0f,  1.0f}, { 0.0f,  1.0f}}}
+		};
+
+
+		uint32_t cubeIndices[36] = {
+			// Back face
+			0, 1, 2, 2, 3, 0,
+			// Front face
+			4, 5, 6, 6, 7, 4,
+			// Left face
+			0, 4, 7, 7, 3, 0,
+			// Right face
+			1, 5, 6, 6, 2, 1,
+			// Bottom face
+			0, 1, 5, 5, 4, 0,
+			// Top face
+			3, 2, 6, 6, 7, 3
+		};
+
+		// Draw each face as a quad
+		for (int face = 0; face < 6; face++)
+		{
+			for (int vertex = 0; vertex < 4; vertex++)
+			{
+				render_data.quadVertexPtr->position = transform * glm::vec4(faces[face].vertices[vertex], 1.0f);
+				render_data.quadVertexPtr->colour = whiteColour * tintColour;
+				render_data.quadVertexPtr->textureCoords = faces[face].uvs[vertex];
+				render_data.quadVertexPtr->textureIndex = texIndex;
+				render_data.quadVertexPtr->tilingFactor = 1.0f;
+				render_data.quadVertexPtr++;
+			}
+		}
+
+		render_data.quadIndex += 36; // Cube indices
+		render_data.stats.quadCount += 6;
+
 	}
 
 	Renderer3D::Stats Renderer3D::getStats()
@@ -437,7 +661,4 @@ namespace tst
 		render_data.stats.textureBindings = 0;
 		render_data.stats.verticesSubmitted = 0;
 	}
-
-
 }
-

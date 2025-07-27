@@ -3,6 +3,11 @@
 
 #include <glm/glm.hpp>
 
+#include "Components.hpp"
+#include "Toaster/Renderer/Renderer3D.hpp"
+
+#include "Entity.hpp"
+
 namespace tst
 {
 
@@ -23,14 +28,31 @@ namespace tst
 	Scene::Scene()
 	{
 
-		entt::entity entity = m_registry.create();
-		
-		m_registry.emplace<Transform>(entity, glm::mat4(1.0f));
 	}
 
 	Scene::~Scene()
 	{
+
 		
+	}
+
+	
+	void Scene::onUpdate(DeltaTime dt)
+	{
+
+		auto group = m_registry.group<TransformComponent>(entt::get<SpriteRendererComponent>);
+
+		for (const auto entity : group)
+		{
+			auto [transform, spriteRenderer] = group.get<TransformComponent, SpriteRendererComponent>(entity);
+
+			Renderer3D::drawQuad(transform, spriteRenderer.colour);
+		}
+	}
+
+	Entity Scene::createEntity()
+	{
+		return { m_registry.create(), this };
 	}
 
 
