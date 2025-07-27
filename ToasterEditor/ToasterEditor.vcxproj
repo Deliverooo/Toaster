@@ -79,7 +79,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>TST_PLATFORM_WINDOWS;TST_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\Toaster\src;..\dependencies\spdlog\include;..\dependencies\imgui;..\dependencies\glm;..\dependencies\ImGui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\Toaster\src;..\dependencies\spdlog\include;..\dependencies\imgui;..\dependencies\glm;..\dependencies\ImGui;..\dependencies\Entt\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -97,7 +97,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>TST_PLATFORM_WINDOWS;TST_RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\Toaster\src;..\dependencies\spdlog\include;..\dependencies\imgui;..\dependencies\glm;..\dependencies\ImGui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\Toaster\src;..\dependencies\spdlog\include;..\dependencies\imgui;..\dependencies\glm;..\dependencies\ImGui;..\dependencies\Entt\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -119,7 +119,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>TST_PLATFORM_WINDOWS;TST_DIST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\Toaster\src;..\dependencies\spdlog\include;..\dependencies\imgui;..\dependencies\glm;..\dependencies\ImGui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\Toaster\src;..\dependencies\spdlog\include;..\dependencies\imgui;..\dependencies\glm;..\dependencies\ImGui;..\dependencies\Entt\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -137,44 +137,18 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Toaster\Toaster.vcxproj">
-      <Project>{E77DE44F-535D-63EB-5C75-EEC1C8D3C94C}</Project>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="src\ToasterEditorLayer.cpp" />
-    <ClCompile Include="src\ToasterEditorApp.cpp" />
-    <ClCompile Include="src\util\Random.cpp" />
-  </ItemGroup>
-  <ItemGroup>
     <ClInclude Include="src\ToasterEditorLayer.hpp" />
     <ClInclude Include="src\util\Random.hpp" />
   </ItemGroup>
   <ItemGroup>
-    <Image Include="res\cubemaps\back.jpg" />
-    <Image Include="res\cubemaps\bottom.jpg" />
-    <Image Include="res\cubemaps\front.jpg" />
-    <Image Include="res\cubemaps\left.jpg" />
-    <Image Include="res\cubemaps\right.jpg" />
-    <Image Include="res\cubemaps\top.jpg" />
-    <Image Include="res\textures\Absolute_Cinema.jpg" />
-    <Image Include="res\textures\Global_illumination1.png" />
-    <Image Include="res\textures\Grass2K.png" />
-    <Image Include="res\textures\One_Leg_Bird.png" />
-    <Image Include="res\textures\orbo0.png" />
-    <Image Include="res\textures\RayTraceRoom.png" />
-    <Image Include="res\textures\rocky_terrain_02_diff_2k.png" />
-    <Image Include="res\textures\sprite sheets\Tiles_0.png" />
+    <ClCompile Include="src\ToasterEditorApp.cpp" />
+    <ClCompile Include="src\ToasterEditorLayer.cpp" />
+    <ClCompile Include="src\util\Random.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="res\shaders\BasicShader.frag.glsl" />
-    <None Include="res\shaders\BasicShader.vert.glsl" />
-    <None Include="res\shaders\FlatShader.frag.glsl" />
-    <None Include="res\shaders\FlatShader.vert.glsl" />
-    <None Include="res\shaders\FlatTextureShader.glsl" />
-    <None Include="res\shaders\SkyboxShader.frag.glsl" />
-    <None Include="res\shaders\SkyboxShader.vert.glsl" />
-    <None Include="res\shaders\TestShader.glsl" />
+    <ProjectReference Include="..\Toaster\Toaster.vcxproj">
+      <Project>{E77DE44F-535D-63EB-5C75-EEC1C8D3C94C}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

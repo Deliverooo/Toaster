@@ -26,7 +26,7 @@ namespace tst
 
 		static double getMouseX();
 		static double getMouseY();
-		static TstMousePos getMousePos();
+		static std::pair<double, double> getMousePos();
 
 		static void focusMouseCursor();
 		static void unfocusMouseCursor();

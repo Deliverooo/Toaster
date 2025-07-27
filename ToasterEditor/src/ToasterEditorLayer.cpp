@@ -150,6 +150,26 @@ namespace tst
 		{
 
 			m_PerspectiveCameraCtrl.onUpdate(dt);
+
+			if (Input::isMouseButtonPressed(TST_MOUSE_BUTTON_1) && m_particleDrawMode)
+			{
+				Particle3DCreateInfo particleCreateInfo{};
+
+				auto [mX, mY] = Input::getMousePos();
+
+				particleCreateInfo.Position = screenSpaceToWorldSpace({ mX, mY }, 0.5f);
+				particleCreateInfo.Velocity = m_PerspectiveCameraCtrl.getFrontVector();
+				particleCreateInfo.VelocityVariation = { 0.7f, 0.0f, 0.7f };
+				particleCreateInfo.ColourBegin = { 0.9f, 0.08f, 0.08f, 0.7f };
+				particleCreateInfo.ColourEnd = { 0.05f, 0.02f, 0.02f, 0.5f };
+				particleCreateInfo.ColourVariation = { 0.9f, 0.05f, 0.05f, 0.0f };
+				particleCreateInfo.SizeBegin = { 0.07f, 0.07f, 0.07f };
+				particleCreateInfo.SizeEnd = { 0.025f, 0.025f, 0.025f };
+				particleCreateInfo.SizeVariation = { 0.001f, 0.001f, 0.001f };
+				particleCreateInfo.Lifetime = { 2.0f };
+
+				m_particleSystem.emit(particleCreateInfo);
+			}
 			
 		}
 
@@ -294,17 +314,22 @@ namespace tst
 			ImGui::EndMenuBar();
 		}
 
+		ImGui::Begin("Settings");
 
-		ImGui::Begin("2D Renderer Stats");
+		ImGui::Checkbox("Particle Draw Mode", &m_particleDrawMode);
 
-		ImGui::Text("Draw Calls:			%d", Renderer2D::getStats().drawCallCount);
-		ImGui::Text("Quad Count:			%d", Renderer2D::getStats().quadCount);
-		ImGui::Text("Batches Per Frame:		%d", Renderer2D::getStats().batchesPerFrame);
-		ImGui::Text("Texture Bindings:		%d", Renderer2D::getStats().textureBindings);
-		ImGui::Text("Vertices Submitted:	%d", Renderer2D::getStats().verticesSubmitted);
-		ImGui::Text("Vertex Count:			%d", Renderer2D::getStats().totalVertexCount());
-		ImGui::Text("Index Count:			%d", Renderer2D::getStats().totalIndexCount());
-		ImGui::Text("Batch Efficiency:		%f", Renderer2D::getStats().batchEfficiency());
+		ImGui::End();
+
+		ImGui::Begin("3D Renderer Stats");
+
+		ImGui::Text("Draw Calls:			%d", Renderer3D::getStats().drawCallCount);
+		ImGui::Text("Quad Count:			%d", Renderer3D::getStats().quadCount);
+		ImGui::Text("Batches Per Frame:		%d", Renderer3D::getStats().batchesPerFrame);
+		ImGui::Text("Texture Bindings:		%d", Renderer3D::getStats().textureBindings);
+		ImGui::Text("Vertices Submitted:	%d", Renderer3D::getStats().verticesSubmitted);
+		ImGui::Text("Vertex Count:			%d", Renderer3D::getStats().totalVertexCount());
+		ImGui::Text("Index Count:			%d", Renderer3D::getStats().totalIndexCount());
+		ImGui::Text("Batch Efficiency:		%f", Renderer3D::getStats().batchEfficiency());
 
 		ImGui::End();
 

@@ -16,6 +16,9 @@
     <Filter Include="Toaster\Renderer">
       <UniqueIdentifier>{6D5555B5-594E-7407-8280-598C6ED85313}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Toaster\Util">
+      <UniqueIdentifier>{945D9591-80C0-2436-2946-5DEC1588F0B8}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Toaster\imgui">
       <UniqueIdentifier>{911CA7C5-FDDC-22FC-C617-6C79329767D8}</UniqueIdentifier>
     </Filter>
@@ -100,6 +103,9 @@
     <ClInclude Include="src\Toaster\Renderer\RenderCommand.hpp">
       <Filter>Toaster\Renderer</Filter>
     </ClInclude>
+    <ClInclude Include="src\Toaster\Renderer\RenderCore.hpp">
+      <Filter>Toaster\Renderer</Filter>
+    </ClInclude>
     <ClInclude Include="src\Toaster\Renderer\Renderer.hpp">
       <Filter>Toaster\Renderer</Filter>
     </ClInclude>
@@ -121,8 +127,14 @@
     <ClInclude Include="src\Toaster\Renderer\Texture.hpp">
       <Filter>Toaster\Renderer</Filter>
     </ClInclude>
+    <ClInclude Include="src\Toaster\Renderer\Transform.hpp">
+      <Filter>Toaster\Renderer</Filter>
+    </ClInclude>
     <ClInclude Include="src\Toaster\Renderer\VertexArray.hpp">
       <Filter>Toaster\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Toaster\Util\MathUtil.hpp">
+      <Filter>Toaster\Util</Filter>
     </ClInclude>
     <ClInclude Include="src\Toaster\imgui\ImguiLayer.hpp">
       <Filter>Toaster\imgui</Filter>
@@ -173,9 +185,7 @@
       <Filter>platform\Windows</Filter>
     </ClInclude>
     <ClInclude Include="src\tstpch.h" />
-    <ClInclude Include="src\Toaster\Util\MathUtil.hpp" />
-    <ClInclude Include="src\Toaster\Renderer\RenderCore.hpp" />
-    <ClInclude Include="src\Toaster\Renderer\Transform.hpp" />
+    <ClInclude Include="src\Toaster\Scene\Scene.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Toaster\CameraController.cpp">
@@ -284,9 +294,6 @@
       <Filter>platform\Windows</Filter>
     </ClCompile>
     <ClCompile Include="src\tstpch.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="res\shaders\LightingShader.glsl" />
-    <None Include="res\shaders\FlatTextureShader.glsl" />
+    <ClCompile Include="src\Toaster\Scene\Scene.cpp" />
   </ItemGroup>
 </Project>

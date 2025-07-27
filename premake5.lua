@@ -16,6 +16,8 @@ IncludeDir["ImGui"] = "dependencies/ImGui"
 IncludeDir["spdlog"] = "dependencies/spdlog/include"
 IncludeDir["stbImage"] = "dependencies/stbImage/include"
 IncludeDir["glm"] = "dependencies/glm"
+IncludeDir["Entt"] = "dependencies/Entt/include"
+
 include "dependencies/GLFW/"
 include "dependencies/Glad/"
 include "dependencies/ImGui/"
@@ -54,6 +56,7 @@ project "Toaster"
 		"%{IncludeDir.spdlog}",
 		"%{IncludeDir.stbImage}",
 		"%{IncludeDir.glm}",
+		"%{IncludeDir.Entt}",
 		"C:/VulkanSDK/1.4.313.2/Include",
 	}
 
@@ -123,6 +126,8 @@ project "SandBox"
 		"dependencies/imgui",
 		"%{IncludeDir.glm}",
 		"%{IncludeDir.ImGui}",
+		"%{IncludeDir.Entt}",
+
 	}
 
 	links{
@@ -180,6 +185,8 @@ project "ToasterEditor"
 		"dependencies/imgui",
 		"%{IncludeDir.glm}",
 		"%{IncludeDir.ImGui}",
+		"%{IncludeDir.Entt}",
+
 	}
 
 	links{

@@ -77,7 +77,7 @@
       <PrecompiledHeaderFile>tstpch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>TST_PLATFORM_WINDOWS;TST_BUILD_DLL;GLFW_INCLUDE_NONE;TST_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>src;..\dependencies\GLFW\include;..\dependencies\Glad\include;..\dependencies\ImGui;..\dependencies\spdlog\include;..\dependencies\stbImage\include;..\dependencies\glm;C:\VulkanSDK\1.4.313.2\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>src;..\dependencies\GLFW\include;..\dependencies\Glad\include;..\dependencies\ImGui;..\dependencies\spdlog\include;..\dependencies\stbImage\include;..\dependencies\glm;..\dependencies\Entt\include;C:\VulkanSDK\1.4.313.2\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -100,7 +100,7 @@
       <PrecompiledHeaderFile>tstpch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>TST_PLATFORM_WINDOWS;TST_BUILD_DLL;GLFW_INCLUDE_NONE;TST_RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>src;..\dependencies\GLFW\include;..\dependencies\Glad\include;..\dependencies\ImGui;..\dependencies\spdlog\include;..\dependencies\stbImage\include;..\dependencies\glm;C:\VulkanSDK\1.4.313.2\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>src;..\dependencies\GLFW\include;..\dependencies\Glad\include;..\dependencies\ImGui;..\dependencies\spdlog\include;..\dependencies\stbImage\include;..\dependencies\glm;..\dependencies\Entt\include;C:\VulkanSDK\1.4.313.2\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -127,7 +127,7 @@
       <PrecompiledHeaderFile>tstpch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>TST_PLATFORM_WINDOWS;TST_BUILD_DLL;GLFW_INCLUDE_NONE;TST_DIST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>src;..\dependencies\GLFW\include;..\dependencies\Glad\include;..\dependencies\ImGui;..\dependencies\spdlog\include;..\dependencies\stbImage\include;..\dependencies\glm;C:\VulkanSDK\1.4.313.2\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>src;..\dependencies\GLFW\include;..\dependencies\Glad\include;..\dependencies\ImGui;..\dependencies\spdlog\include;..\dependencies\stbImage\include;..\dependencies\glm;..\dependencies\Entt\include;C:\VulkanSDK\1.4.313.2\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -182,6 +182,8 @@
     <ClInclude Include="src\Toaster\Renderer\Texture.hpp" />
     <ClInclude Include="src\Toaster\Renderer\Transform.hpp" />
     <ClInclude Include="src\Toaster\Renderer\VertexArray.hpp" />
+    <ClInclude Include="src\Toaster\Scene\Scene.hpp" />
+    <ClInclude Include="src\Toaster\Util\MathUtil.hpp" />
     <ClInclude Include="src\Toaster\imgui\ImguiLayer.hpp" />
     <ClInclude Include="src\platform\OpenGl\OpenGLBuffer.hpp" />
     <ClInclude Include="src\platform\OpenGl\OpenGLFramebuffer.hpp" />
@@ -198,7 +200,6 @@
     <ClInclude Include="src\platform\Vulkan\VulkanRenderingContext.hpp" />
     <ClInclude Include="src\platform\Windows\WindowsInput.hpp" />
     <ClInclude Include="src\platform\Windows\WindowsWindow.hpp" />
-    <ClInclude Include="src\Toaster\Util\MathUtil.hpp" />
     <ClInclude Include="src\tstpch.h" />
   </ItemGroup>
   <ItemGroup>
@@ -237,6 +238,7 @@
     <ClCompile Include="src\platform\Vulkan\VulkanRenderingContext.cpp" />
     <ClCompile Include="src\platform\Windows\WindowsInput.cpp" />
     <ClCompile Include="src\platform\Windows\WindowsWindow.cpp" />
+    <ClCompile Include="src\Toaster\Scene\Scene.cpp" />
     <ClCompile Include="src\tstpch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
@@ -260,10 +262,6 @@
     <ProjectReference Include="..\dependencies\glm\glm.vcxproj">
       <Project>{6577880B-D180-887C-5AFC-9E7CC604947C}</Project>
     </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="res\shaders\FlatTextureShader.glsl" />
-    <None Include="res\shaders\LightingShader.glsl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

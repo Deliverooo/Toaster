@@ -47,7 +47,7 @@ namespace tst
 		return y;
 	}
 
-	TstMousePos Input::getMousePos()
+	std::pair<double, double> Input::getMousePos()
 	{
 		Application& app = Application::getInstance();
 		GLFWwindow* window = static_cast<GLFWwindow*>(app.getWindow().getWindow());

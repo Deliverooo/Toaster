@@ -55,6 +55,7 @@ namespace tst
 	{
 		TST_PROFILE_FN();
 
+		RenderCommand::init();
 
 		render_data.quadVertexArray = VertexArray::create();
 
