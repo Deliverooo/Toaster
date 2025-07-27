@@ -58,7 +58,7 @@ namespace tst
 		TextureFiltering magFilter{ TextureFiltering::Linear };
 
 		bool generateMipmaps{ true };
-		bool flipX{ false };
+		bool flipX{ true };
 	};
 
 	class TST_API Texture

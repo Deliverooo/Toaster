@@ -11,12 +11,6 @@ SandBox2DLayer::SandBox2DLayer() : m_OrthoCameraCtrl(1.77f)
 
 void SandBox2DLayer::onAttach()
 {
-
-	tst::FramebufferCreateInfo framebufferCreateInfo{};
-	framebufferCreateInfo.width = static_cast<uint32_t>(m_WindowWidth);
-	framebufferCreateInfo.height = static_cast<uint32_t>(m_WindowHeight);
-	m_Framebuffer = tst::Framebuffer::create(framebufferCreateInfo);
-
 	tst::TextureParams sheetParams{};
 	sheetParams.minFilter = tst::TextureFiltering::NearestMipmapNearest;
 	sheetParams.magFilter = tst::TextureFiltering::Nearest;
@@ -44,7 +38,6 @@ void SandBox2DLayer::onUpdate(tst::DeltaTime dt)
 
 	tst::Renderer2D::resetStats();
 
-	m_Framebuffer->bind();
 
 	m_OrthoCameraCtrl.onUpdate(dt);
 
@@ -89,7 +82,6 @@ void SandBox2DLayer::onUpdate(tst::DeltaTime dt)
 	m_ParticleSystem.onRender();
 	tst::Renderer2D::end();
 
-	m_Framebuffer->unbind();
 
 }
 void SandBox2DLayer::onEvent(tst::Event& e)
@@ -133,109 +125,6 @@ bool SandBox2DLayer::onKeyHeldEvent(tst::KeyHeldEvent& e)
 
 void SandBox2DLayer::onImguiRender()
 {
-	static bool enableDocking = true;
-
-	if (enableDocking)
-	{
-		static bool p_open = true;
-		static bool opt_fullscreen = true;
-		static bool opt_padding = false;
-		static ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_None;
-
-		ImGuiWindowFlags window_flags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking;
-		if (opt_fullscreen)
-		{
-			const ImGuiViewport* viewport = ImGui::GetMainViewport();
-			ImGui::SetNextWindowPos(viewport->WorkPos);
-			ImGui::SetNextWindowSize(viewport->WorkSize);
-			ImGui::SetNextWindowViewport(viewport->ID);
-			ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-			ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-			window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
-			window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
-		}
-		else
-		{
-			dockspace_flags &= ~ImGuiDockNodeFlags_PassthruCentralNode;
-		}
-
-
-		if (dockspace_flags & ImGuiDockNodeFlags_PassthruCentralNode)
-			window_flags |= ImGuiWindowFlags_NoBackground;
-
-		if (!opt_padding)
-			ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-		ImGui::Begin("DockSpace Demo", &p_open, window_flags);
-		if (!opt_padding)
-			ImGui::PopStyleVar();
-
-		if (opt_fullscreen)
-			ImGui::PopStyleVar(2);
-
-		// Submit the DockSpace
-		ImGuiIO& io = ImGui::GetIO();
-		if (io.ConfigFlags & ImGuiConfigFlags_DockingEnable)
-		{
-			ImGuiID dockspace_id = ImGui::GetID("MyDockSpace");
-			ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), dockspace_flags);
-		}
-
-
-		if (ImGui::BeginMenuBar())
-		{
-			if (ImGui::BeginMenu("Options"))
-			{
-
-				if (ImGui::MenuItem("Quit", "Ctrl+Q")) { tst::Application::getInstance().close(); }
-
-
-				ImGui::Separator();
-
-				ImGui::EndMenu();
-			}
-
-			ImGui::EndMenuBar();
-		}
-
-
-		ImGui::Begin("2D Renderer Stats");
-
-		ImGui::Text("Draw Calls:			%d", tst::Renderer2D::getStats().drawCallCount);
-		ImGui::Text("Quad Count:			%d", tst::Renderer2D::getStats().quadCount);
-		ImGui::Text("Batches Per Frame:		%d", tst::Renderer2D::getStats().batchesPerFrame);
-		ImGui::Text("Texture Bindings:		%d", tst::Renderer2D::getStats().textureBindings);
-		ImGui::Text("Vertices Submitted:	%d", tst::Renderer2D::getStats().verticesSubmitted);
-		ImGui::Text("Vertex Count:			%d", tst::Renderer2D::getStats().totalVertexCount());
-		ImGui::Text("Index Count:			%d", tst::Renderer2D::getStats().totalIndexCount());
-		ImGui::Text("Batch Efficiency:		%f", tst::Renderer2D::getStats().batchEfficiency());
-
-		ImGui::End();
-
-		ImGui::Begin("Viewport");
-		ImGui::Image(m_Framebuffer->getColourAttachmentId(), ImVec2(m_WindowWidth, m_WindowHeight), ImVec2(0, 1), ImVec2(1, 0));
-		ImGui::End();
-
-
-		ImGui::End();
-	} else
-	{
-		ImGui::Begin("2D Renderer Stats");
-
-		ImGui::Text("Draw Calls:			%d", tst::Renderer2D::getStats().drawCallCount);
-		ImGui::Text("Quad Count:			%d", tst::Renderer2D::getStats().quadCount);
-		ImGui::Text("Batches Per Frame:		%d", tst::Renderer2D::getStats().batchesPerFrame);
-		ImGui::Text("Texture Bindings:		%d", tst::Renderer2D::getStats().textureBindings);
-		ImGui::Text("Vertices Submitted:	%d", tst::Renderer2D::getStats().verticesSubmitted);
-		ImGui::Text("Vertex Count:			%d", tst::Renderer2D::getStats().totalVertexCount());
-		ImGui::Text("Index Count:			%d", tst::Renderer2D::getStats().totalIndexCount());
-		ImGui::Text("Batch Efficiency:		%f", tst::Renderer2D::getStats().batchEfficiency());
-
-
-		ImGui::Image(m_Texture0->getId(), ImVec2(static_cast<float>(m_Texture0->getWidth()), static_cast<float>(m_Texture0->getHeight())));
-
-		ImGui::End();
-		ImGui::End();
-	}
     
 }
 

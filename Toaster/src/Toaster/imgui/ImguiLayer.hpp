@@ -20,19 +20,21 @@ namespace tst
 	{
 	public:
 		ImguiLayer();
-		~ImguiLayer() = default;
+		virtual ~ImguiLayer() override{};
 
 		virtual void onAttach() override;
 		virtual void onDetach() override;
 		virtual void onImguiRender() override{};
 
+		virtual void onEvent(Event& e) override;
+
 		void begin();
 		void end();
 
+		void setBlockEvents(const bool block) { m_BlockEvents = block; }
+
 	private:
 
-		bool m_embededWindow = true;
-
-		//ImFont* m_font;
+		bool m_BlockEvents = true;
 	};
 }

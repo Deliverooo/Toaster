@@ -55,7 +55,7 @@ namespace tst
 	void Renderer2D::init()
 	{
 
-		TST_PROFILE_FN();	
+		TST_PROFILE_FN();
 
 
 		render_data.quadVertexArray = VertexArray::create();
@@ -115,11 +115,11 @@ namespace tst
 
 		render_data.textureSlots[0] = render_data.whiteTexture;
 
-			
-		render_data.quadVertexPositions[0] = {-0.5f, -0.5f, 0.0f, 1.0f };
+
+		render_data.quadVertexPositions[0] = { -0.5f, -0.5f, 0.0f, 1.0f };
 		render_data.quadVertexPositions[1] = { 0.5f, -0.5f, 0.0f, 1.0f };
 		render_data.quadVertexPositions[2] = { 0.5f,  0.5f, 0.0f, 1.0f };
-		render_data.quadVertexPositions[3] = {-0.5f,  0.5f, 0.0f, 1.0f };
+		render_data.quadVertexPositions[3] = { -0.5f,  0.5f, 0.0f, 1.0f };
 
 		render_data.quadVertexUvs[0] = { 0.0f, 0.0f };
 		render_data.quadVertexUvs[1] = { 1.0f, 0.0f };
@@ -133,28 +133,28 @@ namespace tst
 		TST_PROFILE_FN();
 
 		// Release GPU resources
-		render_data.quadVertexArray	  = nullptr;
-		render_data.quadVertexBuffer  = nullptr;
+		render_data.quadVertexArray = nullptr;
+		render_data.quadVertexBuffer = nullptr;
 		render_data.flatTextureShader = nullptr;
-		render_data.whiteTexture	  = nullptr;
-		render_data.quadIndexBuffer	  = nullptr;
+		render_data.whiteTexture = nullptr;
+		render_data.quadIndexBuffer = nullptr;
 
 		render_data.textureSlots.fill(nullptr);
 
-		TST_ASSERT(render_data.quadVertexArray	 == nullptr, "Nooo");
-		TST_ASSERT(render_data.quadVertexBuffer	 == nullptr, "Nooo");
+		TST_ASSERT(render_data.quadVertexArray == nullptr, "Nooo");
+		TST_ASSERT(render_data.quadVertexBuffer == nullptr, "Nooo");
 		TST_ASSERT(render_data.flatTextureShader == nullptr, "Nooo");
-		TST_ASSERT(render_data.whiteTexture		 == nullptr, "Nooo");
-		TST_ASSERT(render_data.quadIndexBuffer	 == nullptr, "Nooo");
+		TST_ASSERT(render_data.whiteTexture == nullptr, "Nooo");
+		TST_ASSERT(render_data.quadIndexBuffer == nullptr, "Nooo");
 
 		delete[] render_data.quadVertexBufferBase;
 		render_data.quadVertexBufferBase = nullptr;
 		render_data.quadVertexPtr = nullptr;
 		render_data.quadIndex = 0;
 
-		render_data.maxQuads	= 0;
+		render_data.maxQuads = 0;
 		render_data.maxVertices = 0;
-		render_data.maxIndices	= 0;
+		render_data.maxIndices = 0;
 		render_data.textureSlotIndex = 0;
 	}
 
@@ -163,7 +163,7 @@ namespace tst
 	{
 		TST_PROFILE_FN();
 
-		render_data.flatTextureShader->bind();	
+		render_data.flatTextureShader->bind();
 		render_data.flatTextureShader->uploadMatrix4f(camera->getProjectionMatrix(), "u_Projection");
 		render_data.flatTextureShader->uploadMatrix4f(camera->getViewMatrix(), "u_View");
 
@@ -171,19 +171,18 @@ namespace tst
 		render_data.quadIndex = 0;
 		render_data.textureSlotIndex = 1;
 	}
-	void Renderer2D::begin(const ScopedPtr<OrthoCamera2D>& camera)
+
+	void Renderer2D::begin(const RefPtr<PerspectiveCamera>& camera)
 	{
 		TST_PROFILE_FN();
-
-		render_data.flatTextureShader->bind();	
+		render_data.flatTextureShader->bind();
 		render_data.flatTextureShader->uploadMatrix4f(camera->getProjectionMatrix(), "u_Projection");
 		render_data.flatTextureShader->uploadMatrix4f(camera->getViewMatrix(), "u_View");
-
-
-		render_data.quadIndex = 0;
 		render_data.quadVertexPtr = render_data.quadVertexBufferBase;
+		render_data.quadIndex = 0;
 		render_data.textureSlotIndex = 1;
 	}
+
 
 	void Renderer2D::end()
 	{
@@ -277,11 +276,11 @@ namespace tst
 		// for each vertex of the quad :)
 		for (int i = 0; i < 4; i++)
 		{
-			render_data.quadVertexPtr->position		 = transformation * render_data.quadVertexPositions[i];
-			render_data.quadVertexPtr->colour		 = colour;
+			render_data.quadVertexPtr->position = transformation * render_data.quadVertexPositions[i];
+			render_data.quadVertexPtr->colour = colour;
 			render_data.quadVertexPtr->textureCoords = render_data.quadVertexUvs[i];
-			render_data.quadVertexPtr->textureIndex	 = texIndex;
-			render_data.quadVertexPtr->tilingFactor	 = 1.0f;
+			render_data.quadVertexPtr->textureIndex = texIndex;
+			render_data.quadVertexPtr->tilingFactor = 1.0f;
 			render_data.quadVertexPtr++;
 		}
 
@@ -295,7 +294,7 @@ namespace tst
 		drawQuad(glm::vec3(position.x, position.y, 0.0f), rotation, scale, colour);
 	}
 
-	void Renderer2D:: drawQuad(const glm::vec3& position, const float rotation, const glm::vec2& scale, const RefPtr<Texture2D>& texture, float tilingScale, const glm::vec4& tintColour)
+	void Renderer2D::drawQuad(const glm::vec3& position, const float rotation, const glm::vec2& scale, const RefPtr<Texture2D>& texture, float tilingScale, const glm::vec4& tintColour)
 	{
 		TST_PROFILE_FN();
 
@@ -317,7 +316,7 @@ namespace tst
 		int texIndex = 0;
 
 		// searches for an existing texture in the current batch
-		for (uint32_t i = 1	; i < render_data.textureSlotIndex; i++)
+		for (uint32_t i = 1; i < render_data.textureSlotIndex; i++)
 		{
 			if (render_data.textureSlots[i] && render_data.textureSlots[i]->getId() == texture->getId())
 			{
@@ -335,19 +334,19 @@ namespace tst
 		}
 
 		glm::mat4 transformation = glm::translate(glm::mat4(1.0f), position)
-		* glm::rotate(glm::mat4(1.0f), glm::radians(rotation), { 0.0f, 0.0f, 1.0f })
-		* glm::scale(glm::mat4(1.0f), { scale.x, scale.y, 0.0f });
+			* glm::rotate(glm::mat4(1.0f), glm::radians(rotation), { 0.0f, 0.0f, 1.0f })
+			* glm::scale(glm::mat4(1.0f), { scale.x, scale.y, 0.0f });
 
 		float texIndexf = static_cast<float>(texIndex);
 
 		// for each vertex of the quad :)
 		for (int i = 0; i < 4; i++)
 		{
-			render_data.quadVertexPtr->position		 = transformation * render_data.quadVertexPositions[i];
-			render_data.quadVertexPtr->colour		 = tintColour;
+			render_data.quadVertexPtr->position = transformation * render_data.quadVertexPositions[i];
+			render_data.quadVertexPtr->colour = tintColour;
 			render_data.quadVertexPtr->textureCoords = render_data.quadVertexUvs[i];
-			render_data.quadVertexPtr->textureIndex	 = texIndexf;
-			render_data.quadVertexPtr->tilingFactor	 = tilingScale;
+			render_data.quadVertexPtr->textureIndex = texIndexf;
+			render_data.quadVertexPtr->tilingFactor = tilingScale;
 			render_data.quadVertexPtr++;
 		}
 

@@ -41,6 +41,33 @@ namespace tst
 		shutdown();
 	}
 
+	GLFWimage WindowsWindow::loadIcon(const char* filepath)
+	{
+		int width;
+		int height;
+		int nrChannels;
+
+		unsigned char* data = stbi_load(filepath, &width, &height, &nrChannels, 0);
+
+		if (!data)
+		{
+			TST_CORE_ERROR("Failed to load Window Icon! -> {0}", filepath);
+
+			unsigned char fallbackData[3];
+			fallbackData[0] = static_cast<unsigned char>(0xff);
+			fallbackData[0] = static_cast<unsigned char>(0x00);
+			fallbackData[0] = static_cast<unsigned char>(0xdc);
+
+			GLFWimage fallbackIcon = { 1, 1, fallbackData };
+
+			return fallbackIcon;
+		}
+
+		GLFWimage icon = { width, height, data };
+		return icon;
+	}
+
+
 
 	WindowsWindow::WindowsWindow(const WindowAttribArray& window_attributes)
 	{
@@ -62,10 +89,13 @@ namespace tst
 			return;
 		}
 		glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_TRUE);
+
 		m_window = glfwCreateWindow(m_windowData.width, m_windowData.height, m_windowData.title, nullptr, nullptr);
 
-		glfwGetWindowPos(m_window, &m_windowPos.first, &m_windowPos.second);
+		GLFWimage windowIcon = loadIcon(TST_REL_PATH"textures/osrbo0.png");
+		glfwSetWindowIcon(m_window, 1, &windowIcon);
 
+		glfwGetWindowPos(m_window, &m_windowPos.first, &m_windowPos.second);
 
 		m_renderingContext = new OpenGLRenderingContext(m_window);
 		m_renderingContext->init();
@@ -76,7 +106,7 @@ namespace tst
 		TST_CORE_INFO("V-Sync Enabled: {0}", m_windowData.vSyncEnabled);
 		glfwSetWindowUserPointer(m_window, &m_windowData);
 
-		glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+		glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 
 		glfwSetErrorCallback([](int errorCode, const char* description){
 

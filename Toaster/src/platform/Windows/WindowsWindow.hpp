@@ -49,6 +49,8 @@ namespace tst
 
 	private:
 
+		GLFWimage loadIcon(const char* filepath);
+
 		RenderingContext* m_renderingContext;
 
 		// Holds window properties and event callback

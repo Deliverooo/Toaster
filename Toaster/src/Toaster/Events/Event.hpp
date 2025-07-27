@@ -49,10 +49,10 @@ namespace tst {
 			return getEventCategory() & category;
 		}
 
-		[[nodiscard]] bool isHandled() const { return m_isHandled; }
+		[[nodiscard]] bool isHandled() { return m_isHandled; }
 
-	protected:  
 		bool m_isHandled = false;
+	protected:  
 
 		friend class EventDispatcher;
 	};

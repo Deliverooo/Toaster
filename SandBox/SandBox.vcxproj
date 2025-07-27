@@ -137,8 +137,16 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="src\ParticleSystem3D.cpp" />
+    <ClInclude Include="src\ParticleSystem.hpp" />
+    <ClInclude Include="src\ParticleSystem3D.hpp" />
+    <ClInclude Include="src\Sandbox2D.hpp" />
+    <ClInclude Include="src\Sandbox3D.hpp" />
+    <ClInclude Include="src\Utils\Maths.hpp" />
+    <ClInclude Include="src\Utils\Random.hpp" />
+  </ItemGroup>
+  <ItemGroup>
     <ClCompile Include="src\ParticleSystem.cpp" />
+    <ClCompile Include="src\ParticleSystem3D.cpp" />
     <ClCompile Include="src\Sandbox2D.cpp" />
     <ClCompile Include="src\Sandbox3D.cpp" />
     <ClCompile Include="src\SandboxApp.cpp" />
@@ -149,39 +157,6 @@
     <ProjectReference Include="..\Toaster\Toaster.vcxproj">
       <Project>{E77DE44F-535D-63EB-5C75-EEC1C8D3C94C}</Project>
     </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
-    <Image Include="..\..\..\Users\oocon\Downloads\orbo.gif" />
-    <Image Include="assets\cubemaps\back.jpg" />
-    <Image Include="assets\cubemaps\bottom.jpg" />
-    <Image Include="assets\cubemaps\front.jpg" />
-    <Image Include="assets\cubemaps\left.jpg" />
-    <Image Include="assets\cubemaps\right.jpg" />
-    <Image Include="assets\cubemaps\top.jpg" />
-    <Image Include="assets\textures\Absolute_Cinema.jpg" />
-    <Image Include="assets\textures\Global_illumination1.png" />
-    <Image Include="assets\textures\One_Leg_Bird.png" />
-    <Image Include="assets\textures\orbo0.png" />
-    <Image Include="assets\textures\rocky_terrain_02_diff_2k.png" />
-    <Image Include="assets\textures\sprite sheets\Tiles_0.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="assets\shaders\BasicShader.frag.glsl" />
-    <None Include="assets\shaders\BasicShader.vert.glsl" />
-    <None Include="assets\shaders\FlatShader.frag.glsl" />
-    <None Include="assets\shaders\FlatShader.vert.glsl" />
-    <None Include="assets\shaders\FlatTextureShader.glsl" />
-    <None Include="assets\shaders\SkyboxShader.frag.glsl" />
-    <None Include="assets\shaders\SkyboxShader.vert.glsl" />
-    <None Include="assets\shaders\TestShader.glsl" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="src\ParticleSystem3D.hpp" />
-    <ClInclude Include="src\ParticleSystem.hpp" />
-    <ClInclude Include="src\Sandbox2D.hpp" />
-    <ClInclude Include="src\Sandbox3D.hpp" />
-    <ClInclude Include="src\Utils\Maths.hpp" />
-    <ClInclude Include="src\Utils\Random.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

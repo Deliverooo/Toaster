@@ -1,5 +1,6 @@
 #pragma once
 
+#ifdef TST_PLATFORM_VULKAN
 #ifdef NDEBUG
 	constexpr bool enableValidationLayers = false;
 #else
@@ -100,3 +101,5 @@ private:
 
 	};
 }
+
+#endif

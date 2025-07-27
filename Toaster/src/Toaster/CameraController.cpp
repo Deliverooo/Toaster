@@ -33,6 +33,11 @@ namespace tst
 		if (Input::isKeyPressed(TST_KEY_SPACE))		 { cameraDirection += glm::vec3(0.0f, 1.0f, 0.0f); }
 		if (Input::isKeyPressed(TST_KEY_LEFT_SHIFT)) { cameraDirection -= glm::vec3(0.0f, 1.0f, 0.0f); }
 
+		if (Input::isKeyPressed(TST_KEY_LEFT))	{ m_cameraRotation.y -= glm::radians(90.0f) * dt;}
+		if (Input::isKeyPressed(TST_KEY_RIGHT)) { m_cameraRotation.y += glm::radians(90.0f) * dt; }
+		if (Input::isKeyPressed(TST_KEY_UP))	{ m_cameraRotation.x += glm::radians(90.0f) * dt; }
+		if (Input::isKeyPressed(TST_KEY_DOWN))	{ m_cameraRotation.x -= glm::radians(90.0f) * dt; }
+
 		if (glm::length(cameraDirection) > std::numeric_limits<float>::epsilon()) { cameraDirection = glm::normalize(cameraDirection); }
 		
 		glm::vec3 startingVelocity = cameraDirection * cameraSpeed;
@@ -92,7 +97,7 @@ namespace tst
 		mouseDx *= 0.1f;
 		mouseDy *= 0.1f;
 
-		if (!Application::uiMode)
+		if (Input::isMouseCursorFocused())
 		{
 			m_cameraRotation.x -= glm::radians(mouseDy);
 			m_cameraRotation.y += glm::radians(mouseDx);
@@ -154,6 +159,13 @@ namespace tst
 
 		m_CameraUp = glm::normalize(glm::cross(m_CameraRight, m_CameraFront));
 	}
+
+	void PerspectiveCameraController::resize(const uint32_t width, const uint32_t height)
+	{
+		m_aspectRatio = static_cast<float>(width) / static_cast<float>(height);
+		m_Camera->recalculateProjectionMatrix(m_fov, m_aspectRatio, 0.1f, 1000.0f);
+	}
+
 
 	//-----------------------------------------------------------------
 	//-----------------------Orthographic Camera-----------------------
@@ -245,7 +257,7 @@ namespace tst
 		mouseDx *= 0.1f;
 		mouseDy *= 0.1f;
 
-		if (!Application::uiMode)
+		if (Input::isMouseCursorFocused())
 		{
 			m_cameraRotation.x -= glm::radians(mouseDy);
 			m_cameraRotation.y += glm::radians(mouseDx);
@@ -304,6 +316,13 @@ namespace tst
 
 		m_CameraUp = glm::normalize(glm::cross(m_CameraRight, m_CameraFront));
 	}
+
+	void OrthoCameraController::resize(const uint32_t width, const uint32_t height)
+	{
+		m_aspectRatio = static_cast<float>(width) / static_cast<float>(height);
+		m_Camera->recalculateProjectionMatrix(-m_aspectRatio * m_zoom, m_aspectRatio * m_zoom, -m_zoom, m_zoom);
+	}
+
 
 
 
@@ -370,6 +389,13 @@ namespace tst
 			});
 	}
 
+	void OrthoCamera2DController::resize(const uint32_t width, const uint32_t height)
+	{
+		m_aspectRatio = static_cast<float>(width) / static_cast<float>(height);
+		m_Camera->recalculateProjectionMatrix(-m_aspectRatio * m_zoom, m_aspectRatio * m_zoom, -m_zoom, m_zoom);
+	}
+
+
 	bool OrthoCamera2DController::onKeyPressedEvent(KeyPressedEvent& e)
 	{
 		TST_PROFILE_FN();
@@ -427,6 +453,4 @@ namespace tst
 		ImGui::SliderFloat("Acceleration", &m_acceleration, 0.1f, 100.0f);
 		ImGui::End();
 	}
-
-
 }

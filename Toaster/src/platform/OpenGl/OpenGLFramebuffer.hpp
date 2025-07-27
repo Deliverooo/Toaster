@@ -23,11 +23,13 @@ namespace tst
 
 	private:
 
+		void invalidate();
+
 		FramebufferCreateInfo m_info;
 
-		uint32_t m_framebufferId;
+		uint32_t m_framebufferId{ 0 };
 
-		uint32_t m_colourAttachmentId;
-		uint32_t m_depthAttachmentId;
+		uint32_t m_colourAttachmentId{ 0 };
+		uint32_t m_depthAttachmentId{ 0 };
 	};
 }

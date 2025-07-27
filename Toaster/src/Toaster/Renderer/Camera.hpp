@@ -101,6 +101,8 @@ namespace tst
 		void setPosition(const glm::vec3& newPosition) { m_position = newPosition; recalculateViewMatrix(); }
 		void setRotation(const glm::vec3& newRotation) { m_rotation = newRotation; recalculateViewMatrix(); }
 
+		[[nodiscard]] const glm::vec3& getPosition() const { return m_position; }
+		[[nodiscard]] const glm::vec3& getRotation() const { return m_rotation; }
 
 	private:
 
@@ -142,6 +144,8 @@ namespace tst
 		void setPosition(const glm::vec3& newPosition) { m_position = newPosition; recalculateViewMatrix(); }
 		void setRotation(const glm::vec3& newRotation) { m_rotation = newRotation; recalculateViewMatrix(); }
 
+		[[nodiscard]] const glm::vec3& getPosition() const { return m_position; }
+		[[nodiscard]] const glm::vec3& getRotation() const { return m_rotation; }
 
 	private:
 
@@ -186,6 +190,9 @@ namespace tst
 		void setRotation(const float newRotation) { m_rotation = newRotation; recalculateViewMatrix(); }
 
 		void recalculateProjectionMatrix(const float left, const float right, const float bottom, const float top);
+
+		[[nodiscard]] const glm::vec3& getPosition() const { return m_position; }
+		[[nodiscard]] const float& getRotation() const { return m_rotation; }
 
 	private:
 

@@ -33,14 +33,10 @@ namespace tst
 		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
-		if (!m_embededWindow)
-		{
-			io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
-		}
-
-
-
 		ImGuiStyle &style = ImGui::GetStyle();
+
+
+
 		ImVec4* colors = style.Colors;
 		colors[ImGuiCol_WindowBg] = ImVec4(0.19f, 0.19f, 0.19f, 1.00f);
 		colors[ImGuiCol_ChildBg] = ImVec4(0.24f, 0.24f, 0.24f, 0.24f);
@@ -95,6 +91,17 @@ namespace tst
 		ImGui_ImplGlfw_InitForOpenGL(window, true);
 		ImGui_ImplOpenGL3_Init("#version 410");
 	}
+
+	void ImguiLayer::onEvent(Event& e)
+	{
+		if (m_BlockEvents)
+		{
+			ImGuiIO& io = ImGui::GetIO();
+			e.m_isHandled |= e.inCategory(EventCategoryMouse) & io.WantCaptureMouse;
+			e.m_isHandled |= e.inCategory(EventCategoryKeyboard) & io.WantCaptureKeyboard;
+		}
+	}
+
 
 	void ImguiLayer::onDetach()
 	{

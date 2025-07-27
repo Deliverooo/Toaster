@@ -1,4 +1,7 @@
 #pragma once
+
+#ifdef TST_PLATFORM_VULKAN
+
 #include <vulkan/vulkan_core.h>
 
 #include "VulkanDevice.hpp"
@@ -33,3 +36,4 @@ namespace tst
 		Device m_device{ m_window };
 	};
 }
+#endif

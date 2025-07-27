@@ -217,10 +217,10 @@ namespace tst
 
 	void OpenGLTexture2D::applyParams()
 	{
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,		TextureUtils::toGLWrap(m_textureParameters.wrapS));
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,		TextureUtils::toGLWrap(m_textureParameters.wrapT));
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,	TextureUtils::toGLFilter(m_textureParameters.minFilter));
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER,	TextureUtils::toGLFilter(m_textureParameters.magFilter));
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, TextureUtils::toGLWrap(m_textureParameters.wrapS));
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, TextureUtils::toGLWrap(m_textureParameters.wrapT));
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, TextureUtils::toGLFilter(m_textureParameters.minFilter));
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, TextureUtils::toGLFilter(m_textureParameters.magFilter));
 	}
 
 	void OpenGLTexture2D::createTexture(const void* data)
@@ -280,8 +280,8 @@ namespace tst
 
 	// ---------- OpenGL Texture 3D ------------
 
-	OpenGLTexture3D::OpenGLTexture3D(const std::vector<std::string>& texturePaths, const TextureParams &params)
-	: m_texturePaths(texturePaths), m_textureParameters(params)
+	OpenGLTexture3D::OpenGLTexture3D(const std::vector<std::string>& texturePaths, const TextureParams& params)
+		: m_texturePaths(texturePaths), m_textureParameters(params)
 	{
 		TST_PROFILE_FN();
 
@@ -313,7 +313,8 @@ namespace tst
 				m_textureDimensions[i] = { static_cast<uint32_t>(width), static_cast<uint32_t>(height) };
 
 				stbi_image_free(data);
-			} else
+			}
+			else
 			{
 				TST_CORE_ERROR("Cubemap Texture failed to load at path -> {0}", texturePaths[i]);
 
@@ -470,9 +471,9 @@ namespace tst
 
 	void OpenGLTexture3D::applyParams()
 	{
-		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S,		TextureUtils::toGLWrap(m_textureParameters.wrapS));
-		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T,		TextureUtils::toGLWrap(m_textureParameters.wrapT));
-		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R,		TextureUtils::toGLWrap(m_textureParameters.wrapT));
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, TextureUtils::toGLWrap(m_textureParameters.wrapS));
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, TextureUtils::toGLWrap(m_textureParameters.wrapT));
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, TextureUtils::toGLWrap(m_textureParameters.wrapT));
 		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, TextureUtils::toGLFilter(m_textureParameters.minFilter));
 		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, TextureUtils::toGLFilter(m_textureParameters.magFilter));
 	}

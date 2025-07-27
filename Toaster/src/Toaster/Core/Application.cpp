@@ -3,6 +3,8 @@
 #include "Application.hpp"
 #include "Toaster/Events/ApplicationEvent.hpp"
 #include "Toaster/Renderer/Renderer.hpp"
+#include "Toaster/Renderer/Renderer2D.hpp"
+#include "Toaster/Renderer/Renderer3D.hpp"
 
 #ifdef TST_PLATFORM_WINDOWS
 #include "platform/Windows/WindowsWindow.hpp"
@@ -23,7 +25,9 @@ namespace tst
 				onEvent(e);
 			});
 
-		Renderer::init();
+		//Renderer::init();
+		Renderer2D::init();
+		Renderer3D::init();  // Add this line - Renderer3D was never initialized!
 
 		m_imguiLayer = std::make_shared<ImguiLayer>();
 		pushOverlay(m_imguiLayer);
@@ -38,7 +42,9 @@ namespace tst
 
 	Application::~Application() {
 
-		Renderer::terminate();
+		//Renderer::terminate();
+		Renderer2D::terminate();
+		Renderer3D::terminate();  // Add this line - Renderer3D was never terminated!
 
 		// Destructor implementation
 	}
@@ -68,24 +74,7 @@ namespace tst
 			{
 				m_running = false;
 			}
-			if (e.getKeycode() == TST_KEY_I)
-			{
-				if (uiMode)
-				{
-					glfwSetInputMode((GLFWwindow*)m_window->getWindow(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-					uiMode = false;
-					return false;
-				} else
-				{
-					glfwSetInputMode((GLFWwindow*)m_window->getWindow(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-					uiMode = true;
-					return false;
-				}
-			}
-			if (e.getKeycode() == TST_KEY_F11)
-			{
 
-			}
 			return false;
 		});
 

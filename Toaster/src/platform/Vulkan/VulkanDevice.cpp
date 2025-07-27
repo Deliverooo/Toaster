@@ -1,4 +1,6 @@
 #include "tstpch.h"
+
+#ifdef TST_PLATFORM_VULKAN
 #include "VulkanDevice.hpp"
 
 #ifdef TST_DEBUG_SHOW_DEVICE_DEBUG_INFO
@@ -546,3 +548,5 @@ namespace tst {
 		}
 	}
 }
+
+#endif

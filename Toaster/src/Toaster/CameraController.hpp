@@ -29,6 +29,7 @@ namespace tst
 		const glm::vec3& getRightVector() const { return m_CameraRight; }
 		const glm::vec3& getUpVector()	  const { return m_CameraUp; }
 
+		void resize(const uint32_t width, const uint32_t height);
 
 	private:
 
@@ -69,6 +70,8 @@ namespace tst
 
 		void onUpdate(DeltaTime dt);
 		void onEvent(Event& e);
+
+		void resize(const uint32_t width, const uint32_t height);
 
 		const RefPtr<OrthoCamera>& getCamera() const { return m_Camera; }
 
@@ -116,6 +119,8 @@ namespace tst
 		void onImGuiRender();
 
 		const RefPtr<OrthoCamera2D>& getCamera() const { return m_Camera; }
+
+		void resize(const uint32_t width, const uint32_t height);
 
 		const glm::vec2& getVelocity() const { return m_cameraVelocity; }
 		const glm::vec2& getPosition() const { return m_cameraPosition; }

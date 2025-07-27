@@ -9,6 +9,7 @@
 
 namespace tst
 {
+	
 	struct QuadVertex
 	{
 		glm::vec3 position;
@@ -125,12 +126,12 @@ namespace tst
 
 
 		render_data.cubeVertexPositions[0] = { -0.5f, -0.5f, -0.5f, 1.0f };
-		render_data.cubeVertexPositions[1] = {  0.5f, -0.5f, -0.5f, 1.0f };
-		render_data.cubeVertexPositions[2] = {  0.5f,  0.5f, -0.5f, 1.0f };
+		render_data.cubeVertexPositions[1] = { 0.5f, -0.5f, -0.5f, 1.0f };
+		render_data.cubeVertexPositions[2] = { 0.5f,  0.5f, -0.5f, 1.0f };
 		render_data.cubeVertexPositions[3] = { -0.5f,  0.5f, -0.5f, 1.0f };
 		render_data.cubeVertexPositions[4] = { -0.5f, -0.5f,  0.5f, 1.0f };
-		render_data.cubeVertexPositions[5] = {  0.5f, -0.5f,  0.5f, 1.0f };
-		render_data.cubeVertexPositions[6] = {  0.5f,  0.5f,  0.5f, 1.0f };
+		render_data.cubeVertexPositions[5] = { 0.5f, -0.5f,  0.5f, 1.0f };
+		render_data.cubeVertexPositions[6] = { 0.5f,  0.5f,  0.5f, 1.0f };
 		render_data.cubeVertexPositions[7] = { -0.5f,  0.5f,  0.5f, 1.0f };
 
 	}
@@ -360,22 +361,22 @@ namespace tst
 		CubeFace faces[6] = {
 			// Front face
 			{{{-0.5f, -0.5f,  0.5f}, { 0.5f, -0.5f,  0.5f}, { 0.5f,  0.5f,  0.5f}, {-0.5f,  0.5f,  0.5f}},
-				{{ 0.0f,  0.0f}, { 1.0f,  0.0f}, { 1.0f,  1.0f}, { 0.0f,  1.0f}}},
+			{{ 0.0f,  0.0f}, { 1.0f,  0.0f}, { 1.0f,  1.0f}, { 0.0f,  1.0f}}},
 			// Back face
 			{{{ 0.5f, -0.5f, -0.5f}, {-0.5f, -0.5f, -0.5f}, {-0.5f,  0.5f, -0.5f}, { 0.5f,  0.5f, -0.5f}},
-				{{ 0.0f,  0.0f}, { 1.0f,  0.0f}, { 1.0f,  1.0f}, { 0.0f,  1.0f}}},
+			{{ 0.0f,  0.0f}, { 1.0f,  0.0f}, { 1.0f,  1.0f}, { 0.0f,  1.0f}}},
 			// Left face
 			{{{-0.5f, -0.5f, -0.5f}, {-0.5f, -0.5f,  0.5f}, {-0.5f,  0.5f,  0.5f}, {-0.5f,  0.5f, -0.5f}},
-			    {{ 0.0f,  0.0f}, { 1.0f,  0.0f}, { 1.0f,  1.0f}, { 0.0f,  1.0f}}},
+			{{ 0.0f,  0.0f}, { 1.0f,  0.0f}, { 1.0f,  1.0f}, { 0.0f,  1.0f}}},
 			// Right face
 			{{{ 0.5f, -0.5f,  0.5f}, { 0.5f, -0.5f, -0.5f}, { 0.5f,  0.5f, -0.5f}, { 0.5f,  0.5f,  0.5f}},
-				{{ 0.0f,  0.0f}, { 1.0f,  0.0f}, { 1.0f,  1.0f}, { 0.0f,  1.0f}}},
+			{{ 0.0f,  0.0f}, { 1.0f,  0.0f}, { 1.0f,  1.0f}, { 0.0f,  1.0f}}},
 			// Top face
 			{{{-0.5f,  0.5f,  0.5f}, { 0.5f,  0.5f,  0.5f}, { 0.5f,  0.5f, -0.5f}, {-0.5f,  0.5f, -0.5f}},
-				{{ 0.0f,  0.0f}, { 1.0f,  0.0f}, { 1.0f,  1.0f}, { 0.0f,  1.0f}}},
+			{{ 0.0f,  0.0f}, { 1.0f,  0.0f}, { 1.0f,  1.0f}, { 0.0f,  1.0f}}},
 			// Bottom face
 			{{{-0.5f, -0.5f, -0.5f}, { 0.5f, -0.5f, -0.5f}, { 0.5f, -0.5f,  0.5f}, {-0.5f, -0.5f,  0.5f}},
-				{{ 0.0f,  0.0f}, { 1.0f,  0.0f}, { 1.0f,  1.0f}, { 0.0f,  1.0f}}}
+			{{ 0.0f,  0.0f}, { 1.0f,  0.0f}, { 1.0f,  1.0f}, { 0.0f,  1.0f}}}
 		};
 
 
@@ -428,8 +429,14 @@ namespace tst
 	{
 		render_data.stats.drawCallCount = 0;
 		render_data.stats.quadCount = 0;
+		render_data.stats.triangleCount = 0;
+		render_data.stats.circleCount = 0;
+		render_data.stats.lineCount = 0;
 		render_data.stats.batchesPerFrame = 1;
+		render_data.stats.textureBindings = 0;
+		render_data.stats.verticesSubmitted = 0;
 	}
-}
 
+
+}
 

@@ -37,6 +37,8 @@ namespace tst
 
 	void OpenGLRendererAPI::drawIndexed(const RefPtr<VertexArray>& vertexArray, uint32_t count)
 	{
+		vertexArray->bind();
+
 		uint32_t indexCount = (count == 0) ? vertexArray->getIndexBuffer()->count() : count;
 		glDrawElements(GL_TRIANGLES, static_cast<int>(indexCount), GL_UNSIGNED_INT, nullptr);
 

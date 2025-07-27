@@ -149,42 +149,30 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="src\platform\OpenGl\OpenGLFramebuffer.hpp" />
-    <ClInclude Include="src\Toaster\CameraController.hpp" />
-    <ClInclude Include="src\platform\OpenGl\OpenGLImage.hpp" />
-    <ClInclude Include="src\platform\Vulkan\VulkanDevice.hpp" />
-    <ClInclude Include="src\platform\Vulkan\VulkanImage.hpp" />
-    <ClInclude Include="src\platform\Vulkan\VulkanRenderingContext.hpp" />
-    <ClInclude Include="src\Toaster\Core\Time.hpp" />
-    <ClInclude Include="src\Toaster\Debug\Instrumentor.h" />
-    <ClInclude Include="src\Toaster\Renderer\Camera.hpp" />
-    <ClInclude Include="src\platform\OpenGl\OpenGLRendererAPI.hpp" />
-    <ClInclude Include="src\platform\Vulkan\VulkanBuffer.hpp" />
-    <ClInclude Include="src\Toaster\Renderer\Framebuffer.hpp" />
-    <ClInclude Include="src\Toaster\Renderer\Material.hpp" />
-    <ClInclude Include="src\Toaster\Renderer\RenderCommand.hpp" />
-    <ClInclude Include="src\platform\OpenGl\OpenGLTexture.hpp" />
-    <ClInclude Include="src\platform\OpenGl\OpenGLShader.hpp" />
-    <ClInclude Include="src\platform\OpenGl\OpenGLBuffer.hpp" />
-    <ClInclude Include="src\platform\OpenGl\OpenGLVertexArray.hpp" />
     <ClInclude Include="src\Toaster.h" />
+    <ClInclude Include="src\Toaster\CameraController.hpp" />
     <ClInclude Include="src\Toaster\Core\Application.hpp" />
     <ClInclude Include="src\Toaster\Core\Core.hpp" />
     <ClInclude Include="src\Toaster\Core\EntryPoint.hpp" />
+    <ClInclude Include="src\Toaster\Core\Input.hpp" />
+    <ClInclude Include="src\Toaster\Core\KeyCodes.hpp" />
+    <ClInclude Include="src\Toaster\Core\Layer.hpp" />
+    <ClInclude Include="src\Toaster\Core\LayerStack.hpp" />
+    <ClInclude Include="src\Toaster\Core\Log.hpp" />
+    <ClInclude Include="src\Toaster\Core\MouseCodes.hpp" />
+    <ClInclude Include="src\Toaster\Core\Time.hpp" />
+    <ClInclude Include="src\Toaster\Core\Window.hpp" />
+    <ClInclude Include="src\Toaster\Debug\Instrumentor.h" />
     <ClInclude Include="src\Toaster\Events\ApplicationEvent.hpp" />
     <ClInclude Include="src\Toaster\Events\Event.hpp" />
     <ClInclude Include="src\Toaster\Events\KeyEvent.hpp" />
     <ClInclude Include="src\Toaster\Events\MouseEvent.hpp" />
-    <ClInclude Include="src\Toaster\Core\Input.hpp" />
-    <ClInclude Include="src\platform\Windows\WindowsInput.hpp" />
-    <ClInclude Include="src\Toaster\Core\KeyCodes.hpp" />
-    <ClInclude Include="src\Toaster\Core\Layer.hpp" />
-    <ClInclude Include="src\Toaster\Core\LayerStack.hpp" />
-    <ClInclude Include="src\platform\OpenGl\OpenGlTestLayer.h" />
-    <ClInclude Include="src\Toaster\Core\Log.hpp" />
-    <ClInclude Include="src\Toaster\Core\MouseCodes.hpp" />
-    <ClInclude Include="src\platform\OpenGl\OpenGLRenderingContext.hpp" />
     <ClInclude Include="src\Toaster\Renderer\Buffer.hpp" />
+    <ClInclude Include="src\Toaster\Renderer\Camera.hpp" />
+    <ClInclude Include="src\Toaster\Renderer\Framebuffer.hpp" />
+    <ClInclude Include="src\Toaster\Renderer\Material.hpp" />
+    <ClInclude Include="src\Toaster\Renderer\RenderCommand.hpp" />
+    <ClInclude Include="src\Toaster\Renderer\RenderCore.hpp" />
     <ClInclude Include="src\Toaster\Renderer\Renderer.hpp" />
     <ClInclude Include="src\Toaster\Renderer\Renderer2D.hpp" />
     <ClInclude Include="src\Toaster\Renderer\Renderer3D.hpp" />
@@ -192,41 +180,39 @@
     <ClInclude Include="src\Toaster\Renderer\RenderingContext.hpp" />
     <ClInclude Include="src\Toaster\Renderer\Shader.hpp" />
     <ClInclude Include="src\Toaster\Renderer\Texture.hpp" />
+    <ClInclude Include="src\Toaster\Renderer\Transform.hpp" />
     <ClInclude Include="src\Toaster\Renderer\VertexArray.hpp" />
-    <ClInclude Include="src\Toaster\Core\Window.hpp" />
-    <ClInclude Include="src\platform\Windows\WindowsWindow.hpp" />
     <ClInclude Include="src\Toaster\imgui\ImguiLayer.hpp" />
+    <ClInclude Include="src\platform\OpenGl\OpenGLBuffer.hpp" />
+    <ClInclude Include="src\platform\OpenGl\OpenGLFramebuffer.hpp" />
+    <ClInclude Include="src\platform\OpenGl\OpenGLImage.hpp" />
+    <ClInclude Include="src\platform\OpenGl\OpenGLRendererAPI.hpp" />
+    <ClInclude Include="src\platform\OpenGl\OpenGLRenderingContext.hpp" />
+    <ClInclude Include="src\platform\OpenGl\OpenGLShader.hpp" />
+    <ClInclude Include="src\platform\OpenGl\OpenGLTexture.hpp" />
+    <ClInclude Include="src\platform\OpenGl\OpenGLVertexArray.hpp" />
+    <ClInclude Include="src\platform\OpenGl\OpenGlTestLayer.h" />
+    <ClInclude Include="src\platform\Vulkan\VulkanBuffer.hpp" />
+    <ClInclude Include="src\platform\Vulkan\VulkanDevice.hpp" />
+    <ClInclude Include="src\platform\Vulkan\VulkanImage.hpp" />
+    <ClInclude Include="src\platform\Vulkan\VulkanRenderingContext.hpp" />
+    <ClInclude Include="src\platform\Windows\WindowsInput.hpp" />
+    <ClInclude Include="src\platform\Windows\WindowsWindow.hpp" />
+    <ClInclude Include="src\Toaster\Util\MathUtil.hpp" />
     <ClInclude Include="src\tstpch.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\platform\OpenGl\OpenGLFramebuffer.cpp" />
     <ClCompile Include="src\Toaster\CameraController.cpp" />
-    <ClCompile Include="src\platform\OpenGl\OpenGLImage.cpp" />
-    <ClCompile Include="src\platform\Vulkan\VulkanDevice.cpp" />
-    <ClCompile Include="src\platform\Vulkan\VulkanImage.cpp" />
-    <ClCompile Include="src\platform\Vulkan\VulkanRenderingContext.cpp" />
+    <ClCompile Include="src\Toaster\Core\Application.cpp" />
+    <ClCompile Include="src\Toaster\Core\Layer.cpp" />
+    <ClCompile Include="src\Toaster\Core\LayerStack.cpp" />
+    <ClCompile Include="src\Toaster\Core\Log.cpp" />
     <ClCompile Include="src\Toaster\Core\Time.cpp" />
+    <ClCompile Include="src\Toaster\Renderer\Buffer.cpp" />
     <ClCompile Include="src\Toaster\Renderer\Camera.cpp" />
-    <ClCompile Include="src\platform\OpenGl\OpenGLRendererAPI.cpp" />
-    <ClCompile Include="src\platform\Vulkan\VulkanBuffer.cpp" />
     <ClCompile Include="src\Toaster\Renderer\Framebuffer.cpp" />
     <ClCompile Include="src\Toaster\Renderer\Material.cpp" />
     <ClCompile Include="src\Toaster\Renderer\RenderCommand.cpp" />
-    <ClCompile Include="src\platform\OpenGl\OpenGLTexture.cpp" />
-    <ClCompile Include="src\platform\OpenGl\OpenGLShader.cpp" />
-    <ClCompile Include="src\platform\OpenGl\OpenGLBuffer.cpp" />
-    <ClCompile Include="src\platform\OpenGl\OpenGLVertexArray.cpp" />
-    <ClCompile Include="src\Toaster\Core\Application.cpp" />
-    <ClCompile Include="src\platform\Windows\WindowsInput.cpp" />
-    <ClCompile Include="src\Toaster\Core\Layer.cpp" />
-    <ClCompile Include="src\Toaster\Core\LayerStack.cpp" />
-    <ClCompile Include="src\platform\OpenGl\OpenGlTestLayer.cpp" />
-    <ClCompile Include="src\Toaster\Core\Log.cpp" />
-    <ClCompile Include="src\platform\OpenGl\OpenGLRenderingContext.cpp" />
-    <ClCompile Include="src\platform\Windows\WindowsWindow.cpp" />
-    <ClCompile Include="src\Toaster\imgui\ImGuiBuild.cpp" />
-    <ClCompile Include="src\Toaster\imgui\ImguiLayer.cpp" />
-    <ClCompile Include="src\Toaster\Renderer\Buffer.cpp" />
     <ClCompile Include="src\Toaster\Renderer\Renderer.cpp" />
     <ClCompile Include="src\Toaster\Renderer\Renderer2D.cpp" />
     <ClCompile Include="src\Toaster\Renderer\Renderer3D.cpp" />
@@ -234,6 +220,23 @@
     <ClCompile Include="src\Toaster\Renderer\Shader.cpp" />
     <ClCompile Include="src\Toaster\Renderer\Texture.cpp" />
     <ClCompile Include="src\Toaster\Renderer\VertexArray.cpp" />
+    <ClCompile Include="src\Toaster\imgui\ImGuiBuild.cpp" />
+    <ClCompile Include="src\Toaster\imgui\ImguiLayer.cpp" />
+    <ClCompile Include="src\platform\OpenGl\OpenGLBuffer.cpp" />
+    <ClCompile Include="src\platform\OpenGl\OpenGLFramebuffer.cpp" />
+    <ClCompile Include="src\platform\OpenGl\OpenGLImage.cpp" />
+    <ClCompile Include="src\platform\OpenGl\OpenGLRendererAPI.cpp" />
+    <ClCompile Include="src\platform\OpenGl\OpenGLRenderingContext.cpp" />
+    <ClCompile Include="src\platform\OpenGl\OpenGLShader.cpp" />
+    <ClCompile Include="src\platform\OpenGl\OpenGLTexture.cpp" />
+    <ClCompile Include="src\platform\OpenGl\OpenGLVertexArray.cpp" />
+    <ClCompile Include="src\platform\OpenGl\OpenGlTestLayer.cpp" />
+    <ClCompile Include="src\platform\Vulkan\VulkanBuffer.cpp" />
+    <ClCompile Include="src\platform\Vulkan\VulkanDevice.cpp" />
+    <ClCompile Include="src\platform\Vulkan\VulkanImage.cpp" />
+    <ClCompile Include="src\platform\Vulkan\VulkanRenderingContext.cpp" />
+    <ClCompile Include="src\platform\Windows\WindowsInput.cpp" />
+    <ClCompile Include="src\platform\Windows\WindowsWindow.cpp" />
     <ClCompile Include="src\tstpch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
@@ -257,6 +260,10 @@
     <ProjectReference Include="..\dependencies\glm\glm.vcxproj">
       <Project>{6577880B-D180-887C-5AFC-9E7CC604947C}</Project>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="res\shaders\FlatTextureShader.glsl" />
+    <None Include="res\shaders\LightingShader.glsl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

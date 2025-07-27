@@ -33,6 +33,8 @@ namespace tst {
 		void popLayer(RefPtr<Layer> layer);
 		void popOverlay(RefPtr<Layer> overlay);
 
+		RefPtr<ImguiLayer> getImguiLayer() { return m_imguiLayer; }
+
 		Window& getWindow() { return *m_window; }
 
 		static Application& getInstance() {
