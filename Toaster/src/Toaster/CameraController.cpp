@@ -21,6 +21,7 @@ namespace tst
 
 	void PerspectiveCameraController::onUpdate(DeltaTime dt)
 	{
+
 		recalculateCameraVectors();
 
 		float cameraSpeed = m_cameraSpeed * (Input::isKeyPressed(TST_KEY_LEFT_CONTROL) ? 3.0f : 1.0f);
@@ -134,13 +135,15 @@ namespace tst
 
 	bool PerspectiveCameraController::onWindowResizedEvent(WindowResizedEvent& e)
 	{
-		TST_PROFILE_FN();
+		int safeWidth  = std::max(e.getWidth(), 1);
+		int safeHeight = std::max(e.getHeight(), 1);
 
-		m_aspectRatio = static_cast<float>(e.getWidth()) / static_cast<float>(e.getHeight());
+		m_aspectRatio = static_cast<float>(safeWidth) / static_cast<float>(safeHeight);
 		m_Camera->recalculateProjectionMatrix(m_fov, m_aspectRatio, 0.1f, 1000.0f);
 
 		return false;
 	}
+
 
 	void PerspectiveCameraController::recalculateCameraVectors()
 	{
@@ -162,7 +165,10 @@ namespace tst
 
 	void PerspectiveCameraController::resize(const uint32_t width, const uint32_t height)
 	{
-		m_aspectRatio = static_cast<float>(width) / static_cast<float>(height);
+		uint32_t safeWidth	= std::max(width,  static_cast<uint32_t>(1));
+		uint32_t safeHeight = std::max(height, static_cast<uint32_t>(1));
+
+		m_aspectRatio = static_cast<float>(safeWidth) / static_cast<float>(safeHeight);
 		m_Camera->recalculateProjectionMatrix(m_fov, m_aspectRatio, 0.1f, 1000.0f);
 	}
 

@@ -188,6 +188,7 @@
     <ClInclude Include="src\Toaster\Scene\Scene.hpp" />
     <ClInclude Include="src\Toaster\Scene\Components.hpp" />
     <ClInclude Include="src\Toaster\Scene\Entity.hpp" />
+    <ClInclude Include="src\Toaster\Scene\ScriptableEntity.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Toaster\CameraController.cpp">

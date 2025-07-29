@@ -53,6 +53,8 @@ namespace tst {
 
 		float m_lastFrameTime{0.0f};
 
+		bool m_minimized = false;
+
 	};
 
 	// To be defined in CLIENT

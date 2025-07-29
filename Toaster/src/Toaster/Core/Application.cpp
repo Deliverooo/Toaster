@@ -63,7 +63,13 @@ namespace tst
 		});
 		event_dispatcher.dispatch<WindowResizedEvent>([this](WindowResizedEvent& e) {
 			{
-				TST_PROFILE_SCP("On window resize - App");
+				if (e.getWidth() == 0 || e.getHeight() == 0)
+				{
+					m_minimized = true;
+					return false;
+				}
+
+				m_minimized = false;
 
 				Renderer::resizeViewport(e.getWidth(), e.getHeight());
 			}
@@ -106,19 +112,20 @@ namespace tst
 			DeltaTime dt = { m_lastFrameTime, currentTime };
 			m_lastFrameTime = currentTime;
 
-			
-
-			for (RefPtr<Layer> layer : m_layerStack)
+			if (!m_minimized)
 			{
-				layer->onUpdate(dt);
-			}
+				for (RefPtr<Layer> layer : m_layerStack)
+				{
+					layer->onUpdate(dt);
+				}
 
-			m_imguiLayer->begin();
-			for (RefPtr<Layer> layer : m_layerStack)
-			{
-				layer->onImguiRender();
+				m_imguiLayer->begin();
+				for (RefPtr<Layer> layer : m_layerStack)
+				{
+					layer->onImguiRender();
+				}
+				m_imguiLayer->end();
 			}
-			m_imguiLayer->end();
 
 			m_window->update();
 		}

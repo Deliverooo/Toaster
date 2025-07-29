@@ -1,12 +1,16 @@
 #include "tstpch.h"
 #include "Scene.hpp"
 
-#include <glm/glm.hpp>
-
+#include "Entity.hpp"
 #include "Components.hpp"
+#include "ScriptableEntity.hpp"
+
 #include "Toaster/Renderer/Renderer3D.hpp"
 
+#include <glm/glm.hpp>
+
 #include "Entity.hpp"
+
 
 namespace tst
 {
@@ -40,20 +44,82 @@ namespace tst
 	void Scene::onUpdate(DeltaTime dt)
 	{
 
-		auto group = m_registry.group<TransformComponent>(entt::get<SpriteRendererComponent>);
-
-		for (const auto entity : group)
+		m_registry.view<NativeScriptComponent>().each([&](auto entity, auto& scriptComp)
 		{
-			auto [transform, spriteRenderer] = group.get<TransformComponent, SpriteRendererComponent>(entity);
+			if (scriptComp.instance == nullptr)
+			{
+				scriptComp.instance = scriptComp.instantiateScript();
+				scriptComp.instance->m_entity = { entity, this };
 
-			Renderer3D::drawQuad(transform, spriteRenderer.colour);
+				scriptComp.instance->onCreate();
+			}
+
+			scriptComp.instance->onUpdate(dt);
+		});
+
+		Camera* mainCamera = nullptr;
+		glm::mat4* cameraView = nullptr;
+
+		auto cameraGroup = m_registry.view<CameraComponent, TransformComponent>();
+		for (auto entity : cameraGroup)
+		{
+			auto [camera, transform] = cameraGroup.get<CameraComponent, TransformComponent>(entity);
+
+			if (camera.main)
+			{
+				mainCamera = &camera.camera;
+				cameraView = &transform.transform;
+				break;
+			}
+		}
+
+		static float clock = 0.0f;
+		clock += dt;
+
+		if (mainCamera)
+		{
+			Renderer3D::begin(mainCamera->getProjection(), *cameraView);
+
+			auto group = m_registry.group<TransformComponent>(entt::get<SpriteRendererComponent>);
+			for (auto entity : group)
+			{
+				const auto &[transform, spriteRenderer] = group.get<TransformComponent, SpriteRendererComponent>(entity);
+
+
+				Renderer3D::drawCube(transform, spriteRenderer.colour);
+			}
+
+			Renderer3D::end();
 		}
 	}
 
-	Entity Scene::createEntity()
+	void Scene::onViewportResize(uint32_t width, uint32_t height)
 	{
-		return { m_registry.create(), this };
+
+		auto cameraGroup = m_registry.view<CameraComponent>();
+		for (auto entity : cameraGroup)
+		{
+			auto& camera = cameraGroup.get<CameraComponent>(entity);
+
+			if (camera.fixedAspect)
+			{
+				continue;
+			}
+
+			camera.camera.setViewportSize(width, height);
+
+		}
 	}
 
 
+	Entity Scene::createEntity(const std::string &name)
+	{
+		Entity entity = { m_registry.create(), this };
+		entity.addComponent<TransformComponent>();
+		auto& tag = entity.addComponent<TagComponent>();
+
+		tag.name = (name.empty()) ? "Entity" : name;
+
+		return entity;
+	}
 }

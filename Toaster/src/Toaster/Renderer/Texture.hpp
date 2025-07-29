@@ -49,6 +49,17 @@ namespace tst
 		LinearMipmapLinear,
 	};
 
+	enum class TexturePixelDataType
+	{
+		UnsignedByte,
+		Byte,
+		UnsignedShort,
+		Short,
+		UnsignedInt,
+		Int,
+		Float,
+	};
+
 	struct TextureParams
 	{
 		TextureWrapping wrapS{ TextureWrapping::Repeat };
@@ -57,8 +68,10 @@ namespace tst
 		TextureFiltering minFilter{ TextureFiltering::LinearMipmapLinear };
 		TextureFiltering magFilter{ TextureFiltering::Linear };
 
-		bool generateMipmaps{ true };
+		bool generateMipmaps{ false };
 		bool flipX{ true };
+
+		TexturePixelDataType pixelDataType{ TexturePixelDataType::UnsignedByte };
 	};
 
 	class TST_API Texture
@@ -72,7 +85,7 @@ namespace tst
 
 		//virtual TextureFormat getFormat() const = 0;
 
-		virtual void setData(void* data, size_t size) = 0;
+		virtual void setData(void* data) = 0;
 
 		virtual void bind(uint32_t slot = 0) const = 0;
 		virtual void unbind() const = 0;

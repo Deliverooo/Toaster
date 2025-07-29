@@ -59,6 +59,21 @@ namespace tst
 		}
 	}
 
+	GLenum TextureUtils::toGLDataType(const TexturePixelDataType dataType)
+	{
+		switch (dataType)
+		{
+		case TexturePixelDataType::UnsignedByte: return GL_UNSIGNED_BYTE;
+		case TexturePixelDataType::Byte: return GL_BYTE;
+		case TexturePixelDataType::UnsignedShort: return GL_UNSIGNED_SHORT;
+		case TexturePixelDataType::Short: return GL_SHORT;
+		case TexturePixelDataType::UnsignedInt: return GL_UNSIGNED_INT;
+		case TexturePixelDataType::Int: return GL_INT;
+		case TexturePixelDataType::Float: return GL_FLOAT;
+		default: return GL_UNSIGNED_BYTE;
+		}
+	}
+
 	OpenGLTexture2D::OpenGLTexture2D(const std::string& filepath, const TextureParams& params) : m_texturePath(filepath), m_textureParameters(params)
 	{
 		TST_PROFILE_FN();
@@ -178,18 +193,72 @@ namespace tst
 	}
 
 
-	void OpenGLTexture2D::setData(void* data, size_t size)
+	void OpenGLTexture2D::setData(void* data)
 	{
 		TST_PROFILE_FN();
 
+		if (!data) {
+			TST_CORE_ERROR("OpenGLTexture2D::setData: Cannot set data with nullptr!");
+			return;
+		}
+
+		if (m_textureId == 0) {
+			TST_CORE_ERROR("OpenGLTexture2D::setData: Texture Id is not initialized!");
+			return;
+		}
+
+		if (m_textureWidth == 0 || m_textureHeight == 0) {
+			TST_CORE_ERROR("OpenGLTexture2D::setData: Invalid texture dimensions -> [{0} x {1}]", m_textureWidth, m_textureHeight);
+			return;
+		}
+
+
 
 		glBindTexture(GL_TEXTURE_2D, m_textureId);
-		glTexImage2D(GL_TEXTURE_2D, 0, m_internalFormat, static_cast<int>(m_textureWidth), static_cast<int>(m_textureHeight), 0, m_dataFormat, GL_UNSIGNED_BYTE, data);
 
-		if (m_textureParameters.generateMipmaps)
-		{
-			glGenerateMipmap(GL_TEXTURE_2D);
+		// Check for binding errors
+		GLenum error = glGetError();
+		if (error != GL_NO_ERROR) {
+			TST_CORE_ERROR("OpenGL Error after binding texture: {}", error);
+			return;
 		}
+
+		TST_CORE_INFO("Setting texture data: [{0} x {1}], format: {2}, internal: {3}, type: {4}",
+			m_textureWidth, m_textureHeight, m_dataFormat, m_internalFormat, TextureUtils::toGLDataType(m_textureParameters.pixelDataType));
+
+		// Use glTexImage2D to set the data
+		glTexImage2D(GL_TEXTURE_2D, 0, m_internalFormat,
+			static_cast<int>(m_textureWidth), static_cast<int>(m_textureHeight), 0, m_dataFormat, TextureUtils::toGLDataType(m_textureParameters.pixelDataType), data);
+
+		// Check for upload errors
+		error = glGetError();
+		if (error != GL_NO_ERROR) {
+			TST_CORE_ERROR("OpenGL Error during texture upload: {} ({})", error,
+				error == GL_INVALID_VALUE ? "GL_INVALID_VALUE" :
+				error == GL_INVALID_ENUM ? "GL_INVALID_ENUM" :
+				error == GL_INVALID_OPERATION ? "GL_INVALID_OPERATION" : "Unknown");
+
+			// Log additional debug info
+			TST_CORE_ERROR("Texture info - Width: {0}, Height: {1}, DataFormat: {2:x}, InternalFormat {3:x}, DataType: {4:x}",
+				m_textureWidth, m_textureHeight, m_dataFormat, m_internalFormat,
+				TextureUtils::toGLDataType(m_textureParameters.pixelDataType));
+			return;
+		}
+
+		// Generate mipmaps if specified in parameters
+		if (m_textureParameters.generateMipmaps) {
+			glGenerateMipmap(GL_TEXTURE_2D);
+
+			error = glGetError();
+			if (error != GL_NO_ERROR) {
+				TST_CORE_ERROR("OpenGL Error during mipmap generation: {0}", error);
+			}
+		}
+
+		// Unbind texture to avoid conflicts
+		glBindTexture(GL_TEXTURE_2D, 0);
+
+		TST_CORE_INFO("Texture data uploaded successfully!");
 	}
 
 

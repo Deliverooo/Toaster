@@ -2,9 +2,11 @@
 #include "Camera.hpp"
 #include "glm/ext/matrix_transform.hpp"
 #include "Texture.hpp"
+#include "Toaster/Scene/Components.hpp"
 
 namespace tst
 {
+
 	class TST_API Renderer3D
 	{
 	public:
@@ -32,6 +34,7 @@ namespace tst
 
 		static void begin(const RefPtr<PerspectiveCamera>& camera);
 		static void begin(const RefPtr<OrthoCamera>& camera);
+		static void begin(const Camera& camera, const glm::mat4 &transform);
 
 		static void end();
 

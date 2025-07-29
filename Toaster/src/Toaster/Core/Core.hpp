@@ -1,5 +1,7 @@
 #pragma once
 
+#include <memory>
+
 // check if the platform is Windows
 #ifdef TST_PLATFORM_WINDOWS
 // Define the TST_API macro for DLL export/import
@@ -24,15 +26,21 @@ namespace tst
 	template<typename T>
 	using RefPtr = std::shared_ptr<T>;
 
+	template<typename T>
+	using CachePtr = std::weak_ptr<T>;
+
+
+	template<typename T, typename ...Args>
+	ScopedPtr<T> make_scoped(Args ...args) { return std::make_unique<T>(std::forward<Args>(args)...); }
+
+	template<typename T, typename ...Args>
+	RefPtr<T> make_reference(Args ...args) { return std::make_shared<T>(std::forward<Args>(args)...); }
+
+
 }
 
 
-
-#define TST_RENDER_2D
-//#define TST_RENDER_3D
-
 #define TST_REL_PATH "C:/dev/Toaster/SandBox/assets/"
-
 
 #ifdef NO_THANKS
 #define TST_ENABLE_PROFILING

@@ -1,14 +1,11 @@
 #pragma once
-#include <random>
 
 #include "Toaster.h"
-#include "imgui.h"
-#include "Toaster/CameraController.hpp"
+#include "panels/SceneHierarchyPanel.hpp"
 
 
 namespace tst
 {
-
 	struct Particle3DCreateInfo
 	{
 		glm::vec3 Position{ 0.0f };
@@ -74,6 +71,7 @@ namespace tst
 
 	private:
 
+		void loadAssets();
 		bool onKeyPressedEvent(KeyPressedEvent& e);
 
 		glm::vec4 screenSpaceToWorldSpace(glm::vec2 screenCoords, float depth);
@@ -87,23 +85,30 @@ namespace tst
 		RefPtr<Texture2D> m_RayTraceRoomTexture;
 
 		RefPtr<SubTexture2D> m_Texture0;
-
-		//RefPtr<Texture2D> m_renderTexture;
-
+		RefPtr<Texture2D> m_renderTexture;
+		unsigned char *m_imageData = nullptr;
 		RefPtr<Framebuffer> m_Framebuffer;
 
-		//RefPtr<Framebuffer> m_RenderOutputFramebuffer;
 
 		glm::vec4 m_clearColour{ 0.15f, 0.15f, 0.15f, 1.0f };
-
 		glm::vec2 m_ViewportSize{1280, 720};
+
+		glm::vec4 m_squareColour{1.0f, 1.0f, 1.0f, 1.0f};
+
 		ParticleSystem3D m_particleSystem;
 
 		RefPtr<Scene> m_Scene;
+
+		Entity m_CameraEntity;
+		Entity m_SecondCameraEntity;
+		Entity m_CubeEntity;
+
+		bool m_primaryCamera = false;
 
 		bool m_ViewportFocused = false;
 		bool m_ViewportHovered = false;
 		bool m_particleDrawMode = false;
 
+		SceneHierarchyPanel m_SceneHierarchyPanel;
 	};
 }

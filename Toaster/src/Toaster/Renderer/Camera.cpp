@@ -7,72 +7,61 @@
 namespace tst
 {
 
-	Camera::Camera(float fov, float aspect, float zNear, float zFar) : fov(fov), zNear(zNear), zFar(zFar), m_aspect(aspect)
+	//constexpr glm::mat4 iso(const float size, const float zNear, const float zFar)
+	//{
+	//	glm::mat4 projection = glm::ortho(-size, size, -size, size, zNear, zFar);
+	//	projection[0][0] = 1.0f / (size * 2.0f);
+	//	projection[1][1] = 1.0f / (size * 2.0f);
+	//	projection[2][2] = 1.0f / (zFar - zNear);
+	//	projection[3][3] = 1.0f;
+	//	return projection;
+	//}
+
+	SceneCamera::SceneCamera() : Camera()
 	{
-		position = glm::vec3(0.0f);
-		rotation = glm::vec3(0.0f, 6.283185f, 0.0f);
-		calcViewMatrix();
-		m_projectionMatrix = glm::perspective(fov, aspect, zNear, zFar);
-		setCameraMode(CameraMode::PERSPECTIVE);
+		recalculateProjectionMatrix();
 	}
 
-	Camera::Camera(float left, float right, float bottom, float top, float zNear, float zFar) : leftPlane(left), rightPlane(right), bottomPlane(bottom), topPlane(top), zNear(zNear), zFar(zFar)
+	void SceneCamera::setOrtho(float size, float zNear, float zFar)
 	{
-		position = glm::vec3(0.0f);
-		rotation = glm::vec3(0.0f, 6.283185f, 0.0f);
-		calcViewMatrix();
-		m_projectionMatrix = glm::ortho(left * m_aspect, right * m_aspect, bottom, top, zNear, zFar);
-		setCameraMode(CameraMode::ORTHOGRAPHIC);
+		m_OrthoSize = size;
+		m_OrthoNear = zNear;
+		m_OrthoFar	= zFar;
+
+		recalculateProjectionMatrix();
+	}
+	void SceneCamera::setPerspective(float fov, float zNear, float zFar)
+	{
+		m_PersFov  = fov;
+		m_PersNear = zNear;
+		m_PersFar  = zFar;
+
+		recalculateProjectionMatrix();
 	}
 
-	void Camera::updateCameraMode(CameraMode mode)
+	void SceneCamera::setViewportSize(uint32_t width, uint32_t height)
 	{
-		if (mode == CameraMode::PERSPECTIVE)
+		uint32_t safeWidth	= std::max(width,  static_cast<uint32_t>(1));
+		uint32_t safeHeight = std::max(height, static_cast<uint32_t>(1));
+
+		m_Aspect = static_cast<float>(safeWidth) / static_cast<float>(safeHeight);
+		recalculateProjectionMatrix();
+	}
+
+	void SceneCamera::recalculateProjectionMatrix()
+	{
+		switch (m_ProjectionType)
 		{
-			m_projectionMatrix = glm::perspective(fov, m_aspect, zNear, zFar);
+		case ProjectionType::Perspective:
+			m_projectionMatrix = glm::perspective(glm::radians(m_PersFov), m_Aspect, m_PersNear, m_PersFar);
+			break;
+		case ProjectionType::Orthographic:
+			m_projectionMatrix = glm::ortho(-m_OrthoSize * m_Aspect, m_OrthoSize * m_Aspect, -m_OrthoSize, m_OrthoSize, m_OrthoNear, m_OrthoFar);
+			break;
+
 		}
-		else
-		{
-			m_projectionMatrix = glm::ortho(leftPlane * m_aspect, rightPlane * m_aspect, bottomPlane, topPlane, zNear, zFar);
-		}
-		m_cameraMode = mode;
 	}
 
-	void Camera::setAspect(float aspect)
-	{
-		m_aspect = aspect;
-		updateCameraMode(m_cameraMode);
-	}
-
-	const glm::vec3 Camera::front() const
-	{
-		float cosPitch = glm::cos(rotation.x);
-		float sinPitch = glm::sin(rotation.x);
-		float cosYaw = glm::cos(rotation.y);
-		float sinYaw = glm::sin(rotation.y);
-
-		return glm::normalize(glm::vec3(
-			cosYaw * cosPitch,
-			sinPitch,
-			sinYaw * cosPitch
-		));
-	}
-
-	const glm::vec3 Camera::right() const
-	{
-		glm::vec3 f = front();
-		return glm::normalize(glm::cross(f, glm::vec3(0.0f, 1.0f, 0.0f)));
-	}
-
-	const glm::vec3 Camera::up() const
-	{
-		return glm::normalize(glm::cross(right(), front()));
-	}
-
-	void Camera::calcViewMatrix()
-	{
-		m_viewMatrix = glm::lookAt(position, position + front(), { 0.0f, 1.0f, 0.0f });
-	}
 
 
 	//----------------------------------------------------------------

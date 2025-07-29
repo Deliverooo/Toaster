@@ -28,15 +28,20 @@ namespace tst
 		static void init();
 		static void terminate();
 
+		static uint32_t enumerateTextureIndex(const RefPtr<Texture2D>& texture);
 
 		static void begin(const RefPtr<OrthoCamera2D>& camera);
-		//static void begin(const RefPtr<OrthoCamera>& camera);
+		static void begin(const Camera& camera, const glm::mat4& transform);
 		static void begin(const RefPtr<PerspectiveCamera>& camera);
 
 		static void end();
 
 		static void flush();
 		static void beginNewBatch();
+
+		static void drawQuad(const glm::mat4 &transform, const glm::vec4& colour);
+		static void drawQuad(const glm::mat4 &transform, const RefPtr<Texture2D>& texture, const float tilingScale = 1.0f, const glm::vec4& tintColour = glm::vec4(1.0f));
+		static void drawQuad(const glm::mat4 &transform, const RefPtr<SubTexture2D>& texture, const float tilingScale = 1.0f, const glm::vec4& tintColour = glm::vec4(1.0f));
 
 		static void drawQuad(const glm::vec3& position, const float rotation, const glm::vec2& scale, const glm::vec4& colour);
 		static void drawQuad(const glm::vec2& position, const float rotation, const glm::vec2& scale, const glm::vec4& colour);

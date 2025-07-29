@@ -5,7 +5,7 @@
 #include "Toaster/Core/EntryPoint.hpp"
 
 #include "imgui.h"
-#include "Sandbox2D.hpp"
+//#include "Sandbox2D.hpp"
 #include "Sandbox3D.hpp"
 
 
@@ -14,12 +14,7 @@ class SandboxApp : public tst::Application
 public:
 	SandboxApp() {
 
-#ifdef TST_RENDER_2D
-		pushLayer(std::make_shared<SandBox2DLayer>());
-#endif
-#ifdef TST_RENDER_3D
 		pushLayer(std::make_shared<SandBox3DLayer>());
-#endif
 
 	}
 

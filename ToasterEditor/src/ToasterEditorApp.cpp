@@ -6,6 +6,7 @@
 
 #include "imgui.h"
 #include "ToasterEditorLayer.hpp"
+#include "rayTracing/RayTracerLayer.hpp"
 
 
 namespace tst {
@@ -15,6 +16,7 @@ namespace tst {
 	public:
 
 		ToasterEditorApp() {
+			//pushLayer(std::make_shared<RayTracerLayer>());
 			pushLayer(std::make_shared<ToasterEditorLayer>());
 		}
 

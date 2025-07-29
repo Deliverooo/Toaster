@@ -8,6 +8,10 @@
 #include "Toaster/Events/MouseEvent.hpp"
 
 
+#define GLFW_EXPOSE_NATIVE_WIN32
+#include "GLFW/glfw3native.h"
+#include "dwmapi.h"
+
 #define TST_WIN_DATA_FN(window) WindowData& window_data = *static_cast<WindowData*>(glfwGetWindowUserPointer(window))
 
 namespace tst
@@ -92,7 +96,15 @@ namespace tst
 
 		m_window = glfwCreateWindow(m_windowData.width, m_windowData.height, m_windowData.title, nullptr, nullptr);
 
-		GLFWimage windowIcon = loadIcon(TST_REL_PATH"textures/osrbo0.png");
+		HWND hwnd = glfwGetWin32Window(m_window);
+
+		COLORREF titleBarColour = RGB(0x25, 0x25, 0x25);
+		//COLORREF textColour		= RGB(0x5f, 0x5f, 0x5f);
+	
+		DwmSetWindowAttribute(hwnd, DWMWA_CAPTION_COLOR, &titleBarColour, sizeof(titleBarColour));
+		//DwmSetWindowAttribute(hwnd, DWMWA_TEXT_COLOR,	 &textColour, sizeof(textColour));
+
+		GLFWimage windowIcon = loadIcon(TST_REL_PATH"textures/orbo0.png");
 		glfwSetWindowIcon(m_window, 1, &windowIcon);
 
 		glfwGetWindowPos(m_window, &m_windowPos.first, &m_windowPos.second);

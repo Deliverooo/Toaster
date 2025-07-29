@@ -10,6 +10,9 @@
     <ClInclude Include="src\util\Random.hpp">
       <Filter>util</Filter>
     </ClInclude>
+    <ClInclude Include="src\util\ParticleSystem.hpp" />
+    <ClInclude Include="src\rayTracing\RayTracerLayer.hpp" />
+    <ClInclude Include="src\panels\SceneHierarchyPanel.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\ToasterEditorApp.cpp" />
@@ -17,6 +20,9 @@
     <ClCompile Include="src\util\Random.cpp">
       <Filter>util</Filter>
     </ClCompile>
+    <ClCompile Include="src\util\ParticleSystem.cpp" />
+    <ClCompile Include="src\rayTracing\RayTracerLayer.cpp" />
+    <ClCompile Include="src\panels\SceneHierarchyPanel.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="res\shaders\BasicShader.frag.glsl" />

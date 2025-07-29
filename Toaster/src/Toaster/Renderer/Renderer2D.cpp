@@ -6,6 +6,7 @@
 #include "Shader.hpp"
 #include "VertexArray.hpp"
 #include "glad/glad.h"
+#include "Toaster/Util/MathUtil.hpp"
 
 
 namespace tst
@@ -100,7 +101,7 @@ namespace tst
 		TST_ASSERT(render_data.whiteTexture != nullptr, "No");
 
 		uint32_t texData = 0xffffffff;
-		render_data.whiteTexture->setData(&texData, sizeof(uint32_t));
+		render_data.whiteTexture->setData(&texData);
 
 
 		int textureSamplers[render_data.maxTextureSlots];
@@ -169,6 +170,22 @@ namespace tst
 
 		render_data.quadVertexPtr = render_data.quadVertexBufferBase;
 		render_data.quadIndex = 0;
+		render_data.textureSlotIndex = 1;
+	}
+	void Renderer2D::begin(const Camera& camera, const glm::mat4 &transform)
+	{
+		TST_PROFILE_FN();
+
+		auto& projection = camera.getProjection();
+		auto view = glm::inverse(transform);
+
+		render_data.flatTextureShader->bind();
+		render_data.flatTextureShader->uploadMatrix4f(projection, "u_Projection");
+		render_data.flatTextureShader->uploadMatrix4f(view, "u_View");
+
+		render_data.quadIndex = 0;
+		render_data.quadVertexPtr = render_data.quadVertexBufferBase;
+
 		render_data.textureSlotIndex = 1;
 	}
 
@@ -250,8 +267,34 @@ namespace tst
 		render_data.stats.batchesPerFrame++;
 	}
 
+	uint32_t Renderer2D::enumerateTextureIndex(const RefPtr<Texture2D>& texture)
+	{
+		if (render_data.textureSlotIndex >= RenderData::maxTextureSlots) {
+			beginNewBatch();
+		}
 
-	void Renderer2D::drawQuad(const glm::vec3& position, const float rotation, const glm::vec2& scale, const glm::vec4& colour)
+		int texIndex = 0;
+
+		for (uint32_t i = 1; i < render_data.textureSlotIndex; i++)
+		{
+			if (render_data.textureSlots[i]->getId() == texture->getId())
+			{
+				texIndex = i;
+				break;
+			}
+		}
+
+		if (texIndex == 0)
+		{
+			texIndex = render_data.textureSlotIndex;
+			render_data.textureSlots[render_data.textureSlotIndex] = texture;
+			render_data.textureSlotIndex++;
+		}
+
+		return texIndex;
+	}
+
+	void Renderer2D::drawQuad(const glm::mat4& transform, const glm::vec4& colour)
 	{
 		TST_PROFILE_FN();
 
@@ -268,15 +311,11 @@ namespace tst
 		// There is no texture being bound, so it will be white (slot 0)
 		float texIndex = 0.0f;
 
-		glm::mat4 transformation = glm::translate(glm::mat4(1.0f), position)
-			* glm::rotate(glm::mat4(1.0f), glm::radians(rotation), { 0.0f, 0.0f, 1.0f })
-			* glm::scale(glm::mat4(1.0f), { scale.x, scale.y, 0.0f });
-
 
 		// for each vertex of the quad :)
 		for (int i = 0; i < 4; i++)
 		{
-			render_data.quadVertexPtr->position = transformation * render_data.quadVertexPositions[i];
+			render_data.quadVertexPtr->position = transform * render_data.quadVertexPositions[i];
 			render_data.quadVertexPtr->colour = colour;
 			render_data.quadVertexPtr->textureCoords = render_data.quadVertexUvs[i];
 			render_data.quadVertexPtr->textureIndex = texIndex;
@@ -289,12 +328,7 @@ namespace tst
 		render_data.stats.quadCount++;
 	}
 
-	void Renderer2D::drawQuad(const glm::vec2& position, const float rotation, const glm::vec2& scale, const glm::vec4& colour)
-	{
-		drawQuad(glm::vec3(position.x, position.y, 0.0f), rotation, scale, colour);
-	}
-
-	void Renderer2D::drawQuad(const glm::vec3& position, const float rotation, const glm::vec2& scale, const RefPtr<Texture2D>& texture, float tilingScale, const glm::vec4& tintColour)
+	void Renderer2D::drawQuad(const glm::mat4& transform, const RefPtr<Texture2D>& texture, const float tilingScale, const glm::vec4& tintColour)
 	{
 		TST_PROFILE_FN();
 
@@ -307,42 +341,14 @@ namespace tst
 		{
 			beginNewBatch();
 		}
-		if (render_data.textureSlotIndex >= RenderData::maxTextureSlots) {
-			// Flush the batch and start a new one
-			beginNewBatch();
-		}
+		
 
-
-		int texIndex = 0;
-
-		// searches for an existing texture in the current batch
-		for (uint32_t i = 1; i < render_data.textureSlotIndex; i++)
-		{
-			if (render_data.textureSlots[i] && render_data.textureSlots[i]->getId() == texture->getId())
-			{
-				texIndex = i;
-				break;
-			}
-		}
-
-		if (texIndex == 0)
-		{
-			texIndex = render_data.textureSlotIndex;
-			render_data.textureSlots[render_data.textureSlotIndex] = texture;
-			render_data.textureSlotIndex++;
-			render_data.stats.textureBindings++;
-		}
-
-		glm::mat4 transformation = glm::translate(glm::mat4(1.0f), position)
-			* glm::rotate(glm::mat4(1.0f), glm::radians(rotation), { 0.0f, 0.0f, 1.0f })
-			* glm::scale(glm::mat4(1.0f), { scale.x, scale.y, 0.0f });
-
-		float texIndexf = static_cast<float>(texIndex);
+		float texIndexf = static_cast<float>(enumerateTextureIndex(texture));
 
 		// for each vertex of the quad :)
 		for (int i = 0; i < 4; i++)
 		{
-			render_data.quadVertexPtr->position = transformation * render_data.quadVertexPositions[i];
+			render_data.quadVertexPtr->position = transform * render_data.quadVertexPositions[i];
 			render_data.quadVertexPtr->colour = tintColour;
 			render_data.quadVertexPtr->textureCoords = render_data.quadVertexUvs[i];
 			render_data.quadVertexPtr->textureIndex = texIndexf;
@@ -354,12 +360,8 @@ namespace tst
 		render_data.stats.quadCount++;
 		render_data.stats.verticesSubmitted += 4;
 	}
-	void Renderer2D::drawQuad(const glm::vec2& position, const float rotation, const glm::vec2& scale, const RefPtr<Texture2D>& texture, float tilingScale, const glm::vec4& tintColour)
-	{
-		drawQuad(glm::vec3(position.x, position.y, 0.0f), rotation, scale, texture, tilingScale, tintColour);
-	}
 
-	void Renderer2D::drawQuad(const glm::vec3& position, const float rotation, const glm::vec2& scale, const RefPtr<SubTexture2D>& texture, const float tilingScale, const glm::vec4& tintColour)
+	void Renderer2D::drawQuad(const glm::mat4& transform, const RefPtr<SubTexture2D>& texture, const float tilingScale, const glm::vec4& tintColour)
 	{
 		TST_PROFILE_FN();
 
@@ -372,47 +374,16 @@ namespace tst
 		{
 			beginNewBatch();
 		}
-		if (render_data.textureSlotIndex >= RenderData::maxTextureSlots) {
-			// Flush the batch and start a new one
-			beginNewBatch();
-		}
 
 
-		int texIndex = 0;
-
-		// searches for an existing texture in the current batch
-		for (uint32_t i = 1; i < render_data.textureSlotIndex; i++)
-		{
-			if (render_data.textureSlots[i] && render_data.textureSlots[i]->getId() == texture->getBaseTexture()->getId())
-			{
-				texIndex = i;
-				break;
-			}
-		}
-
-		if (texIndex == 0)
-		{
-			texIndex = render_data.textureSlotIndex;
-			render_data.textureSlots[render_data.textureSlotIndex] = texture->getBaseTexture();
-			render_data.textureSlotIndex++;
-			render_data.stats.textureBindings++;
-		}
-
-		glm::mat4 transformation = glm::translate(glm::mat4(1.0f), position)
-			* glm::rotate(glm::mat4(1.0f), glm::radians(rotation), { 0.0f, 0.0f, 1.0f })
-			* glm::scale(glm::mat4(1.0f), { scale.x, scale.y, 0.0f });
-
-		float texIndexf = static_cast<float>(texIndex);
-
-		const glm::vec2* uvs = texture->getTextureCoords();
-
+		float texIndexf = static_cast<float>(enumerateTextureIndex(texture->getBaseTexture()));
 
 		// for each vertex of the quad :)
 		for (int i = 0; i < 4; i++)
 		{
-			render_data.quadVertexPtr->position = transformation * render_data.quadVertexPositions[i];
+			render_data.quadVertexPtr->position = transform * render_data.quadVertexPositions[i];
 			render_data.quadVertexPtr->colour = tintColour;
-			render_data.quadVertexPtr->textureCoords = uvs[i];
+			render_data.quadVertexPtr->textureCoords = render_data.quadVertexUvs[i];
 			render_data.quadVertexPtr->textureIndex = texIndexf;
 			render_data.quadVertexPtr->tilingFactor = tilingScale;
 			render_data.quadVertexPtr++;
@@ -423,9 +394,39 @@ namespace tst
 		render_data.stats.verticesSubmitted += 4;
 	}
 
+	void Renderer2D::drawQuad(const glm::vec3& position, const float rotation, const glm::vec2& scale, const glm::vec4& colour)
+	{
+		glm::mat4 transform = transformationMat(position, rotation, scale);
+		drawQuad(transform, colour);
+	}
+
+	void Renderer2D::drawQuad(const glm::vec2& position, const float rotation, const glm::vec2& scale, const glm::vec4& colour)
+	{
+		glm::mat4 transform = transformationMat(position, rotation, scale);
+		drawQuad(transform, colour);
+	}
+
+	void Renderer2D::drawQuad(const glm::vec3& position, const float rotation, const glm::vec2& scale, const RefPtr<Texture2D>& texture, float tilingScale, const glm::vec4& tintColour)
+	{
+		glm::mat4 transform = transformationMat(position, rotation, scale);
+		drawQuad(transform, texture, tilingScale, tintColour);
+	}
+	void Renderer2D::drawQuad(const glm::vec2& position, const float rotation, const glm::vec2& scale, const RefPtr<Texture2D>& texture, float tilingScale, const glm::vec4& tintColour)
+	{
+		glm::mat4 transform = transformationMat(position, rotation, scale);
+		drawQuad(transform, texture, tilingScale, tintColour);
+	}
+
+	void Renderer2D::drawQuad(const glm::vec3& position, const float rotation, const glm::vec2& scale, const RefPtr<SubTexture2D>& texture, const float tilingScale, const glm::vec4& tintColour)
+	{
+		glm::mat4 transform = transformationMat(position, rotation, scale);
+		drawQuad(transform, texture, tilingScale, tintColour);
+	}
+
 	void Renderer2D::drawQuad(const glm::vec2& position, const float rotation, const glm::vec2& scale, const RefPtr<SubTexture2D>& texture, const float tilingScale, const glm::vec4& tintColour)
 	{
-		drawQuad(glm::vec3(position.x, position.y, 0.0f), rotation, scale, texture, tilingScale, tintColour);
+		glm::mat4 transform = transformationMat(position, rotation, scale);
+		drawQuad(transform, texture, tilingScale, tintColour);
 	}
 
 

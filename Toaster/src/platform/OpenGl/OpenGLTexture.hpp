@@ -19,6 +19,8 @@ namespace tst
 
 		static TextureWrapping fromGLWrap(const GLenum wrapping);
 		static TextureFiltering fromGLFilter(const GLenum filtering);
+
+		static GLenum toGLDataType(const TexturePixelDataType dataType);
 	};
 
 
@@ -38,7 +40,7 @@ namespace tst
 		virtual uint32_t getHeight() const override { return m_textureHeight; }
 
 		virtual void bind(uint32_t slot = 0) const override;
-		virtual void setData(void *data, size_t size) override;
+		virtual void setData(void *data) override;
 		virtual void unbind() const override;
 
 		virtual uint32_t getId() const override { return m_textureId; }
@@ -85,7 +87,7 @@ namespace tst
 
 		std::pair<uint32_t, uint32_t> getFaceDimensions(uint32_t faceIndex) const { return ((faceIndex < 6) ? m_textureDimensions[faceIndex] : std::pair<uint32_t, uint32_t>(0, 0)); }
 
-		virtual void setData(void* data, size_t size) override{}
+		virtual void setData(void* data) override{}
 
 		virtual void setFaceData(uint32_t faceIndex, const void* data, uint32_t width, uint32_t height) override;
 

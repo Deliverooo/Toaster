@@ -54,10 +54,6 @@ private:
 	bool onKeyPressedEvent(tst::KeyPressedEvent& e);
 	bool onKeyHeldEvent(tst::KeyHeldEvent& e);
 
-	enum class GameState
-	{
-		Play = 0, MainMenu = 1, GameOver = 2
-	};
 
 	glm::vec4 m_clearColour{ 0.15f };
 	tst::RefPtr<tst::PerspectiveCameraController> m_PerspectiveCameraCtrl;

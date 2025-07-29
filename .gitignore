@@ -1,3 +1,12 @@
 bin/
 bin-int/
 .vs/
+
+
+SandBox/Tst_Prof-Startup.json
+SandBox/Tst_Prof-Run.json
+SandBox/Tst_Prof-Termination.json
+
+ToasterEditor/Tst_Prof-Startup.json
+ToasterEditor/Tst_Prof-Run.json
+ToasterEditor/Tst_Prof-Termination.json

@@ -102,7 +102,7 @@ namespace tst
 		TST_ASSERT(render_data.whiteTexture != nullptr, "No");
 
 		uint32_t texData = 0xffffffff;
-		render_data.whiteTexture->setData(&texData, sizeof(uint32_t));
+		render_data.whiteTexture->setData(&texData);
 
 
 		int textureSamplers[render_data.maxTextureSlots];
@@ -162,15 +162,6 @@ namespace tst
 	}
 
 #define GLM_VEC_3_PARAM(expr) expr.x, expr.y, expr.z
-
-
-	// TODO remove this
-	void Renderer::begin(const RefPtr<Camera>& camera)
-	{
-		m_sceneData->projectionMatrix = camera->getProjectionMatrix();
-		m_sceneData->viewMatrix		  = camera->getViewMatrix();
-	}
-
 
 	void Renderer::begin(const RefPtr<PerspectiveCamera>& camera)
 	{

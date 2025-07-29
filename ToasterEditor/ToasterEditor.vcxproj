@@ -137,10 +137,16 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="src\panels\SceneHierarchyPanel.hpp" />
+    <ClInclude Include="src\rayTracing\RayTracerLayer.hpp" />
+    <ClInclude Include="src\util\ParticleSystem.hpp" />
     <ClInclude Include="src\ToasterEditorLayer.hpp" />
     <ClInclude Include="src\util\Random.hpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\panels\SceneHierarchyPanel.cpp" />
+    <ClCompile Include="src\rayTracing\RayTracerLayer.cpp" />
+    <ClCompile Include="src\util\ParticleSystem.cpp" />
     <ClCompile Include="src\ToasterEditorApp.cpp" />
     <ClCompile Include="src\ToasterEditorLayer.cpp" />
     <ClCompile Include="src\util\Random.cpp" />

@@ -101,7 +101,7 @@ namespace tst
 		TST_ASSERT(render_data.whiteTexture != nullptr, "No");
 
 		uint32_t texData = 0xffffffff;
-		render_data.whiteTexture->setData(&texData, sizeof(uint32_t));
+		render_data.whiteTexture->setData(&texData);
 
 
 		int textureSamplers[render_data.maxTextureSlots];
@@ -176,6 +176,22 @@ namespace tst
 
 		auto& projection = camera->getProjectionMatrix();
 		auto& view = camera->getViewMatrix();
+
+		render_data.flatTextureShader->bind();
+		render_data.flatTextureShader->uploadMatrix4f(projection, "u_Projection");
+		render_data.flatTextureShader->uploadMatrix4f(view, "u_View");
+
+		render_data.quadIndex = 0;
+		render_data.quadVertexPtr = render_data.quadVertexBufferBase;
+
+		render_data.textureSlotIndex = 1;
+	}
+	void Renderer3D::begin(const Camera &camera, const glm::mat4 &transform)
+	{
+		TST_PROFILE_FN();
+
+		auto& projection = camera.getProjection();
+		auto view = glm::inverse(transform);
 
 		render_data.flatTextureShader->bind();
 		render_data.flatTextureShader->uploadMatrix4f(projection, "u_Projection");

@@ -27,7 +27,6 @@ namespace tst
 		static void init();
 		static void terminate();
 
-		static void begin(const RefPtr<Camera>& camera);
 		static void begin(const RefPtr<PerspectiveCamera>& camera);
 		static void begin(const RefPtr<OrthoCamera>& camera);
 		static void begin(const RefPtr<OrthoCamera2D>& camera);

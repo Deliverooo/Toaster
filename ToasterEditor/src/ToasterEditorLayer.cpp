@@ -1,6 +1,7 @@
 #include "ToasterEditorLayer.hpp"
 
 #include "util/Random.hpp"
+#include "Toaster/Scene/Scene.hpp"
 
 #define TST_EDITOR_REL_PATH "C:/dev/Toaster/ToasterEditor/res/"
 
@@ -18,27 +19,27 @@ namespace tst
 		particle.Position = createInfo.Position;
 
 
-		particle.Rotation = glm::vec3(Random::Float() * 2.0f * glm::pi<float>());
+		particle.Rotation = glm::vec3(Random::Gen<float>() * 2.0f * glm::pi<float>());
 
 		// Velocity
 		particle.Velocity = createInfo.Velocity;
-		particle.Velocity.x += createInfo.VelocityVariation.x * (Random::Float() - 0.5f);
-		particle.Velocity.y += createInfo.VelocityVariation.y * (Random::Float() - 0.5f);
-		particle.Velocity.z += createInfo.VelocityVariation.z * (Random::Float() - 0.5f);
+		particle.Velocity.x += createInfo.VelocityVariation.x * (Random::Gen<float>() - 0.5f);
+		particle.Velocity.y += createInfo.VelocityVariation.y * (Random::Gen<float>() - 0.5f);
+		particle.Velocity.z += createInfo.VelocityVariation.z * (Random::Gen<float>() - 0.5f);
 
 		// Colour
 		//particle.ColourBegin = createInfo.ColourBegin;
-		particle.ColourBegin.r = createInfo.ColourBegin.r + createInfo.ColourVariation.r * (Random::Float() - 0.5f);
-		particle.ColourBegin.g = createInfo.ColourBegin.g + createInfo.ColourVariation.g * (Random::Float() - 0.5f);
-		particle.ColourBegin.b = createInfo.ColourBegin.b + createInfo.ColourVariation.b * (Random::Float() - 0.5f);
-		particle.ColourBegin.a = createInfo.ColourBegin.a + createInfo.ColourVariation.a * (Random::Float() - 0.5f);
+		particle.ColourBegin.r = createInfo.ColourBegin.r + createInfo.ColourVariation.r * (Random::Gen<float>() - 0.5f);
+		particle.ColourBegin.g = createInfo.ColourBegin.g + createInfo.ColourVariation.g * (Random::Gen<float>() - 0.5f);
+		particle.ColourBegin.b = createInfo.ColourBegin.b + createInfo.ColourVariation.b * (Random::Gen<float>() - 0.5f);
+		particle.ColourBegin.a = createInfo.ColourBegin.a + createInfo.ColourVariation.a * (Random::Gen<float>() - 0.5f);
 
 		particle.ColourEnd = createInfo.ColourEnd;
 
 		// Size
-		particle.SizeBegin.x = createInfo.SizeBegin.x + createInfo.SizeVariation.x * (Random::Float() - 0.5f);
-		particle.SizeBegin.y = createInfo.SizeBegin.y + createInfo.SizeVariation.y * (Random::Float() - 0.5f);
-		particle.SizeBegin.z = createInfo.SizeBegin.z + createInfo.SizeVariation.z * (Random::Float() - 0.5f);
+		particle.SizeBegin.x = createInfo.SizeBegin.x + createInfo.SizeVariation.x * (Random::Gen<float>() - 0.5f);
+		particle.SizeBegin.y = createInfo.SizeBegin.y + createInfo.SizeVariation.y * (Random::Gen<float>() - 0.5f);
+		particle.SizeBegin.z = createInfo.SizeBegin.z + createInfo.SizeVariation.z * (Random::Gen<float>() - 0.5f);
 
 		particle.SizeEnd = createInfo.SizeEnd;
 
@@ -61,6 +62,8 @@ namespace tst
 				particle.Active = false;
 				continue;
 			}
+
+			particle.Velocity.y -= dt * 5.0f;
 
 			particle.LifeRemaining -= dt;
 			particle.Position += particle.Velocity * static_cast<float>(dt);
@@ -112,14 +115,8 @@ namespace tst
 
 	}
 
-	void ToasterEditorLayer::onAttach()
+	void ToasterEditorLayer::loadAssets()
 	{
-
-		FramebufferCreateInfo framebufferCreateInfo{ 1280, 720 };
-		m_Framebuffer = Framebuffer::create(framebufferCreateInfo);
-
-		//m_RenderOutputFramebuffer = Framebuffer::create(FramebufferCreateInfo{ 300, 600 });
-
 		TextureParams defaultParams{};
 		defaultParams.minFilter = TextureFiltering::LinearMipmapLinear;
 		defaultParams.magFilter = TextureFiltering::Linear;
@@ -134,117 +131,132 @@ namespace tst
 		pixelTextureParams.wrapT = TextureWrapping::Repeat;
 		pixelTextureParams.generateMipmaps = true;
 
-		RefPtr<Texture2D> dirtSheet = Texture2D::create(TST_EDITOR_REL_PATH"textures/sprite sheets/Tiles_0.png", pixelTextureParams);
 
-		m_OrboTexture = Texture2D::create(TST_EDITOR_REL_PATH"textures/orbo0.png", pixelTextureParams);
-		m_GrassTexture = Texture2D::create(TST_EDITOR_REL_PATH"textures/Grass2K.png", defaultParams);
-		m_BirdTexture = Texture2D::create(TST_EDITOR_REL_PATH"textures/One_Leg_Bird.png", defaultParams);
+		m_OrboTexture		  = Texture2D::create(TST_EDITOR_REL_PATH"textures/orbo0.png",		  pixelTextureParams);
+		m_GrassTexture		  = Texture2D::create(TST_EDITOR_REL_PATH"textures/Grass2K.png",	  defaultParams);
+		m_BirdTexture		  = Texture2D::create(TST_EDITOR_REL_PATH"textures/One_Leg_Bird.png", defaultParams);
 		m_RayTraceRoomTexture = Texture2D::create(TST_EDITOR_REL_PATH"textures/RayTraceRoom.png", defaultParams);
+	}
 
-		m_Texture0 = SubTexture2D::createPixelPerfect(dirtSheet, 0, 2, 16, 16);
-
-		//m_renderTexture = Texture2D::create(300, 600);
-
-		//unsigned char* data = new unsigned char[300 * 600 * 4];
-		//for (int i = 0; i < 300 * 600 * 4; i++)
-		//{
-		//	data[i] = static_cast<unsigned char>(0xff);
-		//}
-		//m_renderTexture->setData(data, 300 * 600 * 4);
-		//delete[] data;
+	void ToasterEditorLayer::onAttach()
+	{
+		FramebufferCreateInfo framebufferCreateInfo{ 1280, 720 };
+		m_Framebuffer = Framebuffer::create(framebufferCreateInfo);
 
 
-		m_Scene = std::make_shared<Scene>();
+		m_Scene = make_reference<Scene>();
 
-		Entity entity = m_Scene->createEntity();
+		m_CubeEntity = m_Scene->createEntity("Cube Entity");
+		m_CubeEntity.addComponent<SpriteRendererComponent>(glm::vec4{1.0f, 1.0f, 1.0f, 1.0f});
 
-		glm::mat4 mat{4.0f};
-		entity.addComponent<TransformComponent>(mat);
-		entity.addComponent<SpriteRendererComponent>();
+		auto cube2 = m_Scene->createEntity("Cube2 Entity");
+		cube2.addComponent<SpriteRendererComponent>(glm::vec4{1.0f, 0.0f, 1.0f, 1.0f});
 
 
-		TST_TRACE("{0}", entity.hasComponent<TransformComponent>());
+		m_CameraEntity = m_Scene->createEntity("Camera Entity");
+		m_CameraEntity.addComponent<CameraComponent>();
 
-		auto& colour = entity.getComponent<SpriteRendererComponent>();
-		colour.colour = { 1.0f, 0.9f, 1.0f, 1.0f };
+		m_SecondCameraEntity = m_Scene->createEntity("Second Camera Entity");
+		m_SecondCameraEntity.addComponent<CameraComponent>();
+
+		m_renderTexture = Texture2D::create(300, 600);
+
+
+		class CameraController : public ScriptableEntity
+		{
+		public:
+
+			void onCreate()
+			{
+				
+			}
+			void onDestroy()
+			{
+				
+			}
+			void onUpdate(DeltaTime dt)
+			{
+				static float clock = 0.0f;
+				clock += dt;
+
+				static float cameraSpeed = 4.0f;
+
+				if (m_entity.getComponent<CameraComponent>().main)
+				{
+					if (Input::isMouseButtonPressed(TST_MOUSE_BUTTON_2))
+					{
+						auto& trans = m_entity.getComponent<TransformComponent>().transform;
+
+						glm::vec3 cameraDirection{ 0.0f };
+
+						if (Input::isKeyPressed(TST_KEY_W)) { cameraDirection -= glm::vec3(0.0f, 0.0f, 1.0f) * dt.getTime_s() * cameraSpeed; }
+						if (Input::isKeyPressed(TST_KEY_S)) { cameraDirection += glm::vec3(0.0f, 0.0f, 1.0f) * dt.getTime_s() * cameraSpeed; }
+						if (Input::isKeyPressed(TST_KEY_A)) { cameraDirection -= glm::vec3(1.0f, 0.0f, 0.0f) * dt.getTime_s() * cameraSpeed; }
+						if (Input::isKeyPressed(TST_KEY_D)) { cameraDirection += glm::vec3(1.0f, 0.0f, 0.0f) * dt.getTime_s() * cameraSpeed; }
+
+						if (Input::isKeyPressed(TST_KEY_SPACE)) { cameraDirection += glm::vec3(0.0f, 1.0f, 0.0f) * dt.getTime_s() * cameraSpeed; }
+						if (Input::isKeyPressed(TST_KEY_LEFT_SHIFT)) { cameraDirection -= glm::vec3(0.0f, 1.0f, 0.0f) * dt.getTime_s() * cameraSpeed; }
+
+						trans = glm::translate(trans, { cameraDirection.x, cameraDirection.y, cameraDirection.z });
+
+						Input::focusMouseCursor();
+
+					}
+					else
+					{
+						Input::unfocusMouseCursor();
+					}
+				}
+
+			} 
+			
+		};
+
+		m_CameraEntity.addComponent<NativeScriptComponent>().bind<CameraController>();
+		m_SecondCameraEntity.addComponent<NativeScriptComponent>().bind<CameraController>();
+
+		m_SceneHierarchyPanel.setSceneContext(m_Scene);
 	}
 
 	void ToasterEditorLayer::onUpdate(DeltaTime dt)
 	{
+	    // Ensure minimum viewport size to prevent aspect ratio issues
+	    float safeViewportX = std::max(m_ViewportSize.x, 1.0f);
+	    float safeViewportY = std::max(m_ViewportSize.y, 1.0f);
+	    
+	    if (safeViewportX > 0.0f && safeViewportY > 0.0f && 
+	        (safeViewportX != m_Framebuffer->getInfo().width || safeViewportY != m_Framebuffer->getInfo().height))
+	    {
+	        m_Framebuffer->resize(static_cast<uint32_t>(safeViewportX), static_cast<uint32_t>(safeViewportY));
+	        m_PerspectiveCameraCtrl.resize(static_cast<uint32_t>(safeViewportX), static_cast<uint32_t>(safeViewportY));
 
-		if (m_ViewportFocused)
-		{
+	        m_Scene->onViewportResize(static_cast<uint32_t>(safeViewportX), static_cast<uint32_t>(safeViewportY));
+	    }
 
-			m_PerspectiveCameraCtrl.onUpdate(dt);
+	    if (m_ViewportFocused)
+	    {
+	        m_PerspectiveCameraCtrl.onUpdate(dt);
+	    }
 
-			if (Input::isMouseButtonPressed(TST_MOUSE_BUTTON_1) && m_particleDrawMode)
-			{
-				Particle3DCreateInfo particleCreateInfo{};
+	    static float clock = 0.0f;
+	    clock += dt;
 
-				auto [mX, mY] = Input::getMousePos();
+	    Renderer3D::resetStats();
+	    m_Framebuffer->bind();
+	    RenderCommand::setClearColour(m_clearColour);
+	    RenderCommand::clear();
 
-				particleCreateInfo.Position = screenSpaceToWorldSpace({ mX, mY }, 0.5f);
-				particleCreateInfo.Velocity = m_PerspectiveCameraCtrl.getFrontVector();
-				particleCreateInfo.VelocityVariation = { 0.7f, 0.0f, 0.7f };
-				particleCreateInfo.ColourBegin = { 0.9f, 0.08f, 0.08f, 0.7f };
-				particleCreateInfo.ColourEnd = { 0.05f, 0.02f, 0.02f, 0.5f };
-				particleCreateInfo.ColourVariation = { 0.9f, 0.05f, 0.05f, 0.0f };
-				particleCreateInfo.SizeBegin = { 0.07f, 0.07f, 0.07f };
-				particleCreateInfo.SizeEnd = { 0.025f, 0.025f, 0.025f };
-				particleCreateInfo.SizeVariation = { 0.001f, 0.001f, 0.001f };
-				particleCreateInfo.Lifetime = { 0.8f };
+	    m_Scene->onUpdate(dt);
 
-				m_particleSystem.emit(particleCreateInfo);
-			}
-		}
-
-
-		static float clock = 0.0f;
-		clock += dt;
-
-
-		m_particleSystem.onUpdate(dt);
-
-		if (Input::isKeyPressed(TST_KEY_F) && m_ViewportFocused)
-		{
-			Particle3DCreateInfo particleCreateInfo{};
-			//particleCreateInfo.Position = {1.0f, 3.0f, -5.0f};
-			particleCreateInfo.Position = { Random::Float(-5.0f, 5.0f), 0.0f, Random::Float(-5.0f, 5.0f) };
-			particleCreateInfo.Velocity = {0.1f, 1.0f, 0.1f};
-			particleCreateInfo.VelocityVariation = { 0.7f, 0.0f, 0.7f };
-			particleCreateInfo.ColourBegin = { 0.9f, 0.08f, 0.08f, 0.7f };
-			particleCreateInfo.ColourEnd = { 0.2f, 0.02f, 0.02f, 0.2f };
-			particleCreateInfo.ColourVariation = { 0.9f, 0.05f, 0.05f, 0.0f };
-			particleCreateInfo.SizeBegin = { 0.07f, 0.07f, 0.07f };
-			particleCreateInfo.SizeEnd = { 0.025f, 0.025f, 0.025f };
-			particleCreateInfo.SizeVariation = { 0.001f, 0.001f, 0.001f };
-			particleCreateInfo.Lifetime = { 2.0f };
-
-			m_particleSystem.emit(particleCreateInfo);
-		}
-
-		Renderer3D::resetStats();
-
-		m_Framebuffer->bind();
-		RenderCommand::setClearColour(m_clearColour);
-		RenderCommand::clear();
-
-
-		Renderer3D::begin(m_PerspectiveCameraCtrl.getCamera());
-
-		Renderer3D::drawCube({ 0.0f, 0.0f, -1.0f }, { 0.0f, 0.0f, 0.0f }, { 10.0f, 10.0f, 10.0f }, m_OrboTexture);
-
-		m_Scene->onUpdate(dt);
-
-		m_particleSystem.onRender();
-
-		Renderer3D::end();
-
-		m_Framebuffer->unbind();
+	    m_Framebuffer->unbind();
 	}
 	void ToasterEditorLayer::onEvent(Event& e)
 	{
-		m_PerspectiveCameraCtrl.onEvent(e);
+
+		if (m_ViewportFocused)
+		{
+			m_PerspectiveCameraCtrl.onEvent(e);
+		}
 
 		EventDispatcher eventDispatcher(e);
 
@@ -272,17 +284,11 @@ namespace tst
 			m_particleSystem.emit(particleCreateInfo);
 		}
 
-		if (e.getKeycode() == TST_KEY_G && m_ViewportFocused)
-		{
-			Input::focusMouseCursor();
-		}
-
 		return false;
 	}
 
 	void ToasterEditorLayer::onImguiRender()
 	{
-
 		static bool p_open = true;
 		static bool opt_fullscreen = true;
 		static bool opt_padding = false;
@@ -325,14 +331,13 @@ namespace tst
 			ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), dockspace_flags);
 		}
 
-
 		if (ImGui::BeginMenuBar())
 		{
 			if (ImGui::BeginMenu("Options"))
 			{
-				if (ImGui::MenuItem("Quit",		"Ctrl+Q"))			{ Application::getInstance().close(); }
-				if (ImGui::MenuItem("Save",		"Ctrl+S"))			{ TST_INFO("Saved!"); }
-				if (ImGui::MenuItem("Save as",  "Ctrl+Shift+S"))	{ TST_INFO("Saved as!"); }
+				if (ImGui::MenuItem("Quit", "Ctrl+Q")) { Application::getInstance().close(); }
+				if (ImGui::MenuItem("Save", "Ctrl+S")) { TST_INFO("Saved!"); }
+				if (ImGui::MenuItem("Save as", "Ctrl+Shift+S")) { TST_INFO("Saved as!"); }
 
 				ImGui::Separator();
 
@@ -341,62 +346,28 @@ namespace tst
 			ImGui::EndMenuBar();
 		}
 
+		m_SceneHierarchyPanel.onImGuiRender();
+
 		ImGui::Begin("Settings");
 
 		ImGui::Checkbox("Particle Draw Mode", &m_particleDrawMode);
 
-		ImGui::End();
+		auto group = m_Scene->registry().view<TagComponent>();
+		for (auto& entity : group)
+		{
+			auto tag = m_Scene->registry().get<TagComponent>(entity);
 
-		//ImGui::Begin("Render Output");
+			ImGui::Spacing();
+			ImGui::Text(tag.name.c_str());
+		}
 
-		//ImVec2 imageSize = ImGui::GetContentRegionAvail();
-		//ImGui::Image(m_RenderOutputFramebuffer->getColourAttachmentId(), imageSize);
+		auto& colour = m_CubeEntity.getComponent<SpriteRendererComponent>();
 
-		//static glm::vec4 v1{ 1.0f, 0.0f, 0.0f, 0.0f };
-		//static glm::vec4 v2{ 0.0f, 1.0f, 0.0f, 0.0f };
-		//static glm::vec4 v3{ 0.0f, 0.0f, 1.0f, 0.0f };
-		//static glm::vec4 v4{ 0.0f, 0.0f, 0.0f, 1.0f };
+		ImGui::ColorEdit4("Square Colour", glm::value_ptr(colour.colour));
 
-		//ImGui::SliderFloat("Matrix column 0##0", &v1.x, 0.0f, 2.0f);
-		//ImGui::SliderFloat("Matrix column 1##0", &v2.x, 0.0f, 2.0f);
-		//ImGui::SliderFloat("Matrix column 2##0", &v3.x, 0.0f, 2.0f);
-		//ImGui::SliderFloat("Matrix column 3##0", &v4.x, 0.0f, 2.0f);
 
-		//ImGui::SliderFloat("Matrix column 0##1", &v1.y, 0.0f, 2.0f);
-		//ImGui::SliderFloat("Matrix column 1##1", &v2.y, 0.0f, 2.0f);
-		//ImGui::SliderFloat("Matrix column 2##1", &v3.y, 0.0f, 2.0f);
-		//ImGui::SliderFloat("Matrix column 3##1", &v4.y, 0.0f, 2.0f);
-
-		//ImGui::SliderFloat("Matrix column 0##2", &v1.z, 0.0f, 2.0f);
-		//ImGui::SliderFloat("Matrix column 1##2", &v2.z, 0.0f, 2.0f);
-		//ImGui::SliderFloat("Matrix column 2##2", &v3.z, 0.0f, 2.0f);
-		//ImGui::SliderFloat("Matrix column 3##2", &v4.z, 0.0f, 2.0f);
-
-		//ImGui::SliderFloat("Matrix column 0##3", &v1.w, 0.0f, 2.0f);
-		//ImGui::SliderFloat("Matrix column 1##3", &v2.w, 0.0f, 2.0f);
-		//ImGui::SliderFloat("Matrix column 2##3", &v3.w, 0.0f, 2.0f);
-		//ImGui::SliderFloat("Matrix column 3##3", &v4.w, 0.0f, 2.0f);
-
-		//glm::mat4 matrix = glm::mat4(v1, v2, v3, v4);
-
-		//if (ImGui::Button("Render"))
-		//{
-
-		//}
-
-		//m_RenderOutputFramebuffer->bind();
-		//RenderCommand::setClearColour({ 0.15f, 0.15f, 0.15f, 1.0f });
-		//RenderCommand::clear();
-		//Renderer3D::begin(m_PerspectiveCameraCtrl.getCamera());
-
-		//Renderer3D::drawCube(matrix, m_BirdTexture);
-		//Renderer3D::drawQuad(glm::mat4(1.0f), m_BirdTexture);
-		//Renderer3D::end();
-		//m_RenderOutputFramebuffer->unbind();
-
-		//ImGui::End();
-
-		ImGui::Begin("3D Renderer Stats");
+		ImGui::Text("3D Renderer Stats");
+		ImGui::Spacing();
 
 		ImGui::Text("Draw Calls:			%d", Renderer3D::getStats().drawCallCount);
 		ImGui::Text("Quad Count:			%d", Renderer3D::getStats().quadCount);
@@ -407,6 +378,25 @@ namespace tst
 		ImGui::Text("Index Count:			%d", Renderer3D::getStats().totalIndexCount());
 		ImGui::Text("Batch Efficiency:		%f", Renderer3D::getStats().batchEfficiency());
 
+		auto& cameraTransform = m_CameraEntity.getComponent<TransformComponent>();
+		auto& secondCameraTransform = m_SecondCameraEntity.getComponent<TransformComponent>();
+
+		ImGui::DragFloat3("Camera Translation", glm::value_ptr(cameraTransform.transform[3]), 0.1f, -3.0f, 3.0f);
+		ImGui::Spacing();
+		ImGui::DragFloat3("Second Camera Translation", glm::value_ptr(secondCameraTransform.transform[3]), 0.1f, -3.0f, 3.0f);
+
+		float size = m_CameraEntity.getComponent<CameraComponent>().camera.getOrthoSize();
+		if (ImGui::DragFloat("Camera Zoom", &size, 0.1f, 0.1f, 10.0f))
+		{
+			m_CameraEntity.getComponent<CameraComponent>().camera.setOrthoSize(size);
+		}
+
+		if (ImGui::Checkbox("Primary Camera", &m_primaryCamera))
+		{
+			m_CameraEntity.getComponent<CameraComponent>().main = m_primaryCamera;
+			m_SecondCameraEntity.getComponent<CameraComponent>().main = !m_primaryCamera;
+		}
+
 		ImGui::End();
 
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, { 0, 0 });
@@ -414,28 +404,20 @@ namespace tst
 		ImGui::Begin("Viewport");
 
 		m_ViewportFocused = ImGui::IsWindowFocused();
-		Application::getInstance().getImguiLayer()->setBlockEvents(!m_ViewportFocused || !m_ViewportHovered);
-
 		m_ViewportHovered = ImGui::IsWindowHovered();
+		bool shouldBlockEvents = (!m_ViewportFocused || !m_ViewportHovered);
+		Application::getInstance().getImguiLayer()->setBlockEvents(shouldBlockEvents);
+
 
 		ImVec2 viewportSize = ImGui::GetContentRegionAvail();
-
-		if (m_ViewportSize.x != viewportSize.x || m_ViewportSize.y != viewportSize.y)
-		{
-			m_Framebuffer->resize(static_cast<uint32_t>(viewportSize.x), static_cast<uint32_t>(viewportSize.y));
-			//m_RenderOutputFramebuffer->resize(static_cast<uint32_t>(viewportSize.x), static_cast<uint32_t>(viewportSize.y));
-			m_ViewportSize = { viewportSize.x, viewportSize.y };
-
-			m_PerspectiveCameraCtrl.resize(static_cast<uint32_t>(m_ViewportSize.x), static_cast<uint32_t>(m_ViewportSize.y));
-
-			TST_INFO("Resized Viewport [{0}, {1}]", viewportSize.x, viewportSize.y);
-		}
+		m_ViewportSize = { viewportSize.x, viewportSize.y };
+		m_ViewportSize.x = std::max(m_ViewportSize.x, 1.0f);
+		m_ViewportSize.y = std::max(m_ViewportSize.y, 1.0f);
 
 		static bool flatShading = true;
 		static bool depthPass = false;
 
 		ImGui::Image(m_Framebuffer->getColourAttachmentId(), { m_ViewportSize.x, m_ViewportSize.y }, ImVec2(0, 1), ImVec2(1, 0));
-
 
 		ImGui::End();
 		ImGui::PopStyleVar();
