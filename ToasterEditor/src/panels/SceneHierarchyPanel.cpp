@@ -4,6 +4,7 @@
 
 #include <imgui.h>
 
+#include "imgui_internal.h"
 #include "glm/gtc/type_ptr.hpp"
 
 namespace tst
@@ -37,6 +38,53 @@ namespace tst
 		}
 	}
 
+	static void drawVec3Ctrl(const char* label, glm::vec3* vec, const glm::vec3& reset = glm::vec3(1.0f), float columnWidth = 100.0f)
+	{
+
+		ImGui::PushID(label);
+
+		ImGui::Columns(2);
+		ImGui::SetColumnWidth(0, columnWidth);
+		ImGui::Text(label);
+		ImGui::NextColumn();
+
+
+		ImGui::PushMultiItemsWidths(3, ImGui::CalcItemWidth());
+		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{0, 0});
+		ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0.5f);
+
+		float lineHeight = ImGui::GetFrameHeightWithSpacing();
+		ImVec2 buttonSize = ImVec2{ lineHeight, lineHeight };
+
+		ImGui::PushStyleColor(ImGuiCol_Button, { 1.0f, 0.0f, 0.0f, 1.0f });
+		if (ImGui::Button("x", buttonSize))	{ vec->x = reset.x;	}
+		ImGui::SameLine();
+		ImGui::DragFloat("##x", &vec->x, 0.1f);
+		ImGui::PopItemWidth();
+		ImGui::SameLine();
+		ImGui::PopStyleColor();
+
+		ImGui::PushStyleColor(ImGuiCol_Button, { 0.0f, 1.0f, 0.0f, 1.0f });
+		if (ImGui::Button("y", buttonSize)) { vec->y = reset.y; }
+		ImGui::SameLine();
+		ImGui::DragFloat("##y", &vec->y, 0.1f);
+		ImGui::PopItemWidth();
+		ImGui::SameLine();
+		ImGui::PopStyleColor();
+
+		ImGui::PushStyleColor(ImGuiCol_Button, { 0.0f, 0.0f, 1.0f, 1.0f });
+		if (ImGui::Button("z", buttonSize)) { vec->z = reset.z;	}
+		ImGui::SameLine();
+		ImGui::DragFloat("##z", &vec->z, 0.1f);
+		ImGui::PopItemWidth();
+		ImGui::PopStyleColor();
+
+		ImGui::PopStyleVar(2);
+		ImGui::Columns(1);
+
+		ImGui::PopID();
+	}
+
 
 	void SceneHierarchyPanel::drawComponents(Entity entity)
 	{
@@ -53,27 +101,28 @@ namespace tst
 				tagComp.name = std::string(buffer);
 			}
 		}
-		if (entity.hasComponent<TransformComponent>())
+
+
+		drawComponent<TransformComponent>(&entity, "Transform", [](TransformComponent* comp)
 		{
-			if (ImGui::TreeNodeEx((void*)typeid(TransformComponent).hash_code(), ImGuiTreeNodeFlags_DefaultOpen, "Transform"))
+			ImGui::Spacing();
+			drawVec3Ctrl("Position", &comp->translation, {0.0f, 0.0f, 0.0f});
+			ImGui::Spacing();
+			drawVec3Ctrl("Rotation", &comp->rotation, {0.0f, 0.0f, 0.0f});
+			ImGui::Spacing();
+			drawVec3Ctrl("Scale", &comp->scale, {1.0f, 1.0f, 1.0f});
+			ImGui::Spacing();
+				
+		});
+
+		drawComponent<CameraComponent>(&entity, "Camera", [](CameraComponent* comp)
 			{
-				auto& transformComp = entity.getComponent<TransformComponent>();
+				auto& camera = comp->camera;
 
-				ImGui::DragFloat3("Position", glm::value_ptr(transformComp.transform[3]), 0.25f);
-
-				ImGui::TreePop();
-			}
-		}
-		if (entity.hasComponent<CameraComponent>())
-		{
-			if (ImGui::TreeNodeEx((void*)typeid(CameraComponent).hash_code(), ImGuiTreeNodeFlags_DefaultOpen, "Camera"))
-			{
-				auto& cameraComp = entity.getComponent<CameraComponent>();
-
-				ImGui::Checkbox("Main Camera", &cameraComp.main);
+				ImGui::Checkbox("Main Camera", &comp->main);
 
 				const char* projectionTypes[] = { "Perspective", "Orthographic" };
-				const char* currentProjectionType = projectionTypes[(int)cameraComp.camera.getProjectionType()];
+				const char* currentProjectionType = projectionTypes[(int)camera.getProjectionType()];
 
 				if (ImGui::BeginCombo("Projection", currentProjectionType))
 				{
@@ -84,7 +133,7 @@ namespace tst
 						if (ImGui::Selectable(projectionTypes[i], selected))
 						{
 							currentProjectionType = projectionTypes[i];
-							cameraComp.camera.setProjectionType(static_cast<SceneCamera::ProjectionType>(i));
+							comp->camera.setProjectionType(static_cast<SceneCamera::ProjectionType>(i));
 						}
 
 						if (selected)
@@ -95,32 +144,51 @@ namespace tst
 					ImGui::EndCombo();
 				}
 
-				if (cameraComp.camera.getProjectionType() == SceneCamera::ProjectionType::Perspective)
+				if (comp->camera.getProjectionType() == SceneCamera::ProjectionType::Perspective)
 				{
-					float fov		= cameraComp.camera.getPerspectiveFov();
-					float nearClip  = cameraComp.camera.getPerspectiveNear();
-					float farClip	= cameraComp.camera.getPerspectiveFar();
+					float fov = camera.getPerspectiveFov();
+					float nearClip = camera.getPerspectiveNear();
+					float farClip = camera.getPerspectiveFar();
 
-					if (ImGui::DragFloat("Fov", &fov, 0.1f, 1.0f, 180.0f))				{ cameraComp.camera.setPerspectiveFov(fov); }
-					if (ImGui::DragFloat("Near Clip", &nearClip, 0.01f, 0.01f, 100.0f))	{ cameraComp.camera.setPerspectiveNear(nearClip); }
-					if (ImGui::DragFloat("Far Clip", &farClip, 0.01f, 0.01f, 1000.0f))  { cameraComp.camera.setPerspectiveFar(farClip); }
+					if (ImGui::DragFloat("Fov", &fov, 0.1f, 1.0f, 180.0f)) { camera.setPerspectiveFov(fov); }
+					if (ImGui::DragFloat("Near Clip", &nearClip, 0.01f, 0.01f, 100.0f)) { camera.setPerspectiveNear(nearClip); }
+					if (ImGui::DragFloat("Far Clip", &farClip, 0.01f, 0.01f, 1000.0f)) { camera.setPerspectiveFar(farClip); }
 
-				} else if (cameraComp.camera.getProjectionType() == SceneCamera::ProjectionType::Orthographic)
-				{
-					float orthoSize = cameraComp.camera.getOrthoSize();
-					float nearClip	= cameraComp.camera.getOrthoNear();
-					float farClip	= cameraComp.camera.getOrthoFar();
-
-					if (ImGui::DragFloat("Ortho Size", &orthoSize, 0.1f, 0.1f, 10.0f))	  { cameraComp.camera.setOrthoSize(orthoSize);	}
-					if (ImGui::DragFloat("Near Clip", &nearClip, 0.01f, -100.0f, 100.0f)) { cameraComp.camera.setOrthoNear(nearClip); }
-					if (ImGui::DragFloat("Far Clip", &farClip, 0.01f, -100.0f, 100.0f))	  { cameraComp.camera.setOrthoFar(farClip); }
 				}
+				else if (camera.getProjectionType() == SceneCamera::ProjectionType::Orthographic)
+				{
+					float orthoSize = camera.getOrthoSize();
+					float nearClip = camera.getOrthoNear();
+					float farClip = camera.getOrthoFar();
+
+					if (ImGui::DragFloat("Ortho Size", &orthoSize, 0.1f, 0.1f, 10.0f))	  { camera.setOrthoSize(orthoSize); }
+					if (ImGui::DragFloat("Near Clip", &nearClip, 0.01f, -100.0f, 100.0f)) { camera.setOrthoNear(nearClip); }
+					if (ImGui::DragFloat("Far Clip", &farClip, 0.01f, -100.0f, 100.0f))	  { camera.setOrthoFar(farClip); }
+				}
+			});
+
+
+		drawComponent<SpriteRendererComponent>(&entity, "Sprite Renderer", [](SpriteRendererComponent *comp)
+			{
+				ImGui::ColorEdit4("Base Colour", glm::value_ptr(comp->colour));
+			});
+	}
+
+	template<typename T>
+	void SceneHierarchyPanel::drawComponent(Entity *entity, const char* displayName, void(*uiFunc)(T*))
+	{
+		if (entity->hasComponent<T>())
+		{
+			if (ImGui::TreeNodeEx((void*)typeid(T).hash_code(), ImGuiTreeNodeFlags_DefaultOpen, displayName))
+			{
+				auto& comp = entity->getComponent<T>();
+
+				uiFunc(&comp);
 
 				ImGui::TreePop();
 			}
 		}
 	}
-
 
 
 	void SceneHierarchyPanel::onImGuiRender()

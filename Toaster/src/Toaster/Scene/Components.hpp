@@ -3,6 +3,7 @@
 #include <glm/glm.hpp>
 
 #include "Toaster/Renderer/Camera.hpp"
+#include "Toaster/Util/MathUtil.hpp"
 
 namespace tst
 {
@@ -18,16 +19,13 @@ namespace tst
 	struct TransformComponent
 	{
 		TransformComponent() = default;
-		TransformComponent(const glm::mat4& transform) : matrix(transform) {}
+		TransformComponent(const glm::vec3& translation) : translation(translation) {}
 
-		operator glm::mat4& () { return matrix;	}
-		operator const glm::mat4& () const {return matrix;}
+		glm::mat4 matrix() const { return transformationMat(translation, rotation, scale); }
 
-		union
-		{
-			glm::mat4 matrix{ 1.0f };
-			glm::mat4 transform;
-		};
+		glm::vec3 translation{ 0.0f };
+		glm::vec3 rotation{ 0.0f };
+		glm::vec3 scale{ 1.0f };
 	};
 
 	struct SpriteRendererComponent

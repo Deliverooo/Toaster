@@ -38,7 +38,12 @@ namespace tst
 
 		ImGuiStyle &style = ImGui::GetStyle();
 
-
+		style.WindowRounding = 0.5f;
+		style.ChildRounding = 2.5f;
+		style.FrameRounding = 2.5f;
+		style.ScrollbarRounding = 0.5f;
+		style.GrabRounding = 0.5f;
+		style.TabRounding = 2.5f;
 
 		ImVec4* colors = style.Colors;
 		colors[ImGuiCol_WindowBg] = ImVec4(0.19f, 0.19f, 0.19f, 1.00f);

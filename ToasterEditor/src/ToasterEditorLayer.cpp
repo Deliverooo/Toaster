@@ -146,18 +146,19 @@ namespace tst
 
 		m_Scene = make_reference<Scene>();
 
-		m_CubeEntity = m_Scene->createEntity("Cube Entity");
+		m_CubeEntity = m_Scene->createEntity("Cube");
 		m_CubeEntity.addComponent<SpriteRendererComponent>(glm::vec4{1.0f, 1.0f, 1.0f, 1.0f});
 
-		auto cube2 = m_Scene->createEntity("Cube2 Entity");
+		auto cube2 = m_Scene->createEntity("Cube.001");
 		cube2.addComponent<SpriteRendererComponent>(glm::vec4{1.0f, 0.0f, 1.0f, 1.0f});
 
 
-		m_CameraEntity = m_Scene->createEntity("Camera Entity");
+		m_CameraEntity = m_Scene->createEntity("Camera");
 		m_CameraEntity.addComponent<CameraComponent>();
 
-		m_SecondCameraEntity = m_Scene->createEntity("Second Camera Entity");
-		m_SecondCameraEntity.addComponent<CameraComponent>();
+		m_SecondCameraEntity = m_Scene->createEntity("Camera.001");
+		auto & cameraComp = m_SecondCameraEntity.addComponent<CameraComponent>();
+		cameraComp.main = false;
 
 		m_renderTexture = Texture2D::create(300, 600);
 
@@ -179,33 +180,23 @@ namespace tst
 				static float clock = 0.0f;
 				clock += dt;
 
-				static float cameraSpeed = 4.0f;
+				static float cameraSpeed = 5.0f;
 
 				if (m_entity.getComponent<CameraComponent>().main)
 				{
-					if (Input::isMouseButtonPressed(TST_MOUSE_BUTTON_2))
-					{
-						auto& trans = m_entity.getComponent<TransformComponent>().transform;
+					auto& trans = m_entity.getComponent<TransformComponent>().translation;
 
-						glm::vec3 cameraDirection{ 0.0f };
+					glm::vec3 cameraDirection{ 0.0f };
 
-						if (Input::isKeyPressed(TST_KEY_W)) { cameraDirection -= glm::vec3(0.0f, 0.0f, 1.0f) * dt.getTime_s() * cameraSpeed; }
-						if (Input::isKeyPressed(TST_KEY_S)) { cameraDirection += glm::vec3(0.0f, 0.0f, 1.0f) * dt.getTime_s() * cameraSpeed; }
-						if (Input::isKeyPressed(TST_KEY_A)) { cameraDirection -= glm::vec3(1.0f, 0.0f, 0.0f) * dt.getTime_s() * cameraSpeed; }
-						if (Input::isKeyPressed(TST_KEY_D)) { cameraDirection += glm::vec3(1.0f, 0.0f, 0.0f) * dt.getTime_s() * cameraSpeed; }
+					if (Input::isKeyPressed(TST_KEY_W)) { cameraDirection -= glm::vec3(0.0f, 0.0f, 1.0f) * dt.getTime_s() * cameraSpeed; }
+					if (Input::isKeyPressed(TST_KEY_S)) { cameraDirection += glm::vec3(0.0f, 0.0f, 1.0f) * dt.getTime_s() * cameraSpeed; }
+					if (Input::isKeyPressed(TST_KEY_A)) { cameraDirection -= glm::vec3(1.0f, 0.0f, 0.0f) * dt.getTime_s() * cameraSpeed; }
+					if (Input::isKeyPressed(TST_KEY_D)) { cameraDirection += glm::vec3(1.0f, 0.0f, 0.0f) * dt.getTime_s() * cameraSpeed; }
 
-						if (Input::isKeyPressed(TST_KEY_SPACE)) { cameraDirection += glm::vec3(0.0f, 1.0f, 0.0f) * dt.getTime_s() * cameraSpeed; }
-						if (Input::isKeyPressed(TST_KEY_LEFT_SHIFT)) { cameraDirection -= glm::vec3(0.0f, 1.0f, 0.0f) * dt.getTime_s() * cameraSpeed; }
+					if (Input::isKeyPressed(TST_KEY_SPACE)) { cameraDirection += glm::vec3(0.0f, 1.0f, 0.0f) * dt.getTime_s() * cameraSpeed; }
+					if (Input::isKeyPressed(TST_KEY_LEFT_SHIFT)) { cameraDirection -= glm::vec3(0.0f, 1.0f, 0.0f) * dt.getTime_s() * cameraSpeed; }
 
-						trans = glm::translate(trans, { cameraDirection.x, cameraDirection.y, cameraDirection.z });
-
-						Input::focusMouseCursor();
-
-					}
-					else
-					{
-						Input::unfocusMouseCursor();
-					}
+					trans += cameraDirection;
 				}
 
 			} 
@@ -220,33 +211,34 @@ namespace tst
 
 	void ToasterEditorLayer::onUpdate(DeltaTime dt)
 	{
-	    // Ensure minimum viewport size to prevent aspect ratio issues
-	    float safeViewportX = std::max(m_ViewportSize.x, 1.0f);
-	    float safeViewportY = std::max(m_ViewportSize.y, 1.0f);
-	    
-	    if (safeViewportX > 0.0f && safeViewportY > 0.0f && 
-	        (safeViewportX != m_Framebuffer->getInfo().width || safeViewportY != m_Framebuffer->getInfo().height))
-	    {
-	        m_Framebuffer->resize(static_cast<uint32_t>(safeViewportX), static_cast<uint32_t>(safeViewportY));
-	        m_PerspectiveCameraCtrl.resize(static_cast<uint32_t>(safeViewportX), static_cast<uint32_t>(safeViewportY));
+		// Ensure minimum viewport size to prevent aspect ratio issues
+		float safeViewportX = std::max(m_ViewportSize.x, 1.0f);
+		float safeViewportY = std::max(m_ViewportSize.y, 1.0f);
 
-	        m_Scene->onViewportResize(static_cast<uint32_t>(safeViewportX), static_cast<uint32_t>(safeViewportY));
-	    }
+		if (safeViewportX > 0.0f && safeViewportY > 0.0f &&
+			(safeViewportX != m_Framebuffer->getInfo().width || safeViewportY != m_Framebuffer->getInfo().height))
+		{
+			m_Framebuffer->resize(static_cast<uint32_t>(safeViewportX), static_cast<uint32_t>(safeViewportY));
+			m_PerspectiveCameraCtrl.resize(static_cast<uint32_t>(safeViewportX), static_cast<uint32_t>(safeViewportY));
 
-	    if (m_ViewportFocused)
-	    {
-	        m_PerspectiveCameraCtrl.onUpdate(dt);
-	    }
+			m_Scene->onViewportResize(static_cast<uint32_t>(safeViewportX), static_cast<uint32_t>(safeViewportY));
+		}
 
-	    static float clock = 0.0f;
-	    clock += dt;
+		if (m_ViewportFocused)
+		{
+			m_PerspectiveCameraCtrl.onUpdate(dt);
+		}
 
-	    Renderer3D::resetStats();
-	    m_Framebuffer->bind();
-	    RenderCommand::setClearColour(m_clearColour);
-	    RenderCommand::clear();
+		static float clock = 0.0f;
+		clock += dt;
 
-	    m_Scene->onUpdate(dt);
+		Renderer3D::resetStats();
+		m_Framebuffer->bind();
+		RenderCommand::setClearColour(m_clearColour);
+		RenderCommand::clear();
+
+		m_Scene->onUpdate(dt);
+
 
 	    m_Framebuffer->unbind();
 	}
@@ -268,21 +260,7 @@ namespace tst
 
 	bool ToasterEditorLayer::onKeyPressedEvent(KeyPressedEvent& e)
 	{
-		if (e.getKeycode() == TST_KEY_E)
-		{
-			Particle3DCreateInfo particleCreateInfo{};
-			particleCreateInfo.Position = (m_PerspectiveCameraCtrl.getPosition() + (m_PerspectiveCameraCtrl.getFrontVector() * 0.25f));
-			particleCreateInfo.Velocity			 = m_PerspectiveCameraCtrl.getFrontVector();
-			particleCreateInfo.VelocityVariation = { 0.2f, 0.2f, 0.2f };
-			particleCreateInfo.ColourBegin		 = { 1.0f, 0.05f, 0.05f, 1.0f };
-			particleCreateInfo.ColourEnd		 = { 0.2f, 0.0f, 0.0f, 0.2f };
-			particleCreateInfo.ColourVariation	 = { 0.8f, 0.025f, 0.025f, 0.0f };
-			particleCreateInfo.SizeBegin		 = { 0.25f, 0.25f, 0.25f };
-			particleCreateInfo.SizeEnd			 = { 0.05f, 0.05f, 0.05f };
-			particleCreateInfo.SizeVariation	 = { 0.07f, 0.07f, 0.07f };
-			particleCreateInfo.Lifetime			 = { 1.0f };
-			m_particleSystem.emit(particleCreateInfo);
-		}
+
 
 		return false;
 	}
@@ -352,19 +330,6 @@ namespace tst
 
 		ImGui::Checkbox("Particle Draw Mode", &m_particleDrawMode);
 
-		auto group = m_Scene->registry().view<TagComponent>();
-		for (auto& entity : group)
-		{
-			auto tag = m_Scene->registry().get<TagComponent>(entity);
-
-			ImGui::Spacing();
-			ImGui::Text(tag.name.c_str());
-		}
-
-		auto& colour = m_CubeEntity.getComponent<SpriteRendererComponent>();
-
-		ImGui::ColorEdit4("Square Colour", glm::value_ptr(colour.colour));
-
 
 		ImGui::Text("3D Renderer Stats");
 		ImGui::Spacing();
@@ -378,24 +343,7 @@ namespace tst
 		ImGui::Text("Index Count:			%d", Renderer3D::getStats().totalIndexCount());
 		ImGui::Text("Batch Efficiency:		%f", Renderer3D::getStats().batchEfficiency());
 
-		auto& cameraTransform = m_CameraEntity.getComponent<TransformComponent>();
-		auto& secondCameraTransform = m_SecondCameraEntity.getComponent<TransformComponent>();
 
-		ImGui::DragFloat3("Camera Translation", glm::value_ptr(cameraTransform.transform[3]), 0.1f, -3.0f, 3.0f);
-		ImGui::Spacing();
-		ImGui::DragFloat3("Second Camera Translation", glm::value_ptr(secondCameraTransform.transform[3]), 0.1f, -3.0f, 3.0f);
-
-		float size = m_CameraEntity.getComponent<CameraComponent>().camera.getOrthoSize();
-		if (ImGui::DragFloat("Camera Zoom", &size, 0.1f, 0.1f, 10.0f))
-		{
-			m_CameraEntity.getComponent<CameraComponent>().camera.setOrthoSize(size);
-		}
-
-		if (ImGui::Checkbox("Primary Camera", &m_primaryCamera))
-		{
-			m_CameraEntity.getComponent<CameraComponent>().main = m_primaryCamera;
-			m_SecondCameraEntity.getComponent<CameraComponent>().main = !m_primaryCamera;
-		}
 
 		ImGui::End();
 

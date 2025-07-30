@@ -1,6 +1,20 @@
 #pragma once
 
 // this was pretty much entirely taken from glfw3.h
+
+enum class TstMouseCode
+{
+	ButtonLeft = 0,
+	ButtonRight = 1,
+	ButtonMiddle = 2,
+	Button4 = 4,
+	Button5 = 5,
+	Button6 = 6,
+	Button7 = 7,
+	Button8 = 8,
+};
+
+
 #define TST_MOUSE_BUTTON_1         0
 #define TST_MOUSE_BUTTON_2         1
 #define TST_MOUSE_BUTTON_3         2

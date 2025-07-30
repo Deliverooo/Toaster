@@ -5,6 +5,7 @@
 #include "Components.hpp"
 #include "ScriptableEntity.hpp"
 
+#include "Toaster/Renderer/Renderer2D.hpp"
 #include "Toaster/Renderer/Renderer3D.hpp"
 
 #include <glm/glm.hpp>
@@ -67,8 +68,9 @@ namespace tst
 
 			if (camera.main)
 			{
+				glm::mat4 viewMatrix = transform.matrix();
 				mainCamera = &camera.camera;
-				cameraView = &transform.transform;
+				cameraView = &viewMatrix;
 				break;
 			}
 		}
@@ -78,7 +80,7 @@ namespace tst
 
 		if (mainCamera)
 		{
-			Renderer3D::begin(mainCamera->getProjection(), *cameraView);
+			Renderer2D::begin(mainCamera->getProjection(), *cameraView);
 
 			auto group = m_registry.group<TransformComponent>(entt::get<SpriteRendererComponent>);
 			for (auto entity : group)
@@ -86,10 +88,10 @@ namespace tst
 				const auto &[transform, spriteRenderer] = group.get<TransformComponent, SpriteRendererComponent>(entity);
 
 
-				Renderer3D::drawCube(transform, spriteRenderer.colour);
+				Renderer2D::drawQuad(transform.matrix(), spriteRenderer.colour);
 			}
 
-			Renderer3D::end();
+			Renderer2D::end();
 		}
 	}
 

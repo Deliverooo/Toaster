@@ -22,6 +22,9 @@ namespace tst
 		void drawEntityNode(Entity entity);
 		void drawComponents(Entity entity);
 
+		template<typename T>
+		void drawComponent(Entity *entity, const char* displayName, void(*uiFunc)(T*));
+
 	private:
 
 		RefPtr<Scene> m_sceneContext{nullptr};
