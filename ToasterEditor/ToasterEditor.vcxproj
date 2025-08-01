@@ -137,48 +137,24 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="src\ToasterEditorLayer.hpp" />
     <ClInclude Include="src\panels\SceneHierarchyPanel.hpp" />
     <ClInclude Include="src\rayTracing\RayTracerLayer.hpp" />
     <ClInclude Include="src\util\ParticleSystem.hpp" />
-    <ClInclude Include="src\ToasterEditorLayer.hpp" />
     <ClInclude Include="src\util\Random.hpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\ToasterEditorApp.cpp" />
+    <ClCompile Include="src\ToasterEditorLayer.cpp" />
     <ClCompile Include="src\panels\SceneHierarchyPanel.cpp" />
     <ClCompile Include="src\rayTracing\RayTracerLayer.cpp" />
     <ClCompile Include="src\util\ParticleSystem.cpp" />
-    <ClCompile Include="src\ToasterEditorApp.cpp" />
-    <ClCompile Include="src\ToasterEditorLayer.cpp" />
     <ClCompile Include="src\util\Random.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Toaster\Toaster.vcxproj">
       <Project>{E77DE44F-535D-63EB-5C75-EEC1C8D3C94C}</Project>
     </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="res\shaders\BasicShader.frag.glsl" />
-    <None Include="res\shaders\BasicShader.vert.glsl" />
-    <None Include="res\shaders\FlatShader.frag.glsl" />
-    <None Include="res\shaders\FlatShader.vert.glsl" />
-    <None Include="res\shaders\FlatTextureShader.glsl" />
-    <None Include="res\shaders\SkyboxShader.frag.glsl" />
-    <None Include="res\shaders\SkyboxShader.vert.glsl" />
-    <None Include="res\shaders\TestShader.glsl" />
-  </ItemGroup>
-  <ItemGroup>
-    <Image Include="res\cubemaps\back.jpg" />
-    <Image Include="res\cubemaps\bottom.jpg" />
-    <Image Include="res\cubemaps\front.jpg" />
-    <Image Include="res\cubemaps\left.jpg" />
-    <Image Include="res\cubemaps\right.jpg" />
-    <Image Include="res\cubemaps\top.jpg" />
-    <Image Include="res\textures\Absolute_Cinema.jpg" />
-    <Image Include="res\textures\Grass2K.png" />
-    <Image Include="res\textures\One_Leg_Bird.png" />
-    <Image Include="res\textures\orbo0.png" />
-    <Image Include="res\textures\RayTraceRoom.png" />
-    <Image Include="res\textures\sprite sheets\Tiles_0.png" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

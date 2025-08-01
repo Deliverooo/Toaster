@@ -68,8 +68,8 @@ namespace tst
 		TextureFiltering minFilter{ TextureFiltering::LinearMipmapLinear };
 		TextureFiltering magFilter{ TextureFiltering::Linear };
 
-		bool generateMipmaps{ false };
-		bool flipX{ true };
+		bool generateMipmaps{ true };
+		bool flipX{ false };
 
 		TexturePixelDataType pixelDataType{ TexturePixelDataType::UnsignedByte };
 	};

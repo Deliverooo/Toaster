@@ -9,6 +9,7 @@ workspace "Toaster"
 
 outputDir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 
+
 IncludeDir = {}
 IncludeDir["GLFW"] = "dependencies/GLFW/include"
 IncludeDir["Glad"] = "dependencies/Glad/include"
@@ -17,6 +18,8 @@ IncludeDir["spdlog"] = "dependencies/spdlog/include"
 IncludeDir["stbImage"] = "dependencies/stbImage/include"
 IncludeDir["glm"] = "dependencies/glm"
 IncludeDir["Entt"] = "dependencies/Entt/include"
+IncludeDir["TinyObjLoader"] = "dependencies/Tinyobjloader/include"
+--IncludeDir["Assimp"] = "dependencies/Assimp/include"
 
 include "dependencies/GLFW/"
 include "dependencies/Glad/"
@@ -24,7 +27,10 @@ include "dependencies/ImGui/"
 include "dependencies/spdlog/"
 include "dependencies/stbImage/"
 include "dependencies/glm/"
+include "dependencies/Tinyobjloader/"
+--include "dependencies/Assimp/"
 
+-- Update the Toaster project configuration
 project "Toaster"
 	location "Toaster"
 	kind "StaticLib"
@@ -32,14 +38,12 @@ project "Toaster"
 	cppdialect "C++20"
 	staticruntime "On"
 
-
 	characterset ("Unicode")
 
 	targetdir ("bin/" .. outputDir .. "/%{prj.name}")
 	objdir ("bin-int/" .. outputDir .. "/%{prj.name}")
 
 	pchheader "tstpch.h"
-
 	pchsource "%{prj.name}/src/tstpch.cpp"
 
 	files{
@@ -57,6 +61,8 @@ project "Toaster"
 		"%{IncludeDir.stbImage}",
 		"%{IncludeDir.glm}",
 		"%{IncludeDir.Entt}",
+		"%{IncludeDir.TinyObjLoader}",
+		--"%{IncludeDir.Assimp}",
 		"C:/VulkanSDK/1.4.313.2/Include",
 	}
 
@@ -72,8 +78,12 @@ project "Toaster"
 		"spdlog",
 		"stbImage",
 		"glm",
+		--"Assimp",
 		"opengl32.lib",
+		"dwmapi.lib",
 	}
+
+	-- Rest of the configuration remains the same
 	
 	filter "system:windows"
 		systemversion "latest"
@@ -82,6 +92,9 @@ project "Toaster"
 			"TST_PLATFORM_WINDOWS",
 			"TST_BUILD_DLL",
 			"GLFW_INCLUDE_NONE",
+			"TST_ENABLE_FBX",
+			--"ASSIMP_BUILD_NO_EXPORT",
+			--"BUILD_NO_SHARED_LIBS",
 		}
 
 	filter "configurations:Debug"
@@ -89,6 +102,7 @@ project "Toaster"
 		buildoptions {"/utf-8"}
 		runtime "Debug"
 		symbols "on"
+
 
 	filter "configurations:Release"
 		defines "TST_RELEASE"
@@ -127,7 +141,6 @@ project "SandBox"
 		"%{IncludeDir.glm}",
 		"%{IncludeDir.ImGui}",
 		"%{IncludeDir.Entt}",
-
 	}
 
 	links{
@@ -140,7 +153,6 @@ project "SandBox"
 		defines{
 			"TST_PLATFORM_WINDOWS"
 		}
-
 
 	filter "configurations:Debug"
 		defines "TST_DEBUG"
@@ -159,7 +171,6 @@ project "SandBox"
 		buildoptions {"/utf-8"}
 		runtime "Release"
 		optimize "on"
-
 
 project "ToasterEditor"
 	location "ToasterEditor"
@@ -186,7 +197,6 @@ project "ToasterEditor"
 		"%{IncludeDir.glm}",
 		"%{IncludeDir.ImGui}",
 		"%{IncludeDir.Entt}",
-
 	}
 
 	links{
@@ -199,7 +209,6 @@ project "ToasterEditor"
 		defines{
 			"TST_PLATFORM_WINDOWS"
 		}
-
 
 	filter "configurations:Debug"
 		defines "TST_DEBUG"

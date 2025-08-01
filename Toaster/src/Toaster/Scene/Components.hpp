@@ -3,6 +3,7 @@
 #include <glm/glm.hpp>
 
 #include "Toaster/Renderer/Camera.hpp"
+#include "Toaster/Renderer/Mesh.hpp"
 #include "Toaster/Util/MathUtil.hpp"
 
 namespace tst
@@ -40,7 +41,7 @@ namespace tst
 	{
 		MaterialComponent() = default;
 		MaterialComponent(const glm::vec4& colour) : colour(colour) {}
-		
+
 		glm::vec4 colour{ 1.0f, 0.0f, 0.862f, 1.0f };
 	};
 
@@ -53,6 +54,18 @@ namespace tst
 		SceneCamera camera;
 		bool main{ true };
 		bool fixedAspect{ false };
+	};
+
+	struct MeshRendererComponent
+	{
+		MeshRendererComponent() = default;
+		MeshRendererComponent(const glm::vec4& colour) : colour(colour) {}
+		MeshRendererComponent(RefPtr<Mesh> mesh, const glm::vec4& colour = { 1.0f, 1.0f, 1.0f, 1.0f })
+			: mesh(mesh), colour(colour) {
+		}
+
+		RefPtr<Mesh> mesh = nullptr;
+		glm::vec4 colour = { 1.0f, 0.0f, 0.862f, 1.0f };
 	};
 
 	using TstBehaviorFn = std::function<void()>;

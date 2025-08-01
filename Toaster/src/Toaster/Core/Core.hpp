@@ -41,6 +41,8 @@ namespace tst
 
 
 #define TST_REL_PATH "C:/dev/Toaster/SandBox/assets/"
+#define TST_FONT_PATH "C:/Windows/Fonts/"
+
 
 #ifdef NO_THANKS
 #define TST_ENABLE_PROFILING

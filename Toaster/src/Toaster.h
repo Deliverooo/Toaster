@@ -5,7 +5,6 @@
 // This should only be included in the client application.
 
 
-
 #include "Toaster/Core/Core.hpp"
 
 // Toaster Engine Application Header

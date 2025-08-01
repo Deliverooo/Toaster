@@ -18,6 +18,12 @@ namespace tst
 		m_rendererApi->drawIndexed(vertexArray, count);
 	}
 
+	void RenderCommand::drawIndexedBaseVertex(const RefPtr<VertexArray>& vertexArray, uint32_t indexCount, uint32_t indexOffset, uint32_t baseVertex)
+	{
+		m_rendererApi->drawIndexedBaseVertex(vertexArray, indexCount, indexOffset, baseVertex);
+	}
+
+
 	void RenderCommand::drawArrays(const RefPtr<VertexArray>& vertexArray)
 	{
 		m_rendererApi->drawArrays(vertexArray);

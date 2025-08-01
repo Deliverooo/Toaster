@@ -44,9 +44,81 @@ namespace tst
 		glm::vec4 quadVertexPositions[4];
 		glm::vec2 quadVertexUvs[4];
 
-
-
 		Renderer2D::Stats stats{};
+
+		// Add safety flags
+		bool isInitialized = false;
+		bool isTerminated = false;
+
+		// Add destructor to handle cleanup during static destruction
+		~RenderData()
+		{
+			TST_CORE_TRACE("Renderer2D RenderData destructor - Initialized: {0}, Terminated: {1}", isInitialized, isTerminated);
+
+			// If terminate() wasn't called explicitly, clean up safely
+			if (isInitialized && !isTerminated)
+			{
+				cleanupSafe();
+			}
+		}
+
+	private:
+		void cleanupSafe()
+		{
+			if (isTerminated)
+			{
+				return;
+			}
+
+			isTerminated = true;
+
+			// Clean up CPU memory first
+			if (quadVertexBufferBase)
+			{
+				delete[] quadVertexBufferBase;
+				quadVertexBufferBase = nullptr;
+				quadVertexPtr = nullptr;
+			}
+
+			// CRITICAL: Clear RefPtr objects in a safe way
+			// Clear texture slots first to break circular references
+			try {
+				for (auto& slot : textureSlots) {
+					if (slot) {
+						slot.reset();
+					}
+				}
+				textureSlots.fill(nullptr);
+			}
+			catch (...) {
+				// Ignore exceptions during cleanup
+			}
+
+			// Clear other RefPtr objects safely
+			try {
+				if (quadVertexArray) quadVertexArray.reset();
+				if (quadVertexBuffer) quadVertexBuffer.reset();
+				if (quadIndexBuffer) quadIndexBuffer.reset();
+				if (whiteTexture) whiteTexture.reset();
+				if (flatTextureShader) flatTextureShader.reset();
+			}
+			catch (...) {
+				// Ignore exceptions during cleanup
+			}
+
+			// Reset counters
+			quadIndex = 0;
+			maxQuads = 0;
+			maxVertices = 0;
+			maxIndices = 0;
+			textureSlotIndex = 0;
+
+			// Clear stats
+			stats = {};
+			isInitialized = false;
+		}
+
+		friend void Renderer2D::terminate();
 	};
 
 	static RenderData render_data;
@@ -127,42 +199,31 @@ namespace tst
 		render_data.quadVertexUvs[2] = { 1.0f, 1.0f };
 		render_data.quadVertexUvs[3] = { 0.0f, 1.0f };
 
+		render_data.isInitialized = true;
+		render_data.isTerminated = false;
 	}
 
 	void Renderer2D::terminate()
 	{
 		TST_PROFILE_FN();
 
-		// Release GPU resources
-		render_data.quadVertexArray = nullptr;
-		render_data.quadVertexBuffer = nullptr;
-		render_data.flatTextureShader = nullptr;
-		render_data.whiteTexture = nullptr;
-		render_data.quadIndexBuffer = nullptr;
+		if (!render_data.isInitialized || render_data.isTerminated)
+		{
+			return;
+		}
 
-		render_data.textureSlots.fill(nullptr);
-
-		TST_ASSERT(render_data.quadVertexArray == nullptr, "Nooo");
-		TST_ASSERT(render_data.quadVertexBuffer == nullptr, "Nooo");
-		TST_ASSERT(render_data.flatTextureShader == nullptr, "Nooo");
-		TST_ASSERT(render_data.whiteTexture == nullptr, "Nooo");
-		TST_ASSERT(render_data.quadIndexBuffer == nullptr, "Nooo");
-
-		delete[] render_data.quadVertexBufferBase;
-		render_data.quadVertexBufferBase = nullptr;
-		render_data.quadVertexPtr = nullptr;
-		render_data.quadIndex = 0;
-
-		render_data.maxQuads = 0;
-		render_data.maxVertices = 0;
-		render_data.maxIndices = 0;
-		render_data.textureSlotIndex = 0;
+		render_data.cleanupSafe();
 	}
 
 
 	void Renderer2D::begin(const RefPtr<OrthoCamera2D>& camera)
 	{
 		TST_PROFILE_FN();
+
+		if (!render_data.isInitialized || render_data.isTerminated) {
+			TST_CORE_ERROR("Renderer2D not initialized or already terminated");
+			return;
+		}
 
 		render_data.flatTextureShader->bind();
 		render_data.flatTextureShader->uploadMatrix4f(camera->getProjectionMatrix(), "u_Projection");
@@ -175,6 +236,11 @@ namespace tst
 	void Renderer2D::begin(const Camera& camera, const glm::mat4 &transform)
 	{
 		TST_PROFILE_FN();
+
+		if (!render_data.isInitialized || render_data.isTerminated) {
+			TST_CORE_ERROR("Renderer2D not initialized or already terminated");
+			return;
+		}
 
 		auto& projection = camera.getProjection();
 		auto view = glm::inverse(transform);
@@ -191,7 +257,12 @@ namespace tst
 
 	void Renderer2D::begin(const RefPtr<PerspectiveCamera>& camera)
 	{
-		TST_PROFILE_FN();
+
+		if (!render_data.isInitialized || render_data.isTerminated) {
+			TST_CORE_ERROR("Renderer2D not initialized or already terminated");
+			return;
+		}
+
 		render_data.flatTextureShader->bind();
 		render_data.flatTextureShader->uploadMatrix4f(camera->getProjectionMatrix(), "u_Projection");
 		render_data.flatTextureShader->uploadMatrix4f(camera->getViewMatrix(), "u_View");

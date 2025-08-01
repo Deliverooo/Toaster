@@ -2,6 +2,7 @@
 
 #include "Application.hpp"
 #include "Toaster/Events/ApplicationEvent.hpp"
+#include "Toaster/Renderer/MeshRenderer.hpp"
 #include "Toaster/Renderer/Renderer.hpp"
 #include "Toaster/Renderer/Renderer2D.hpp"
 #include "Toaster/Renderer/Renderer3D.hpp"
@@ -27,7 +28,8 @@ namespace tst
 
 		//Renderer::init();
 		Renderer2D::init();
-		Renderer3D::init();  // Add this line - Renderer3D was never initialized!
+		MeshRenderer::init();
+		//Renderer3D::init();
 
 		m_imguiLayer = std::make_shared<ImguiLayer>();
 		pushOverlay(m_imguiLayer);
@@ -43,8 +45,9 @@ namespace tst
 	Application::~Application() {
 
 		//Renderer::terminate();
+		//Renderer3D::terminate();
+		MeshRenderer::terminate();
 		Renderer2D::terminate();
-		Renderer3D::terminate();  // Add this line - Renderer3D was never terminated!
 
 		// Destructor implementation
 	}

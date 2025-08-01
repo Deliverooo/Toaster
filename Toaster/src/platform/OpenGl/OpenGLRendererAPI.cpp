@@ -45,6 +45,25 @@ namespace tst
 		glBindTexture(GL_TEXTURE_2D, 0);
 	}
 
+	void OpenGLRendererAPI::drawIndexedBaseVertex(const RefPtr<VertexArray>& vertexArray, uint32_t indexCount, uint32_t indexOffset, uint32_t baseVertex)
+	{
+		vertexArray->bind();
+
+		// Calculate the byte offset for the indices
+		size_t indexOffsetBytes = indexOffset * sizeof(uint32_t);
+
+		// Use glDrawElementsBaseVertex for efficient submesh rendering
+		glDrawElementsBaseVertex(
+			GL_TRIANGLES,                                    // primitive type
+			indexCount,                                      // number of indices to render
+			GL_UNSIGNED_INT,                                // index type
+			reinterpret_cast<void*>(indexOffsetBytes),      // offset into index buffer
+			baseVertex                                       // base vertex offset
+		);
+
+		vertexArray->unbind();
+	}
+
 	void OpenGLRendererAPI::drawArrays(const RefPtr<VertexArray>& vertexArray)
 	{
 		glDrawArrays(GL_TRIANGLES, 0, 36);

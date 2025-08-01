@@ -11,6 +11,7 @@
 #include <glm/glm.hpp>
 
 #include "Entity.hpp"
+#include "Toaster/Renderer/MeshRenderer.hpp"
 
 
 namespace tst
@@ -80,23 +81,35 @@ namespace tst
 
 		if (mainCamera)
 		{
+
+			// 2D Primitive Rendering
 			Renderer2D::begin(mainCamera->getProjection(), *cameraView);
-
-			auto group = m_registry.group<TransformComponent>(entt::get<SpriteRendererComponent>);
-			for (auto entity : group)
+			auto group2d = m_registry.group<SpriteRendererComponent>(entt::get<TransformComponent>);
+			for (auto entity : group2d)
 			{
-				const auto &[transform, spriteRenderer] = group.get<TransformComponent, SpriteRendererComponent>(entity);
-
-
+				const auto& [spriteRenderer, transform] = group2d.get<SpriteRendererComponent, TransformComponent>(entity);
 				Renderer2D::drawQuad(transform.matrix(), spriteRenderer.colour);
 			}
-
 			Renderer2D::end();
+
+
+			// Mesh Rendering
+			MeshRenderer::begin(mainCamera->getProjection(), *cameraView);
+			auto group3d = m_registry.group<MeshRendererComponent>(entt::get<TransformComponent>);
+			for (auto entity : group3d)
+			{
+				const auto& [meshRenderer, transform] = group3d.get<MeshRendererComponent, TransformComponent>(entity);
+				MeshRenderer::drawMesh(meshRenderer.mesh, transform.matrix(), meshRenderer.colour);
+			}
+			MeshRenderer::end();
 		}
 	}
 
 	void Scene::onViewportResize(uint32_t width, uint32_t height)
 	{
+
+		m_ViewportWidth = width;
+		m_ViewportHeight = height;
 
 		auto cameraGroup = m_registry.view<CameraComponent>();
 		for (auto entity : cameraGroup)
@@ -123,5 +136,52 @@ namespace tst
 		tag.name = (name.empty()) ? "Entity" : name;
 
 		return entity;
+	}
+
+	void Scene::removeEntity(const Entity& entity)
+	{
+		m_registry.destroy(entity);
+	}
+
+	template<typename T>
+	void Scene::onComponentAdd(Entity *entity, T& component)
+	{
+
+	}
+
+	template<>
+	void Scene::onComponentAdd<TagComponent>(Entity *entity, TagComponent &component)
+	{
+		
+	}
+
+	template<>
+	void Scene::onComponentAdd<TransformComponent>(Entity *entity, TransformComponent &component)
+	{
+		
+	}
+
+	template<>
+	void Scene::onComponentAdd<CameraComponent>(Entity *entity, CameraComponent& component)
+	{
+		component.camera.setViewportSize(m_ViewportWidth, m_ViewportHeight);
+	}
+
+	template<>
+	void Scene::onComponentAdd<SpriteRendererComponent>(Entity *entity, SpriteRendererComponent& component)
+	{
+
+	}
+
+	template<>
+	void Scene::onComponentAdd<MeshRendererComponent>(Entity *entity, MeshRendererComponent& component)
+	{
+
+	}
+
+	template<>
+	void Scene::onComponentAdd<NativeScriptComponent>(Entity *entity, NativeScriptComponent& component)
+	{
+
 	}
 }

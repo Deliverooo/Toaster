@@ -1,51 +1,45 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
+    <Filter Include="panels">
+      <UniqueIdentifier>{C8213A14-B4C3-64EA-9D7E-783E89BFEB3A}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="rayTracing">
+      <UniqueIdentifier>{5956C223-450E-0471-AE15-DDCC9AEC9E61}</UniqueIdentifier>
+    </Filter>
     <Filter Include="util">
       <UniqueIdentifier>{43339F7C-2F6A-A00D-D856-8610C46C1C0F}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\ToasterEditorLayer.hpp" />
+    <ClInclude Include="src\panels\SceneHierarchyPanel.hpp">
+      <Filter>panels</Filter>
+    </ClInclude>
+    <ClInclude Include="src\rayTracing\RayTracerLayer.hpp">
+      <Filter>rayTracing</Filter>
+    </ClInclude>
+    <ClInclude Include="src\util\ParticleSystem.hpp">
+      <Filter>util</Filter>
+    </ClInclude>
     <ClInclude Include="src\util\Random.hpp">
       <Filter>util</Filter>
     </ClInclude>
-    <ClInclude Include="src\util\ParticleSystem.hpp" />
-    <ClInclude Include="src\rayTracing\RayTracerLayer.hpp" />
-    <ClInclude Include="src\panels\SceneHierarchyPanel.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\ToasterEditorApp.cpp" />
     <ClCompile Include="src\ToasterEditorLayer.cpp" />
+    <ClCompile Include="src\panels\SceneHierarchyPanel.cpp">
+      <Filter>panels</Filter>
+    </ClCompile>
+    <ClCompile Include="src\rayTracing\RayTracerLayer.cpp">
+      <Filter>rayTracing</Filter>
+    </ClCompile>
+    <ClCompile Include="src\util\ParticleSystem.cpp">
+      <Filter>util</Filter>
+    </ClCompile>
     <ClCompile Include="src\util\Random.cpp">
       <Filter>util</Filter>
     </ClCompile>
-    <ClCompile Include="src\util\ParticleSystem.cpp" />
-    <ClCompile Include="src\rayTracing\RayTracerLayer.cpp" />
-    <ClCompile Include="src\panels\SceneHierarchyPanel.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="res\shaders\BasicShader.frag.glsl" />
-    <None Include="res\shaders\BasicShader.vert.glsl" />
-    <None Include="res\shaders\FlatShader.frag.glsl" />
-    <None Include="res\shaders\FlatShader.vert.glsl" />
-    <None Include="res\shaders\FlatTextureShader.glsl" />
-    <None Include="res\shaders\SkyboxShader.frag.glsl" />
-    <None Include="res\shaders\SkyboxShader.vert.glsl" />
-    <None Include="res\shaders\TestShader.glsl" />
-  </ItemGroup>
-  <ItemGroup>
-    <Image Include="res\textures\sprite sheets\Tiles_0.png" />
-    <Image Include="res\textures\Absolute_Cinema.jpg" />
-    <Image Include="res\textures\Grass2K.png" />
-    <Image Include="res\textures\One_Leg_Bird.png" />
-    <Image Include="res\textures\orbo0.png" />
-    <Image Include="res\textures\RayTraceRoom.png" />
-    <Image Include="res\cubemaps\back.jpg" />
-    <Image Include="res\cubemaps\bottom.jpg" />
-    <Image Include="res\cubemaps\front.jpg" />
-    <Image Include="res\cubemaps\left.jpg" />
-    <Image Include="res\cubemaps\right.jpg" />
-    <Image Include="res\cubemaps\top.jpg" />
   </ItemGroup>
 </Project>

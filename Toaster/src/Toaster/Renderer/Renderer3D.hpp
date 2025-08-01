@@ -1,8 +1,11 @@
 #pragma once
+
+
 #include "Camera.hpp"
 #include "glm/ext/matrix_transform.hpp"
 #include "Texture.hpp"
 #include "Toaster/Scene/Components.hpp"
+
 
 namespace tst
 {
@@ -30,7 +33,7 @@ namespace tst
 		}
 
 		static void init();
-		static void terminate();
+		static void terminate() noexcept;
 
 		static void begin(const RefPtr<PerspectiveCamera>& camera);
 		static void begin(const RefPtr<OrthoCamera>& camera);
@@ -42,44 +45,28 @@ namespace tst
 		static void beginNewBatch();
 
 
-		// ---[ 3D rotation overloads ]---
-
-				// Quads with 2 scale parameters
-		static void drawQuad(const glm::vec3& position, const glm::vec3& rotation, const glm::vec2& scale, const glm::vec4& colour);
-		static void drawQuad(const glm::vec3& position, const glm::vec3& rotation, const glm::vec2& scale, const RefPtr<Texture2D>& texture, const float tilingScale = 1.0f, const glm::vec4& tintColour = glm::vec4(1.0f));
-		static void drawQuad(const glm::vec3& position, const glm::vec3& rotation, const glm::vec2& scale, const RefPtr<SubTexture2D>& texture, const float tilingScale = 1.0f, const glm::vec4& tintColour = glm::vec4(1.0f));
-
-		static void drawQuad(const glm::mat4 &transform, const glm::vec4& colour);
-		static void drawQuad(const glm::mat4 &transform, const RefPtr<Texture2D>& texture, const float tilingScale = 1.0f, const glm::vec4& tintColour = glm::vec4(1.0f));
-		static void drawQuad(const glm::mat4 &transform, const RefPtr<SubTexture2D>& texture, const float tilingScale = 1.0f, const glm::vec4& tintColour = glm::vec4(1.0f));
-
-
-		// Quads with 3 scale parameters
+		// Quad rendering
 		static void drawQuad(const glm::vec3& position, const glm::vec3& rotation, const glm::vec3& scale, const glm::vec4& colour);
-		static void drawQuad(const glm::vec3& position, const glm::vec3& rotation, const glm::vec3& scale, const RefPtr<Texture2D>& texture, const float tilingScale = 1.0f, const glm::vec4& tintColour = glm::vec4(1.0f));
+		static void drawQuad(const glm::vec3& position, const glm::vec3& rotation, const glm::vec3& scale, const RefPtr<Texture2D>& texture, float tilingScale = 1.0f, const glm::vec4& tintColour = glm::vec4(1.0f));
 		static void drawQuad(const glm::vec3& position, const glm::vec3& rotation, const glm::vec3& scale, const RefPtr<SubTexture2D>& texture, const float tilingScale = 1.0f, const glm::vec4& tintColour = glm::vec4(1.0f));
+		static void drawQuad(const glm::vec3& position, const glm::vec3& rotation, const glm::vec2& scale, const RefPtr<Texture2D>& texture, float tilingScale = 1.0f, const glm::vec4& tintColour = glm::vec4(1.0f));
+		static void drawQuad(const glm::vec3& position, const glm::vec3& rotation, const glm::vec2& scale, const glm::vec4& colour);
+		static void drawQuad(const glm::vec3& position, const glm::vec3& rotation, const glm::vec2& scale, const RefPtr<SubTexture2D>& texture, const float tilingScale = 1.0f, const glm::vec4& tintColour = glm::vec4(1.0f));
+		static void drawQuad(const glm::mat4& transform, const glm::vec4& colour);
+		static void drawQuad(const glm::mat4& transform, const RefPtr<Texture2D>& texture, const float tilingScale = 1.0f, const glm::vec4& tintColour = glm::vec4(1.0f));
+		static void drawQuad(const glm::mat4& transform, const RefPtr<SubTexture2D>& texture, const float tilingScale = 1.0f, const glm::vec4& tintColour = glm::vec4(1.0f));
 
-		// Tris with 2 scale parameters
-		static void drawTri(const glm::vec3& position, const glm::vec3& rotation, const glm::vec2& scale, const glm::vec4& colour);
-		static void drawTri(const glm::vec3& position, const glm::vec3& rotation, const glm::vec2& scale, const RefPtr<Texture2D>& texture, const float tilingScale = 1.0f, const glm::vec4& tintColour = glm::vec4(1.0f));
-		static void drawTri(const glm::vec3& position, const glm::vec3& rotation, const glm::vec2& scale, const RefPtr<SubTexture2D>& texture, const float tilingScale = 1.0f, const glm::vec4& tintColour = glm::vec4(1.0f));
-
-		// Tris with 3 scale parameters
-		static void drawTri(const glm::vec3& position, const glm::vec3& rotation, const glm::vec3& scale, const glm::vec4& colour);
-		static void drawTri(const glm::vec3& position, const glm::vec3& rotation, const glm::vec3& scale, const RefPtr<Texture2D>& texture, const float tilingScale = 1.0f, const glm::vec4& tintColour = glm::vec4(1.0f));
-		static void drawTri(const glm::vec3& position, const glm::vec3& rotation, const glm::vec3& scale, const RefPtr<SubTexture2D>& texture, const float tilingScale = 1.0f, const glm::vec4& tintColour = glm::vec4(1.0f));
-
-
-		// ---------3D Primitive drawing functions---------
-
-		// Cube
+		// Cube rendering
 		static void drawCube(const glm::vec3& position, const glm::vec3& rotation, const glm::vec3& scale, const glm::vec4& colour);
 		static void drawCube(const glm::vec3& position, const glm::vec3& rotation, const glm::vec3& scale, const RefPtr<Texture2D>& texture, const float tilingScale = 1.0f, const glm::vec4& tintColour = glm::vec4(1.0f));
 		static void drawCube(const glm::vec3& position, const glm::vec3& rotation, const glm::vec3& scale, const RefPtr<SubTexture2D>& texture, const float tilingScale = 1.0f, const glm::vec4& tintColour = glm::vec4(1.0f));
-
 		static void drawCube(const glm::mat4& transform, const glm::vec4& colour);
-		static void drawCube(const glm::mat4& transform, const RefPtr<Texture2D>& texture, const float tilingScale = 1.0f, const glm::vec4& tintColour = glm::vec4(1.0f));
-		static void drawCube(const glm::mat4& transform, const RefPtr<SubTexture2D>& texture, const float tilingScale = 1.0f, const glm::vec4& tintColour = glm::vec4(1.0f));
+		static void drawCube(const glm::mat4& transform, const RefPtr<Texture2D>& texture, float tilingScale = 1.0f, const glm::vec4& tintColour = glm::vec4(1.0f));
+		static void drawCube(const glm::mat4& transform, const RefPtr<SubTexture2D>& texture, float tilingScale = 1.0f, const glm::vec4& tintColour = glm::vec4(1.0f));
+
+		// Mesh rendering - Add these declarations
+		static void drawMesh(const RefPtr<Mesh>& mesh, const glm::mat4& transform, const glm::vec4& colour = glm::vec4(1.0f));
+		static void drawMesh(const glm::vec3& position, const glm::vec3& rotation, const glm::vec3& scale, const RefPtr<Mesh>& mesh, const glm::vec4& colour = glm::vec4(1.0f));
 
 		struct Stats
 		{
@@ -91,6 +78,7 @@ namespace tst
 			uint32_t batchesPerFrame{ 1 };
 			uint32_t textureBindings{ 0 };
 			uint32_t verticesSubmitted{ 0 };
+			uint32_t meshCount{ 0 };
 
 			uint32_t totalVertexCount() { return quadCount * 4 + triangleCount * 3 + circleCount * 4 + lineCount * 4; }
 			uint32_t totalIndexCount() { return quadCount * 6 + triangleCount * 6 + circleCount * 6 + lineCount * 6; }

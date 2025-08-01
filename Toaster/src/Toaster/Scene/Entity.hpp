@@ -29,22 +29,42 @@ namespace tst
 		template<typename T, typename ...Args>
 		T& addComponent(Args &...args)
 		{
-			TST_ASSERT(!hasComponent<T>(), "Entity already has component!");
-			return m_scene->registry().emplace<T>(m_handle, std::forward<Args>(args)...);
+			if (hasComponent<T>())
+			{
+				TST_CORE_WARN("Entity already has component");
+				return getComponent<T>();
+			}
+
+			T &component = m_scene->registry().emplace<T>(m_handle, std::forward<Args>(args)...);
+			m_scene->onComponentAdd<T>(this, component);
+			return component;
 		}
 
 		template<typename T, typename ...Args>
 		T& addComponent(const Args &&...args)
 		{
-			TST_ASSERT(!hasComponent<T>(), "Entity already has component!");
-			return m_scene->registry().emplace<T>(m_handle, std::forward<const Args>(args)...);
+			if (hasComponent<T>())
+			{
+				TST_CORE_WARN("Entity already has component");
+				return getComponent<T>();
+			}
+			T& component = m_scene->registry().emplace<T>(m_handle, std::forward<const Args>(args)...);
+			m_scene->onComponentAdd<T>(this, component);
+			return component;
 		}
 
 		template<typename T>
 		T& addComponent()
 		{
-			TST_ASSERT(!hasComponent<T>(), "Entity already has component!");
-			return m_scene->registry().emplace<T>(m_handle);
+			if (hasComponent<T>())
+			{
+				TST_CORE_WARN("Entity already has component");
+				return getComponent<T>();
+			}
+
+			T& component = m_scene->registry().emplace<T>(m_handle);
+			m_scene->onComponentAdd<T>(this, component);
+			return component;
 		}
 
 
@@ -61,6 +81,9 @@ namespace tst
 
 		bool operator==(const Entity& other) const { return m_handle == other.m_handle && m_scene == other.m_scene; }
 		bool operator!=(const Entity& other) const { return m_handle != other.m_handle || m_scene != other.m_scene; }
+
+
+		operator entt::entity() const { return m_handle; }
 
 	private:
 

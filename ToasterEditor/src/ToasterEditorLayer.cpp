@@ -1,5 +1,7 @@
 #include "ToasterEditorLayer.hpp"
 
+#include "imgui_internal.h"
+#include "Toaster/Renderer/MeshRenderer.hpp"
 #include "util/Random.hpp"
 #include "Toaster/Scene/Scene.hpp"
 
@@ -85,7 +87,7 @@ namespace tst
 			Colour.a *= lifePercent;
 
 			glm::vec3 size = glm::mix(particle.SizeEnd, particle.SizeBegin, lifePercent);
-			Renderer3D::drawCube(particle.Position, particle.Rotation, size, Colour);
+			//Renderer3D::drawCube(particle.Position, particle.Rotation, size, Colour);
 		}
 	}
 
@@ -232,7 +234,7 @@ namespace tst
 		static float clock = 0.0f;
 		clock += dt;
 
-		Renderer3D::resetStats();
+		MeshRenderer::resetStats();
 		m_Framebuffer->bind();
 		RenderCommand::setClearColour(m_clearColour);
 		RenderCommand::clear();
@@ -328,22 +330,48 @@ namespace tst
 
 		ImGui::Begin("Settings");
 
-		ImGui::Checkbox("Particle Draw Mode", &m_particleDrawMode);
+
 
 
 		ImGui::Text("3D Renderer Stats");
 		ImGui::Spacing();
 
-		ImGui::Text("Draw Calls:			%d", Renderer3D::getStats().drawCallCount);
-		ImGui::Text("Quad Count:			%d", Renderer3D::getStats().quadCount);
-		ImGui::Text("Batches Per Frame:		%d", Renderer3D::getStats().batchesPerFrame);
-		ImGui::Text("Texture Bindings:		%d", Renderer3D::getStats().textureBindings);
-		ImGui::Text("Vertices Submitted:	%d", Renderer3D::getStats().verticesSubmitted);
-		ImGui::Text("Vertex Count:			%d", Renderer3D::getStats().totalVertexCount());
-		ImGui::Text("Index Count:			%d", Renderer3D::getStats().totalIndexCount());
-		ImGui::Text("Batch Efficiency:		%f", Renderer3D::getStats().batchEfficiency());
+		ImGui::PushMultiItemsWidths(8, ImGui::GetContentRegionAvail().x - ImGui::CalcItemWidth());
 
+		ImGui::Text("Draw Calls:");
+		ImGui::SameLine();
+		ImGui::TextColored({ 0.0f, 1.0f, 0.0f, 1.0f }, "%d", MeshRenderer::getStats().drawCallCount);
+		ImGui::PopItemWidth();
 
+		ImGui::Text("Quad Count:");
+		ImGui::SameLine();
+		ImGui::TextColored({ 0.0f, 1.0f, 0.0f, 1.0f }, "%d", MeshRenderer::getStats().quadCount);
+		ImGui::PopItemWidth();
+
+		ImGui::Text("Texture Bindings:");
+		ImGui::SameLine();
+		ImGui::TextColored({ 0.0f, 1.0f, 0.0f, 1.0f }, "%d", MeshRenderer::getStats().textureBindings);
+		ImGui::PopItemWidth();
+
+		ImGui::Text("Vertices Submitted");
+		ImGui::SameLine();
+		ImGui::TextColored({ 0.0f, 1.0f, 0.0f, 1.0f }, "%d", MeshRenderer::getStats().verticesSubmitted);
+		ImGui::PopItemWidth();
+
+		ImGui::Text("Vertex Count:");
+		ImGui::SameLine();
+		ImGui::TextColored({ 0.0f, 1.0f, 0.0f, 1.0f }, "%d", MeshRenderer::getStats().totalVertexCount());
+		ImGui::PopItemWidth();
+
+		ImGui::Text("Index Count:");
+		ImGui::SameLine();
+		ImGui::TextColored({ 0.0f, 1.0f, 0.0f, 1.0f }, "%d", MeshRenderer::getStats().totalIndexCount());
+		ImGui::PopItemWidth();
+
+		ImGui::Text("Batch Efficiency:");
+		ImGui::SameLine();
+		ImGui::TextColored({ 0.0f, 1.0f, 0.0f, 1.0f }, "%f", MeshRenderer::getStats().batchEfficiency());
+		ImGui::PopItemWidth();
 
 		ImGui::End();
 
@@ -366,8 +394,14 @@ namespace tst
 		static bool depthPass = false;
 
 		ImGui::Image(m_Framebuffer->getColourAttachmentId(), { m_ViewportSize.x, m_ViewportSize.y }, ImVec2(0, 1), ImVec2(1, 0));
-
 		ImGui::End();
+
+		/*ImGui::Begin("Depth Pass");
+		float framebufferWidth = static_cast<float>(m_Framebuffer->getInfo().width);
+		float framebufferHeight = static_cast<float>(m_Framebuffer->getInfo().height);
+		ImGui::Image(m_Framebuffer->getDepthAttachmentId(), { framebufferWidth, framebufferHeight }, ImVec2(0, 1), ImVec2(1, 0));
+		ImGui::End();*/
+
 		ImGui::PopStyleVar();
 
 		ImGui::End();

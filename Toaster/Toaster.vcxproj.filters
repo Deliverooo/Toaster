@@ -16,6 +16,12 @@
     <Filter Include="Toaster\Renderer">
       <UniqueIdentifier>{6D5555B5-594E-7407-8280-598C6ED85313}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Toaster\Renderer\Loaders">
+      <UniqueIdentifier>{660A3769-522F-86E9-7B7A-6B7967FE8407}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Toaster\Scene">
+      <UniqueIdentifier>{447C13C4-B03C-8FFA-7977-D877E5F6D3D6}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Toaster\Util">
       <UniqueIdentifier>{945D9591-80C0-2436-2946-5DEC1588F0B8}</UniqueIdentifier>
     </Filter>
@@ -97,7 +103,19 @@
     <ClInclude Include="src\Toaster\Renderer\Framebuffer.hpp">
       <Filter>Toaster\Renderer</Filter>
     </ClInclude>
+    <ClInclude Include="src\Toaster\Renderer\Loaders\FbxLoader.hpp">
+      <Filter>Toaster\Renderer\Loaders</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Toaster\Renderer\Loaders\ObjLoader.hpp">
+      <Filter>Toaster\Renderer\Loaders</Filter>
+    </ClInclude>
     <ClInclude Include="src\Toaster\Renderer\Material.hpp">
+      <Filter>Toaster\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Toaster\Renderer\Mesh.hpp">
+      <Filter>Toaster\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Toaster\Renderer\MeshRenderer.hpp">
       <Filter>Toaster\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="src\Toaster\Renderer\RenderCommand.hpp">
@@ -132,6 +150,18 @@
     </ClInclude>
     <ClInclude Include="src\Toaster\Renderer\VertexArray.hpp">
       <Filter>Toaster\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Toaster\Scene\Components.hpp">
+      <Filter>Toaster\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Toaster\Scene\Entity.hpp">
+      <Filter>Toaster\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Toaster\Scene\Scene.hpp">
+      <Filter>Toaster\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Toaster\Scene\ScriptableEntity.hpp">
+      <Filter>Toaster\Scene</Filter>
     </ClInclude>
     <ClInclude Include="src\Toaster\Util\MathUtil.hpp">
       <Filter>Toaster\Util</Filter>
@@ -185,10 +215,6 @@
       <Filter>platform\Windows</Filter>
     </ClInclude>
     <ClInclude Include="src\tstpch.h" />
-    <ClInclude Include="src\Toaster\Scene\Scene.hpp" />
-    <ClInclude Include="src\Toaster\Scene\Components.hpp" />
-    <ClInclude Include="src\Toaster\Scene\Entity.hpp" />
-    <ClInclude Include="src\Toaster\Scene\ScriptableEntity.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Toaster\CameraController.cpp">
@@ -218,10 +244,25 @@
     <ClCompile Include="src\Toaster\Renderer\Framebuffer.cpp">
       <Filter>Toaster\Renderer</Filter>
     </ClCompile>
+    <ClCompile Include="src\Toaster\Renderer\Loaders\FbxLoader.cpp">
+      <Filter>Toaster\Renderer\Loaders</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Toaster\Renderer\Loaders\ObjLoader.cpp">
+      <Filter>Toaster\Renderer\Loaders</Filter>
+    </ClCompile>
     <ClCompile Include="src\Toaster\Renderer\Material.cpp">
       <Filter>Toaster\Renderer</Filter>
     </ClCompile>
+    <ClCompile Include="src\Toaster\Renderer\Mesh.cpp">
+      <Filter>Toaster\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Toaster\Renderer\MeshRenderer.cpp">
+      <Filter>Toaster\Renderer</Filter>
+    </ClCompile>
     <ClCompile Include="src\Toaster\Renderer\RenderCommand.cpp">
+      <Filter>Toaster\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Toaster\Renderer\RenderCore.cpp">
       <Filter>Toaster\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="src\Toaster\Renderer\Renderer.cpp">
@@ -244,6 +285,15 @@
     </ClCompile>
     <ClCompile Include="src\Toaster\Renderer\VertexArray.cpp">
       <Filter>Toaster\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Toaster\Scene\Components.cpp">
+      <Filter>Toaster\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Toaster\Scene\Entity.cpp">
+      <Filter>Toaster\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Toaster\Scene\Scene.cpp">
+      <Filter>Toaster\Scene</Filter>
     </ClCompile>
     <ClCompile Include="src\Toaster\imgui\ImGuiBuild.cpp">
       <Filter>Toaster\imgui</Filter>
@@ -297,13 +347,5 @@
       <Filter>platform\Windows</Filter>
     </ClCompile>
     <ClCompile Include="src\tstpch.cpp" />
-    <ClCompile Include="src\Toaster\Scene\Scene.cpp" />
-    <ClCompile Include="src\Toaster\Scene\Components.cpp" />
-    <ClCompile Include="src\Toaster\Renderer\RenderCore.cpp" />
-    <ClCompile Include="src\Toaster\Scene\Entity.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="res\shaders\FlatTextureShader.glsl" />
-    <None Include="res\shaders\LightingShader.glsl" />
   </ItemGroup>
 </Project>

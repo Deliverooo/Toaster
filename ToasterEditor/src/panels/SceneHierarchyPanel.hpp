@@ -1,9 +1,11 @@
 #pragma once
 
 
+#include "imgui.h"
 #include "Toaster/Core/Log.hpp"
 #include "Toaster/Scene/Scene.hpp"
 #include "Toaster/Scene/Entity.hpp"
+
 
 
 namespace tst 
@@ -22,8 +24,16 @@ namespace tst
 		void drawEntityNode(Entity entity);
 		void drawComponents(Entity entity);
 
+
+		struct ComponentUiDrawInfo
+		{
+			const char* displayName;
+			ImGuiTreeNodeFlags treeNodeFlags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowItemOverlap;
+
+		};
+
 		template<typename T>
-		void drawComponent(Entity *entity, const char* displayName, void(*uiFunc)(T*));
+		void drawComponent(Entity* entity, const ComponentUiDrawInfo &drawInfo, void(*uiFunc)(T*));
 
 	private:
 

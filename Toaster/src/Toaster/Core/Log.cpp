@@ -8,7 +8,7 @@ namespace tst {
 	std::shared_ptr<spdlog::logger> Log::m_clientLogger;
 
 	void Log::init() {
-		spdlog::set_pattern("%^[%I] %n: %v%$");
+		spdlog::set_pattern("%^[%l] %n: %v%$");
 		m_coreLogger = spdlog::stdout_color_mt("Toaster");
 		m_coreLogger->set_level(spdlog::level::trace);
 
