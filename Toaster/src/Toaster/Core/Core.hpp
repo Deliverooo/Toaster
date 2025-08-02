@@ -14,6 +14,8 @@
 #else
 #define TST_API
 #endif
+#else
+#define TST_API
 #endif
 
 #define BIT(x) (1 << (x))

@@ -92,7 +92,7 @@ void ParticleSystem::onRender()
 			Colour.a *= lifePercent;
 
 			glm::vec2 size = glm::mix(particle.SizeEnd, particle.SizeBegin, lifePercent);
-			tst::Renderer2D::drawQuad({ particle.Position.x, particle.Position.y }, 0.0f, size, Colour);
+			//tst::Renderer2D::drawQuad({ particle.Position.x, particle.Position.y }, 0.0f, size, Colour);
 		}
 	}
 

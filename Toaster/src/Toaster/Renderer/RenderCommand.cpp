@@ -44,6 +44,17 @@ namespace tst
 		m_rendererApi->enableDepthTesting();
 	}
 
+
+	void RenderCommand::enableBackfaceCulling()
+	{
+		m_rendererApi->enableBackfaceCulling();
+	}
+
+	void RenderCommand::disableBackfaceCulling()
+	{
+		m_rendererApi->disableBackfaceCulling();
+	}
+
 	void RenderCommand::setClearColour(const glm::vec4& colour)
 	{
 		m_rendererApi->setClearColour(colour);

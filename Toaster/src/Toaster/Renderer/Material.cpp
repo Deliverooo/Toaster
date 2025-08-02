@@ -101,6 +101,7 @@ namespace tst
         material->setEmissive({ 0.0f, 0.0f, 0.0f });
         material->setShininess(32.0f);
         material->setOpacity(1.0f);
+		material->setBackfaceCulling(false);
 
         return material;
     }

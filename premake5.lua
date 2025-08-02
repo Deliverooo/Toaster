@@ -19,7 +19,7 @@ IncludeDir["stbImage"] = "dependencies/stbImage/include"
 IncludeDir["glm"] = "dependencies/glm"
 IncludeDir["Entt"] = "dependencies/Entt/include"
 IncludeDir["TinyObjLoader"] = "dependencies/Tinyobjloader/include"
---IncludeDir["Assimp"] = "dependencies/Assimp/include"
+IncludeDir["Assimp"] = "dependencies/Assimp/include"
 
 include "dependencies/GLFW/"
 include "dependencies/Glad/"
@@ -28,7 +28,7 @@ include "dependencies/spdlog/"
 include "dependencies/stbImage/"
 include "dependencies/glm/"
 include "dependencies/Tinyobjloader/"
---include "dependencies/Assimp/"
+include "dependencies/Assimp/"
 
 -- Update the Toaster project configuration
 project "Toaster"
@@ -62,7 +62,7 @@ project "Toaster"
 		"%{IncludeDir.glm}",
 		"%{IncludeDir.Entt}",
 		"%{IncludeDir.TinyObjLoader}",
-		--"%{IncludeDir.Assimp}",
+		"%{IncludeDir.Assimp}",
 		"C:/VulkanSDK/1.4.313.2/Include",
 	}
 
@@ -78,7 +78,7 @@ project "Toaster"
 		"spdlog",
 		"stbImage",
 		"glm",
-		--"Assimp",
+		"Assimp",
 		"opengl32.lib",
 		"dwmapi.lib",
 	}

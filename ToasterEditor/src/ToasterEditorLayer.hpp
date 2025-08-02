@@ -74,34 +74,25 @@ namespace tst
 		void loadAssets();
 		bool onKeyPressedEvent(KeyPressedEvent& e);
 
-		glm::vec4 screenSpaceToWorldSpace(glm::vec2 screenCoords, float depth);
-
-		OrthoCamera2DController m_OrthoCameraCtrl;
-		PerspectiveCameraController m_PerspectiveCameraCtrl;
+		glm::vec4 screenSpaceToWorldSpace(const glm::mat4& projection, const glm::mat4& view, glm::vec2 screenCoords, float depth);
 
 		RefPtr<Texture2D> m_OrboTexture;
 		RefPtr<Texture2D> m_GrassTexture;
 		RefPtr<Texture2D> m_BirdTexture;
 		RefPtr<Texture2D> m_RayTraceRoomTexture;
 
-		RefPtr<SubTexture2D> m_Texture0;
-		RefPtr<Texture2D> m_renderTexture;
-		unsigned char *m_imageData = nullptr;
 		RefPtr<Framebuffer> m_Framebuffer;
-
 
 		glm::vec4 m_clearColour{ 0.15f, 0.15f, 0.15f, 1.0f };
 		glm::vec2 m_ViewportSize{1280, 720};
 
-		glm::vec4 m_squareColour{1.0f, 1.0f, 1.0f, 1.0f};
 
 		ParticleSystem3D m_particleSystem;
 
 		RefPtr<Scene> m_Scene;
 
 		Entity m_CameraEntity;
-		Entity m_SecondCameraEntity;
-		Entity m_CubeEntity;
+		Entity m_MeshEntity;
 
 		bool m_primaryCamera = false;
 

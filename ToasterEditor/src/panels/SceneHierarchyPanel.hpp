@@ -10,6 +10,7 @@
 
 namespace tst 
 {
+
 	class TST_API SceneHierarchyPanel
 	{
 	public:

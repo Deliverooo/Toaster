@@ -19,18 +19,18 @@ void SandBox3DLayer::onDetach()
 void SandBox3DLayer::onUpdate(tst::DeltaTime dt)
 {
 
-	tst::Renderer3D::resetStats();
-	m_PerspectiveCameraCtrl->onUpdate(dt);
+	//tst::Renderer3D::resetStats();
+	//m_PerspectiveCameraCtrl->onUpdate(dt);
 
-	tst::RenderCommand::setClearColour(m_clearColour);
-	tst::RenderCommand::clear();
+	//tst::RenderCommand::setClearColour(m_clearColour);
+	//tst::RenderCommand::clear();
 
-	tst::Renderer3D::begin(m_PerspectiveCameraCtrl->getCamera());
+	//tst::Renderer3D::begin(m_PerspectiveCameraCtrl->getCamera());
 
-	tst::Renderer3D::drawCube({ 0.0f, 0.0f, 0.0f }, glm::vec3(1.0f), glm::vec3(1.0f), {0.5f, 1.0f, 0.6f, 1.0f});
-	tst::Renderer3D::drawCube({ 1.0f, 1.0f, 1.5f }, glm::vec3(0.0f), glm::vec3(0.8f), m_Texture0);
+	//tst::Renderer3D::drawCube({ 0.0f, 0.0f, 0.0f }, glm::vec3(1.0f), glm::vec3(1.0f), {0.5f, 1.0f, 0.6f, 1.0f});
+	//tst::Renderer3D::drawCube({ 1.0f, 1.0f, 1.5f }, glm::vec3(0.0f), glm::vec3(0.8f), m_Texture0);
 
-	tst::Renderer3D::end();
+	//tst::Renderer3D::end();
 
 }
 void SandBox3DLayer::onEvent(tst::Event& e)

@@ -1,6 +1,8 @@
 bin/
 bin-int/
 .vs/
+build/
+
 
 
 SandBox/Tst_Prof-Startup.json

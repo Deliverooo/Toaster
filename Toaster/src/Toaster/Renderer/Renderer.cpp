@@ -244,7 +244,7 @@ namespace tst
 		RenderCommand::drawIndexed(render_data.quadVertexArray, render_data.quadIndex);
 
 		render_data.stats.drawCallCount++;
-		render_data.stats.verticesSubmitted += (render_data.quadVertexPtr - render_data.quadVertexBufferBase);
+		render_data.stats.verticesSubmitted += static_cast<uint32_t>((reinterpret_cast<uint8_t*>(render_data.quadVertexPtr) - reinterpret_cast<uint8_t*>(render_data.quadVertexBufferBase)));
 	}
 
 	void Renderer::resizeViewport(uint32_t width, uint32_t height)
@@ -671,17 +671,17 @@ namespace tst
 			* glm::rotate(glm::mat4(1.0f), rotation, { 0.0f, 0.0f, 1.0f })
 			* glm::scale(glm::mat4(1.0f), { scale.x, scale.y, 0.0f });
 
-		constexpr float texIndex = 0.0f;
+		const float texIndex = 0.0f;
 
 
-		constexpr glm::vec4 triangleVertexPositions[4] = {
+		const glm::vec4 triangleVertexPositions[4] = {
 			{ 0.0f,  0.5f, 0.0f, 1.0f},
 			{-0.5f, -0.5f, 0.0f, 1.0f},
 			{ 0.5f, -0.5f, 0.0f, 1.0f},
 			{ 0.5f, -0.5f, 0.0f, 1.0f}
 		};
 
-		constexpr glm::vec2 triangleVertexUvs[4] = {
+		const glm::vec2 triangleVertexUvs[4] = {
 			{0.5f, 1.0f},
 			{0.0f, 0.0f},
 			{1.0f, 0.0f},
@@ -733,7 +733,7 @@ namespace tst
 		// searches for an existing texture in the current batch
 		for (uint32_t i = 1; i < render_data.textureSlotIndex; i++)
 		{
-			if (render_data.textureSlots[i] && render_data.textureSlots[i]->getId() == texture->getId())
+			if (render_data.textureSlots[i] && render_data.textureSlots[i].get()->getId() == texture.get()->getId())
 			{
 				texIndex = i;
 				break;
@@ -814,7 +814,7 @@ namespace tst
 		// searches for an existing texture in the current batch
 		for (uint32_t i = 1; i < render_data.textureSlotIndex; i++)
 		{
-			if (render_data.textureSlots[i] && render_data.textureSlots[i]->getId() == texture->getBaseTexture()->getId())
+			if (render_data.textureSlots[i] && render_data.textureSlots[i].get()->getId() == texture.get()->getBaseTexture()->getId())
 			{
 				texIndex = i;
 				break;
@@ -951,7 +951,7 @@ namespace tst
 		// searches for an existing texture in the current batch
 		for (uint32_t i = 1; i < render_data.textureSlotIndex; i++)
 		{
-			if (render_data.textureSlots[i] && render_data.textureSlots[i]->getId() == texture->getId())
+			if (render_data.textureSlots[i] && render_data.textureSlots[i].get() == texture.get())
 			{
 				texIndex = i;
 				break;
@@ -1029,7 +1029,7 @@ namespace tst
 		// searches for an existing texture in the current batch
 		for (uint32_t i = 1; i < render_data.textureSlotIndex; i++)
 		{
-			if (render_data.textureSlots[i] && render_data.textureSlots[i]->getId() == texture->getBaseTexture()->getId())
+			if (render_data.textureSlots[i] && render_data.textureSlots[i].get() == texture->getBaseTexture().get())
 			{
 				texIndex = i;
 				break;
@@ -1176,7 +1176,7 @@ namespace tst
 		// Search for existing texture in current batch
 		for (uint32_t i = 1; i < render_data.textureSlotIndex; i++)
 		{
-			if (render_data.textureSlots[i] && render_data.textureSlots[i]->getId() == texture->getId())
+			if (render_data.textureSlots[i] && render_data.textureSlots[i].get() == texture.get())
 			{
 				texIndex = i;
 				break;

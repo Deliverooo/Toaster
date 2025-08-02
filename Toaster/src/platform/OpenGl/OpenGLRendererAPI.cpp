@@ -35,6 +35,18 @@ namespace tst
 		glEnable(GL_DEPTH_TEST);
 	}
 
+
+	void OpenGLRendererAPI::enableBackfaceCulling()
+	{
+		glEnable(GL_CULL_FACE);
+		glCullFace(GL_BACK);
+	}
+
+	void OpenGLRendererAPI::disableBackfaceCulling()
+	{
+		glDisable(GL_CULL_FACE);
+	}
+
 	void OpenGLRendererAPI::drawIndexed(const RefPtr<VertexArray>& vertexArray, uint32_t count)
 	{
 		vertexArray->bind();

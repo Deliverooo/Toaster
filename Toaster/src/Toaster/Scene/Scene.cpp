@@ -93,15 +93,19 @@ namespace tst
 			Renderer2D::end();
 
 
+
 			// Mesh Rendering
 			MeshRenderer::begin(mainCamera->getProjection(), *cameraView);
-			auto group3d = m_registry.group<MeshRendererComponent>(entt::get<TransformComponent>);
-			for (auto entity : group3d)
+			auto meshGroup = m_registry.group<MeshRendererComponent>(entt::get<TransformComponent>);
+			for (auto entity : meshGroup)
 			{
-				const auto& [meshRenderer, transform] = group3d.get<MeshRendererComponent, TransformComponent>(entity);
-				MeshRenderer::drawMesh(meshRenderer.mesh, transform.matrix(), meshRenderer.colour);
+				const auto& [meshRenderer, transform] = meshGroup.get<MeshRendererComponent, TransformComponent>(entity);
+				MeshRenderer::drawMesh(meshRenderer.mesh, transform.matrix());
 			}
 			MeshRenderer::end();
+
+
+
 		}
 	}
 

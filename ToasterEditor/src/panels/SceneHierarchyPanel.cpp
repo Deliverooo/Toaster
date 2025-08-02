@@ -1,6 +1,7 @@
 #include "SceneHierarchyPanel.hpp"
 
 #include "Toaster/Scene/Components.hpp"
+#include <filesystem>
 
 
 #include "imgui_internal.h"
@@ -247,15 +248,20 @@ namespace tst
 				ImGui::ColorEdit4("Base Colour", glm::value_ptr(comp->colour));
 
 				// Mesh file selector
-				static char meshPath[256] = "";
-				ImGui::InputText("Mesh Path", meshPath, sizeof(meshPath));
+				static char meshPathBuff[256] = "";
+				ImGui::InputText("Mesh Path", meshPathBuff, sizeof(meshPathBuff));
 
 				if (ImGui::Button("Load Mesh"))
 				{
-					std::string path(meshPath);
-					if (!path.empty())
+					std::string meshPath = meshPathBuff;
+					if (!meshPath.empty())
 					{
-						comp->mesh = Mesh::create(path);
+						if (meshPath.front() == '"') {
+							meshPath.erase(0, 1);
+							meshPath.erase(meshPath.size() - 1);
+						}
+
+						comp->mesh = Mesh::create(meshPath);
 					}
 				}
 
@@ -282,20 +288,28 @@ namespace tst
 								auto& props = material->getMaterialProperties();
 
 
-								glm::vec3 resetDiffuse{ props.diffuse };
-								glm::vec3 diffuse { props.diffuse };
-								drawVec3Ctrl("Diffuse", &diffuse, resetDiffuse, 100.0f, "R", "G", "B");
-								material->setDiffuse(diffuse);
+								glm::vec3 diffuse{ props.diffuse };
+								if (ImGui::ColorEdit3("Diffuse", glm::value_ptr(diffuse)))
+								{
+									material->setDiffuse(diffuse);
+								}
+								float opacity = props.opacity;
+								if (ImGui::SliderFloat("Opacity", &opacity, 0.0f, 1.0f)) { material->setOpacity(opacity); }
 
-								glm::vec3 resetSpecular{ props.specular };
 								glm::vec3 specular{ props.specular };
-								drawVec3Ctrl("Specular", &specular, resetSpecular, 100.0f, "R", "G", "B");
-								material->setSpecular(specular);
-
+								if (ImGui::ColorEdit3("Specular", glm::value_ptr(specular)))
+								{
+									material->setSpecular(specular);
+								}
 
 								float shininess = props.shininess;
-								ImGui::SameLine();
 								if (ImGui::SliderFloat("Shininess", &shininess, 0.0f, 256.0f)) { material->setShininess(shininess); }
+
+								bool backFaceCulling = props.backfaceCulling;
+								if (ImGui::Checkbox("Backface Culling", &backFaceCulling))
+								{
+									material->setBackfaceCulling(backFaceCulling);
+								}
 
 								ImGui::Text("Has Diffuse Map: %s", material->getDiffuseMap() ? "Yes" : "No");
 								ImGui::Text("Has Specular Map: %s", material->getSpecularMap() ? "Yes" : "No");

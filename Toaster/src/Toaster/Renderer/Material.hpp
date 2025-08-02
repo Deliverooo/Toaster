@@ -12,12 +12,12 @@ namespace tst
 {
 	struct MaterialProperties
 	{
-		glm::vec3 ambient { 0.2f, 0.2f, 0.2f };
+		glm::vec3 ambient { 0.0f, 0.0f, 0.0f };
 		glm::vec3 diffuse { 0.8f, 0.8f, 0.8f };
 		glm::vec3 specular{ 1.0f, 1.0f, 1.0f };
 		glm::vec3 emissive{ 0.0f, 0.0f, 0.0f };
 
-		float shininess			{ 48.0f };
+		float shininess			{ 64.0f };
 		float opacity			{ 1.0f  };
 		float indexOfRefraction { 1.55f };
 
@@ -25,6 +25,8 @@ namespace tst
 		float metallic { 0.0f };
 		float roughness{ 0.6f };
 		float ao	   { 1.0f };
+
+		bool backfaceCulling{ false };
 	};
 
 	class TST_API Material
@@ -51,6 +53,7 @@ namespace tst
 		void setEmissive(const glm::vec3& emissive) { m_MaterialProperties.emissive = emissive;	  }
 		void setShininess(float shininess)			{ m_MaterialProperties.shininess = shininess; }
 		void setOpacity(float opacity)				{ m_MaterialProperties.opacity = opacity;	  }
+		void setBackfaceCulling(bool backfaceCulling) { m_MaterialProperties.backfaceCulling = backfaceCulling; }
 
 
 		void setDiffuseMap(const RefPtr<Texture2D>& diffuseMap)  { m_DiffuseMap  = diffuseMap;  }

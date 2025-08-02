@@ -92,7 +92,7 @@ namespace tst
 	}
 
 
-	glm::vec4 ToasterEditorLayer::screenSpaceToWorldSpace(glm::vec2 screenCoords, float depth)
+	glm::vec4 ToasterEditorLayer::screenSpaceToWorldSpace(const glm::mat4 &projection, const glm::mat4 &view, glm::vec2 screenCoords, float depth)
 	{
 		float vX = static_cast<float>(m_Framebuffer->getInfo().width) * 0.5f;
 		float vY = static_cast<float>(m_Framebuffer->getInfo().height) * 0.5f;
@@ -102,7 +102,7 @@ namespace tst
 
 		glm::vec4 sreenSpaceCoords = glm::vec4(mX / vX, -mY / vY, depth, 1.0f);
 
-		glm::mat4 inverseProjView = glm::inverse(m_PerspectiveCameraCtrl.getCamera()->getProjectionMatrix() * m_PerspectiveCameraCtrl.getCamera()->getViewMatrix());
+		glm::mat4 inverseProjView = glm::inverse(projection * view);
 		glm::vec4 worldSpaceCoords = inverseProjView * sreenSpaceCoords;
 
 		worldSpaceCoords.x /= worldSpaceCoords.w;
@@ -112,7 +112,7 @@ namespace tst
 		return worldSpaceCoords;
 	}
 
-	ToasterEditorLayer::ToasterEditorLayer() : m_OrthoCameraCtrl(1.77f), m_PerspectiveCameraCtrl(90.0f, 1.77f)
+	ToasterEditorLayer::ToasterEditorLayer()
 	{
 
 	}
@@ -145,24 +145,17 @@ namespace tst
 		FramebufferCreateInfo framebufferCreateInfo{ 1280, 720 };
 		m_Framebuffer = Framebuffer::create(framebufferCreateInfo);
 
-
 		m_Scene = make_reference<Scene>();
 
-		m_CubeEntity = m_Scene->createEntity("Cube");
-		m_CubeEntity.addComponent<SpriteRendererComponent>(glm::vec4{1.0f, 1.0f, 1.0f, 1.0f});
+		m_MeshEntity = m_Scene->createEntity("mesh");
+		m_MeshEntity.addComponent<MeshRendererComponent>(glm::vec4{1.0f, 1.0f, 1.0f, 1.0f});
 
-		auto cube2 = m_Scene->createEntity("Cube.001");
+		auto cube2 = m_Scene->createEntity("sprite");
 		cube2.addComponent<SpriteRendererComponent>(glm::vec4{1.0f, 0.0f, 1.0f, 1.0f});
 
 
-		m_CameraEntity = m_Scene->createEntity("Camera");
+		m_CameraEntity = m_Scene->createEntity("camera");
 		m_CameraEntity.addComponent<CameraComponent>();
-
-		m_SecondCameraEntity = m_Scene->createEntity("Camera.001");
-		auto & cameraComp = m_SecondCameraEntity.addComponent<CameraComponent>();
-		cameraComp.main = false;
-
-		m_renderTexture = Texture2D::create(300, 600);
 
 
 		class CameraController : public ScriptableEntity
@@ -206,7 +199,6 @@ namespace tst
 		};
 
 		m_CameraEntity.addComponent<NativeScriptComponent>().bind<CameraController>();
-		m_SecondCameraEntity.addComponent<NativeScriptComponent>().bind<CameraController>();
 
 		m_SceneHierarchyPanel.setSceneContext(m_Scene);
 	}
@@ -221,14 +213,8 @@ namespace tst
 			(safeViewportX != m_Framebuffer->getInfo().width || safeViewportY != m_Framebuffer->getInfo().height))
 		{
 			m_Framebuffer->resize(static_cast<uint32_t>(safeViewportX), static_cast<uint32_t>(safeViewportY));
-			m_PerspectiveCameraCtrl.resize(static_cast<uint32_t>(safeViewportX), static_cast<uint32_t>(safeViewportY));
 
 			m_Scene->onViewportResize(static_cast<uint32_t>(safeViewportX), static_cast<uint32_t>(safeViewportY));
-		}
-
-		if (m_ViewportFocused)
-		{
-			m_PerspectiveCameraCtrl.onUpdate(dt);
 		}
 
 		static float clock = 0.0f;
@@ -246,11 +232,6 @@ namespace tst
 	}
 	void ToasterEditorLayer::onEvent(Event& e)
 	{
-
-		if (m_ViewportFocused)
-		{
-			m_PerspectiveCameraCtrl.onEvent(e);
-		}
 
 		EventDispatcher eventDispatcher(e);
 

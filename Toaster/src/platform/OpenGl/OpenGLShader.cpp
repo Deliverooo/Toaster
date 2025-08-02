@@ -340,12 +340,12 @@ namespace tst
 	void OpenGLShader::uploadUniform3d(const double x, const double y, const double z, const char* name) { glUniform3d(getUniformLocation(name), x, y, z); }
 	void OpenGLShader::uploadUniform4d(const double x, const double y, const double z, const double w, const char* name) { glUniform4d(getUniformLocation(name), x, y, z, w); }
 
-	void OpenGLShader::uploadUniform1iv(const glm::vec<1, int>& vec, const char* name) { glUniform1iv(getUniformLocation(name), 1, glm::value_ptr(vec)); }
+	void OpenGLShader::uploadUniform1iv(const glm::vec<1, int>& vec, const char* name) { glUniform1iv(getUniformLocation(name), 1, &vec.x); }
 	void OpenGLShader::uploadUniform2iv(const glm::vec<2, int>& vec, const char* name) { glUniform2iv(getUniformLocation(name), 1, glm::value_ptr(vec)); }
 	void OpenGLShader::uploadUniform3iv(const glm::vec<3, int>& vec, const char* name) { glUniform3iv(getUniformLocation(name), 1, glm::value_ptr(vec)); }
 	void OpenGLShader::uploadUniform4iv(const glm::vec<4, int>& vec, const char* name) { glUniform4iv(getUniformLocation(name), 1, glm::value_ptr(vec)); }
 
-	void OpenGLShader::uploadUniform1fv(const glm::vec1& vec, const char* name) { glUniform1fv(getUniformLocation(name), 1, glm::value_ptr(vec)); }
+	void OpenGLShader::uploadUniform1fv(const glm::vec1& vec, const char* name) { glUniform1fv(getUniformLocation(name), 1, &vec.x); }
 	void OpenGLShader::uploadUniform2fv(const glm::vec2& vec, const char* name) { glUniform2fv(getUniformLocation(name), 1, glm::value_ptr(vec)); }
 	void OpenGLShader::uploadUniform3fv(const glm::vec3& vec, const char* name) { glUniform3fv(getUniformLocation(name), 1, glm::value_ptr(vec)); }
 	void OpenGLShader::uploadUniform4fv(const glm::vec4& vec, const char* name) { glUniform4fv(getUniformLocation(name), 1, glm::value_ptr(vec)); }
