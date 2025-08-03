@@ -103,6 +103,9 @@
     <ClInclude Include="src\Toaster\Renderer\Framebuffer.hpp">
       <Filter>Toaster\Renderer</Filter>
     </ClInclude>
+    <ClInclude Include="src\Toaster\Renderer\Light.hpp">
+      <Filter>Toaster\Renderer</Filter>
+    </ClInclude>
     <ClInclude Include="src\Toaster\Renderer\Loaders\BlendLoader.hpp">
       <Filter>Toaster\Renderer\Loaders</Filter>
     </ClInclude>

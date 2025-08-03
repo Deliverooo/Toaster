@@ -36,5 +36,6 @@ if(WIN32)
         NOMINMAX
         WIN32_LEAN_AND_MEAN
         TST_PLATFORM_WINDOWS
+        TST_EDITOR_RESOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res"
     )
 endif()

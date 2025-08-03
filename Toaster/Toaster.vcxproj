@@ -76,7 +76,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>tstpch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>TST_PLATFORM_WINDOWS;TST_BUILD_DLL;GLFW_INCLUDE_NONE;TST_ENABLE_FBX;TST_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>TST_PLATFORM_WINDOWS;TST_BUILD_DLL;GLFW_INCLUDE_NONE;TST_ENABLE_FBX;TST_CORE_RESOURCE_DIR= "C:/dev/Toaster/Toaster/res";TST_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>src;..\dependencies\GLFW\include;..\dependencies\Glad\include;..\dependencies\ImGui;..\dependencies\spdlog\include;..\dependencies\stbImage\include;..\dependencies\glm;..\dependencies\Entt\include;..\dependencies\Tinyobjloader\include;..\dependencies\Assimp\include;C:\VulkanSDK\1.4.313.2\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
@@ -99,7 +99,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>tstpch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>TST_PLATFORM_WINDOWS;TST_BUILD_DLL;GLFW_INCLUDE_NONE;TST_ENABLE_FBX;TST_RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>TST_PLATFORM_WINDOWS;TST_BUILD_DLL;GLFW_INCLUDE_NONE;TST_ENABLE_FBX;TST_CORE_RESOURCE_DIR= "C:/dev/Toaster/Toaster/res";TST_RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>src;..\dependencies\GLFW\include;..\dependencies\Glad\include;..\dependencies\ImGui;..\dependencies\spdlog\include;..\dependencies\stbImage\include;..\dependencies\glm;..\dependencies\Entt\include;..\dependencies\Tinyobjloader\include;..\dependencies\Assimp\include;C:\VulkanSDK\1.4.313.2\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -126,7 +126,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>tstpch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>TST_PLATFORM_WINDOWS;TST_BUILD_DLL;GLFW_INCLUDE_NONE;TST_ENABLE_FBX;TST_DIST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>TST_PLATFORM_WINDOWS;TST_BUILD_DLL;GLFW_INCLUDE_NONE;TST_ENABLE_FBX;TST_CORE_RESOURCE_DIR= "C:/dev/Toaster/Toaster/res";TST_DIST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>src;..\dependencies\GLFW\include;..\dependencies\Glad\include;..\dependencies\ImGui;..\dependencies\spdlog\include;..\dependencies\stbImage\include;..\dependencies\glm;..\dependencies\Entt\include;..\dependencies\Tinyobjloader\include;..\dependencies\Assimp\include;C:\VulkanSDK\1.4.313.2\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -170,6 +170,7 @@
     <ClInclude Include="src\Toaster\Renderer\Buffer.hpp" />
     <ClInclude Include="src\Toaster\Renderer\Camera.hpp" />
     <ClInclude Include="src\Toaster\Renderer\Framebuffer.hpp" />
+    <ClInclude Include="src\Toaster\Renderer\Light.hpp" />
     <ClInclude Include="src\Toaster\Renderer\Loaders\BlendLoader.hpp" />
     <ClInclude Include="src\Toaster\Renderer\Loaders\FbxLoader.hpp" />
     <ClInclude Include="src\Toaster\Renderer\Loaders\ObjLoader.hpp" />

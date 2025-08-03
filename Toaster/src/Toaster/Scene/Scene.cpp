@@ -21,8 +21,8 @@ namespace tst
 	{
 		Transform(const glm::mat4& transform) : matrix(transform) {}
 
-		operator glm::mat4& (){return matrix; }
-		operator const glm::mat4& () const {return matrix; }
+		operator glm::mat4& () { return matrix; }
+		operator const glm::mat4& () const { return matrix; }
 
 		union
 		{
@@ -39,25 +39,25 @@ namespace tst
 	Scene::~Scene()
 	{
 
-		
+
 	}
 
-	
+
 	void Scene::onUpdate(DeltaTime dt)
 	{
 
 		m_registry.view<NativeScriptComponent>().each([&](auto entity, auto& scriptComp)
-		{
-			if (scriptComp.instance == nullptr)
 			{
-				scriptComp.instance = scriptComp.instantiateScript();
-				scriptComp.instance->m_entity = { entity, this };
+				if (scriptComp.instance == nullptr)
+				{
+					scriptComp.instance = scriptComp.instantiateScript();
+					scriptComp.instance->m_entity = { entity, this };
 
-				scriptComp.instance->onCreate();
-			}
+					scriptComp.instance->onCreate();
+				}
 
-			scriptComp.instance->onUpdate(dt);
-		});
+				scriptComp.instance->onUpdate(dt);
+			});
 
 		Camera* mainCamera = nullptr;
 		glm::mat4* cameraView = nullptr;
@@ -131,7 +131,7 @@ namespace tst
 	}
 
 
-	Entity Scene::createEntity(const std::string &name)
+	Entity Scene::createEntity(const std::string& name)
 	{
 		Entity entity = { m_registry.create(), this };
 		entity.addComponent<TransformComponent>();
@@ -148,43 +148,49 @@ namespace tst
 	}
 
 	template<typename T>
-	void Scene::onComponentAdd(Entity *entity, T& component)
+	void Scene::onComponentAdd(Entity* entity, T& component)
 	{
 
 	}
 
 	template<>
-	void Scene::onComponentAdd<TagComponent>(Entity *entity, TagComponent &component)
+	void Scene::onComponentAdd<TagComponent>(Entity* entity, TagComponent& component)
 	{
-		
+
 	}
 
 	template<>
-	void Scene::onComponentAdd<TransformComponent>(Entity *entity, TransformComponent &component)
+	void Scene::onComponentAdd<TransformComponent>(Entity* entity, TransformComponent& component)
 	{
-		
+
 	}
 
 	template<>
-	void Scene::onComponentAdd<CameraComponent>(Entity *entity, CameraComponent& component)
+	void Scene::onComponentAdd<CameraComponent>(Entity* entity, CameraComponent& component)
 	{
 		component.camera.setViewportSize(m_ViewportWidth, m_ViewportHeight);
 	}
 
 	template<>
-	void Scene::onComponentAdd<SpriteRendererComponent>(Entity *entity, SpriteRendererComponent& component)
+	void Scene::onComponentAdd<SpriteRendererComponent>(Entity* entity, SpriteRendererComponent& component)
 	{
 
 	}
 
 	template<>
-	void Scene::onComponentAdd<MeshRendererComponent>(Entity *entity, MeshRendererComponent& component)
+	void Scene::onComponentAdd<MeshRendererComponent>(Entity* entity, MeshRendererComponent& component)
 	{
 
 	}
 
 	template<>
-	void Scene::onComponentAdd<NativeScriptComponent>(Entity *entity, NativeScriptComponent& component)
+	void Scene::onComponentAdd<NativeScriptComponent>(Entity* entity, NativeScriptComponent& component)
+	{
+
+	}
+
+	template<>
+	void Scene::onComponentAdd<LightComponent>(Entity* entity, LightComponent& component)
 	{
 
 	}

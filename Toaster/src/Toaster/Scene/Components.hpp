@@ -3,6 +3,7 @@
 #include <glm/glm.hpp>
 
 #include "Toaster/Renderer/Camera.hpp"
+#include "Toaster/Renderer/Light.hpp"
 #include "Toaster/Renderer/Mesh.hpp"
 #include "Toaster/Util/MathUtil.hpp"
 
@@ -66,6 +67,16 @@ namespace tst
 
 		RefPtr<Mesh> mesh = nullptr;
 		glm::vec4 colour = { 1.0f, 0.0f, 0.862f, 1.0f };
+	};
+
+	struct LightComponent
+	{
+		LightComponent() = default;
+		LightComponent(Light::Type type) : light(type) {}
+
+		Light light{};
+		bool enabled{ true };
+
 	};
 
 	using TstBehaviorFn = std::function<void()>;

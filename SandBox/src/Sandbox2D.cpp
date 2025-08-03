@@ -15,11 +15,11 @@ void SandBox2DLayer::onAttach()
 	sheetParams.minFilter = tst::TextureFiltering::NearestMipmapNearest;
 	sheetParams.magFilter = tst::TextureFiltering::Nearest;
 
-	tst::RefPtr<tst::Texture2D> dirtSheet = tst::Texture2D::create(TST_REL_PATH"textures/sprite sheets/Tiles_0.png", sheetParams);
+	tst::RefPtr<tst::Texture2D> dirtSheet = tst::Texture2D::create(TST_SANDBOX_RESOURCE_DIR"/textures/sprite sheets/Tiles_0.png", sheetParams);
 
-	m_Texture0 = tst::Texture2D::create(TST_REL_PATH"textures/orbo0.png");
-	m_Texture1 = tst::Texture2D::create(TST_REL_PATH"textures/One_Leg_Bird.png");
-	m_Texture2 = tst::Texture2D::create(TST_REL_PATH"textures/rocky_terrain_02_diff_2k.png");
+	m_Texture0 = tst::Texture2D::create(TST_SANDBOX_RESOURCE_DIR"/textures/orbo0.png");
+	m_Texture1 = tst::Texture2D::create(TST_SANDBOX_RESOURCE_DIR"/textures/One_Leg_Bird.png");
+	m_Texture2 = tst::Texture2D::create(TST_SANDBOX_RESOURCE_DIR"/textures/rocky_terrain_02_diff_2k.png");
 
 	m_Texture3 = tst::SubTexture2D::createPixelPerfect(dirtSheet, 0, 2, 16, 16);
 

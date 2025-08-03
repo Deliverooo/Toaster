@@ -146,10 +146,15 @@ namespace tst
             mat->Get(AI_MATKEY_SHININESS, shininess);
             material->setShininess(shininess);
 
+            int backfaceCulling = 0;
+            mat->Get(AI_MATKEY_TWOSIDED, backfaceCulling);
+            material->setBackfaceCulling(backfaceCulling);
+
             // Load textures (now supports embedded textures)
             loadMaterialTextures(mat, aiTextureType_DIFFUSE, material, dir);
             loadMaterialTextures(mat, aiTextureType_SPECULAR, material, dir);
             loadMaterialTextures(mat, aiTextureType_NORMALS, material, dir);
+            loadMaterialTextures(mat, aiTextureType_HEIGHT, material, dir);
 
             materials.addMaterial(material);
         }

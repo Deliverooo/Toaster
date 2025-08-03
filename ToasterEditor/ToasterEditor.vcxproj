@@ -78,7 +78,7 @@
     <ClCompile>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>TST_PLATFORM_WINDOWS;TST_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>TST_PLATFORM_WINDOWS;TST_EDITOR_RESOURCE_DIR= "C:/dev/Toaster/ToasterEditor/res";TST_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\Toaster\src;..\dependencies\spdlog\include;..\dependencies\imgui;..\dependencies\glm;..\dependencies\ImGui;..\dependencies\Entt\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
@@ -96,7 +96,7 @@
     <ClCompile>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>TST_PLATFORM_WINDOWS;TST_RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>TST_PLATFORM_WINDOWS;TST_EDITOR_RESOURCE_DIR= "C:/dev/Toaster/ToasterEditor/res";TST_RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\Toaster\src;..\dependencies\spdlog\include;..\dependencies\imgui;..\dependencies\glm;..\dependencies\ImGui;..\dependencies\Entt\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -118,7 +118,7 @@
     <ClCompile>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>TST_PLATFORM_WINDOWS;TST_DIST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>TST_PLATFORM_WINDOWS;TST_EDITOR_RESOURCE_DIR= "C:/dev/Toaster/ToasterEditor/res";TST_DIST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\Toaster\src;..\dependencies\spdlog\include;..\dependencies\imgui;..\dependencies\glm;..\dependencies\ImGui;..\dependencies\Entt\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>

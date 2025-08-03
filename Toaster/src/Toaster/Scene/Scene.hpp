@@ -1,7 +1,7 @@
  #pragma once
 
 #include "Toaster/Core/Time.hpp"
-#include "C:/dev/Toaster/dependencies/Entt/include/entt.hpp"
+#include "entt.hpp"
 
 
 namespace tst

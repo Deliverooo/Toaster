@@ -325,6 +325,62 @@ namespace tst
 					}
 				}
 			});
+
+		ComponentUiDrawInfo lightDrawInfo{};
+		lightDrawInfo.displayName = "Light";
+		drawComponent<LightComponent>(&entity, lightDrawInfo, [](LightComponent* comp)
+		{
+			const char* lightTypes[] = { "Directional", "Point", "Spot" };
+			const char* currentLightType = lightTypes[(int)comp->light.type];
+
+			if (ImGui::BeginCombo("Type", currentLightType))
+			{
+				for (int i = 0; i < 3; i++)
+				{
+
+					bool selected = currentLightType == lightTypes[i];
+
+					if (ImGui::Selectable(lightTypes[i], selected))
+					{
+						currentLightType = lightTypes[i];
+						comp->light.type = static_cast<Light::Type>(i);
+					}
+
+					if (selected)
+					{
+						ImGui::SetItemDefaultFocus();
+					}
+				}
+
+				ImGui::EndCombo();
+			}
+
+			ImGui::ColorEdit3("Colour", glm::value_ptr(comp->light.colour));
+
+			ImGui::DragFloat("Intensity", &comp->light.intensity);
+
+			if (comp->light.type != Light::Type::Directional)
+			{
+				ImGui::Separator();
+
+				ImGui::Text("Attenuation");
+				ImGui::DragFloat("Constant", &comp->light.constant, 0.01f, 0.0f, 2.0f);
+				ImGui::DragFloat("Linear", &comp->light.linear, 0.001f, 0.0f, 2.0f);
+				ImGui::DragFloat("Quadratic", &comp->light.quadratic, 0.01f, 0.0f, 2.0f);
+			}
+
+
+			if (comp->light.type == Light::Type::Spot)
+			{
+				ImGui::Separator();
+
+				ImGui::Text("Cone Properties");
+				ImGui::DragFloat("Inner", &comp->light.innerCone, 1.0f, 0.0f, 6.28f);
+				ImGui::DragFloat("Outer", &comp->light.outerCone, 1.0f, 0.0f, 6.28f);
+
+				if (comp->light.outerCone < comp->light.innerCone) { comp->light.outerCone = comp->light.innerCone; }
+			}
+		});
 	}
 
 	template<typename T>
@@ -332,8 +388,11 @@ namespace tst
 	{
 		if (entity->hasComponent<T>())
 		{
-			bool open = ImGui::TreeNodeEx((void*)typeid(T).hash_code(), drawInfo.treeNodeFlags, drawInfo.displayName);
 
+			ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4, 4));
+			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4, 4));
+
+			bool open = ImGui::TreeNodeEx((void*)typeid(T).hash_code(), drawInfo.treeNodeFlags, drawInfo.displayName);
 			ImGui::SameLine(ImGui::GetWindowWidth() - 30.0f);
 			if (ImGui::Button("...", ImVec2{30.0f, 20.0f}))
 			{
@@ -350,6 +409,7 @@ namespace tst
 				}
 				ImGui::EndPopup();
 			}
+			ImGui::PopStyleVar(2);
 
 			if (open)
 			{
@@ -389,6 +449,8 @@ namespace tst
 			if (ImGui::BeginMenu("New"))
 			{
 				if (ImGui::MenuItem("Entity")) { m_sceneContext->createEntity("entity"); }
+
+				if (ImGui::MenuItem("Light")) { m_sceneContext->createEntity("light").addComponent<LightComponent>(); }
 
 				ImGui::EndMenu();
 			}

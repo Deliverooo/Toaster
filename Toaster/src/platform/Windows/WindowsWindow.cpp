@@ -104,7 +104,7 @@ namespace tst
 		DwmSetWindowAttribute(hwnd, DWMWA_CAPTION_COLOR, &titleBarColour, sizeof(titleBarColour));
 		//DwmSetWindowAttribute(hwnd, DWMWA_TEXT_COLOR,	 &textColour, sizeof(textColour));
 
-		GLFWimage windowIcon = loadIcon(TST_REL_PATH"textures/orbo0.png");
+		GLFWimage windowIcon = loadIcon(TST_CORE_RESOURCE_DIR"/textures/orbo0.png");
 		glfwSetWindowIcon(m_window, 1, &windowIcon);
 
 		glfwGetWindowPos(m_window, &m_windowPos.first, &m_windowPos.second);

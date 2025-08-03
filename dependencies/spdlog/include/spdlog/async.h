@@ -14,9 +14,9 @@
 // This is because each message in the queue holds a shared_ptr to the
 // originating logger.
 
-#include <C:/dev/Toaster/dependencies/spdLog/include/spdlog/async_logger.h>
-#include <C:/dev/Toaster/dependencies/spdLog/include/spdlog/details/registry.h>
-#include <C:/dev/Toaster/dependencies/spdLog/include/spdlog/details/thread_pool.h>
+#include <spdlog/async_logger.h>
+#include <spdlog/details/registry.h>
+#include <spdlog/details/thread_pool.h>
 
 #include <functional>
 #include <memory>

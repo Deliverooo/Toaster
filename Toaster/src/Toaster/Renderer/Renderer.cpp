@@ -111,7 +111,7 @@ namespace tst
 			textureSamplers[i] = i;
 		}
 
-		render_data.lightingShader = Shader::create("LightingShader", TST_REL_PATH"shaders/FlatTextureShader.glsl");
+		render_data.lightingShader = Shader::create("LightingShader", TST_CORE_RESOURCE_DIR"/shaders/FlatTextureShader.glsl");
 		render_data.lightingShader->bind();
 		render_data.lightingShader->uploadIntArray(textureSamplers, render_data.maxTextureSlots, "u_Textures");
 

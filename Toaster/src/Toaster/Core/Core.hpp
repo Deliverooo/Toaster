@@ -42,7 +42,6 @@ namespace tst
 }
 
 
-#define TST_REL_PATH "C:/dev/Toaster/SandBox/assets/"
 #define TST_FONT_PATH "C:/Windows/Fonts/"
 
 

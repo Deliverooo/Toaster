@@ -4,11 +4,11 @@
 #pragma once
 
 #ifndef SPDLOG_HEADER_ONLY
-    #include <C:/dev/Toaster/dependencies/spdLog/include/spdlog/async_logger.h>
+    #include <spdlog/async_logger.h>
 #endif
 
-#include <C:/dev/Toaster/dependencies/spdLog/include/spdlog/details/thread_pool.h>
-#include <C:/dev/Toaster/dependencies/spdLog/include/spdlog/sinks/sink.h>
+#include <spdlog/details/thread_pool.h>
+#include <spdlog/sinks/sink.h>
 
 #include <memory>
 #include <string>

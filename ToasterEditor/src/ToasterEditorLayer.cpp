@@ -5,8 +5,6 @@
 #include "util/Random.hpp"
 #include "Toaster/Scene/Scene.hpp"
 
-#define TST_EDITOR_REL_PATH "C:/dev/Toaster/ToasterEditor/res/"
-
 namespace tst
 {
 	ParticleSystem3D::ParticleSystem3D()
@@ -134,10 +132,10 @@ namespace tst
 		pixelTextureParams.generateMipmaps = true;
 
 
-		m_OrboTexture		  = Texture2D::create(TST_EDITOR_REL_PATH"textures/orbo0.png",		  pixelTextureParams);
-		m_GrassTexture		  = Texture2D::create(TST_EDITOR_REL_PATH"textures/Grass2K.png",	  defaultParams);
-		m_BirdTexture		  = Texture2D::create(TST_EDITOR_REL_PATH"textures/One_Leg_Bird.png", defaultParams);
-		m_RayTraceRoomTexture = Texture2D::create(TST_EDITOR_REL_PATH"textures/RayTraceRoom.png", defaultParams);
+		m_OrboTexture		  = Texture2D::create(TST_EDITOR_RESOURCE_DIR"/textures/orbo0.png",		  pixelTextureParams);
+		m_GrassTexture		  = Texture2D::create(TST_EDITOR_RESOURCE_DIR"/textures/Grass2K.png",	  defaultParams);
+		m_BirdTexture		  = Texture2D::create(TST_EDITOR_RESOURCE_DIR"/textures/One_Leg_Bird.png", defaultParams);
+		m_RayTraceRoomTexture = Texture2D::create(TST_EDITOR_RESOURCE_DIR"/textures/RayTraceRoom.png", defaultParams);
 	}
 
 	void ToasterEditorLayer::onAttach()

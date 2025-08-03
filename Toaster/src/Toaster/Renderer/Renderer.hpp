@@ -5,7 +5,6 @@
 #include "Shader.hpp"
 #include "Texture.hpp"
 
-#define TST_CORE_ASSET_PATH "C:/dev/Toaster/Toaster/res/"
 
 namespace tst
 {

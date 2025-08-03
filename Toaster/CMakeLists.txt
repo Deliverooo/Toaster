@@ -60,6 +60,7 @@ target_compile_definitions(Toaster PRIVATE
     $<$<PLATFORM_ID:Windows>:TST_BUILD_DLL>
     $<$<PLATFORM_ID:Windows>:GLFW_INCLUDE_NONE>
     TST_ENABLE_FBX
+    TST_CORE_RESOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res"
 )
 
 # Platform-specific settings

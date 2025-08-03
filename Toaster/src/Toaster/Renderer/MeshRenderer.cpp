@@ -41,7 +41,8 @@ namespace tst
 		uint32_t texData = 0xffffffff;
 		render_data.whiteTexture->setData(&texData);
 
-		render_data.meshShader = Shader::create("MeshShader", "C:/dev/Toaster/Toaster/res/shaders/MeshShader.glsl");
+		
+		render_data.meshShader = Shader::create("MeshShader", TST_CORE_RESOURCE_DIR"/shaders/MeshShader.glsl");
 	}
 
 	void MeshRenderer::begin(const Camera& camera, const glm::mat4& transform)
@@ -69,73 +70,73 @@ namespace tst
 
 	void MeshRenderer::end()
 	{
-		
+
 	}
 
 
 
-    void MeshRenderer::drawMesh(const RefPtr<Mesh>& mesh, const glm::mat4& transform)
-    {
-        if (!mesh) {
-            return;
-        }
+	void MeshRenderer::drawMesh(const RefPtr<Mesh>& mesh, const glm::mat4& transform)
+	{
+		if (!mesh) {
+			return;
+		}
 
-        render_data.meshShader->bind();
+		render_data.meshShader->bind();
 
-        // Upload transformation matrix
-        render_data.meshShader->uploadMatrix4f(transform, "u_Model");
+		// Upload transformation matrix
+		render_data.meshShader->uploadMatrix4f(transform, "u_Model");
 
-        // Calculate and upload normal matrix for proper lighting
-        glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(transform)));
-        render_data.meshShader->uploadMatrix3f(normalMatrix, "u_NormalMatrix");
+		// Calculate and upload normal matrix for proper lighting
+		glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(transform)));
+		render_data.meshShader->uploadMatrix3f(normalMatrix, "u_NormalMatrix");
 
-        // Enable depth testing for proper 3D rendering
-        RenderCommand::enableDepthTesting();
+		// Enable depth testing for proper 3D rendering
+		RenderCommand::enableDepthTesting();
 
-        mesh->bind();
+		mesh->bind();
 
-        // Render each submesh with its material
-        const auto& submeshes = mesh->getSubMeshes();
-        const auto& materials = mesh->getMaterials();
+		// Render each submesh with its material
+		const auto& submeshes = mesh->getSubMeshes();
+		const auto& materials = mesh->getMaterials();
 
-        if (submeshes.empty()) {
+		if (submeshes.empty()) {
 
-            TST_CORE_WARN("Submeshes empty");
+			TST_CORE_WARN("Submeshes empty");
 
-        }
-        else {
-            // Render each submesh with its material
-            for (const auto& submesh : submeshes)
-            {
-                // Get the material for this submesh
-                auto material = materials.getMaterial(submesh.materialIndex);
+		}
+		else {
+			// Render each submesh with its material
+			for (const auto& submesh : submeshes)
+			{
+				// Get the material for this submesh
+				auto material = materials.getMaterial(submesh.materialIndex);
 
-                material->bind(render_data.meshShader);
+				material->bind(render_data.meshShader);
 
 
-                if (material->getMaterialProperties().backfaceCulling)
-                {
+				if (material->getMaterialProperties().backfaceCulling)
+				{
 					RenderCommand::enableBackfaceCulling();
-                }
-                // Draw the submesh
-                RenderCommand::drawIndexedBaseVertex(
-                    mesh->getVertexArray(),
-                    submesh.indexCount,
-                    submesh.indexOffset,
-                    0
-                );
+				}
+				// Draw the submesh
+				RenderCommand::drawIndexedBaseVertex(
+					mesh->getVertexArray(),
+					submesh.indexCount,
+					submesh.indexOffset,
+					0
+				);
 
 
 				RenderCommand::disableBackfaceCulling();
 
-                render_data.stats.drawCallCount++;
-                render_data.stats.triangleCount += submesh.indexCount / 3;
-            }
-        }
+				render_data.stats.drawCallCount++;
+				render_data.stats.triangleCount += submesh.indexCount / 3;
+			}
+		}
 
-        mesh->unbind();
-        render_data.stats.meshCount++;
-    }
+		mesh->unbind();
+		render_data.stats.meshCount++;
+	}
 
 
 

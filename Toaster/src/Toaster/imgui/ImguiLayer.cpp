@@ -36,11 +36,11 @@ namespace tst
 		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 		io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 
-		io.Fonts->AddFontFromFileTTF("C:/Users/oocon/AppData/Local/Microsoft/Windows/Fonts/JetBrainsMono-Thin.ttf", 18.0f);
-		io.Fonts->AddFontFromFileTTF("C:/Users/oocon/AppData/Local/Microsoft/Windows/Fonts/JetBrainsMono-Light.ttf", 18.0f);
-		io.Fonts->AddFontFromFileTTF("C:/Users/oocon/AppData/Local/Microsoft/Windows/Fonts/JetBrainsMono-Bold.ttf", 18.0f);
-		io.Fonts->AddFontFromFileTTF("C:/Users/oocon/AppData/Local/Microsoft/Windows/Fonts/JetBrainsMono-ExtraBold.ttf", 18.0f);
-		io.FontDefault = io.Fonts->AddFontFromFileTTF("C:/Users/oocon/AppData/Local/Microsoft/Windows/Fonts/JetBrainsMono-Regular.ttf", 18.0f);
+		io.Fonts->AddFontFromFileTTF(TST_CORE_RESOURCE_DIR"/fonts/JetBrainsMono-Thin.ttf", 18.0f);
+		io.Fonts->AddFontFromFileTTF(TST_CORE_RESOURCE_DIR"/fonts/JetBrainsMono-Light.ttf", 18.0f);
+		io.Fonts->AddFontFromFileTTF(TST_CORE_RESOURCE_DIR"/fonts/JetBrainsMono-Bold.ttf", 18.0f);
+		io.Fonts->AddFontFromFileTTF(TST_CORE_RESOURCE_DIR"/fonts/JetBrainsMono-ExtraBold.ttf", 18.0f);
+		io.FontDefault = io.Fonts->AddFontFromFileTTF(TST_CORE_RESOURCE_DIR"/fonts/JetBrainsMono-Regular.ttf", 18.0f);
 
 
 		ImGuiStyle &style = ImGui::GetStyle();

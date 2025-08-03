@@ -201,7 +201,7 @@
 //		render_data.flatTextureShader->uploadIntArray(textureSamplers, render_data.maxTextureSlots, "u_Textures");
 //
 //
-//		render_data.meshShader = Shader::create("MeshShader","C:/dev/Toaster/Toaster/res/shaders/MeshShader.glsl");
+//		render_data.meshShader = Shader::create("MeshShader", TST_CORE_RESOURCE_DIR"/shaders/MeshShader.glsl");
 //
 //		render_data.textureSlots[0] = render_data.whiteTexture;
 //

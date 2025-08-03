@@ -8,7 +8,7 @@ void SandBox3DLayer::onAttach()
 
 	m_PerspectiveCameraCtrl = std::make_shared<tst::PerspectiveCameraController>(90.0f, 1.77f);
 
-	m_Texture0 = tst::Texture2D::create("assets/textures/orbo0.png");
+	m_Texture0 = tst::Texture2D::create(TST_SANDBOX_RESOURCE_DIR"/assets/textures/orbo0.png");
 
 
 }

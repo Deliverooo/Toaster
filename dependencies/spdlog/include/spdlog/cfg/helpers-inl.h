@@ -4,11 +4,11 @@
 #pragma once
 
 #ifndef SPDLOG_HEADER_ONLY
-    #include <C:/dev/Toaster/dependencies/spdLog/include/spdlog/cfg/helpers.h>
+    #include <spdlog/cfg/helpers.h>
 #endif
 
-#include <C:/dev/Toaster/dependencies/spdLog/include/spdlog/details/os.h>
-#include <C:/dev/Toaster/dependencies/spdLog/include/spdlog/details/registry.h>
+#include <spdlog/details/os.h>
+#include <spdlog/details/registry.h>
 
 #include <algorithm>
 #include <sstream>

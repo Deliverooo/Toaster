@@ -30,6 +30,8 @@ include "dependencies/glm/"
 include "dependencies/Tinyobjloader/"
 include "dependencies/Assimp/"
 
+workingDirectory = (os.getcwd())
+
 -- Update the Toaster project configuration
 project "Toaster"
 	location "Toaster"
@@ -93,6 +95,8 @@ project "Toaster"
 			"TST_BUILD_DLL",
 			"GLFW_INCLUDE_NONE",
 			"TST_ENABLE_FBX",
+
+			"TST_CORE_RESOURCE_DIR= \"" .. os.getcwd() .. "/Toaster/res\"",
 			--"ASSIMP_BUILD_NO_EXPORT",
 			--"BUILD_NO_SHARED_LIBS",
 		}
@@ -151,7 +155,8 @@ project "SandBox"
 		systemversion "latest"
 
 		defines{
-			"TST_PLATFORM_WINDOWS"
+			"TST_PLATFORM_WINDOWS",
+			"TST_SANDBOX_RESOURCE_DIR= \"" .. os.getcwd() .. "/SandBox/res\"",
 		}
 
 	filter "configurations:Debug"
@@ -207,7 +212,8 @@ project "ToasterEditor"
 		systemversion "latest"
 
 		defines{
-			"TST_PLATFORM_WINDOWS"
+			"TST_PLATFORM_WINDOWS",
+			"TST_EDITOR_RESOURCE_DIR= \"" .. os.getcwd() .. "/ToasterEditor/res\"",
 		}
 
 	filter "configurations:Debug"
