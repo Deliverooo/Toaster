@@ -192,6 +192,19 @@ namespace tst
 		applyParams();
 	}
 
+	void OpenGLTexture2D::invalidate()
+	{
+		if (m_textureId != 0)
+		{
+			glDeleteTextures(1, &m_textureId);
+			m_textureId = 0;
+		}
+		m_textureWidth = 0;
+		m_textureHeight = 0;
+		m_dataFormat = GL_RGBA;
+		m_internalFormat = GL_RGBA8;
+		TST_CORE_INFO("OpenGLTexture2D invalidated!");
+	}
 
 	void OpenGLTexture2D::setData(void* data)
 	{
@@ -339,6 +352,8 @@ namespace tst
 
 	void OpenGLTexture2D::setFilterMode(const TextureFiltering minFilter, const TextureFiltering magFilter)
 	{
+
+
 		m_textureParameters.minFilter = minFilter;
 		m_textureParameters.magFilter = magFilter;
 

@@ -159,11 +159,49 @@ namespace tst
 			char buffer[256];
 			memset(buffer, 0, sizeof(buffer));
 			strcpy_s(buffer, sizeof(buffer), tagComp.name.c_str());
-			if (ImGui::InputText("Tag", buffer, sizeof(buffer)))
+			if (ImGui::InputText("##Tag", buffer, sizeof(buffer)))
 			{
 				tagComp.name = std::string(buffer);
 			}
 		}
+
+
+
+		ImGui::SameLine();
+		ImGui::PushItemWidth(-1);
+
+		if (ImGui::Button("Add Component"))
+		{
+			ImGui::OpenPopup("Add-Component");
+		}
+
+		if (ImGui::BeginPopup("Add-Component"))
+		{
+			if (ImGui::MenuItem("Camera"))
+			{
+				m_selectedEntity.addComponent<CameraComponent>();
+				ImGui::CloseCurrentPopup();
+			}
+			if (ImGui::MenuItem("Sprite Renderer"))
+			{
+				m_selectedEntity.addComponent<SpriteRendererComponent>();
+				ImGui::CloseCurrentPopup();
+			}
+			if (ImGui::MenuItem("Mesh Renderer"))
+			{
+				m_selectedEntity.addComponent<MeshRendererComponent>();
+				ImGui::CloseCurrentPopup();
+			}
+			if (ImGui::MenuItem("Script"))
+			{
+				//m_selectedEntity.addComponent<NativeScriptComponent>();
+				//ImGui::CloseCurrentPopup();
+			}
+
+			ImGui::EndPopup();
+		}
+
+		ImGui::PopItemWidth();
 
 		ComponentUiDrawInfo transformDrawInfo{};
 		transformDrawInfo.displayName = "Transform";
@@ -237,7 +275,123 @@ namespace tst
 		spriteRendererDrawInfo.displayName = "Sprite Renderer";
 		drawComponent<SpriteRendererComponent>(&entity, spriteRendererDrawInfo, [](SpriteRendererComponent *comp)
 			{
-				ImGui::ColorEdit4("Base Colour", glm::value_ptr(comp->colour));
+
+				static char texturePathBuff[256] = "";
+				ImGui::InputText("Texture Path", texturePathBuff, sizeof(texturePathBuff));
+				if (ImGui::Button("Load Texture"))
+				{
+					std::string texturePath = texturePathBuff;
+					if (!texturePath.empty())
+					{
+						if (texturePath.front() == '"') {
+							texturePath.erase(0, 1);
+							texturePath.erase(texturePath.size() - 1);
+						}
+						comp->texture = Texture2D::create(texturePath);
+						comp->colour = { 1.0f, 1.0f, 1.0f, 1.0f };
+					}
+				}
+
+				if (comp->texture)
+				{
+					ImGuiIO& io = ImGui::GetIO();
+
+					const char* filtering[] = { "Nearest", "Linear", "NearestMipmapNearest", "LinearMipmapNearest", "NearestMipmapLinear", "LinearMipmapLinear" };
+					const char* currentMinFilteringMode = filtering[(int)comp->texture->getParams().minFilter];
+					const char* currentMagFilteringMode = filtering[(int)comp->texture->getParams().magFilter];
+
+					ImGui::ColorEdit4("Tint Colour", glm::value_ptr(comp->colour));
+
+					ImGui::PushFont(io.Fonts->Fonts[2]);
+					if (ImGui::TreeNode("Texture Properties"))
+					{
+						auto& properties = comp->texture->getParams();
+
+						if (ImGui::BeginCombo("Min Filter", currentMinFilteringMode))
+						{
+							for (int i = 0; i < 6; i++)
+							{
+								bool selected = (currentMinFilteringMode == filtering[i]);
+								if (ImGui::Selectable(filtering[i], selected))
+								{
+									currentMinFilteringMode = filtering[i];
+									comp->texture->setFilterMode(static_cast<TextureFiltering>(i), properties.magFilter);
+								}
+								if (selected)
+								{
+									ImGui::SetItemDefaultFocus();
+								}
+							}
+							ImGui::EndCombo();
+						}
+
+						if (ImGui::BeginCombo("Mag Filter", currentMagFilteringMode))
+						{
+							for (int i = 0; i < 6; i++)
+							{
+								bool selected = (currentMagFilteringMode == filtering[i]);
+								if (ImGui::Selectable(filtering[i], selected))
+								{
+									currentMagFilteringMode = filtering[i];
+									comp->texture->setFilterMode(properties.minFilter, static_cast<TextureFiltering>(i));
+								}
+								if (selected)
+								{
+									ImGui::SetItemDefaultFocus();
+								}
+							}
+							ImGui::EndCombo();
+						}
+
+						ImGui::Separator();
+
+						const char* textureWrapping[] = { "Repeat", "ClampToEdge", "ClampToBorder", "MirroredRepeat" };
+						const char* currentWrapS = textureWrapping[(int)comp->texture->getParams().wrapS];
+						const char* currentWrapT = textureWrapping[(int)comp->texture->getParams().wrapT];
+
+
+						if (ImGui::BeginCombo("Wrap S", currentWrapS))
+						{
+							for (int i = 0; i < 4; i++)
+							{
+								bool selected = (currentWrapS == textureWrapping[i]);
+								if (ImGui::Selectable(textureWrapping[i], selected))
+								{
+									currentWrapS = textureWrapping[i];
+									comp->texture->setWrapMode(static_cast<TextureWrapping>(i), comp->texture->getParams().wrapT);
+								}
+								if (selected)
+								{
+									ImGui::SetItemDefaultFocus();
+								}
+							}
+							ImGui::EndCombo();
+						}
+						if (ImGui::BeginCombo("Wrap T", currentWrapT))
+						{
+							for (int i = 0; i < 4; i++)
+							{
+								bool selected = (currentWrapT == textureWrapping[i]);
+								if (ImGui::Selectable(textureWrapping[i], selected))
+								{
+									currentWrapT = textureWrapping[i];
+									comp->texture->setWrapMode(comp->texture->getParams().wrapS, static_cast<TextureWrapping>(i));
+								}
+								if (selected)
+								{
+									ImGui::SetItemDefaultFocus();
+								}
+							}
+							ImGui::EndCombo();
+						}
+
+						ImGui::TreePop();
+					}
+					ImGui::PopFont();
+				} else
+				{
+					ImGui::ColorEdit4("Base Colour", glm::value_ptr(comp->colour));
+				}
 			});
 
 		// Add to the drawComponents function
@@ -245,12 +399,9 @@ namespace tst
 		meshRendererDrawInfo.displayName = "Mesh Renderer";
 		drawComponent<MeshRendererComponent>(&entity, meshRendererDrawInfo, [](MeshRendererComponent* comp)
 			{
-				ImGui::ColorEdit4("Base Colour", glm::value_ptr(comp->colour));
-
 				// Mesh file selector
 				static char meshPathBuff[256] = "";
 				ImGui::InputText("Mesh Path", meshPathBuff, sizeof(meshPathBuff));
-
 				if (ImGui::Button("Load Mesh"))
 				{
 					std::string meshPath = meshPathBuff;
@@ -267,62 +418,71 @@ namespace tst
 
 				if (comp->mesh)
 				{
-					ImGui::Text("Vertices: %d", comp->mesh->getVertexCount());
-					ImGui::Text("Triangles: %d", comp->mesh->getIndexCount() / 3);
-					ImGui::Text("Submeshes: %d", (int)comp->mesh->getSubMeshes().size());
-					ImGui::Text("Materials: %d", comp->mesh->getMaterials().getMaterialCount());
+
+					if (ImGui::TreeNode("Mesh Info"))
+					{
+						ImGui::Text("Vertices: %d", comp->mesh->getVertexCount());
+						ImGui::Text("Triangles: %d", comp->mesh->getIndexCount() / 3);
+						ImGui::Text("Submeshes: %d", (int)comp->mesh->getSubMeshes().size());
+						ImGui::Text("Materials: %d", comp->mesh->getMaterials().getMaterialCount());
+						ImGui::TreePop();
+					}
 
 					// Display material information
 					ImGui::Separator();
-					ImGui::Text("Materials:");
 
-					for (uint32_t i = 0; i < comp->mesh->getMaterials().getMaterialCount(); i++)
+					if (ImGui::TreeNode("Materials"))
 					{
-						if (auto material = comp->mesh->getMaterials().getMaterial(i))
+						for (uint32_t i = 0; i < comp->mesh->getMaterials().getMaterialCount(); i++)
 						{
-
-							if (ImGui::TreeNode(material->getName().c_str()))
+							if (auto material = comp->mesh->getMaterials().getMaterial(i))
 							{
-								ImGui::PushID(material->getName().c_str());
 
-								auto& props = material->getMaterialProperties();
-
-
-								glm::vec3 diffuse{ props.diffuse };
-								if (ImGui::ColorEdit3("Diffuse", glm::value_ptr(diffuse)))
+								if (ImGui::TreeNode(material->getName().c_str()))
 								{
-									material->setDiffuse(diffuse);
+									ImGui::PushID(material->getName().c_str());
+
+									auto& props = material->getMaterialProperties();
+
+
+									glm::vec3 diffuse{ props.diffuse };
+									if (ImGui::ColorEdit3("Diffuse", glm::value_ptr(diffuse)))
+									{
+										material->setDiffuse(diffuse);
+									}
+									float opacity = props.opacity;
+									if (ImGui::SliderFloat("Opacity", &opacity, 0.0f, 1.0f)) { material->setOpacity(opacity); }
+
+									glm::vec3 specular{ props.specular };
+									if (ImGui::ColorEdit3("Specular", glm::value_ptr(specular)))
+									{
+										material->setSpecular(specular);
+									}
+
+									float shininess = props.shininess;
+									if (ImGui::SliderFloat("Shininess", &shininess, 0.0f, 256.0f)) { material->setShininess(shininess); }
+
+									bool backFaceCulling = props.backfaceCulling;
+									if (ImGui::Checkbox("Backface Culling", &backFaceCulling))
+									{
+										material->setBackfaceCulling(backFaceCulling);
+									}
+
+									ImGui::Text("Has Diffuse Map: %s", material->getDiffuseMap() ? "Yes" : "No");
+									ImGui::Text("Has Specular Map: %s", material->getSpecularMap() ? "Yes" : "No");
+									ImGui::Text("Has Normal Map: %s", material->getNormalMap() ? "Yes" : "No");
+
+
+									ImGui::TreePop();
+
+									ImGui::PopID();
+
 								}
-								float opacity = props.opacity;
-								if (ImGui::SliderFloat("Opacity", &opacity, 0.0f, 1.0f)) { material->setOpacity(opacity); }
-
-								glm::vec3 specular{ props.specular };
-								if (ImGui::ColorEdit3("Specular", glm::value_ptr(specular)))
-								{
-									material->setSpecular(specular);
-								}
-
-								float shininess = props.shininess;
-								if (ImGui::SliderFloat("Shininess", &shininess, 0.0f, 256.0f)) { material->setShininess(shininess); }
-
-								bool backFaceCulling = props.backfaceCulling;
-								if (ImGui::Checkbox("Backface Culling", &backFaceCulling))
-								{
-									material->setBackfaceCulling(backFaceCulling);
-								}
-
-								ImGui::Text("Has Diffuse Map: %s", material->getDiffuseMap() ? "Yes" : "No");
-								ImGui::Text("Has Specular Map: %s", material->getSpecularMap() ? "Yes" : "No");
-								ImGui::Text("Has Normal Map: %s", material->getNormalMap() ? "Yes" : "No");
-
-
-								ImGui::TreePop();
-
-								ImGui::PopID();
-
 							}
 						}
+						ImGui::TreePop();
 					}
+
 				}
 			});
 
@@ -388,13 +548,19 @@ namespace tst
 	{
 		if (entity->hasComponent<T>())
 		{
+			ImVec2 contentRegionAvail = ImGui::GetContentRegionAvail();
 
 			ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4, 4));
-			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4, 4));
+
+			float lineHeight = GImGui->FontSize + GImGui->Style.FramePadding.y * 2.0f;
+			ImGui::Separator();
 
 			bool open = ImGui::TreeNodeEx((void*)typeid(T).hash_code(), drawInfo.treeNodeFlags, drawInfo.displayName);
-			ImGui::SameLine(ImGui::GetWindowWidth() - 30.0f);
-			if (ImGui::Button("...", ImVec2{30.0f, 20.0f}))
+			ImGui::PopStyleVar();
+
+			ImGui::SameLine(contentRegionAvail.x - lineHeight * 1.0f);
+
+			if (ImGui::Button("...", ImVec2{lineHeight * 1.5f, lineHeight}))
 			{
 				ImGui::OpenPopup("Component Properties");
 			}
@@ -409,7 +575,6 @@ namespace tst
 				}
 				ImGui::EndPopup();
 			}
-			ImGui::PopStyleVar(2);
 
 			if (open)
 			{
@@ -471,35 +636,7 @@ namespace tst
 		if (m_selectedEntity)
 		{
 			drawComponents(m_selectedEntity);
-
-			if (ImGui::Button("Add Component"))
-			{
-				ImGui::OpenPopup("Add-Component");
-			}
-
-			if (ImGui::BeginPopup("Add-Component"))
-			{
-				if (ImGui::MenuItem("Camera"))
-				{
-					m_selectedEntity.addComponent<CameraComponent>();
-					ImGui::CloseCurrentPopup();
-				}
-
-				if (ImGui::MenuItem("Sprite Renderer"))
-				{
-					m_selectedEntity.addComponent<SpriteRendererComponent>();
-					ImGui::CloseCurrentPopup();
-				}
-
-				if (ImGui::MenuItem("Mesh Renderer"))
-				{
-					m_selectedEntity.addComponent<MeshRendererComponent>();
-					ImGui::CloseCurrentPopup();
-				}
-
-
-				ImGui::EndPopup();
-			}
+			
 		}
 		ImGui::End();
 	}

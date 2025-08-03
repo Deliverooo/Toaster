@@ -36,6 +36,7 @@ namespace tst
 		SpriteRendererComponent(const glm::vec4& colour) : colour(colour) {}
 
 		glm::vec4 colour = { 1.0f, 0.0f, 0.862f, 1.0f };
+		RefPtr<Texture2D> texture = nullptr;
 	};
 
 	struct MaterialComponent

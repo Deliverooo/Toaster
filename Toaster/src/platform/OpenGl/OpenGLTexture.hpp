@@ -57,6 +57,8 @@ namespace tst
 		void applyParams();
 		void createTexture(const void* data = nullptr);
 
+		void invalidate();
+
 		std::optional<std::string> m_texturePath;
 		uint32_t m_textureId;
 		uint32_t m_textureWidth;

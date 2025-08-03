@@ -88,7 +88,14 @@ namespace tst
 			for (auto entity : group2d)
 			{
 				const auto& [spriteRenderer, transform] = group2d.get<SpriteRendererComponent, TransformComponent>(entity);
-				Renderer2D::drawQuad(transform.matrix(), spriteRenderer.colour);
+
+				if (spriteRenderer.texture)
+				{
+					Renderer2D::drawQuad(transform.matrix(), spriteRenderer.texture, 1.0f, spriteRenderer.colour);
+				} else
+				{
+					Renderer2D::drawQuad(transform.matrix(), spriteRenderer.colour);
+				}
 			}
 			Renderer2D::end();
 
