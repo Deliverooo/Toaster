@@ -27,6 +27,8 @@ namespace tst {
 		TST_CORE_INFO("Renderer: {0}", (const char*)glGetString(GL_RENDERER));
 		TST_CORE_INFO("OpenGL Version: {0}", (const char*)glGetString(GL_VERSION));
 		TST_CORE_INFO("GLSL Version: {0}", (const char*)glGetString(GL_SHADING_LANGUAGE_VERSION));
+
+		glEnable(GL_DEBUG_OUTPUT);
 	}
 
 	void OpenGLRenderingContext::swapBuffers()

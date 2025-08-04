@@ -54,7 +54,7 @@ namespace tst
 
 
 		SceneCamera camera;
-		bool main{ true };
+		bool active{ true };
 		bool fixedAspect{ false };
 	};
 

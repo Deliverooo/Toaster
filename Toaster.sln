@@ -17,6 +17,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Toaster", "Toaster\Toaster.
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ToasterEditor", "ToasterEditor\ToasterEditor.vcxproj", "{EE249CF8-5AE5-172F-2320-61AC8F9F5C0B}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "YamlCpp", "dependencies\YamlCpp\YamlCpp.vcxproj", "{3BF5F3B0-A7D4-724C-B0EC-FD221C4BD9AD}"
+EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "glm", "dependencies\glm\glm.vcxproj", "{6577880B-D180-887C-5AFC-9E7CC604947C}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "spdlog", "dependencies\spdlog\spdlog.vcxproj", "{8EAD431C-7A4F-6EF2-630A-82464F4BF542}"
@@ -78,6 +80,12 @@ Global
 		{EE249CF8-5AE5-172F-2320-61AC8F9F5C0B}.Dist|x64.Build.0 = Dist|x64
 		{EE249CF8-5AE5-172F-2320-61AC8F9F5C0B}.Release|x64.ActiveCfg = Release|x64
 		{EE249CF8-5AE5-172F-2320-61AC8F9F5C0B}.Release|x64.Build.0 = Release|x64
+		{3BF5F3B0-A7D4-724C-B0EC-FD221C4BD9AD}.Debug|x64.ActiveCfg = Debug|x64
+		{3BF5F3B0-A7D4-724C-B0EC-FD221C4BD9AD}.Debug|x64.Build.0 = Debug|x64
+		{3BF5F3B0-A7D4-724C-B0EC-FD221C4BD9AD}.Dist|x64.ActiveCfg = Dist|x64
+		{3BF5F3B0-A7D4-724C-B0EC-FD221C4BD9AD}.Dist|x64.Build.0 = Dist|x64
+		{3BF5F3B0-A7D4-724C-B0EC-FD221C4BD9AD}.Release|x64.ActiveCfg = Release|x64
+		{3BF5F3B0-A7D4-724C-B0EC-FD221C4BD9AD}.Release|x64.Build.0 = Release|x64
 		{6577880B-D180-887C-5AFC-9E7CC604947C}.Debug|x64.ActiveCfg = Debug|x64
 		{6577880B-D180-887C-5AFC-9E7CC604947C}.Debug|x64.Build.0 = Debug|x64
 		{6577880B-D180-887C-5AFC-9E7CC604947C}.Dist|x64.ActiveCfg = Dist|x64

@@ -12,6 +12,8 @@
 
 #include "Entity.hpp"
 #include "Toaster/Renderer/MeshRenderer.hpp"
+#include "Toaster/Renderer/RenderCommand.hpp"
+#include "Toaster/Renderer/SkyBoxRenderer.hpp"
 
 
 namespace tst
@@ -67,7 +69,7 @@ namespace tst
 		{
 			auto [camera, transform] = cameraGroup.get<CameraComponent, TransformComponent>(entity);
 
-			if (camera.main)
+			if (camera.active)
 			{
 				glm::mat4 viewMatrix = transform.matrix();
 				mainCamera = &camera.camera;
@@ -82,27 +84,54 @@ namespace tst
 		if (mainCamera)
 		{
 
-			// 2D Primitive Rendering
-			Renderer2D::begin(mainCamera->getProjection(), *cameraView);
+
+			// Check if we have any 2D entities before calling Renderer2D
 			auto group2d = m_registry.group<SpriteRendererComponent>(entt::get<TransformComponent>);
-			for (auto entity : group2d)
-			{
-				const auto& [spriteRenderer, transform] = group2d.get<SpriteRendererComponent, TransformComponent>(entity);
+			if (!group2d.empty()) {
+				// 2D Primitive Rendering
+				Renderer2D::begin(*mainCamera, *cameraView);
+				for (auto entity : group2d)
+				{
+					const auto& [spriteRenderer, transform] = group2d.get<SpriteRendererComponent, TransformComponent>(entity);
 
-				if (spriteRenderer.texture)
-				{
-					Renderer2D::drawQuad(transform.matrix(), spriteRenderer.texture, 1.0f, spriteRenderer.colour);
-				} else
-				{
-					Renderer2D::drawQuad(transform.matrix(), spriteRenderer.colour);
+					if (spriteRenderer.texture)
+					{
+						Renderer2D::drawQuad(transform.matrix(), spriteRenderer.texture, 1.0f, spriteRenderer.colour);
+					}
+					else
+					{
+						Renderer2D::drawQuad(transform.matrix(), spriteRenderer.colour);
+					}
 				}
+				Renderer2D::end();
+
+
+				TST_RC_CHECK_ERROR("After Renderer2D cleanup");
 			}
-			Renderer2D::end();
-
-
 
 			// Mesh Rendering
-			MeshRenderer::begin(mainCamera->getProjection(), *cameraView);
+			MeshRenderer::begin(*mainCamera, *cameraView);
+
+			auto lightGroup = m_registry.group<LightComponent>(entt::get<TransformComponent>);
+			for (auto light : lightGroup)
+			{
+				const auto& [lightComp, transform] = lightGroup.get<LightComponent, TransformComponent>(light);
+
+				if (lightComp.enabled)
+				{
+					glm::vec3 lightDirection = glm::vec3(0.0f, 0.0f, -1.0f);
+
+					glm::mat4 rotationMatrix = glm::rotate(glm::mat4(1.0f), transform.rotation.x, glm::vec3(1, 0, 0)) *
+						glm::rotate(glm::mat4(1.0f), transform.rotation.y, glm::vec3(0, 1, 0)) *
+						glm::rotate(glm::mat4(1.0f), transform.rotation.z, glm::vec3(0, 0, 1));
+
+					lightDirection = glm::vec3(rotationMatrix * glm::vec4(lightDirection, 0.0f));
+
+					MeshRenderer::uploadLightingData(lightComp.light, transform.translation, lightDirection);
+				}
+			}
+			MeshRenderer::flushLights();
+
 			auto meshGroup = m_registry.group<MeshRendererComponent>(entt::get<TransformComponent>);
 			for (auto entity : meshGroup)
 			{
@@ -112,7 +141,13 @@ namespace tst
 			MeshRenderer::end();
 
 
+			RenderCommand::cleanState();
 
+			// Clear any errors that might have accumulated
+
+			TST_RC_CHECK_ERROR("Before SkyBox rendering");
+
+			SkyBoxRenderer::render(*mainCamera, *cameraView);
 		}
 	}
 
@@ -201,4 +236,6 @@ namespace tst
 	{
 
 	}
+
+
 }

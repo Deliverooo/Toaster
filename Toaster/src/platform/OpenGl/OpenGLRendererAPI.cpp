@@ -35,6 +35,40 @@ namespace tst
 		glEnable(GL_DEPTH_TEST);
 	}
 
+	void OpenGLRendererAPI::setDepthFunc(DepthFunc func)
+	{
+		switch (func)
+		{
+		case DepthFunc::Always:
+			glDepthFunc(GL_ALWAYS);
+			break;
+		case DepthFunc::Never:
+			glDepthFunc(GL_NEVER);
+			break;
+		case DepthFunc::Less:
+			glDepthFunc(GL_LESS);
+			break;
+		case DepthFunc::LessOrEqual:
+			glDepthFunc(GL_LEQUAL);
+			break;
+		case DepthFunc::Greater:
+			glDepthFunc(GL_GREATER);
+			break;
+		case DepthFunc::GreaterOrEqual:
+			glDepthFunc(GL_GEQUAL);
+			break;
+		case DepthFunc::Equal:
+			glDepthFunc(GL_EQUAL);
+			break;
+		case DepthFunc::NotEqual:
+			glDepthFunc(GL_NOTEQUAL);
+			break;
+		default:
+			TST_ASSERT(false, "Unknown depth function");
+			break;
+		}
+	}
+
 
 	void OpenGLRendererAPI::enableBackfaceCulling()
 	{
@@ -42,9 +76,48 @@ namespace tst
 		glCullFace(GL_BACK);
 	}
 
+	void OpenGLRendererAPI::enableDepthMask()
+	{
+		glDepthMask(GL_TRUE);
+	}
+
+	void OpenGLRendererAPI::disableDepthMask()
+	{
+		glDepthMask(GL_FALSE);
+	}
+
+
+	void OpenGLRendererAPI::cleanState()
+	{
+		glUseProgram(0);
+		glBindVertexArray(0);
+		glBindTexture(GL_TEXTURE_2D, 0);
+		glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+		glActiveTexture(GL_TEXTURE0);
+	}
+
 	void OpenGLRendererAPI::disableBackfaceCulling()
 	{
 		glDisable(GL_CULL_FACE);
+	}
+
+	void OpenGLRendererAPI::checkError(const std::string& operation)
+	{
+		GLenum error = glGetError();
+		if (error != GL_NO_ERROR)
+		{
+			std::string message;
+			switch (error)
+			{
+			case GL_INVALID_ENUM:      message = "GL_INVALID_ENUM"; break;
+			case GL_INVALID_VALUE:     message = "GL_INVALID_VALUE"; break;
+			case GL_INVALID_OPERATION: message = "GL_INVALID_OPERATION"; break;
+			case GL_OUT_OF_MEMORY:     message = "GL_OUT_OF_MEMORY"; break;
+			case GL_STACK_UNDERFLOW:   message = "GL_STACK_UNDERFLOW"; break;
+			default:                   message = "Unknown OpenGL error " + std::to_string(error); break;
+			}
+			TST_CORE_ERROR("OpenGL Error after {0}: {1}", operation, message);
+		}
 	}
 
 	void OpenGLRendererAPI::drawIndexed(const RefPtr<VertexArray>& vertexArray, uint32_t count)
@@ -76,9 +149,9 @@ namespace tst
 		vertexArray->unbind();
 	}
 
-	void OpenGLRendererAPI::drawArrays(const RefPtr<VertexArray>& vertexArray)
+	void OpenGLRendererAPI::drawArrays(const RefPtr<VertexArray>& vertexArray, const uint32_t count)
 	{
-		glDrawArrays(GL_TRIANGLES, 0, 36);
+		glDrawArrays(GL_TRIANGLES, 0, count);
 	}
 
 	void OpenGLRendererAPI::resizeViewport(uint32_t width, uint32_t height)

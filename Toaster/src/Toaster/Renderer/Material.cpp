@@ -33,8 +33,9 @@ namespace tst
         shader->uploadVector3f(m_MaterialProperties.emissive, "u_Material.emissive");
         shader->uploadFloat1(m_MaterialProperties.shininess, "u_Material.shininess");
         shader->uploadFloat1(m_MaterialProperties.opacity, "u_Material.opacity");
+        shader->uploadFloat1(m_MaterialProperties.metallic, "u_Material.metallic");
 
-        int textureSlot = 0;
+        int textureSlot = 1;
 
         if (m_DiffuseMap)
         {
@@ -102,6 +103,7 @@ namespace tst
         material->setShininess(32.0f);
         material->setOpacity(1.0f);
 		material->setBackfaceCulling(false);
+		material->setMetallic(0.0f);
 
         return material;
     }

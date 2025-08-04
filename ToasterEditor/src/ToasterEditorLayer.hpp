@@ -94,11 +94,9 @@ namespace tst
 		Entity m_CameraEntity;
 		Entity m_MeshEntity;
 
-		bool m_primaryCamera = false;
 
 		bool m_ViewportFocused = false;
 		bool m_ViewportHovered = false;
-		bool m_particleDrawMode = false;
 
 		SceneHierarchyPanel m_SceneHierarchyPanel;
 	};

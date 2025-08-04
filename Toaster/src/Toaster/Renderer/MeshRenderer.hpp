@@ -1,5 +1,6 @@
 #pragma once
 #include "Camera.hpp"
+#include "Light.hpp"
 #include "Mesh.hpp"
 
 namespace tst
@@ -15,6 +16,8 @@ namespace tst
 		static void begin(const Camera& camera, const glm::mat4& transform);
 		static void end();
 
+		static void uploadLightingData(const Light& light, const glm::vec3& lightPosition, const glm::vec3& lightDirection);
+		static void flushLights();
 
 		// Mesh rendering - Add these declarations
 		static void drawMesh(const RefPtr<Mesh>& mesh, const glm::mat4& transform);

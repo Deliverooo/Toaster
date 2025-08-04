@@ -6,6 +6,7 @@
 #include "Toaster/Renderer/Renderer.hpp"
 #include "Toaster/Renderer/Renderer2D.hpp"
 #include "Toaster/Renderer/Renderer3D.hpp"
+#include "Toaster/Renderer/SkyBoxRenderer.hpp"
 
 #ifdef TST_PLATFORM_WINDOWS
 #include "platform/Windows/WindowsWindow.hpp"
@@ -26,10 +27,9 @@ namespace tst
 				onEvent(e);
 			});
 
-		//Renderer::init();
-		Renderer2D::init();
 		MeshRenderer::init();
-		//Renderer3D::init();
+		Renderer2D::init();
+		SkyBoxRenderer::init();
 
 		m_imguiLayer = std::make_shared<ImguiLayer>();
 		pushOverlay(m_imguiLayer);
@@ -44,12 +44,9 @@ namespace tst
 
 	Application::~Application() {
 
-		//Renderer::terminate();
-		//Renderer3D::terminate();
-		MeshRenderer::terminate();
 		Renderer2D::terminate();
-
-		// Destructor implementation
+		MeshRenderer::terminate();
+		SkyBoxRenderer::terminate();
 	}
 
 	// Event handler for the application

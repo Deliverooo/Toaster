@@ -5,7 +5,6 @@
 #include "Renderer.hpp"
 #include "Shader.hpp"
 #include "VertexArray.hpp"
-#include "glad/glad.h"
 #include "Toaster/Util/MathUtil.hpp"
 
 
@@ -45,6 +44,9 @@ namespace tst
 		glm::vec2 quadVertexUvs[4];
 
 		Renderer2D::Stats stats{};
+
+		glm::mat4 viewProjectionMatrix;
+		glm::vec3 cameraPosition;
 
 		// Add safety flags
 		bool isInitialized = false;
@@ -218,36 +220,30 @@ namespace tst
 
 	void Renderer2D::begin(const RefPtr<OrthoCamera2D>& camera)
 	{
-		TST_PROFILE_FN();
+		auto& projection = camera->getProjectionMatrix();
+		auto view = camera->getViewMatrix();
 
-		if (!render_data.isInitialized || render_data.isTerminated) {
-			TST_CORE_ERROR("Renderer2D not initialized or already terminated");
-			return;
-		}
+		render_data.viewProjectionMatrix = projection * view;
+		render_data.cameraPosition = camera->getPosition();
 
 		render_data.flatTextureShader->bind();
-		render_data.flatTextureShader->uploadMatrix4f(camera->getProjectionMatrix(), "u_Projection");
-		render_data.flatTextureShader->uploadMatrix4f(camera->getViewMatrix(), "u_View");
+		render_data.flatTextureShader->uploadMatrix4f(render_data.viewProjectionMatrix, "u_ViewProjection");
 
-		render_data.quadVertexPtr = render_data.quadVertexBufferBase;
 		render_data.quadIndex = 0;
+		render_data.quadVertexPtr = render_data.quadVertexBufferBase;
+
 		render_data.textureSlotIndex = 1;
 	}
 	void Renderer2D::begin(const Camera& camera, const glm::mat4 &transform)
 	{
-		TST_PROFILE_FN();
-
-		if (!render_data.isInitialized || render_data.isTerminated) {
-			TST_CORE_ERROR("Renderer2D not initialized or already terminated");
-			return;
-		}
-
 		auto& projection = camera.getProjection();
 		auto view = glm::inverse(transform);
 
+		render_data.viewProjectionMatrix = projection * view;
+		render_data.cameraPosition = glm::vec3(transform[3]);
+
 		render_data.flatTextureShader->bind();
-		render_data.flatTextureShader->uploadMatrix4f(projection, "u_Projection");
-		render_data.flatTextureShader->uploadMatrix4f(view, "u_View");
+		render_data.flatTextureShader->uploadMatrix4f(render_data.viewProjectionMatrix, "u_ViewProjection");
 
 		render_data.quadIndex = 0;
 		render_data.quadVertexPtr = render_data.quadVertexBufferBase;
@@ -258,16 +254,18 @@ namespace tst
 	void Renderer2D::begin(const RefPtr<PerspectiveCamera>& camera)
 	{
 
-		if (!render_data.isInitialized || render_data.isTerminated) {
-			TST_CORE_ERROR("Renderer2D not initialized or already terminated");
-			return;
-		}
+		auto& projection = camera->getProjectionMatrix();
+		auto view = camera->getViewMatrix();
+
+		render_data.viewProjectionMatrix = projection * view;
+		render_data.cameraPosition = camera->getPosition();
 
 		render_data.flatTextureShader->bind();
-		render_data.flatTextureShader->uploadMatrix4f(camera->getProjectionMatrix(), "u_Projection");
-		render_data.flatTextureShader->uploadMatrix4f(camera->getViewMatrix(), "u_View");
-		render_data.quadVertexPtr = render_data.quadVertexBufferBase;
+		render_data.flatTextureShader->uploadMatrix4f(render_data.viewProjectionMatrix, "u_ViewProjection");
+
 		render_data.quadIndex = 0;
+		render_data.quadVertexPtr = render_data.quadVertexBufferBase;
+
 		render_data.textureSlotIndex = 1;
 	}
 
@@ -276,17 +274,22 @@ namespace tst
 	{
 		TST_PROFILE_FN();
 
+
 		flush();
 		render_data.quadIndex = 0;
 		render_data.quadVertexPtr = render_data.quadVertexBufferBase;
 		render_data.textureSlotIndex = 1;
+
+		render_data.flatTextureShader->unbind();
+		render_data.quadVertexArray->unbind();
 	}
 
 	void Renderer2D::flush()
 	{
 
-		if (render_data.quadIndex == 0)
+		if (render_data.quadIndex <= 0)
 		{
+
 			return;
 		}
 

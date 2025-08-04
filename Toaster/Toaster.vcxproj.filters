@@ -166,6 +166,9 @@
     <ClInclude Include="src\Toaster\Scene\Scene.hpp">
       <Filter>Toaster\Scene</Filter>
     </ClInclude>
+    <ClInclude Include="src\Toaster\Scene\SceneSerializer.hpp">
+      <Filter>Toaster\Scene</Filter>
+    </ClInclude>
     <ClInclude Include="src\Toaster\Scene\ScriptableEntity.hpp">
       <Filter>Toaster\Scene</Filter>
     </ClInclude>
@@ -302,6 +305,9 @@
       <Filter>Toaster\Scene</Filter>
     </ClCompile>
     <ClCompile Include="src\Toaster\Scene\Scene.cpp">
+      <Filter>Toaster\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Toaster\Scene\SceneSerializer.cpp">
       <Filter>Toaster\Scene</Filter>
     </ClCompile>
     <ClCompile Include="src\Toaster\imgui\ImGuiBuild.cpp">

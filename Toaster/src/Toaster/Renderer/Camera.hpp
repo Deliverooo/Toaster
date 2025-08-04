@@ -67,11 +67,10 @@ namespace tst
 		//float getIsoFar() const { return m_IsoFar; }
 		//void setIsoFar(float zFar) { m_IsoFar = zFar; recalculateProjectionMatrix(); }
 
-		enum class ProjectionType
+		enum class ProjectionType : int
 		{
-			Perspective,
-			Orthographic,
-			//Isometric,
+			Perspective = 0,
+			Orthographic = 1,
 		};
 
 		ProjectionType getProjectionType() const { return m_ProjectionType; }

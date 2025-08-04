@@ -54,6 +54,7 @@ namespace tst
 		void setShininess(float shininess)			{ m_MaterialProperties.shininess = shininess; }
 		void setOpacity(float opacity)				{ m_MaterialProperties.opacity = opacity;	  }
 		void setBackfaceCulling(bool backfaceCulling) { m_MaterialProperties.backfaceCulling = backfaceCulling; }
+		void setMetallic(float metallic)			{ m_MaterialProperties.metallic = metallic; }
 
 
 		void setDiffuseMap(const RefPtr<Texture2D>& diffuseMap)  { m_DiffuseMap  = diffuseMap;  }

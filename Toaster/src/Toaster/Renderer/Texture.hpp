@@ -70,6 +70,7 @@ namespace tst
 
 		bool generateMipmaps{ true };
 		bool flipX{ false };
+		bool flipY{ false };
 
 		TexturePixelDataType pixelDataType{ TexturePixelDataType::UnsignedByte };
 	};
@@ -95,6 +96,8 @@ namespace tst
 		virtual void setParameters(const TextureParams& params) = 0;
 		virtual void setWrapMode(const TextureWrapping wrapS, const TextureWrapping wrapT) = 0;
 		virtual void setFilterMode(const TextureFiltering minFilter, const TextureFiltering magFilter) = 0;
+		virtual void setFlipX(bool flipX) { TST_CORE_WARN("Texture flipping is not currently supported"); }
+		virtual void setFlipY(bool flipY) { TST_CORE_WARN("Texture flipping is not currently supported"); }
 		virtual const TextureParams& getParams() const = 0;
 
 	};
@@ -118,6 +121,8 @@ namespace tst
 		static RefPtr<Texture2D> create(const uint32_t width, const uint32_t height, const TextureParams& params);
 
 		virtual bool operator==(const Texture2D& other) const = 0;
+
+		virtual std::optional<std::string> getPath() const = 0;
 	};
 
 	class TST_API Texture3D : public Texture

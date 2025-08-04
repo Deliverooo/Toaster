@@ -19,6 +19,13 @@ namespace tst
 
 		virtual void reload() const override;
 
+		virtual bool hasUniform(const char* name) override;
+
+		virtual uint32_t getId() const override { return m_shaderId; };
+
+
+		virtual void shaderDebugInfo() const override;
+
 		virtual void uploadMatrix2f(const glm::mat2& mat, const char* name) override;
 		virtual void uploadMatrix3f(const glm::mat3& mat, const char* name) override;
 		virtual void uploadMatrix4f(const glm::mat4& mat, const char* name) override;
@@ -75,14 +82,10 @@ namespace tst
 		void uploadUniformMatrix3f(const glm::mat3 &mat, const char* name);
 		void uploadUniformMatrix4f(const glm::mat4 &mat, const char* name);
 
-
-
-		virtual uint32_t getId() const;
-
+	private:
 	private:
 		uint32_t m_shaderId;
-		std::unordered_map<const char*, int> m_uniformLocations;
-
+		std::unordered_map<std::string, int> m_uniformLocations; // Changed from const char* to std::string
 		std::string m_shaderName;
 
 		int getUniformLocation(const char* name);

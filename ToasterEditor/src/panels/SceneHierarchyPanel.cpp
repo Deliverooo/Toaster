@@ -223,7 +223,7 @@ namespace tst
 			{
 				auto& camera = comp->camera;
 
-				ImGui::Checkbox("Main Camera", &comp->main);
+				ImGui::Checkbox("Active Camera", &comp->active);
 
 				const char* projectionTypes[] = { "Perspective", "Orthographic" };
 				const char* currentProjectionType = projectionTypes[(int)camera.getProjectionType()];
@@ -343,7 +343,7 @@ namespace tst
 							ImGui::EndCombo();
 						}
 
-						ImGui::Separator();
+						ImGui::Spacing();
 
 						const char* textureWrapping[] = { "Repeat", "ClampToEdge", "ClampToBorder", "MirroredRepeat" };
 						const char* currentWrapS = textureWrapping[(int)comp->texture->getParams().wrapS];
@@ -367,6 +367,7 @@ namespace tst
 							}
 							ImGui::EndCombo();
 						}
+
 						if (ImGui::BeginCombo("Wrap T", currentWrapT))
 						{
 							for (int i = 0; i < 4; i++)
@@ -384,6 +385,21 @@ namespace tst
 							}
 							ImGui::EndCombo();
 						}
+
+						ImGui::Spacing();
+
+
+						bool flipX = comp->texture->getParams().flipX;
+						bool flipY = comp->texture->getParams().flipY;
+						if (ImGui::Checkbox("Flip X", &flipX))
+						{
+							comp->texture->setFlipX(flipX);
+						}
+						if (ImGui::Checkbox("Flip Y", &flipY))
+						{
+							comp->texture->setFlipY(flipY);
+						}
+
 
 						ImGui::TreePop();
 					}
@@ -462,6 +478,9 @@ namespace tst
 									float shininess = props.shininess;
 									if (ImGui::SliderFloat("Shininess", &shininess, 0.0f, 256.0f)) { material->setShininess(shininess); }
 
+									float metallic = props.metallic;
+									if (ImGui::SliderFloat("Metallic", &metallic, 0.0f, 1.0f)) { material->setMetallic(metallic); }
+
 									bool backFaceCulling = props.backfaceCulling;
 									if (ImGui::Checkbox("Backface Culling", &backFaceCulling))
 									{
@@ -517,7 +536,7 @@ namespace tst
 
 			ImGui::ColorEdit3("Colour", glm::value_ptr(comp->light.colour));
 
-			ImGui::DragFloat("Intensity", &comp->light.intensity);
+			ImGui::DragFloat("Intensity", &comp->light.intensity, 0.01f, 0.0f, 2.0f);
 
 			if (comp->light.type != Light::Type::Directional)
 			{

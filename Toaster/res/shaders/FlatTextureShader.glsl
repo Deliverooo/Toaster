@@ -8,8 +8,7 @@ layout(location = 3) in float inTexIndex;
 layout(location = 4) in float inTilingFactor;
 
 
-uniform mat4 u_Projection;
-uniform mat4 u_View;
+uniform mat4 u_ViewProjection;
 
 
 out vec4  v_Colour;
@@ -24,7 +23,7 @@ void main(){
 	v_TextureIndex	 = inTexIndex;
 	v_TilingFactor	 = inTilingFactor;
 
-	gl_Position = u_Projection * u_View * vec4(inPos, 1.0f);
+	gl_Position = u_ViewProjection * vec4(inPos, 1.0f);
 }
 
 // ------------ Fragment Shader ------------

@@ -20,6 +20,7 @@ IncludeDir["glm"] = "dependencies/glm"
 IncludeDir["Entt"] = "dependencies/Entt/include"
 IncludeDir["TinyObjLoader"] = "dependencies/Tinyobjloader/include"
 IncludeDir["Assimp"] = "dependencies/Assimp/include"
+IncludeDir["YamlCpp"] = "dependencies/YamlCpp/include"
 
 include "dependencies/GLFW/"
 include "dependencies/Glad/"
@@ -29,6 +30,7 @@ include "dependencies/stbImage/"
 include "dependencies/glm/"
 include "dependencies/Tinyobjloader/"
 include "dependencies/Assimp/"
+include "dependencies/YamlCpp/"
 
 workingDirectory = (os.getcwd())
 
@@ -65,6 +67,7 @@ project "Toaster"
 		"%{IncludeDir.Entt}",
 		"%{IncludeDir.TinyObjLoader}",
 		"%{IncludeDir.Assimp}",
+		"%{IncludeDir.YamlCpp}",
 		"C:/VulkanSDK/1.4.313.2/Include",
 	}
 
@@ -81,6 +84,7 @@ project "Toaster"
 		"stbImage",
 		"glm",
 		"Assimp",
+		"YamlCpp",
 		"opengl32.lib",
 		"dwmapi.lib",
 	}
@@ -95,6 +99,7 @@ project "Toaster"
 			"TST_BUILD_DLL",
 			"GLFW_INCLUDE_NONE",
 			"TST_ENABLE_FBX",
+			"YAML_CPP_STATIC_DEFINE",
 
 			"TST_CORE_RESOURCE_DIR= \"" .. os.getcwd() .. "/Toaster/res\"",
 			--"ASSIMP_BUILD_NO_EXPORT",

@@ -24,15 +24,21 @@ namespace tst
 	}
 
 
-	void RenderCommand::drawArrays(const RefPtr<VertexArray>& vertexArray)
+	void RenderCommand::drawArrays(const RefPtr<VertexArray>& vertexArray, const uint32_t count)
 	{
-		m_rendererApi->drawArrays(vertexArray);
+		m_rendererApi->drawArrays(vertexArray, count);
 	}
 
 	void RenderCommand::clear()
 	{
 		m_rendererApi->clear();
 	}
+
+	void RenderCommand::cleanState()
+	{
+		m_rendererApi->cleanState();
+	}
+
 
 	void RenderCommand::disableDepthTesting()
 	{
@@ -43,6 +49,28 @@ namespace tst
 	{
 		m_rendererApi->enableDepthTesting();
 	}
+
+	void RenderCommand::enableDepthMask()
+	{
+		m_rendererApi->enableDepthMask();
+	}
+
+	void RenderCommand::disableDepthMask()
+	{
+		m_rendererApi->disableDepthMask();
+	}
+
+	void RenderCommand::setDepthFunc(DepthFunc func)
+	{
+		m_rendererApi->setDepthFunc(func);
+	}
+
+#ifdef _DEBUG
+	void RenderCommand::checkError(const std::string& operation)
+	{
+		m_rendererApi->checkError(operation);
+	}
+#endif
 
 
 	void RenderCommand::enableBackfaceCulling()

@@ -7,9 +7,11 @@
 #include <glm/vec3.hpp>
 
 #include "glm/gtc/type_ptr.hpp"
+#include "Toaster/Renderer/RenderCommand.hpp"
 
 namespace tst
 {
+	
 
 	uint32_t OpenGLShader::compileShader(const std::string &shaderSrc, const unsigned int shaderType)
 	{
@@ -245,15 +247,20 @@ namespace tst
 
 	void OpenGLShader::bind() const
 	{
-		TST_PROFILE_FN();
+		// Check if this shader is already bound
+		GLint currentProgram;
+		glGetIntegerv(GL_CURRENT_PROGRAM, &currentProgram);
+
+		if (currentProgram == static_cast<GLint>(m_shaderId)) {
+			return; // Already bound
+		}
 
 		glUseProgram(m_shaderId);
+		RenderCommand::checkError("Binding shader '" + m_shaderName + "'");
 	}
 
 	void OpenGLShader::unbind() const
 	{
-		TST_PROFILE_FN();
-
 		glUseProgram(0);
 	}
 
@@ -262,95 +269,318 @@ namespace tst
 		return m_shaderName;
 	}
 
-
-	uint32_t OpenGLShader::getId() const
-	{
-		return m_shaderId;
-	}
-
 	void OpenGLShader::reload() const
 	{
 		
 	}
 
+	void OpenGLShader::shaderDebugInfo() const
+	{
+		TST_CORE_INFO("Shader '{}' Debug Info:", m_shaderName);
+		TST_CORE_INFO("  Shader ID: {}", m_shaderId);
+
+		// Check if shader program is valid
+		GLint linked;
+		glGetProgramiv(m_shaderId, GL_LINK_STATUS, &linked);
+		TST_CORE_INFO("  Link Status: {}", linked ? "SUCCESS" : "FAILED");
+
+		if (!linked) {
+			GLint infoLength;
+			glGetProgramiv(m_shaderId, GL_INFO_LOG_LENGTH, &infoLength);
+			if (infoLength > 0) {
+				std::vector<char> infoLog(infoLength);
+				glGetProgramInfoLog(m_shaderId, infoLength, nullptr, infoLog.data());
+				TST_CORE_ERROR("  Link Error: {}", std::string(infoLog.data()));
+			}
+		}
+
+		// List all active uniforms
+		GLint numUniforms;
+		glGetProgramiv(m_shaderId, GL_ACTIVE_UNIFORMS, &numUniforms);
+		TST_CORE_INFO("  Active Uniforms: {}", numUniforms);
+
+		for (int i = 0; i < numUniforms; i++) {
+			char name[256];
+			GLsizei length;
+			GLint size;
+			GLenum type;
+			glGetActiveUniform(m_shaderId, i, sizeof(name), &length, &size, &type, name);
+			TST_CORE_INFO("    [{}] {} (type: {}, size: {})", i, name, type, size);
+		}
+	}
 
 	int OpenGLShader::getUniformLocation(const char* name)
 	{
-		TST_PROFILE_FN();
+		// Use std::string as key to avoid pointer lifetime issues
+		std::string nameStr(name);
 
-		if (m_uniformLocations.find(name) != m_uniformLocations.end())
+		auto it = m_uniformLocations.find(nameStr);
+		if (it != m_uniformLocations.end())
 		{
-			return m_uniformLocations[name];
+			return it->second;
 		}
 
 		int location = glGetUniformLocation(m_shaderId, name);
-		m_uniformLocations[name] = location;
+
+		// Always cache the result, even if it's -1
+		m_uniformLocations[nameStr] = location;
+
+		if (location == -1) {
+			static std::unordered_set<std::string> warned_uniforms;
+			if (warned_uniforms.find(nameStr) == warned_uniforms.end()) {
+				TST_CORE_WARN("Uniform '{}' not found in shader '{}'", name, m_shaderName);
+				warned_uniforms.insert(nameStr);
+			}
+		}
 
 		return location;
+	}
+
+	bool OpenGLShader::hasUniform(const char* name)
+	{
+	   return getUniformLocation(name) != -1;
 	}
 
 	void OpenGLShader::uploadMatrix2f(const glm::mat2& mat, const char* name) { uploadUniformMatrix2f(mat, name); }
 	void OpenGLShader::uploadMatrix3f(const glm::mat3& mat, const char* name) { uploadUniformMatrix3f(mat, name); }
 	void OpenGLShader::uploadMatrix4f(const glm::mat4& mat, const char* name) { uploadUniformMatrix4f(mat, name); }
 
+	void OpenGLShader::uploadVector1f(const glm::vec1& vec, const char* name) { if (hasUniform(name)) uploadUniform1fv(vec, name); }
+	void OpenGLShader::uploadVector2f(const glm::vec2& vec, const char* name) { if (hasUniform(name)) uploadUniform2fv(vec, name); }
+	void OpenGLShader::uploadVector3f(const glm::vec3& vec, const char* name) { if (hasUniform(name)) uploadUniform3fv(vec, name); }
+	void OpenGLShader::uploadVector4f(const glm::vec4& vec, const char* name) { if (hasUniform(name)) uploadUniform4fv(vec, name); }
 
-	void OpenGLShader::uploadVector1f(const glm::vec1& vec, const char* name) { uploadUniform1fv(vec, name); }
-	void OpenGLShader::uploadVector2f(const glm::vec2& vec, const char* name) { uploadUniform2fv(vec, name); }
-	void OpenGLShader::uploadVector3f(const glm::vec3& vec, const char* name) { uploadUniform3fv(vec, name); }
-	void OpenGLShader::uploadVector4f(const glm::vec4& vec, const char* name) { uploadUniform4fv(vec, name); }
-
-	void OpenGLShader::uploadBool(const bool b, const char* name) { uploadUniform1i(b, name); }
+	void OpenGLShader::uploadBool(const bool b, const char* name) { if (hasUniform(name)) uploadUniform1i(b, name); }
 
 	void OpenGLShader::uploadIntArray(int* arr, const uint32_t count, const char* name)
 	{
-		glUniform1iv(glGetUniformLocation(m_shaderId, name), count, arr);
+		int location = getUniformLocation(name);
+		if (location != -1) {
+			glUniform1iv(location, count, arr);
+			RenderCommand::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
+		}
 	}
 
-	void OpenGLShader::uploadInt1(const int x, const char* name) { uploadUniform1i(x, name); }
-	void OpenGLShader::uploadInt2(const int x, const int y, const char* name) { uploadUniform2i(x, y, name); }
-	void OpenGLShader::uploadInt3(const int x, const int y, const int z, const char* name) { uploadUniform3i(x, y, z, name); }
-	void OpenGLShader::uploadInt4(const int x, const int y, const int z, const int w, const char* name) { uploadUniform4i(x, y, z, w, name); }
+	void OpenGLShader::uploadInt1(const int x, const char* name) { if (hasUniform(name)) uploadUniform1i(x, name); }
+	void OpenGLShader::uploadInt2(const int x, const int y, const char* name) { if (hasUniform(name)) uploadUniform2i(x, y, name); }
+	void OpenGLShader::uploadInt3(const int x, const int y, const int z, const char* name) { if (hasUniform(name)) uploadUniform3i(x, y, z, name); }
+	void OpenGLShader::uploadInt4(const int x, const int y, const int z, const int w, const char* name) { if (hasUniform(name)) uploadUniform4i(x, y, z, w, name); }
 
-	void OpenGLShader::uploadFloat1(const float x, const char* name) { uploadUniform1f(x, name); }
-	void OpenGLShader::uploadFloat2(const float x, const float y, const char* name) { uploadUniform2f(x, y, name); }
-	void OpenGLShader::uploadFloat3(const float x, const float y, const float z, const char* name) { uploadUniform3f(x, y, z, name); }
-	void OpenGLShader::uploadFloat4(const float x, const float y, const float z, const float w, const char* name) { uploadUniform4f(x, y, z, w, name); }
+	void OpenGLShader::uploadFloat1(const float x, const char* name) { if (hasUniform(name)) uploadUniform1f(x, name); }
+	void OpenGLShader::uploadFloat2(const float x, const float y, const char* name) { if (hasUniform(name)) uploadUniform2f(x, y, name); }
+	void OpenGLShader::uploadFloat3(const float x, const float y, const float z, const char* name) { if (hasUniform(name)) uploadUniform3f(x, y, z, name); }
+	void OpenGLShader::uploadFloat4(const float x, const float y, const float z, const float w, const char* name) { if (hasUniform(name)) uploadUniform4f(x, y, z, w, name); }
 
-	void OpenGLShader::uploadDouble1(const double x, const char* name) { uploadUniform1d(x, name); }
-	void OpenGLShader::uploadDouble2(const double x, const double y, const char* name) { uploadUniform2d(x, y, name); }
-	void OpenGLShader::uploadDouble3(const double x, const double y, const double z, const char* name) { uploadUniform3d(x, y, z, name); }
-	void OpenGLShader::uploadDouble4(const double x, const double y, const double z, const double w, const char* name) { uploadUniform4d(x, y, z, w, name); }
+	void OpenGLShader::uploadDouble1(const double x, const char* name) { if (hasUniform(name)) uploadUniform1d(x, name); }
+	void OpenGLShader::uploadDouble2(const double x, const double y, const char* name) { if (hasUniform(name)) uploadUniform2d(x, y, name); }
+	void OpenGLShader::uploadDouble3(const double x, const double y, const double z, const char* name) { if (hasUniform(name)) uploadUniform3d(x, y, z, name); }
+	void OpenGLShader::uploadDouble4(const double x, const double y, const double z, const double w, const char* name) { if (hasUniform(name)) uploadUniform4d(x, y, z, w, name); }
 
 	//---------------------------------------------------------------------------------------------------------------------------
 	//---------------------------------------------------------------------------------------------------------------------------
 	//---------------------------------------------------------------------------------------------------------------------------
 
-	void OpenGLShader::uploadUniform1i(const int x, const char* name) { glUniform1i(getUniformLocation(name), x); }
-	void OpenGLShader::uploadUniform2i(const int x, const int y, const char* name) { glUniform2i(getUniformLocation(name), x, y); }
-	void OpenGLShader::uploadUniform3i(const int x, const int y, const int z, const char* name) { glUniform3i(getUniformLocation(name), x, y, z); }
-	void OpenGLShader::uploadUniform4i(const int x, const int y, const int z, const int w, const char* name) { glUniform4i(getUniformLocation(name), x, y, z, w); }
+	void OpenGLShader::uploadUniform1i(const int x, const char* name)
+	{
+		int location = getUniformLocation(name);
+		if (location != -1) {
+			glUniform1i(location, x);
+			RenderCommand::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
+		}
+	}
+	void OpenGLShader::uploadUniform2i(const int x, const int y, const char* name)
+	{
+		int location = getUniformLocation(name);
+		if (location != -1) {
+			glUniform2i(location, x, y);
+			RenderCommand::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
+		}
+	}
 
-	void OpenGLShader::uploadUniform1f(const float x, const char* name) { glUniform1f(getUniformLocation(name), x); }
-	void OpenGLShader::uploadUniform2f(const float x, const float y, const char* name) { glUniform2f(getUniformLocation(name), x, y); }
-	void OpenGLShader::uploadUniform3f(const float x, const float y, const float z, const char* name) { glUniform3f(getUniformLocation(name), x, y, z);	}
-	void OpenGLShader::uploadUniform4f(const float x, const float y, const float z, const float w, const char* name) { glUniform4f(getUniformLocation(name), x, y, z, w); }
+	void OpenGLShader::uploadUniform3i(const int x, const int y, const int z, const char* name)
+	{
+		int location = getUniformLocation(name);
+		if (location != -1) {
+			glUniform3i(location, x, y, z);
+			RenderCommand::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
+		}
+	}
 
-	void OpenGLShader::uploadUniform1d(const double x, const char* name) { glUniform1d(getUniformLocation(name), x); }
-	void OpenGLShader::uploadUniform2d(const double x, const double y, const char* name) { glUniform2d(getUniformLocation(name), x, y); }
-	void OpenGLShader::uploadUniform3d(const double x, const double y, const double z, const char* name) { glUniform3d(getUniformLocation(name), x, y, z); }
-	void OpenGLShader::uploadUniform4d(const double x, const double y, const double z, const double w, const char* name) { glUniform4d(getUniformLocation(name), x, y, z, w); }
+	void OpenGLShader::uploadUniform4i(const int x, const int y, const int z, const int w, const char* name)
+	{
+		int location = getUniformLocation(name);
+		if (location != -1) {
+			glUniform4i(location, x, y, z, w);
+			RenderCommand::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
+		}
+	}
+	void OpenGLShader::uploadUniform1f(const float x, const char* name)
+	{
+		int location = getUniformLocation(name);
+		if (location != -1) {
+			glUniform1f(location, x);
+			RenderCommand::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
+		}
+	}
 
-	void OpenGLShader::uploadUniform1iv(const glm::vec<1, int>& vec, const char* name) { glUniform1iv(getUniformLocation(name), 1, &vec.x); }
-	void OpenGLShader::uploadUniform2iv(const glm::vec<2, int>& vec, const char* name) { glUniform2iv(getUniformLocation(name), 1, glm::value_ptr(vec)); }
-	void OpenGLShader::uploadUniform3iv(const glm::vec<3, int>& vec, const char* name) { glUniform3iv(getUniformLocation(name), 1, glm::value_ptr(vec)); }
-	void OpenGLShader::uploadUniform4iv(const glm::vec<4, int>& vec, const char* name) { glUniform4iv(getUniformLocation(name), 1, glm::value_ptr(vec)); }
+	void OpenGLShader::uploadUniform2f(const float x, const float y, const char* name)
+	{
+		int location = getUniformLocation(name);
+		if (location != -1) {
+			glUniform2f(location, x, y);
+			RenderCommand::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
+		}
+	}
 
-	void OpenGLShader::uploadUniform1fv(const glm::vec1& vec, const char* name) { glUniform1fv(getUniformLocation(name), 1, &vec.x); }
-	void OpenGLShader::uploadUniform2fv(const glm::vec2& vec, const char* name) { glUniform2fv(getUniformLocation(name), 1, glm::value_ptr(vec)); }
-	void OpenGLShader::uploadUniform3fv(const glm::vec3& vec, const char* name) { glUniform3fv(getUniformLocation(name), 1, glm::value_ptr(vec)); }
-	void OpenGLShader::uploadUniform4fv(const glm::vec4& vec, const char* name) { glUniform4fv(getUniformLocation(name), 1, glm::value_ptr(vec)); }
+	void OpenGLShader::uploadUniform3f(const float x, const float y, const float z, const char* name)
+	{
+		int location = getUniformLocation(name);
+		if (location != -1) {
+			glUniform3f(location, x, y, z);
+			RenderCommand::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
+		}
+	}
 
-	void OpenGLShader::uploadUniformMatrix2f(const glm::mat2& mat, const char* name) { glUniformMatrix2fv(getUniformLocation(name), 1, GL_FALSE,  glm::value_ptr(mat)); }
-	void OpenGLShader::uploadUniformMatrix3f(const glm::mat3& mat, const char* name) { glUniformMatrix3fv(getUniformLocation(name), 1, GL_FALSE,  glm::value_ptr(mat)); }
-	void OpenGLShader::uploadUniformMatrix4f(const glm::mat4& mat, const char* name) { glUniformMatrix4fv(getUniformLocation(name), 1, GL_FALSE,  glm::value_ptr(mat)); }
+	void OpenGLShader::uploadUniform4f(const float x, const float y, const float z, const float w, const char* name)
+	{
+		int location = getUniformLocation(name);
+		if (location != -1) {
+			glUniform4f(location, x, y, z, w);
+			RenderCommand::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
+		}
+	}
+	void OpenGLShader::uploadUniform1d(const double x, const char* name)
+	{
+		int location = getUniformLocation(name);
+		if (location != -1) {
+			glUniform1d(location, x);
+			RenderCommand::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
+		}
+	}
+
+	void OpenGLShader::uploadUniform2d(const double x, const double y, const char* name)
+	{
+		int location = getUniformLocation(name);
+		if (location != -1) {
+			glUniform2d(location, x, y);
+			RenderCommand::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
+		}
+	}
+
+	void OpenGLShader::uploadUniform3d(const double x, const double y, const double z, const char* name)
+	{
+		int location = getUniformLocation(name);
+		if (location != -1) {
+			glUniform3d(location, x, y, z);
+			RenderCommand::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
+		}
+	}
+
+	void OpenGLShader::uploadUniform4d(const double x, const double y, const double z, const double w, const char* name)
+	{
+		int location = getUniformLocation(name);
+		if (location != -1) {
+			glUniform4d(location, x, y, z, w);
+			RenderCommand::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
+		}
+	}
+
+	void OpenGLShader::uploadUniform1iv(const glm::vec<1, int>& vec, const char* name)
+	{
+		int location = getUniformLocation(name);
+		if (location != -1) {
+			glUniform1iv(location, 1, &vec.x);
+			RenderCommand::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
+		}
+	}
+
+	void OpenGLShader::uploadUniform2iv(const glm::vec<2, int>& vec, const char* name)
+	{
+		int location = getUniformLocation(name);
+		if (location != -1) {
+			glUniform2iv(location, 1, glm::value_ptr(vec));
+			RenderCommand::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
+		}
+	}
+
+	void OpenGLShader::uploadUniform3iv(const glm::vec<3, int>& vec, const char* name)
+	{
+		int location = getUniformLocation(name);
+		if (location != -1) {
+			glUniform3iv(location, 1, glm::value_ptr(vec));
+			RenderCommand::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
+		}
+	}
+
+	void OpenGLShader::uploadUniform4iv(const glm::vec<4, int>& vec, const char* name)
+	{
+		int location = getUniformLocation(name);
+		if (location != -1) {
+			glUniform4iv(location, 1, glm::value_ptr(vec));
+			RenderCommand::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
+		}
+	}
+
+	void OpenGLShader::uploadUniform1fv(const glm::vec1& vec, const char* name)
+	{
+		int location = getUniformLocation(name);
+		if (location != -1) {
+			glUniform1fv(location, 1, &vec.x);
+			RenderCommand::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
+		}
+	}
+
+	void OpenGLShader::uploadUniform2fv(const glm::vec2& vec, const char* name)
+	{
+		int location = getUniformLocation(name);
+		if (location != -1) {
+			glUniform2fv(location, 1, glm::value_ptr(vec));
+			RenderCommand::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
+		}
+	}
+
+	void OpenGLShader::uploadUniform3fv(const glm::vec3& vec, const char* name)
+	{
+		int location = getUniformLocation(name);
+		if (location != -1) {
+			glUniform3fv(location, 1, glm::value_ptr(vec));
+			RenderCommand::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
+		}
+	}
+
+	void OpenGLShader::uploadUniform4fv(const glm::vec4& vec, const char* name)
+	{
+		int location = getUniformLocation(name);
+		if (location != -1) {
+			glUniform4fv(location, 1, glm::value_ptr(vec));
+			RenderCommand::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
+		}
+	}
+
+	void OpenGLShader::uploadUniformMatrix2f(const glm::mat2& mat, const char* name)
+	{
+		int location = getUniformLocation(name);
+		if (location != -1) {
+			glUniformMatrix2fv(location, 1, GL_FALSE, glm::value_ptr(mat));
+			RenderCommand::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
+		}
+	}
+
+	void OpenGLShader::uploadUniformMatrix3f(const glm::mat3& mat, const char* name)
+	{
+		int location = getUniformLocation(name);
+		if (location != -1) {
+			glUniformMatrix3fv(location, 1, GL_FALSE, glm::value_ptr(mat));
+			RenderCommand::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
+		}
+	}
+
+	void OpenGLShader::uploadUniformMatrix4f(const glm::mat4& mat, const char* name)
+	{
+		int location = getUniformLocation(name);
+		if (location != -1) {
+			glUniformMatrix4fv(location, 1, GL_FALSE, glm::value_ptr(mat));
+			RenderCommand::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
+		}
+	}
 }

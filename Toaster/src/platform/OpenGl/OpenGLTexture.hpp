@@ -50,14 +50,19 @@ namespace tst
 		virtual void  setFilterMode(const TextureFiltering minFilter, const TextureFiltering magFilter) override;
 		virtual const TextureParams& getParams() const override { return m_textureParameters; }
 
+		//virtual void setFlipX(bool flipX) override;
+		//virtual void setFlipY(bool flipY) override;
+
+		virtual std::optional<std::string> getPath() const override { return m_texturePath; }
 		virtual bool operator==(const Texture2D& other) const override { return (m_textureId == ((OpenGLTexture2D&)other).m_textureId); }
 
 	private:
 
 		void applyParams();
 		void createTexture(const void* data = nullptr);
-
 		void invalidate();
+
+		uint8_t* decodeWebp(const std::string& filePath);
 
 		std::optional<std::string> m_texturePath;
 		uint32_t m_textureId;
@@ -99,6 +104,9 @@ namespace tst
 		virtual void  setWrapMode(const TextureWrapping wrapS, const TextureWrapping wrapT) override;
 		virtual void  setFilterMode(const TextureFiltering minFilter, const TextureFiltering magFilter) override;
 		virtual const TextureParams& getParams() const override { return m_textureParameters; }
+
+		//virtual void setFlipX(bool flipX) override;
+		//virtual void setFlipY(bool flipY) override;
 
 		virtual bool operator==(const Texture3D& other) const override { return (m_textureId == ((OpenGLTexture3D&)other).m_textureId); }
 

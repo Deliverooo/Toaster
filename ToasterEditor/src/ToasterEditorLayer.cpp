@@ -4,6 +4,7 @@
 #include "Toaster/Renderer/MeshRenderer.hpp"
 #include "util/Random.hpp"
 #include "Toaster/Scene/Scene.hpp"
+#include "Toaster/Scene/SceneSerializer.hpp"
 
 namespace tst
 {
@@ -143,13 +144,10 @@ namespace tst
 		FramebufferCreateInfo framebufferCreateInfo{ 1280, 720 };
 		m_Framebuffer = Framebuffer::create(framebufferCreateInfo);
 
+		loadAssets();
+
 		m_Scene = make_reference<Scene>();
 
-		m_MeshEntity = m_Scene->createEntity("mesh");
-		m_MeshEntity.addComponent<MeshRendererComponent>(glm::vec4{1.0f, 1.0f, 1.0f, 1.0f});
-
-		auto cube2 = m_Scene->createEntity("sprite");
-		cube2.addComponent<SpriteRendererComponent>(glm::vec4{1.0f, 0.0f, 1.0f, 1.0f});
 
 
 		m_CameraEntity = m_Scene->createEntity("camera");
@@ -175,7 +173,7 @@ namespace tst
 
 				static float cameraSpeed = 5.0f;
 
-				if (m_entity.getComponent<CameraComponent>().main)
+				if (m_entity.getComponent<CameraComponent>().active)
 				{
 					auto& trans = m_entity.getComponent<TransformComponent>().translation;
 
@@ -199,6 +197,9 @@ namespace tst
 		m_CameraEntity.addComponent<NativeScriptComponent>().bind<CameraController>();
 
 		m_SceneHierarchyPanel.setSceneContext(m_Scene);
+
+		SceneSerializer serializer(m_Scene);
+		serializer.serialize("res/scenes/Test.toast");
 	}
 
 	void ToasterEditorLayer::onUpdate(DeltaTime dt)
@@ -284,11 +285,15 @@ namespace tst
 
 		// Submit the DockSpace
 		ImGuiIO& io = ImGui::GetIO();
+		ImGuiStyle& style = ImGui::GetStyle();
+		style.WindowMinSize.x = 300.0f;
 		if (io.ConfigFlags & ImGuiConfigFlags_DockingEnable)
 		{
 			ImGuiID dockspace_id = ImGui::GetID("MyDockSpace");
 			ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), dockspace_flags);
 		}
+
+		style.WindowMinSize.x = 30.0f;
 
 		if (ImGui::BeginMenuBar())
 		{

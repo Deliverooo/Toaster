@@ -1,0 +1,20 @@
+Scene: Unnamed Scene
+Entities:
+  - Entity: Id
+    TagComponent:
+      Tag: camera
+    TransformComponent:
+      Translation: [0, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    CameraComponent:
+      Camera:
+        ProjectionType: 0
+        PerspectiveFOV: 90
+        PerspectiveNear: 0.1
+        PerspectiveFar: 100
+        OrthoSize: 10
+        OrthoNear: -1
+        OrthoFar: 0.1
+      Active: true
+      FixedAspect: false
