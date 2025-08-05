@@ -21,7 +21,7 @@ namespace tst
 	{
 		TST_PROFILE_FN();
 
-		m_window = ScopedPtr<Window>(Window::Create({ 1280, 720, "Toaster", true }));
+		m_window = ScopedPtr<Window>(Window::Create({ 1920, 1080, "Toaster", true }));
 		m_window->setEventCallback([this](Event& e)
 			{
 				onEvent(e);
@@ -76,10 +76,7 @@ namespace tst
 			return false;
 		});
 		event_dispatcher.dispatch<KeyPressedEvent>([this](KeyPressedEvent& e) {
-			if (e.getKeycode() == TST_KEY_ESCAPE)
-			{
-				m_running = false;
-			}
+
 
 			return false;
 		});

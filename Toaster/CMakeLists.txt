@@ -25,6 +25,7 @@ target_include_directories(Toaster PUBLIC
     ${CMAKE_SOURCE_DIR}/dependencies/Entt/include
     ${CMAKE_SOURCE_DIR}/dependencies/Tinyobjloader/include
     ${CMAKE_SOURCE_DIR}/dependencies/Assimp/include
+    ${CMAKE_SOURCE_DIR}/dependencies/YamlCpp/include
 )
 
 # Link libraries - spdlog should be PUBLIC since it's used in headers
@@ -40,6 +41,7 @@ target_link_libraries(Toaster
         glad
         stbImage
         tinyobjloader::tinyobjloader
+        YAML_CPP
         ${Vulkan_LIBRARIES}
         $<$<PLATFORM_ID:Windows>:opengl32>
         $<$<PLATFORM_ID:Windows>:dwmapi>
@@ -59,6 +61,7 @@ target_compile_definitions(Toaster PRIVATE
     $<$<PLATFORM_ID:Windows>:TST_PLATFORM_WINDOWS>
     $<$<PLATFORM_ID:Windows>:TST_BUILD_DLL>
     $<$<PLATFORM_ID:Windows>:GLFW_INCLUDE_NONE>
+    YAML_CPP_STATIC_DEFINE
     TST_ENABLE_FBX
     TST_CORE_RESOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res"
 )

@@ -25,6 +25,10 @@ namespace tst
 		void drawEntityNode(Entity entity);
 		void drawComponents(Entity entity);
 
+		Entity getSelectedEntity() const { return m_selectedEntity; }
+
+
+
 
 		struct ComponentUiDrawInfo
 		{

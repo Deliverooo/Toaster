@@ -13,7 +13,7 @@ namespace tst
 		void serialize(const std::string& filepath);
 		void serializeRuntime(const std::string& filepath);
 
-		void deserialize(const std::string& filepath);
+		bool deserialize(const std::string& filepath);
 		void deserializeRuntime(const std::string& filepath);
 
 	private:

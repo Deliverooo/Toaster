@@ -1,366 +1,399 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="Toaster">
-      <UniqueIdentifier>{E77DE44F-535D-63EB-5C75-EEC1C8D3C94C}</UniqueIdentifier>
+    <Filter Include="dependencies">
+      <UniqueIdentifier>{8CAD9F58-7810-2FFD-2196-67B30DD8FA7F}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Toaster\Core">
-      <UniqueIdentifier>{9F6A8B91-8BCD-1A36-3453-53EC2095E6B8}</UniqueIdentifier>
+    <Filter Include="dependencies\ImGuizmo">
+      <UniqueIdentifier>{6C1DA30B-D889-5E06-A17D-F6630DA9806E}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Toaster\Debug">
-      <UniqueIdentifier>{9D1905C3-09DA-80F9-D214-CA763E94C5D5}</UniqueIdentifier>
+    <Filter Include="src">
+      <UniqueIdentifier>{2DAB880B-99B4-887C-2230-9F7C8E38947C}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Toaster\Events">
-      <UniqueIdentifier>{EB9F3227-D76D-262D-C001-9753AC6E0292}</UniqueIdentifier>
+    <Filter Include="src\Toaster">
+      <UniqueIdentifier>{FE7D1E59-6A33-974E-F327-91255FDC8D52}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Toaster\Renderer">
-      <UniqueIdentifier>{6D5555B5-594E-7407-8280-598C6ED85313}</UniqueIdentifier>
+    <Filter Include="src\Toaster\Core">
+      <UniqueIdentifier>{1611ACA4-020A-CBF6-2B3C-B07B1794AA02}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Toaster\Renderer\Loaders">
-      <UniqueIdentifier>{660A3769-522F-86E9-7B7A-6B7967FE8407}</UniqueIdentifier>
+    <Filter Include="src\Toaster\Debug">
+      <UniqueIdentifier>{F48E3A3A-60A5-38D0-A91C-C4F115720958}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Toaster\Scene">
-      <UniqueIdentifier>{447C13C4-B03C-8FFA-7977-D877E5F6D3D6}</UniqueIdentifier>
+    <Filter Include="src\Toaster\Events">
+      <UniqueIdentifier>{22C01685-0EA4-D7DA-7704-D22D6307C25C}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Toaster\Util">
-      <UniqueIdentifier>{945D9591-80C0-2436-2946-5DEC1588F0B8}</UniqueIdentifier>
+    <Filter Include="src\Toaster\Renderer">
+      <UniqueIdentifier>{645FC21C-50EE-4BE6-F90C-60E1E57A5C8C}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Toaster\imgui">
-      <UniqueIdentifier>{911CA7C5-FDDC-22FC-C617-6C79329767D8}</UniqueIdentifier>
+    <Filter Include="src\Toaster\Renderer\Loaders">
+      <UniqueIdentifier>{5D1BAEB1-49D6-9D5D-F28D-16A8DE27E8ED}</UniqueIdentifier>
     </Filter>
-    <Filter Include="platform">
-      <UniqueIdentifier>{4A63C33C-3630-1E48-5F49-0CF04B7553D6}</UniqueIdentifier>
+    <Filter Include="src\Toaster\Scene">
+      <UniqueIdentifier>{9BF1483B-0708-47D1-507F-D2F2BCD41759}</UniqueIdentifier>
     </Filter>
-    <Filter Include="platform\OpenGl">
-      <UniqueIdentifier>{5E351A86-CAC0-874A-D3D1-0A3F3FDCE34A}</UniqueIdentifier>
+    <Filter Include="src\Toaster\Util">
+      <UniqueIdentifier>{0B04B6A4-F7FC-D4F6-202F-BA7B0C87B402}</UniqueIdentifier>
     </Filter>
-    <Filter Include="platform\Vulkan">
-      <UniqueIdentifier>{8A99CC96-F624-3A5B-FF35-BD4F6B40965B}</UniqueIdentifier>
+    <Filter Include="src\Toaster\imgui">
+      <UniqueIdentifier>{E891DC3C-54A8-DAD2-9D1F-66F40975AB5A}</UniqueIdentifier>
     </Filter>
-    <Filter Include="platform\Windows">
-      <UniqueIdentifier>{84B77CA1-70B0-9BF3-99E2-8078853A7BFF}</UniqueIdentifier>
+    <Filter Include="src\platform">
+      <UniqueIdentifier>{41663D6D-2DC9-CC11-D64E-05C8C2909894}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\platform\OpenGl">
+      <UniqueIdentifier>{755C82A0-E1BD-5FAE-6A2B-A660D68B966D}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\platform\Vulkan">
+      <UniqueIdentifier>{A1C034B1-0D22-12BF-968F-587102F0487E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\platform\Windows">
+      <UniqueIdentifier>{7BC1E908-6750-73D2-106F-87CDFCDC8378}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\Toaster.h" />
+    <ClInclude Include="..\dependencies\ImGuizmo\ImGuizmo.h">
+      <Filter>dependencies\ImGuizmo</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Toaster.h">
+      <Filter>src</Filter>
+    </ClInclude>
     <ClInclude Include="src\Toaster\CameraController.hpp">
-      <Filter>Toaster</Filter>
+      <Filter>src\Toaster</Filter>
     </ClInclude>
     <ClInclude Include="src\Toaster\Core\Application.hpp">
-      <Filter>Toaster\Core</Filter>
+      <Filter>src\Toaster\Core</Filter>
     </ClInclude>
     <ClInclude Include="src\Toaster\Core\Core.hpp">
-      <Filter>Toaster\Core</Filter>
+      <Filter>src\Toaster\Core</Filter>
     </ClInclude>
     <ClInclude Include="src\Toaster\Core\EntryPoint.hpp">
-      <Filter>Toaster\Core</Filter>
+      <Filter>src\Toaster\Core</Filter>
     </ClInclude>
     <ClInclude Include="src\Toaster\Core\Input.hpp">
-      <Filter>Toaster\Core</Filter>
+      <Filter>src\Toaster\Core</Filter>
     </ClInclude>
     <ClInclude Include="src\Toaster\Core\KeyCodes.hpp">
-      <Filter>Toaster\Core</Filter>
+      <Filter>src\Toaster\Core</Filter>
     </ClInclude>
     <ClInclude Include="src\Toaster\Core\Layer.hpp">
-      <Filter>Toaster\Core</Filter>
+      <Filter>src\Toaster\Core</Filter>
     </ClInclude>
     <ClInclude Include="src\Toaster\Core\LayerStack.hpp">
-      <Filter>Toaster\Core</Filter>
+      <Filter>src\Toaster\Core</Filter>
     </ClInclude>
     <ClInclude Include="src\Toaster\Core\Log.hpp">
-      <Filter>Toaster\Core</Filter>
+      <Filter>src\Toaster\Core</Filter>
     </ClInclude>
     <ClInclude Include="src\Toaster\Core\MouseCodes.hpp">
-      <Filter>Toaster\Core</Filter>
+      <Filter>src\Toaster\Core</Filter>
     </ClInclude>
     <ClInclude Include="src\Toaster\Core\Time.hpp">
-      <Filter>Toaster\Core</Filter>
+      <Filter>src\Toaster\Core</Filter>
     </ClInclude>
     <ClInclude Include="src\Toaster\Core\Window.hpp">
-      <Filter>Toaster\Core</Filter>
+      <Filter>src\Toaster\Core</Filter>
     </ClInclude>
     <ClInclude Include="src\Toaster\Debug\Instrumentor.h">
-      <Filter>Toaster\Debug</Filter>
+      <Filter>src\Toaster\Debug</Filter>
     </ClInclude>
     <ClInclude Include="src\Toaster\Events\ApplicationEvent.hpp">
-      <Filter>Toaster\Events</Filter>
+      <Filter>src\Toaster\Events</Filter>
     </ClInclude>
     <ClInclude Include="src\Toaster\Events\Event.hpp">
-      <Filter>Toaster\Events</Filter>
+      <Filter>src\Toaster\Events</Filter>
     </ClInclude>
     <ClInclude Include="src\Toaster\Events\KeyEvent.hpp">
-      <Filter>Toaster\Events</Filter>
+      <Filter>src\Toaster\Events</Filter>
     </ClInclude>
     <ClInclude Include="src\Toaster\Events\MouseEvent.hpp">
-      <Filter>Toaster\Events</Filter>
+      <Filter>src\Toaster\Events</Filter>
     </ClInclude>
     <ClInclude Include="src\Toaster\Renderer\Buffer.hpp">
-      <Filter>Toaster\Renderer</Filter>
+      <Filter>src\Toaster\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="src\Toaster\Renderer\Camera.hpp">
-      <Filter>Toaster\Renderer</Filter>
+      <Filter>src\Toaster\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="src\Toaster\Renderer\Framebuffer.hpp">
-      <Filter>Toaster\Renderer</Filter>
+      <Filter>src\Toaster\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="src\Toaster\Renderer\Light.hpp">
-      <Filter>Toaster\Renderer</Filter>
+      <Filter>src\Toaster\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="src\Toaster\Renderer\Loaders\BlendLoader.hpp">
-      <Filter>Toaster\Renderer\Loaders</Filter>
+      <Filter>src\Toaster\Renderer\Loaders</Filter>
     </ClInclude>
     <ClInclude Include="src\Toaster\Renderer\Loaders\FbxLoader.hpp">
-      <Filter>Toaster\Renderer\Loaders</Filter>
+      <Filter>src\Toaster\Renderer\Loaders</Filter>
     </ClInclude>
     <ClInclude Include="src\Toaster\Renderer\Loaders\ObjLoader.hpp">
-      <Filter>Toaster\Renderer\Loaders</Filter>
+      <Filter>src\Toaster\Renderer\Loaders</Filter>
     </ClInclude>
     <ClInclude Include="src\Toaster\Renderer\Material.hpp">
-      <Filter>Toaster\Renderer</Filter>
+      <Filter>src\Toaster\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="src\Toaster\Renderer\Mesh.hpp">
-      <Filter>Toaster\Renderer</Filter>
+      <Filter>src\Toaster\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="src\Toaster\Renderer\MeshRenderer.hpp">
-      <Filter>Toaster\Renderer</Filter>
+      <Filter>src\Toaster\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="src\Toaster\Renderer\RenderCommand.hpp">
-      <Filter>Toaster\Renderer</Filter>
+      <Filter>src\Toaster\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="src\Toaster\Renderer\RenderCore.hpp">
-      <Filter>Toaster\Renderer</Filter>
+      <Filter>src\Toaster\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="src\Toaster\Renderer\Renderer.hpp">
-      <Filter>Toaster\Renderer</Filter>
+      <Filter>src\Toaster\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="src\Toaster\Renderer\Renderer2D.hpp">
-      <Filter>Toaster\Renderer</Filter>
+      <Filter>src\Toaster\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="src\Toaster\Renderer\Renderer3D.hpp">
-      <Filter>Toaster\Renderer</Filter>
+      <Filter>src\Toaster\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="src\Toaster\Renderer\RendererAPI.hpp">
-      <Filter>Toaster\Renderer</Filter>
+      <Filter>src\Toaster\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="src\Toaster\Renderer\RenderingContext.hpp">
-      <Filter>Toaster\Renderer</Filter>
+      <Filter>src\Toaster\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="src\Toaster\Renderer\Shader.hpp">
-      <Filter>Toaster\Renderer</Filter>
+      <Filter>src\Toaster\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Toaster\Renderer\SkyBoxRenderer.hpp">
+      <Filter>src\Toaster\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="src\Toaster\Renderer\Texture.hpp">
-      <Filter>Toaster\Renderer</Filter>
+      <Filter>src\Toaster\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="src\Toaster\Renderer\Transform.hpp">
-      <Filter>Toaster\Renderer</Filter>
+      <Filter>src\Toaster\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="src\Toaster\Renderer\VertexArray.hpp">
-      <Filter>Toaster\Renderer</Filter>
+      <Filter>src\Toaster\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="src\Toaster\Scene\Components.hpp">
-      <Filter>Toaster\Scene</Filter>
+      <Filter>src\Toaster\Scene</Filter>
     </ClInclude>
     <ClInclude Include="src\Toaster\Scene\Entity.hpp">
-      <Filter>Toaster\Scene</Filter>
+      <Filter>src\Toaster\Scene</Filter>
     </ClInclude>
     <ClInclude Include="src\Toaster\Scene\Scene.hpp">
-      <Filter>Toaster\Scene</Filter>
+      <Filter>src\Toaster\Scene</Filter>
     </ClInclude>
     <ClInclude Include="src\Toaster\Scene\SceneSerializer.hpp">
-      <Filter>Toaster\Scene</Filter>
+      <Filter>src\Toaster\Scene</Filter>
     </ClInclude>
     <ClInclude Include="src\Toaster\Scene\ScriptableEntity.hpp">
-      <Filter>Toaster\Scene</Filter>
+      <Filter>src\Toaster\Scene</Filter>
     </ClInclude>
     <ClInclude Include="src\Toaster\Util\MathUtil.hpp">
-      <Filter>Toaster\Util</Filter>
+      <Filter>src\Toaster\Util</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Toaster\Util\PlatformUtils.hpp">
+      <Filter>src\Toaster\Util</Filter>
     </ClInclude>
     <ClInclude Include="src\Toaster\imgui\ImguiLayer.hpp">
-      <Filter>Toaster\imgui</Filter>
+      <Filter>src\Toaster\imgui</Filter>
     </ClInclude>
     <ClInclude Include="src\platform\OpenGl\OpenGLBuffer.hpp">
-      <Filter>platform\OpenGl</Filter>
+      <Filter>src\platform\OpenGl</Filter>
     </ClInclude>
     <ClInclude Include="src\platform\OpenGl\OpenGLFramebuffer.hpp">
-      <Filter>platform\OpenGl</Filter>
+      <Filter>src\platform\OpenGl</Filter>
     </ClInclude>
     <ClInclude Include="src\platform\OpenGl\OpenGLImage.hpp">
-      <Filter>platform\OpenGl</Filter>
+      <Filter>src\platform\OpenGl</Filter>
     </ClInclude>
     <ClInclude Include="src\platform\OpenGl\OpenGLRendererAPI.hpp">
-      <Filter>platform\OpenGl</Filter>
+      <Filter>src\platform\OpenGl</Filter>
     </ClInclude>
     <ClInclude Include="src\platform\OpenGl\OpenGLRenderingContext.hpp">
-      <Filter>platform\OpenGl</Filter>
+      <Filter>src\platform\OpenGl</Filter>
     </ClInclude>
     <ClInclude Include="src\platform\OpenGl\OpenGLShader.hpp">
-      <Filter>platform\OpenGl</Filter>
+      <Filter>src\platform\OpenGl</Filter>
     </ClInclude>
     <ClInclude Include="src\platform\OpenGl\OpenGLTexture.hpp">
-      <Filter>platform\OpenGl</Filter>
+      <Filter>src\platform\OpenGl</Filter>
     </ClInclude>
     <ClInclude Include="src\platform\OpenGl\OpenGLVertexArray.hpp">
-      <Filter>platform\OpenGl</Filter>
+      <Filter>src\platform\OpenGl</Filter>
     </ClInclude>
     <ClInclude Include="src\platform\OpenGl\OpenGlTestLayer.h">
-      <Filter>platform\OpenGl</Filter>
+      <Filter>src\platform\OpenGl</Filter>
     </ClInclude>
     <ClInclude Include="src\platform\Vulkan\VulkanBuffer.hpp">
-      <Filter>platform\Vulkan</Filter>
+      <Filter>src\platform\Vulkan</Filter>
     </ClInclude>
     <ClInclude Include="src\platform\Vulkan\VulkanDevice.hpp">
-      <Filter>platform\Vulkan</Filter>
+      <Filter>src\platform\Vulkan</Filter>
     </ClInclude>
     <ClInclude Include="src\platform\Vulkan\VulkanImage.hpp">
-      <Filter>platform\Vulkan</Filter>
+      <Filter>src\platform\Vulkan</Filter>
     </ClInclude>
     <ClInclude Include="src\platform\Vulkan\VulkanRenderingContext.hpp">
-      <Filter>platform\Vulkan</Filter>
+      <Filter>src\platform\Vulkan</Filter>
     </ClInclude>
     <ClInclude Include="src\platform\Windows\WindowsInput.hpp">
-      <Filter>platform\Windows</Filter>
+      <Filter>src\platform\Windows</Filter>
     </ClInclude>
     <ClInclude Include="src\platform\Windows\WindowsWindow.hpp">
-      <Filter>platform\Windows</Filter>
+      <Filter>src\platform\Windows</Filter>
     </ClInclude>
-    <ClInclude Include="src\tstpch.h" />
+    <ClInclude Include="src\tstpch.h">
+      <Filter>src</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\dependencies\ImGuizmo\ImGuizmo.cpp">
+      <Filter>dependencies\ImGuizmo</Filter>
+    </ClCompile>
     <ClCompile Include="src\Toaster\CameraController.cpp">
-      <Filter>Toaster</Filter>
+      <Filter>src\Toaster</Filter>
     </ClCompile>
     <ClCompile Include="src\Toaster\Core\Application.cpp">
-      <Filter>Toaster\Core</Filter>
+      <Filter>src\Toaster\Core</Filter>
     </ClCompile>
     <ClCompile Include="src\Toaster\Core\Layer.cpp">
-      <Filter>Toaster\Core</Filter>
+      <Filter>src\Toaster\Core</Filter>
     </ClCompile>
     <ClCompile Include="src\Toaster\Core\LayerStack.cpp">
-      <Filter>Toaster\Core</Filter>
+      <Filter>src\Toaster\Core</Filter>
     </ClCompile>
     <ClCompile Include="src\Toaster\Core\Log.cpp">
-      <Filter>Toaster\Core</Filter>
+      <Filter>src\Toaster\Core</Filter>
     </ClCompile>
     <ClCompile Include="src\Toaster\Core\Time.cpp">
-      <Filter>Toaster\Core</Filter>
+      <Filter>src\Toaster\Core</Filter>
     </ClCompile>
     <ClCompile Include="src\Toaster\Renderer\Buffer.cpp">
-      <Filter>Toaster\Renderer</Filter>
+      <Filter>src\Toaster\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="src\Toaster\Renderer\Camera.cpp">
-      <Filter>Toaster\Renderer</Filter>
+      <Filter>src\Toaster\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="src\Toaster\Renderer\Framebuffer.cpp">
-      <Filter>Toaster\Renderer</Filter>
+      <Filter>src\Toaster\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="src\Toaster\Renderer\Loaders\BlendLoader.cpp">
-      <Filter>Toaster\Renderer\Loaders</Filter>
+      <Filter>src\Toaster\Renderer\Loaders</Filter>
     </ClCompile>
     <ClCompile Include="src\Toaster\Renderer\Loaders\FbxLoader.cpp">
-      <Filter>Toaster\Renderer\Loaders</Filter>
+      <Filter>src\Toaster\Renderer\Loaders</Filter>
     </ClCompile>
     <ClCompile Include="src\Toaster\Renderer\Loaders\ObjLoader.cpp">
-      <Filter>Toaster\Renderer\Loaders</Filter>
+      <Filter>src\Toaster\Renderer\Loaders</Filter>
     </ClCompile>
     <ClCompile Include="src\Toaster\Renderer\Material.cpp">
-      <Filter>Toaster\Renderer</Filter>
+      <Filter>src\Toaster\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="src\Toaster\Renderer\Mesh.cpp">
-      <Filter>Toaster\Renderer</Filter>
+      <Filter>src\Toaster\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="src\Toaster\Renderer\MeshRenderer.cpp">
-      <Filter>Toaster\Renderer</Filter>
+      <Filter>src\Toaster\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="src\Toaster\Renderer\RenderCommand.cpp">
-      <Filter>Toaster\Renderer</Filter>
+      <Filter>src\Toaster\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="src\Toaster\Renderer\RenderCore.cpp">
-      <Filter>Toaster\Renderer</Filter>
+      <Filter>src\Toaster\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="src\Toaster\Renderer\Renderer.cpp">
-      <Filter>Toaster\Renderer</Filter>
+      <Filter>src\Toaster\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="src\Toaster\Renderer\Renderer2D.cpp">
-      <Filter>Toaster\Renderer</Filter>
+      <Filter>src\Toaster\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="src\Toaster\Renderer\Renderer3D.cpp">
-      <Filter>Toaster\Renderer</Filter>
+      <Filter>src\Toaster\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="src\Toaster\Renderer\RendererAPI.cpp">
-      <Filter>Toaster\Renderer</Filter>
+      <Filter>src\Toaster\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="src\Toaster\Renderer\Shader.cpp">
-      <Filter>Toaster\Renderer</Filter>
+      <Filter>src\Toaster\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Toaster\Renderer\SkyBoxRenderer.cpp">
+      <Filter>src\Toaster\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="src\Toaster\Renderer\Texture.cpp">
-      <Filter>Toaster\Renderer</Filter>
+      <Filter>src\Toaster\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="src\Toaster\Renderer\VertexArray.cpp">
-      <Filter>Toaster\Renderer</Filter>
+      <Filter>src\Toaster\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="src\Toaster\Scene\Components.cpp">
-      <Filter>Toaster\Scene</Filter>
+      <Filter>src\Toaster\Scene</Filter>
     </ClCompile>
     <ClCompile Include="src\Toaster\Scene\Entity.cpp">
-      <Filter>Toaster\Scene</Filter>
+      <Filter>src\Toaster\Scene</Filter>
     </ClCompile>
     <ClCompile Include="src\Toaster\Scene\Scene.cpp">
-      <Filter>Toaster\Scene</Filter>
+      <Filter>src\Toaster\Scene</Filter>
     </ClCompile>
     <ClCompile Include="src\Toaster\Scene\SceneSerializer.cpp">
-      <Filter>Toaster\Scene</Filter>
+      <Filter>src\Toaster\Scene</Filter>
     </ClCompile>
     <ClCompile Include="src\Toaster\imgui\ImGuiBuild.cpp">
-      <Filter>Toaster\imgui</Filter>
+      <Filter>src\Toaster\imgui</Filter>
     </ClCompile>
     <ClCompile Include="src\Toaster\imgui\ImguiLayer.cpp">
-      <Filter>Toaster\imgui</Filter>
+      <Filter>src\Toaster\imgui</Filter>
     </ClCompile>
     <ClCompile Include="src\platform\OpenGl\OpenGLBuffer.cpp">
-      <Filter>platform\OpenGl</Filter>
+      <Filter>src\platform\OpenGl</Filter>
     </ClCompile>
     <ClCompile Include="src\platform\OpenGl\OpenGLFramebuffer.cpp">
-      <Filter>platform\OpenGl</Filter>
+      <Filter>src\platform\OpenGl</Filter>
     </ClCompile>
     <ClCompile Include="src\platform\OpenGl\OpenGLImage.cpp">
-      <Filter>platform\OpenGl</Filter>
+      <Filter>src\platform\OpenGl</Filter>
     </ClCompile>
     <ClCompile Include="src\platform\OpenGl\OpenGLRendererAPI.cpp">
-      <Filter>platform\OpenGl</Filter>
+      <Filter>src\platform\OpenGl</Filter>
     </ClCompile>
     <ClCompile Include="src\platform\OpenGl\OpenGLRenderingContext.cpp">
-      <Filter>platform\OpenGl</Filter>
+      <Filter>src\platform\OpenGl</Filter>
     </ClCompile>
     <ClCompile Include="src\platform\OpenGl\OpenGLShader.cpp">
-      <Filter>platform\OpenGl</Filter>
+      <Filter>src\platform\OpenGl</Filter>
     </ClCompile>
     <ClCompile Include="src\platform\OpenGl\OpenGLTexture.cpp">
-      <Filter>platform\OpenGl</Filter>
+      <Filter>src\platform\OpenGl</Filter>
     </ClCompile>
     <ClCompile Include="src\platform\OpenGl\OpenGLVertexArray.cpp">
-      <Filter>platform\OpenGl</Filter>
+      <Filter>src\platform\OpenGl</Filter>
     </ClCompile>
     <ClCompile Include="src\platform\OpenGl\OpenGlTestLayer.cpp">
-      <Filter>platform\OpenGl</Filter>
+      <Filter>src\platform\OpenGl</Filter>
     </ClCompile>
     <ClCompile Include="src\platform\Vulkan\VulkanBuffer.cpp">
-      <Filter>platform\Vulkan</Filter>
+      <Filter>src\platform\Vulkan</Filter>
     </ClCompile>
     <ClCompile Include="src\platform\Vulkan\VulkanDevice.cpp">
-      <Filter>platform\Vulkan</Filter>
+      <Filter>src\platform\Vulkan</Filter>
     </ClCompile>
     <ClCompile Include="src\platform\Vulkan\VulkanImage.cpp">
-      <Filter>platform\Vulkan</Filter>
+      <Filter>src\platform\Vulkan</Filter>
     </ClCompile>
     <ClCompile Include="src\platform\Vulkan\VulkanRenderingContext.cpp">
-      <Filter>platform\Vulkan</Filter>
+      <Filter>src\platform\Vulkan</Filter>
     </ClCompile>
     <ClCompile Include="src\platform\Windows\WindowsInput.cpp">
-      <Filter>platform\Windows</Filter>
+      <Filter>src\platform\Windows</Filter>
+    </ClCompile>
+    <ClCompile Include="src\platform\Windows\WindowsPlatformUtils.cpp">
+      <Filter>src\platform\Windows</Filter>
     </ClCompile>
     <ClCompile Include="src\platform\Windows\WindowsWindow.cpp">
-      <Filter>platform\Windows</Filter>
+      <Filter>src\platform\Windows</Filter>
     </ClCompile>
-    <ClCompile Include="src\tstpch.cpp" />
+    <ClCompile Include="src\tstpch.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

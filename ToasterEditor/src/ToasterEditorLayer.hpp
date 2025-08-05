@@ -71,8 +71,14 @@ namespace tst
 
 	private:
 
+		void newScene();
+		void openScene();
+		void saveSceneAs();
+		void saveScene();
+
 		void loadAssets();
 		bool onKeyPressedEvent(KeyPressedEvent& e);
+		bool onMouseButtonPressed(MouseButtonPressEvent& e);
 
 		glm::vec4 screenSpaceToWorldSpace(const glm::mat4& projection, const glm::mat4& view, glm::vec2 screenCoords, float depth);
 
@@ -94,9 +100,12 @@ namespace tst
 		Entity m_CameraEntity;
 		Entity m_MeshEntity;
 
+		int m_GizmoType = -1;
 
 		bool m_ViewportFocused = false;
 		bool m_ViewportHovered = false;
+
+		bool m_IsLocalTransform = false;
 
 		SceneHierarchyPanel m_SceneHierarchyPanel;
 	};

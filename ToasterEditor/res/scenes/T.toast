@@ -1,0 +1,54 @@
+Scene: Unnamed Scene
+Entities:
+  - Entity: 12241557773261097666
+    TagComponent:
+      Tag: light
+    TransformComponent:
+      Translation: [-1.7990158, 1.482553, -3.7122314]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    LightComponent:
+      Type: 0
+      Colour: [1, 1, 1]
+      Intensity: 6.286
+      Enabled: true
+  - Entity: 12241557773261097666
+    TagComponent:
+      Tag: light
+    TransformComponent:
+      Translation: [3.8, 4.2, -4.3]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    LightComponent:
+      Type: 0
+      Colour: [1, 1, 1]
+      Intensity: 10.293
+      Enabled: true
+  - Entity: 12241557773261097666
+    TagComponent:
+      Tag: entity
+    TransformComponent:
+      Translation: [0, 0, -9.9]
+      Rotation: [0, -3.2, 0]
+      Scale: [1, 1, 1]
+    CameraComponent:
+      Camera:
+        ProjectionType: 0
+        PerspectiveFOV: 90
+        PerspectiveNear: 0.1
+        PerspectiveFar: 200
+        OrthoSize: 10
+        OrthoNear: -1
+        OrthoFar: 0.1
+      Active: true
+      FixedAspect: false
+  - Entity: 12241557773261097666
+    TagComponent:
+      Tag: entity
+    MeshRendererComponent:
+      Colour: [1, 0, 0.862, 1]
+      Filepath: C:\Users\oocon\OneDrive\Desktop\blender dev log\t.fbx
+    TransformComponent:
+      Translation: [0, 0, 0]
+      Rotation: [3.1415925, 0.115440264, 3.1415923]
+      Scale: [0.1, 0.1, 0.1]

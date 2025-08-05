@@ -1,0 +1,42 @@
+Scene: Unnamed Scene
+Entities:
+  - Entity: 12241557773261097666
+    TagComponent:
+      Tag: light
+    TransformComponent:
+      Translation: [0, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    LightComponent:
+      Type: 0
+      Colour: [1, 1, 1]
+      Intensity: 1
+      Enabled: true
+  - Entity: 12241557773261097666
+    TagComponent:
+      Tag: entity
+    SpriteRendererComponent:
+      Colour: [1, 1, 1, 1]
+      Texture: C:\Users\oocon\Downloads\Global_illumination1.png
+    TransformComponent:
+      Translation: [0, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+  - Entity: 12241557773261097666
+    TagComponent:
+      Tag: entity
+    TransformComponent:
+      Translation: [0, 0, 2.2]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    CameraComponent:
+      Camera:
+        ProjectionType: 0
+        PerspectiveFOV: 90
+        PerspectiveNear: 0.1
+        PerspectiveFar: 100
+        OrthoSize: 10
+        OrthoNear: -1
+        OrthoFar: 0.1
+      Active: true
+      FixedAspect: false

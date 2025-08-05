@@ -52,8 +52,9 @@ namespace tst
         s_loadersInitialized = true;
     }
 
-    Mesh::Mesh(const std::string& filepath)
+    Mesh::Mesh(const std::string& filepath) : m_Filepath(filepath)
     {
+        TST_CORE_INFO("Filepath {0}", m_Filepath.value());
         if (!loadFromFile(filepath))
         {
             TST_CORE_ERROR("Failed to load mesh from file: {0}", filepath);

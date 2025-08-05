@@ -1,5 +1,6 @@
 #include "SceneHierarchyPanel.hpp"
 
+
 #include "Toaster/Scene/Components.hpp"
 #include <filesystem>
 
@@ -8,6 +9,7 @@
 #include "glm/gtc/type_ptr.hpp"
 
 #include "Toaster/Renderer/Mesh.hpp"
+#include "Toaster/Util/PlatformUtils.hpp"
 
 
 namespace tst
@@ -21,7 +23,10 @@ namespace tst
 	void SceneHierarchyPanel::setSceneContext(const RefPtr<Scene>& sceneContext)
 	{
 		m_sceneContext = sceneContext;
+		m_selectedEntity = {};
 	}
+
+
 
 	void SceneHierarchyPanel::drawEntityNode(Entity entity)
 	{
@@ -275,12 +280,9 @@ namespace tst
 		spriteRendererDrawInfo.displayName = "Sprite Renderer";
 		drawComponent<SpriteRendererComponent>(&entity, spriteRendererDrawInfo, [](SpriteRendererComponent *comp)
 			{
-
-				static char texturePathBuff[256] = "";
-				ImGui::InputText("Texture Path", texturePathBuff, sizeof(texturePathBuff));
 				if (ImGui::Button("Load Texture"))
 				{
-					std::string texturePath = texturePathBuff;
+					std::string texturePath = FileDialog::openFile("Image Files (*.png; *.jpg; *.jpeg)\0*.png;*.jpg;*.jpeg\0");
 					if (!texturePath.empty())
 					{
 						if (texturePath.front() == '"') {
@@ -415,12 +417,10 @@ namespace tst
 		meshRendererDrawInfo.displayName = "Mesh Renderer";
 		drawComponent<MeshRendererComponent>(&entity, meshRendererDrawInfo, [](MeshRendererComponent* comp)
 			{
-				// Mesh file selector
-				static char meshPathBuff[256] = "";
-				ImGui::InputText("Mesh Path", meshPathBuff, sizeof(meshPathBuff));
+
 				if (ImGui::Button("Load Mesh"))
 				{
-					std::string meshPath = meshPathBuff;
+					std::string meshPath = FileDialog::openFile("Mesh Files (*.fbx; *.obj; *.gltf)\0*.fbx;*.obj;*.gltf\0");
 					if (!meshPath.empty())
 					{
 						if (meshPath.front() == '"') {
@@ -475,8 +475,8 @@ namespace tst
 										material->setSpecular(specular);
 									}
 
-									float shininess = props.shininess;
-									if (ImGui::SliderFloat("Shininess", &shininess, 0.0f, 256.0f)) { material->setShininess(shininess); }
+									float roughness = props.roughness;
+									if (ImGui::SliderFloat("Roughness", &roughness, 0.0f, 1.0f)) { material->setRoughness(roughness); }
 
 									float metallic = props.metallic;
 									if (ImGui::SliderFloat("Metallic", &metallic, 0.0f, 1.0f)) { material->setMetallic(metallic); }
@@ -536,7 +536,7 @@ namespace tst
 
 			ImGui::ColorEdit3("Colour", glm::value_ptr(comp->light.colour));
 
-			ImGui::DragFloat("Intensity", &comp->light.intensity, 0.01f, 0.0f, 2.0f);
+			ImGui::DragFloat("Intensity", &comp->light.intensity, 0.001f, 0.0f, 100.0f);
 
 			if (comp->light.type != Light::Type::Directional)
 			{

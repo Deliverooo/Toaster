@@ -13,6 +13,8 @@
 
 #include "imgui_internal.h"
 
+#include <ImGuizmo.h>
+
 namespace tst
 {
 
@@ -99,6 +101,14 @@ namespace tst
 		colors[ImGuiCol_NavCursor] = ImVec4(0.60f, 0.26f, 0.98f, 0.91f);
 		colors[ImGuiCol_NavWindowingHighlight] = ImVec4(1.00f, 1.00f, 1.00f, 0.96f);
 
+		ImGuizmo::Style& gizmoStyle = ImGuizmo::GetStyle();
+		gizmoStyle.TranslationLineThickness = 3.0f;
+		gizmoStyle.RotationLineThickness	= 3.0f;
+		gizmoStyle.ScaleLineThickness		= 3.0f;
+		gizmoStyle.TranslationLineArrowSize = 8.0f;
+		gizmoStyle.Colors[ImGuizmo::DIRECTION_X] = ImVec4(0.70f, 0.10f, 0.10f, 1.00f);
+		gizmoStyle.Colors[ImGuizmo::DIRECTION_Y] = ImVec4(0.10f, 0.70f, 0.10f, 1.00f);
+		gizmoStyle.Colors[ImGuizmo::DIRECTION_Z] = ImVec4(0.10f, 0.10f, 0.70f, 1.00f);
 
 		auto& app = Application::getInstance();
 		GLFWwindow* window = static_cast<GLFWwindow*>(app.getWindow().getWindow());
@@ -134,6 +144,8 @@ namespace tst
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
+
+		ImGuizmo::BeginFrame();
 	}
 
 	void ImguiLayer::end() {

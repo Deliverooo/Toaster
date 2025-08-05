@@ -188,7 +188,7 @@ namespace tst
 			{
 			case GLFW_PRESS:
 				{
-				KeyPressedEvent keyPressedEvent(key);
+				KeyPressedEvent keyPressedEvent(key, 0);
 				window_data.eventCallback(keyPressedEvent);
 				break;
 				}

@@ -1,7 +1,10 @@
 #pragma once
 
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
 
+#include "glm/gtx/component_wise.hpp"
+#include "glm/gtx/quaternion.hpp"
 #include "Toaster/Renderer/Camera.hpp"
 #include "Toaster/Renderer/Light.hpp"
 #include "Toaster/Renderer/Mesh.hpp"
@@ -23,7 +26,14 @@ namespace tst
 		TransformComponent() = default;
 		TransformComponent(const glm::vec3& translation) : translation(translation) {}
 
-		glm::mat4 matrix() const { return transformationMat(translation, rotation, scale); }
+		glm::mat4 matrix() const
+		{
+			glm::mat4 translationMatrix = glm::translate(glm::mat4(1.0f), translation);
+			glm::mat4 rotationMatrix = glm::toMat4(glm::quat(rotation));
+			glm::mat4 scaleMatrix = glm::scale(glm::mat4(1.0f), scale);
+
+			return translationMatrix * rotationMatrix * scaleMatrix;
+		}
 
 		glm::vec3 translation{ 0.0f };
 		glm::vec3 rotation{ 0.0f };

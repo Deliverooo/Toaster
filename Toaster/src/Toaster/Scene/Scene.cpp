@@ -131,6 +131,8 @@ namespace tst
 				}
 			}
 			MeshRenderer::flushLights();
+			TST_RC_CHECK_ERROR("After MeshRenderer FlushLights");
+
 
 			auto meshGroup = m_registry.group<MeshRendererComponent>(entt::get<TransformComponent>);
 			for (auto entity : meshGroup)
@@ -139,16 +141,26 @@ namespace tst
 				MeshRenderer::drawMesh(meshRenderer.mesh, transform.matrix());
 			}
 			MeshRenderer::end();
-
-
 			RenderCommand::cleanState();
-
-			// Clear any errors that might have accumulated
 
 			TST_RC_CHECK_ERROR("Before SkyBox rendering");
 
 			SkyBoxRenderer::render(*mainCamera, *cameraView);
 		}
+	}
+
+	Entity Scene::getActiveCameraEntity()
+	{
+		auto cameraGroup = m_registry.view<CameraComponent>();
+		for (auto entity : cameraGroup)
+		{
+			auto& camera = cameraGroup.get<CameraComponent>(entity);
+			if (camera.active)
+			{
+				return Entity{ entity, this };
+			}
+		}
+		return Entity();
 	}
 
 	void Scene::onViewportResize(uint32_t width, uint32_t height)

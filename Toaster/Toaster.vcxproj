@@ -76,13 +76,13 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>tstpch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>TST_PLATFORM_WINDOWS;TST_BUILD_DLL;GLFW_INCLUDE_NONE;TST_ENABLE_FBX;YAML_CPP_STATIC_DEFINE;TST_CORE_RESOURCE_DIR= "C:/dev/Toaster/Toaster/res";TST_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>src;..\dependencies\GLFW\include;..\dependencies\Glad\include;..\dependencies\ImGui;..\dependencies\spdlog\include;..\dependencies\stbImage\include;..\dependencies\glm;..\dependencies\Entt\include;..\dependencies\Tinyobjloader\include;..\dependencies\Assimp\include;..\dependencies\YamlCpp\include;C:\VulkanSDK\1.4.313.2\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>TST_PLATFORM_WINDOWS;TST_BUILD_DLL;GLFW_INCLUDE_NONE;TST_ENABLE_FBX;YAML_CPP_STATIC_DEFINE;GLM_ENABLE_EXPERIMENTAL;TST_CORE_RESOURCE_DIR= "C:/dev/Toaster/Toaster/res";TST_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>src;..\dependencies\GLFW\include;..\dependencies\Glad\include;..\dependencies\ImGui;..\dependencies\spdlog\include;..\dependencies\stbImage\include;..\dependencies\glm;..\dependencies\Entt\include;..\dependencies\Tinyobjloader\include;..\dependencies\Assimp\include;..\dependencies\YamlCpp\include;..\dependencies\ImGuizmo;C:\VulkanSDK\1.4.313.2\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
-      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
       <ExternalWarningLevel>Level3</ExternalWarningLevel>
     </ClCompile>
     <Link>
@@ -99,8 +99,8 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>tstpch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>TST_PLATFORM_WINDOWS;TST_BUILD_DLL;GLFW_INCLUDE_NONE;TST_ENABLE_FBX;YAML_CPP_STATIC_DEFINE;TST_CORE_RESOURCE_DIR= "C:/dev/Toaster/Toaster/res";TST_RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>src;..\dependencies\GLFW\include;..\dependencies\Glad\include;..\dependencies\ImGui;..\dependencies\spdlog\include;..\dependencies\stbImage\include;..\dependencies\glm;..\dependencies\Entt\include;..\dependencies\Tinyobjloader\include;..\dependencies\Assimp\include;..\dependencies\YamlCpp\include;C:\VulkanSDK\1.4.313.2\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>TST_PLATFORM_WINDOWS;TST_BUILD_DLL;GLFW_INCLUDE_NONE;TST_ENABLE_FBX;YAML_CPP_STATIC_DEFINE;GLM_ENABLE_EXPERIMENTAL;TST_CORE_RESOURCE_DIR= "C:/dev/Toaster/Toaster/res";TST_RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>src;..\dependencies\GLFW\include;..\dependencies\Glad\include;..\dependencies\ImGui;..\dependencies\spdlog\include;..\dependencies\stbImage\include;..\dependencies\glm;..\dependencies\Entt\include;..\dependencies\Tinyobjloader\include;..\dependencies\Assimp\include;..\dependencies\YamlCpp\include;..\dependencies\ImGuizmo;C:\VulkanSDK\1.4.313.2\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -108,7 +108,7 @@
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
-      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
       <ExternalWarningLevel>Level3</ExternalWarningLevel>
     </ClCompile>
     <Link>
@@ -126,8 +126,8 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>tstpch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>TST_PLATFORM_WINDOWS;TST_BUILD_DLL;GLFW_INCLUDE_NONE;TST_ENABLE_FBX;YAML_CPP_STATIC_DEFINE;TST_CORE_RESOURCE_DIR= "C:/dev/Toaster/Toaster/res";TST_DIST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>src;..\dependencies\GLFW\include;..\dependencies\Glad\include;..\dependencies\ImGui;..\dependencies\spdlog\include;..\dependencies\stbImage\include;..\dependencies\glm;..\dependencies\Entt\include;..\dependencies\Tinyobjloader\include;..\dependencies\Assimp\include;..\dependencies\YamlCpp\include;C:\VulkanSDK\1.4.313.2\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>TST_PLATFORM_WINDOWS;TST_BUILD_DLL;GLFW_INCLUDE_NONE;TST_ENABLE_FBX;YAML_CPP_STATIC_DEFINE;GLM_ENABLE_EXPERIMENTAL;TST_CORE_RESOURCE_DIR= "C:/dev/Toaster/Toaster/res";TST_DIST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>src;..\dependencies\GLFW\include;..\dependencies\Glad\include;..\dependencies\ImGui;..\dependencies\spdlog\include;..\dependencies\stbImage\include;..\dependencies\glm;..\dependencies\Entt\include;..\dependencies\Tinyobjloader\include;..\dependencies\Assimp\include;..\dependencies\YamlCpp\include;..\dependencies\ImGuizmo;C:\VulkanSDK\1.4.313.2\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -135,7 +135,7 @@
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
-      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
       <ExternalWarningLevel>Level3</ExternalWarningLevel>
     </ClCompile>
     <Link>
@@ -149,6 +149,7 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\dependencies\ImGuizmo\ImGuizmo.h" />
     <ClInclude Include="src\Toaster.h" />
     <ClInclude Include="src\Toaster\CameraController.hpp" />
     <ClInclude Include="src\Toaster\Core\Application.hpp" />
@@ -195,6 +196,7 @@
     <ClInclude Include="src\Toaster\Scene\SceneSerializer.hpp" />
     <ClInclude Include="src\Toaster\Scene\ScriptableEntity.hpp" />
     <ClInclude Include="src\Toaster\Util\MathUtil.hpp" />
+    <ClInclude Include="src\Toaster\Util\PlatformUtils.hpp" />
     <ClInclude Include="src\Toaster\imgui\ImguiLayer.hpp" />
     <ClInclude Include="src\platform\OpenGl\OpenGLBuffer.hpp" />
     <ClInclude Include="src\platform\OpenGl\OpenGLFramebuffer.hpp" />
@@ -214,6 +216,9 @@
     <ClInclude Include="src\tstpch.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\dependencies\ImGuizmo\ImGuizmo.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="src\Toaster\CameraController.cpp" />
     <ClCompile Include="src\Toaster\Core\Application.cpp" />
     <ClCompile Include="src\Toaster\Core\Layer.cpp" />
@@ -259,6 +264,7 @@
     <ClCompile Include="src\platform\Vulkan\VulkanImage.cpp" />
     <ClCompile Include="src\platform\Vulkan\VulkanRenderingContext.cpp" />
     <ClCompile Include="src\platform\Windows\WindowsInput.cpp" />
+    <ClCompile Include="src\platform\Windows\WindowsPlatformUtils.cpp" />
     <ClCompile Include="src\platform\Windows\WindowsWindow.cpp" />
     <ClCompile Include="src\tstpch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
@@ -289,16 +295,6 @@
     <ProjectReference Include="..\dependencies\YamlCpp\YamlCpp.vcxproj">
       <Project>{3BF5F3B0-A7D4-724C-B0EC-FD221C4BD9AD}</Project>
     </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="res\shaders\FlatTextureShader.glsl" />
-    <None Include="res\shaders\LightingShader.glsl" />
-    <None Include="res\shaders\MeshShader.frag.glsl" />
-    <None Include="res\shaders\MeshShader.glsl" />
-    <None Include="res\shaders\MeshShader.vert.glsl" />
-    <None Include="res\shaders\SkyBoxShader.frag.glsl" />
-    <None Include="res\shaders\SkyBoxShader.glsl" />
-    <None Include="res\shaders\SkyBoxShader.vert.glsl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

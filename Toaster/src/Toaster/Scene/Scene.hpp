@@ -21,6 +21,8 @@ namespace tst
 		Entity createEntity(const std::string& name);
 		void removeEntity(const Entity& entity);
 
+		Entity getActiveCameraEntity();
+
 		entt::registry &registry() { return m_registry; }
 
 	private:

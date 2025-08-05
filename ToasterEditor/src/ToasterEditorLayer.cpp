@@ -1,10 +1,13 @@
 #include "ToasterEditorLayer.hpp"
 
 #include "imgui_internal.h"
+#include "Imguizmo.h"
 #include "Toaster/Renderer/MeshRenderer.hpp"
 #include "util/Random.hpp"
 #include "Toaster/Scene/Scene.hpp"
 #include "Toaster/Scene/SceneSerializer.hpp"
+#include "Toaster/Util/PlatformUtils.hpp"
+
 
 namespace tst
 {
@@ -148,6 +151,15 @@ namespace tst
 
 		m_Scene = make_reference<Scene>();
 
+		/*m_MeshEntity = m_Scene->createEntity("Orbo");
+		auto &mr = m_MeshEntity.addComponent<MeshRendererComponent>();
+		mr.mesh = Mesh::create("C:\\Users\\oocon\\OneDrive\\Desktop\\blender dev log\\Orbo\\orbo_mesh.fbx");
+		mr.mesh->getMaterials().getMaterial(0)->setBackfaceCulling(true);
+		m_MeshEntity.getComponent<TransformComponent>().rotation.x = -1.570796f;
+
+		auto light = m_Scene->createEntity("Light");
+		auto& lc = light.addComponent<LightComponent>();
+		light.getComponent<TransformComponent>().translation.z = 2.8f;
 
 
 		m_CameraEntity = m_Scene->createEntity("camera");
@@ -194,12 +206,11 @@ namespace tst
 			
 		};
 
-		m_CameraEntity.addComponent<NativeScriptComponent>().bind<CameraController>();
+		m_CameraEntity.addComponent<NativeScriptComponent>().bind<CameraController>();*/
 
 		m_SceneHierarchyPanel.setSceneContext(m_Scene);
 
-		SceneSerializer serializer(m_Scene);
-		serializer.serialize("res/scenes/Test.toast");
+
 	}
 
 	void ToasterEditorLayer::onUpdate(DeltaTime dt)
@@ -238,13 +249,137 @@ namespace tst
 			{
 				return onKeyPressedEvent(e);
 			});
+		eventDispatcher.dispatch<MouseButtonPressEvent>([this](MouseButtonPressEvent& e)
+			{
+				return onMouseButtonPressed(e);
+			});
 	}
 
 	bool ToasterEditorLayer::onKeyPressedEvent(KeyPressedEvent& e)
 	{
 
+		bool controlPressed = Input::isKeyPressed(Key::LeftControl) || Input::isKeyPressed(Key::RightControl);
+		bool shiftPressed = Input::isKeyPressed(Key::LeftShift) || Input::isKeyPressed(Key::RightShift);
+		bool altPressed = Input::isKeyPressed(Key::LeftAlt) || Input::isKeyPressed(Key::RightAlt);
+		switch (e.getKeycode())
+		{
+			case Key::S:
+			{
+				if (controlPressed)
+				{
+					saveScene();
+				}
+
+				break;
+			}
+			case Key::O:
+			{
+				if (controlPressed)
+				{
+					openScene();
+				}
+
+				break;
+			}
+			case Key::N:
+			{
+				if (controlPressed)
+				{
+					newScene();
+				}
+
+				break;
+			}
+
+			case Key::T:
+			{
+				if (m_GizmoType != ImGuizmo::OPERATION::TRANSLATE)
+				{
+					m_GizmoType = ImGuizmo::OPERATION::TRANSLATE;
+				}
+				break;
+			}
+			case Key::R:
+			{
+				if (m_GizmoType != ImGuizmo::OPERATION::ROTATE)
+				{
+					m_GizmoType = ImGuizmo::OPERATION::ROTATE;
+				}
+				break;
+			}
+			case Key::E:
+			{
+				if (m_GizmoType != ImGuizmo::OPERATION::SCALE)
+				{
+					m_GizmoType = ImGuizmo::OPERATION::SCALE;
+				}
+				break;
+			}
+
+
+		case Key::L:
+
+			if (altPressed)
+			{
+				if (m_IsLocalTransform)  { m_IsLocalTransform = false; break; }
+				if (!m_IsLocalTransform) { m_IsLocalTransform = true;  break; }
+			}
+		}
 
 		return false;
+	}
+
+	bool ToasterEditorLayer::onMouseButtonPressed(MouseButtonPressEvent& e)
+	{
+		if (e.getMouseButton() == TST_MOUSE_BUTTON_RIGHT)
+		{
+			if (m_GizmoType != -1 && m_SceneHierarchyPanel.getSelectedEntity())
+			{
+				m_GizmoType = -1;
+			}
+		}
+		return false;
+	}
+
+	void ToasterEditorLayer::saveSceneAs()
+	{
+		std::string filepath = FileDialog::saveFile("Toaster Scene (*.toast)\0*.toast\0");
+		if (!filepath.empty())
+		{
+			SceneSerializer serializer(m_Scene);
+			serializer.serialize(filepath);
+		}
+	}
+
+	void ToasterEditorLayer::newScene()
+	{
+		m_Scene = make_reference<Scene>();
+		m_Scene->onViewportResize(static_cast<uint32_t>(m_ViewportSize.x), static_cast<uint32_t>(m_ViewportSize.y));
+		m_SceneHierarchyPanel.setSceneContext(m_Scene);
+	}
+
+	void ToasterEditorLayer::openScene()
+	{
+		std::string filepath = FileDialog::openFile("Toaster Scene (*.toast)\0*.toast\0");
+		if (!filepath.empty())
+		{
+			m_Scene = make_reference<Scene>();
+			m_Scene->onViewportResize(static_cast<uint32_t>(m_ViewportSize.x), static_cast<uint32_t>(m_ViewportSize.y));
+			m_SceneHierarchyPanel.setSceneContext(m_Scene);
+
+			SceneSerializer serializer(m_Scene);
+			serializer.deserialize(filepath);
+		}
+	}
+
+	void ToasterEditorLayer::saveScene()
+	{
+		std::string filepath = FileDialog::saveFile("Toaster Scene (*.toast)\0*.toast\0");
+		if (!filepath.empty())
+		{
+			SceneSerializer serializer(m_Scene);
+			serializer.serialize(filepath);
+		}
 	}
 
 	void ToasterEditorLayer::onImguiRender()
@@ -297,11 +432,25 @@ namespace tst
 
 		if (ImGui::BeginMenuBar())
 		{
-			if (ImGui::BeginMenu("Options"))
+			if (ImGui::BeginMenu("File"))
 			{
+				if (ImGui::MenuItem("New", "Ctrl+N"))
+				{
+					newScene();
+				}
+				if (ImGui::MenuItem("Open", "Ctrl+O"))
+				{
+					openScene();
+				}
+				if (ImGui::MenuItem("Save", "Ctrl+S"))
+				{
+					saveScene();
+				}
+				if (ImGui::MenuItem("Save as", "Ctrl+Shift+S"))
+				{
+					saveSceneAs();
+				}
 				if (ImGui::MenuItem("Quit", "Ctrl+Q")) { Application::getInstance().close(); }
-				if (ImGui::MenuItem("Save", "Ctrl+S")) { TST_INFO("Saved!"); }
-				if (ImGui::MenuItem("Save as", "Ctrl+Shift+S")) { TST_INFO("Saved as!"); }
 
 				ImGui::Separator();
 
@@ -313,8 +462,6 @@ namespace tst
 		m_SceneHierarchyPanel.onImGuiRender();
 
 		ImGui::Begin("Settings");
-
-
 
 
 		ImGui::Text("3D Renderer Stats");
@@ -377,14 +524,43 @@ namespace tst
 		static bool flatShading = true;
 		static bool depthPass = false;
 
-		ImGui::Image(m_Framebuffer->getColourAttachmentId(), { m_ViewportSize.x, m_ViewportSize.y }, ImVec2(0, 1), ImVec2(1, 0));
-		ImGui::End();
+		ImGui::Image(m_Framebuffer->getColourAttachmentId(), { m_ViewportSize.x, m_ViewportSize.y }, ImVec2(0, 1), ImVec2(1, 0)); 
 
-		/*ImGui::Begin("Depth Pass");
-		float framebufferWidth = static_cast<float>(m_Framebuffer->getInfo().width);
-		float framebufferHeight = static_cast<float>(m_Framebuffer->getInfo().height);
-		ImGui::Image(m_Framebuffer->getDepthAttachmentId(), { framebufferWidth, framebufferHeight }, ImVec2(0, 1), ImVec2(1, 0));
-		ImGui::End();*/
+		Entity selectedEntity = m_SceneHierarchyPanel.getSelectedEntity();
+		if (selectedEntity && m_GizmoType != -1)
+		{
+			ImGuizmo::SetOrthographic(false);
+			ImGuizmo::SetDrawlist();
+
+			ImGuizmo::SetRect(ImGui::GetWindowPos().x, ImGui::GetWindowPos().y, ImGui::GetWindowSize().x, ImGui::GetWindowSize().y);
+
+			auto camera = m_Scene->getActiveCameraEntity();
+			const auto& cameraComponent = camera.getComponent<CameraComponent>();
+			glm::mat4 view = glm::inverse(camera.getComponent<TransformComponent>().matrix());
+			glm::mat4 projection = cameraComponent.camera.getProjection();
+
+			auto &transformComp = selectedEntity.getComponent<TransformComponent>();
+			glm::mat4 transformMatrix = transformComp.matrix();
+
+			ImGuizmo::Manipulate(glm::value_ptr(view), glm::value_ptr(projection), static_cast<ImGuizmo::OPERATION>(m_GizmoType), ((m_IsLocalTransform) ? ImGuizmo::MODE::LOCAL : ImGuizmo::MODE::WORLD), glm::value_ptr(transformMatrix));
+			if (ImGuizmo::IsUsing())
+			{
+				glm::vec3 translation, rotation, scale;
+				decomposeTransformationMat(transformMatrix, translation, rotation, scale);
+
+				transformComp.translation = translation;
+
+				glm::vec3 deltaRotation = rotation - transformComp.rotation;
+				transformComp.rotation += deltaRotation;
+
+				transformComp.scale = scale;
+
+
+
+			}
+		}
+
+		ImGui::End();
 
 		ImGui::PopStyleVar();
 

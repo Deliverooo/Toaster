@@ -69,6 +69,39 @@ namespace tst
 		}
 	}
 
+//	void OpenGLRendererAPI::validateShaderProgram(uint32_t programId, const std::string& name)
+//	{
+//#ifdef _DEBUG
+//		GLint isLinked = 0;
+//		glGetProgramiv(programId, GL_LINK_STATUS, &isLinked);
+//		if (isLinked == GL_FALSE) {
+//			GLint maxLength = 0;
+//			glGetProgramiv(programId, GL_INFO_LOG_LENGTH, &maxLength);
+//
+//			std::vector<GLchar> infoLog(maxLength);
+//			glGetProgramInfoLog(programId, maxLength, &maxLength, &infoLog[0]);
+//
+//			TST_CORE_ERROR("Shader program '{0}' failed to link: {1}", name, infoLog.data());
+//		}
+//#endif
+//	}
+//
+//	void OpenGLRendererAPI::validateFramebuffer()
+//	{
+//#ifdef _DEBUG
+//		GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+//		if (status != GL_FRAMEBUFFER_COMPLETE) {
+//			std::string error;
+//			switch (status) {
+//			case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT: error = "INCOMPLETE_ATTACHMENT"; break;
+//			case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT: error = "MISSING_ATTACHMENT"; break;
+//			case GL_FRAMEBUFFER_UNSUPPORTED: error = "UNSUPPORTED"; break;
+//			default: error = "Unknown error " + std::to_string(status); break;
+//			}
+//			TST_CORE_ERROR("Framebuffer incomplete: {0}", error);
+//		}
+//#endif
+//	}
 
 	void OpenGLRendererAPI::enableBackfaceCulling()
 	{

@@ -12,6 +12,7 @@ namespace tst
     {
         m_MaterialProperties = {};
 
+
         m_DiffuseMap  = nullptr;
         m_SpecularMap = nullptr;
         m_NormalMap   = nullptr;
@@ -27,6 +28,8 @@ namespace tst
     {
         if (!shader) { return; }
 
+		static RefPtr<Texture2D> whiteTexture = Texture2D::create(0xffffffff);
+
         shader->uploadVector3f(m_MaterialProperties.ambient, "u_Material.ambient");
         shader->uploadVector3f(m_MaterialProperties.diffuse, "u_Material.diffuse");
         shader->uploadVector3f(m_MaterialProperties.specular, "u_Material.specular");
@@ -34,6 +37,7 @@ namespace tst
         shader->uploadFloat1(m_MaterialProperties.shininess, "u_Material.shininess");
         shader->uploadFloat1(m_MaterialProperties.opacity, "u_Material.opacity");
         shader->uploadFloat1(m_MaterialProperties.metallic, "u_Material.metallic");
+        shader->uploadFloat1(m_MaterialProperties.roughness, "u_Material.roughness");
 
         int textureSlot = 1;
 
@@ -47,7 +51,12 @@ namespace tst
         }
         else
         {
+			// Ensure we always have a valid texture bound even if no diffuse map is set, this was causing OpenGL errors and is undefined behavior
+			// Having a white texture also allows a solid colour to be mixed with the diffuse colour
+			whiteTexture->bind(textureSlot);
+			shader->uploadInt1(textureSlot, "u_Material.diffuseMap");
             shader->uploadBool(false, "u_Material.hasDiffuseMap");
+			textureSlot++;
         }
 
         if (m_SpecularMap)
@@ -59,11 +68,15 @@ namespace tst
         }
         else
         {
+			whiteTexture->bind(textureSlot);
+			shader->uploadInt1(textureSlot, "u_Material.specularMap");
             shader->uploadBool(false, "u_Material.hasSpecularMap");
+			textureSlot++;
         }
 
         if (m_NormalMap)
         {
+            TST_CORE_INFO("Binding Normal Map");
             m_NormalMap->bind(textureSlot);
             shader->uploadInt1(textureSlot, "u_Material.normalMap");
             shader->uploadBool(true, "u_Material.hasNormalMap");
@@ -71,7 +84,10 @@ namespace tst
         }
         else
         {
+            whiteTexture->bind(textureSlot);
+			shader->uploadInt1(textureSlot, "u_Material.normalMap");
             shader->uploadBool(false, "u_Material.hasNormalMap");
+            textureSlot++;
         }
 
         if (m_HeightMap)
@@ -83,9 +99,21 @@ namespace tst
         }
         else
         {
+            whiteTexture->bind(textureSlot);
+            shader->uploadInt1(textureSlot, "u_Material.heightMap");
             shader->uploadBool(false, "u_Material.hasHeightMap");
+            textureSlot++;
         }
     }
+
+    void Material::unbind() const
+    {
+        if (m_DiffuseMap)  m_DiffuseMap->unbind();
+        if (m_SpecularMap) m_SpecularMap->unbind();
+        if (m_NormalMap)   m_NormalMap->unbind();
+		if (m_HeightMap)   m_HeightMap->unbind();
+    }
+
 
     RefPtr<Material> Material::create(const std::string& name)
     {

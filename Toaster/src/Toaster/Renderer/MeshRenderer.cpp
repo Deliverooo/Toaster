@@ -201,7 +201,7 @@ namespace tst
 		const auto& submeshes = mesh->getSubMeshes();
 		const auto& materials = mesh->getMaterials();
 
-		render_data.skyboxTexture->bind(0);
+		render_data.skyboxTexture->bind();
 		render_data.meshShader->uploadInt1(0, "u_Skybox");
 
 		if (submeshes.empty()) {
@@ -228,6 +228,7 @@ namespace tst
 					0
 				);
 
+				material->unbind();
 				RenderCommand::disableBackfaceCulling();
 
 				render_data.stats.drawCallCount++;
@@ -235,10 +236,9 @@ namespace tst
 			}
 		}
 
-		// **CRITICAL FIX**: Properly clean up after mesh rendering
 		mesh->unbind();
-
 		RenderCommand::cleanState();
+
 
 		// Check for any OpenGL errors after mesh rendering
 		RenderCommand::checkError("After MeshRenderer cleanup");

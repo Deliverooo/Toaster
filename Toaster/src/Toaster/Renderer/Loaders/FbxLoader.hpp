@@ -4,11 +4,13 @@
 
 #ifdef TST_ENABLE_FBX
 
+#include "assimp/matrix4x4.h"
 // Forward declarations
 struct aiNode;
 struct aiMesh;
 struct aiScene;
 struct aiMaterial;
+
 enum aiTextureType;
 
 namespace tst
@@ -32,10 +34,22 @@ namespace tst
             std::vector<uint32_t>& indices,
             std::vector<SubMesh>& submeshes);
 
+        void processNode(aiNode* node, const aiScene* scene,
+            std::vector<MeshVertex>& vertices,
+            std::vector<uint32_t>& indices,
+            std::vector<SubMesh>& submeshes,
+            const aiMatrix4x4& parentTransform);
+
         void processMesh(aiMesh* mesh, const aiScene* scene,
             std::vector<MeshVertex>& vertices,
             std::vector<uint32_t>& indices,
             std::vector<SubMesh>& submeshes);
+
+        void processMesh(aiMesh* mesh, const aiScene* scene,
+            std::vector<MeshVertex>& vertices,
+            std::vector<uint32_t>& indices,
+            std::vector<SubMesh>& submeshes,
+            const aiMatrix4x4& transform);
 
         void processMaterials(const aiScene* scene, MaterialLibrary& materials, const std::string& directory);
 

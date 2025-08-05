@@ -64,14 +64,16 @@ namespace tst {
 	class TST_API KeyPressedEvent : public KeyEvent {
 	public:
 
-		KeyPressedEvent(int keycode) : KeyEvent(keycode) {}
+		KeyPressedEvent(int keycode, int repeatCount) : KeyEvent(keycode), m_repeatCount(repeatCount) {}
 
 		EVENT_CLASS_TYPE(KeyPressed);
 
-
+		inline int getRepeatCount() const { return m_repeatCount; }
 		[[nodiscard]] std::string toStr() const override {
 			return std::string("Key Pressed Event -> [" + tstKeyCodeToString(m_keyCode) + "]");
 		}
+	private:
+		int m_repeatCount;
 	};
 
 	class TST_API KeyTypedEvent : public KeyEvent {

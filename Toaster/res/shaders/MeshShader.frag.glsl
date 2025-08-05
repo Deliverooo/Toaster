@@ -1,6 +1,6 @@
 #version 450 core
 
-in vec3 v_WorldPos;
+in vec3 v_FragPos;
 in vec3 v_Normal;
 in vec2 v_TexCoord;
 in vec3 v_Tangent;
@@ -18,14 +18,17 @@ struct Material {
     float shininess;
     float opacity;
     float metallic;
+    float roughness;
     
     sampler2D diffuseMap;
     sampler2D specularMap;
     sampler2D normalMap;
+    sampler2D heightMap;
     
     bool hasDiffuseMap;
     bool hasSpecularMap;
     bool hasNormalMap;
+    bool hasHeightMap;
 };
 
 struct Light {
@@ -37,108 +40,141 @@ struct Light {
 
 #define MAX_LIGHTS 32
 
-// Ensure these are declared BEFORE any functions that use them
 uniform int u_LightCount;
 uniform Material u_Material;
 uniform Light u_Lights[MAX_LIGHTS];
 
 out vec4 FragColour;
 
-vec3 calculateNormal()
-{
-    vec3 normal = normalize(v_Normal);
+#define PI 3.14159265359
+
+// Trowbridge-Reitz GGX normal distribution function
+float DistributionGGX(vec3 N, vec3 H, float roughness) {
+    float a = roughness * roughness;
+    float a2 = a * a;
+    float NdotH = max(dot(N, H), 0.0);
+    float NdotH2 = NdotH * NdotH;
     
-    if (u_Material.hasNormalMap)
-    {
-        vec3 normalMap = texture(u_Material.normalMap, v_TexCoord).rgb * 2.0 - 1.0;
-        vec3 T = normalize(v_Tangent);
-        vec3 B = normalize(v_Bitangent);
-        vec3 N = normalize(v_Normal);
-        mat3 TBN = mat3(T, B, N);
-        normal = normalize(TBN * normalMap);
-    }
+    float denom = (NdotH2 * (a2 - 1.0) + 1.0);
+    denom = PI * denom * denom;
     
-    return normal;
+    return a2 / max(denom, 0.0000001);
 }
 
-vec3 calculateLighting(vec3 normal, vec3 viewDir, vec3 albedo, vec3 specularColour)
-{
-    vec3 totalDiffuse = vec3(0.0);
-    vec3 totalSpecular = vec3(0.0);
+// Smith's method for geometric shadowing function
+float GeometrySchlickGGX(float NdotV, float roughness) {
+    float r = (roughness + 1.0);
+    float k = (r * r) / 8.0;
     
-    // Clamp light count to prevent shader errors
-    int lightCount = min(u_LightCount, MAX_LIGHTS);
-    
-    for (int i = 0; i < lightCount; i++)
-    {        
-        vec3 lightDir = normalize(u_Lights[i].position - v_WorldPos);
-        
-        float distance = length(u_Lights[i].position - v_WorldPos);
-        float attenuation = 1.0 / (1.0 + 0.014 * distance + 0.0007 * distance * distance);
-        
-        float NdotL = max(dot(normal, lightDir), 0.0);
-
-        vec3 diffuse = u_Lights[i].colour * u_Lights[i].intensity * NdotL * attenuation;
-        totalDiffuse += diffuse;
-        
-        // Specular lighting (Blinn-Phong)
-        if (NdotL > 0.0 && u_Material.shininess > 0.0)
-        {
-            vec3 halfwayDir = normalize(lightDir + viewDir);
-            float NdotH = max(dot(normal, halfwayDir), 0.0);
-            float spec = pow(NdotH, max(u_Material.shininess, 1.0));
-
-            vec3 specular = u_Lights[i].colour * u_Lights[i].intensity * spec * attenuation;
-            totalSpecular += specular;
-        }
-    }
-    
-    return totalDiffuse * albedo + totalSpecular * specularColour;
+    float denom = NdotV * (1.0 - k) + k;
+    return NdotV / max(denom, 0.0000001);
 }
 
-void main()
-{  
-    vec3 normal = calculateNormal();
-    vec3 viewDir = normalize(u_ViewPos - v_WorldPos);
+float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness) {
+    float NdotV = max(dot(N, V), 0.0);
+    float NdotL = max(dot(N, L), 0.0);
+    float ggx2 = GeometrySchlickGGX(NdotV, roughness);
+    float ggx1 = GeometrySchlickGGX(NdotL, roughness);
     
-    // Material colours
+    return ggx1 * ggx2;
+}
+
+// Fresnel-Schlick approximation
+vec3 FresnelSchlick(float cosTheta, vec3 F0) {
+    return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+}
+
+// Improved normal mapping
+vec3 getNormalFromMap() {
+    if (!u_Material.hasNormalMap) {
+        return normalize(v_Normal);
+    }
+    
+    vec3 tangentNormal = texture(u_Material.normalMap, v_TexCoord).xyz * 2.0 - 1.0;
+    
+    vec3 N = normalize(v_Normal);
+    vec3 T = normalize(v_Tangent);
+    vec3 B = normalize(v_Bitangent);
+    mat3 TBN = mat3(T, B, N);
+    
+    return normalize(TBN * tangentNormal);
+}
+
+// Tone mapping function
+vec3 ACESFilm(vec3 x) {
+    float a = 2.51;
+    float b = 0.03;
+    float c = 2.43;
+    float d = 0.59;
+    float e = 0.14;
+    return clamp((x*(a*x+b))/(x*(c*x+d)+e), 0.0, 1.0);
+}
+
+void main() {
     vec3 albedo = u_Material.diffuse;
+    float metallic = u_Material.metallic;
+    float roughness = u_Material.roughness;
+    float ao = 1.0;
+    
     float transparency = u_Material.opacity;
-   
-    if (u_Material.hasDiffuseMap)
-    {
-        vec4 texColour = texture(u_Material.diffuseMap, v_TexCoord);
-        albedo *= texColour.rgb;
-        transparency *= texColour.a;
-    }
+    if (u_Material.hasDiffuseMap) {
+        vec4 diffuseSample = texture(u_Material.diffuseMap, v_TexCoord);
+        albedo *= diffuseSample.rgb;
 
-    vec3 specularColour = u_Material.specular;
-    if (u_Material.hasSpecularMap)
-    {
-        specularColour *= texture(u_Material.specularMap, v_TexCoord).rgb;
+        transparency *= diffuseSample.a;
     }
-
-    // Metallic reflections
-    vec3 metallicColour = vec3(0.0);
-    if (u_Material.metallic > 0.0)
-    {
-        vec3 I = normalize(v_WorldPos - u_ViewPos);
-        vec3 R = reflect(I, normal);
-        vec3 skyboxColour = texture(u_Skybox, R).rgb;
-        metallicColour = skyboxColour * u_Material.metallic;
+    
+    if (u_Material.hasSpecularMap) {
+        vec3 specularSample = texture(u_Material.specularMap, v_TexCoord).rgb;
+        metallic = specularSample.r;
+        roughness = specularSample.g;
+        ao = specularSample.b;
     }
-
+    
+    vec3 N = getNormalFromMap();
+    vec3 V = normalize(u_ViewPos - v_FragPos);
+    
+    // Calculate reflectance at normal incidence
+    vec3 F0 = vec3(0.04);
+    F0 = mix(F0, albedo, metallic);
+    
+    // Reflectance equation
+    vec3 Lo = vec3(0.0);
+    for (int i = 0; i < u_LightCount; i++) {
+        // Calculate per-light radiance
+        vec3 L = normalize(u_Lights[i].position - v_FragPos);
+        vec3 H = normalize(V + L);
+        float distance = length(u_Lights[i].position - v_FragPos);
+        float attenuation = 1.0 / (distance * distance);
+        vec3 radiance = u_Lights[i].colour * u_Lights[i].intensity * attenuation;
+        
+        // Cook-Torrance BRDF
+        float NDF = DistributionGGX(N, H, roughness);
+        float G = GeometrySmith(N, V, L, roughness);
+        vec3 F = FresnelSchlick(max(dot(H, V), 0.0), F0);
+        
+        vec3 kS = F;
+        vec3 kD = vec3(1.0) - kS;
+        kD *= 1.0 - metallic;
+        
+        vec3 numerator = NDF * G * F;
+        float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001;
+        vec3 specular = numerator / denominator;
+        
+        // Add to outgoing radiance Lo
+        float NdotL = max(dot(N, L), 0.0);
+        Lo += (kD * albedo / PI + specular) * radiance * NdotL;
+    }
+    
     // Ambient lighting
-    vec3 ambient = u_Material.ambient * albedo * 0.1;
+    vec3 ambient = vec3(0.03) * albedo * ao;
+    vec3 colour = ambient + Lo;
     
-    // Calculate lighting
-    vec3 lighting = calculateLighting(normal, viewDir, albedo, specularColour);
+    // HDR tonemapping
+    colour = ACESFilm(colour);
     
-    // Emissive
-    vec3 emissive = u_Material.emissive;
+    // Gamma correction
+    colour = pow(colour, vec3(1.0/2.2));
     
-    // Final colour
-    vec3 result = ambient + lighting + metallicColour + emissive;
-    
-    FragColour = vec4(result, transparency);
+    FragColour = vec4(colour, transparency);
 }

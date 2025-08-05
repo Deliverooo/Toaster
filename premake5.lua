@@ -21,6 +21,7 @@ IncludeDir["Entt"] = "dependencies/Entt/include"
 IncludeDir["TinyObjLoader"] = "dependencies/Tinyobjloader/include"
 IncludeDir["Assimp"] = "dependencies/Assimp/include"
 IncludeDir["YamlCpp"] = "dependencies/YamlCpp/include"
+IncludeDir["ImGuizmo"] = "dependencies/ImGuizmo"
 
 include "dependencies/GLFW/"
 include "dependencies/Glad/"
@@ -32,6 +33,7 @@ include "dependencies/Tinyobjloader/"
 include "dependencies/Assimp/"
 include "dependencies/YamlCpp/"
 
+
 workingDirectory = (os.getcwd())
 
 -- Update the Toaster project configuration
@@ -39,7 +41,7 @@ project "Toaster"
 	location "Toaster"
 	kind "StaticLib"
 	language "C++"
-	cppdialect "C++20"
+	cppdialect "C++23"
 	staticruntime "On"
 
 	characterset ("Unicode")
@@ -54,6 +56,8 @@ project "Toaster"
 		"%{prj.name}/src/**.h",
 		"%{prj.name}/src/**.hpp",
 		"%{prj.name}/src/**.cpp",
+		"dependencies/ImGuizmo/ImGuizmo.h",
+		"dependencies/ImGuizmo/ImGuizmo.cpp",
 	}
 
 	includedirs{
@@ -68,6 +72,7 @@ project "Toaster"
 		"%{IncludeDir.TinyObjLoader}",
 		"%{IncludeDir.Assimp}",
 		"%{IncludeDir.YamlCpp}",
+		"%{IncludeDir.ImGuizmo}",
 		"C:/VulkanSDK/1.4.313.2/Include",
 	}
 
@@ -89,6 +94,9 @@ project "Toaster"
 		"dwmapi.lib",
 	}
 
+	filter "files:dependencies/ImGuizmo/**.cpp"
+		flags { "NoPCH" }
+
 	-- Rest of the configuration remains the same
 	
 	filter "system:windows"
@@ -100,6 +108,7 @@ project "Toaster"
 			"GLFW_INCLUDE_NONE",
 			"TST_ENABLE_FBX",
 			"YAML_CPP_STATIC_DEFINE",
+			"GLM_ENABLE_EXPERIMENTAL",
 
 			"TST_CORE_RESOURCE_DIR= \"" .. os.getcwd() .. "/Toaster/res\"",
 			--"ASSIMP_BUILD_NO_EXPORT",
@@ -129,7 +138,7 @@ project "SandBox"
 	location "SandBox"
 	kind "ConsoleApp"
 	language "C++"
-	cppdialect "C++20"
+	cppdialect "C++23"
 	staticruntime "On"
 	
 	characterset ("Unicode")
@@ -150,17 +159,22 @@ project "SandBox"
 		"%{IncludeDir.glm}",
 		"%{IncludeDir.ImGui}",
 		"%{IncludeDir.Entt}",
+		"%{IncludeDir.ImGuizmo}",
 	}
 
 	links{
 		"Toaster",
 	}
+
+	filter "files:dependencies/ImGuizmo/**.cpp"
+		flags { "NoPCH" }
 	
 	filter "system:windows"
 		systemversion "latest"
 
 		defines{
 			"TST_PLATFORM_WINDOWS",
+			"GLM_ENABLE_EXPERIMENTAL",
 			"TST_SANDBOX_RESOURCE_DIR= \"" .. os.getcwd() .. "/SandBox/res\"",
 		}
 
@@ -186,7 +200,7 @@ project "ToasterEditor"
 	location "ToasterEditor"
 	kind "ConsoleApp"
 	language "C++"
-	cppdialect "C++20"
+	cppdialect "C++23"
 	staticruntime "On"
 	
 	characterset ("Unicode")
@@ -207,11 +221,15 @@ project "ToasterEditor"
 		"%{IncludeDir.glm}",
 		"%{IncludeDir.ImGui}",
 		"%{IncludeDir.Entt}",
+		"%{IncludeDir.ImGuizmo}",
 	}
 
 	links{
 		"Toaster",
 	}
+
+	filter "files:dependencies/ImGuizmo/**.cpp"
+		flags { "NoPCH" }
 	
 	filter "system:windows"
 		systemversion "latest"

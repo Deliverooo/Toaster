@@ -2,7 +2,89 @@
 #include "SceneSerializer.hpp"
 
 #include <yaml-cpp/yaml.h>
+#include <yaml-cpp/node/convert.h>
+#include <yaml-cpp/emitter.h>
 #include "Entity.hpp"
+
+namespace YAML {
+
+	template<>
+	struct convert<glm::vec2>
+	{
+		static Node encode(const glm::vec2& rhs)
+		{
+			Node node;
+			node.push_back(rhs.x);
+			node.push_back(rhs.y);
+			node.SetStyle(EmitterStyle::Flow);
+			return node;
+		}
+
+		static bool decode(const Node& node, glm::vec2& rhs)
+		{
+			if (!node.IsSequence() || node.size() != 2)
+				return false;
+
+			rhs.x = node[0].as<float>();
+			rhs.y = node[1].as<float>();
+			return true;
+		}
+	};
+
+	template<>
+	struct convert<glm::vec3>
+	{
+		static Node encode(const glm::vec3& rhs)
+		{
+			Node node;
+			node.push_back(rhs.x);
+			node.push_back(rhs.y);
+			node.push_back(rhs.z);
+			node.SetStyle(EmitterStyle::Flow);
+			return node;
+		}
+
+		static bool decode(const Node& node, glm::vec3& rhs)
+		{
+			if (!node.IsSequence() || node.size() != 3)
+				return false;
+
+			rhs.x = node[0].as<float>();
+			rhs.y = node[1].as<float>();
+			rhs.z = node[2].as<float>();
+			return true;
+		}
+	};
+
+	template<>
+	struct convert<glm::vec4>
+	{
+		static Node encode(const glm::vec4& rhs)
+		{
+			Node node;
+			node.push_back(rhs.x);
+			node.push_back(rhs.y);
+			node.push_back(rhs.z);
+			node.push_back(rhs.w);
+			node.SetStyle(EmitterStyle::Flow);
+			return node;
+		}
+
+		static bool decode(const Node& node, glm::vec4& rhs)
+		{
+			if (!node.IsSequence() || node.size() != 4)
+				return false;
+
+			rhs.x = node[0].as<float>();
+			rhs.y = node[1].as<float>();
+			rhs.z = node[2].as<float>();
+			rhs.w = node[3].as<float>();
+			return true;
+		}
+	};
+
+
+}
 
 namespace tst
 {
@@ -37,7 +119,7 @@ namespace tst
 	static void serializeEntity(YAML::Emitter& out, Entity entity)
 	{
 		out << YAML::BeginMap;
-		out << YAML::Key << "Entity" << YAML::Value << "Id";
+		out << YAML::Key << "Entity" << YAML::Value << "12241557773261097666";
 
 		if (entity.hasComponent<TagComponent>())
 		{
@@ -64,6 +146,7 @@ namespace tst
 			out << YAML::Key << "MeshRendererComponent" << YAML::BeginMap;
 			auto& meshRenderer = entity.getComponent<MeshRendererComponent>();
 			out << YAML::Key << "Colour" << YAML::Value << meshRenderer.colour;
+			out << YAML::Key << "Filepath" << YAML::Value << meshRenderer.mesh->getFilepath();
 			out << YAML::EndMap;
 		}
 		if (entity.hasComponent<TransformComponent>())
@@ -73,6 +156,16 @@ namespace tst
 			out << YAML::Key << "Translation" << YAML::Value << transform.translation;
 			out << YAML::Key << "Rotation" << YAML::Value << transform.rotation;
 			out << YAML::Key << "Scale" << YAML::Value << transform.scale;
+			out << YAML::EndMap;
+		}
+		if (entity.hasComponent<LightComponent>())
+		{
+			out << YAML::Key << "LightComponent" << YAML::BeginMap;
+			auto& light = entity.getComponent<LightComponent>();
+			out << YAML::Key << "Type" << YAML::Value << static_cast<int>(light.light.type);
+			out << YAML::Key << "Colour" << YAML::Value << light.light.colour;
+			out << YAML::Key << "Intensity" << YAML::Value << light.light.intensity;
+			out << YAML::Key << "Enabled" << YAML::Value << light.enabled;
 			out << YAML::EndMap;
 		}
 
@@ -124,9 +217,101 @@ namespace tst
 		std::ofstream file(filepath);
 		file << out.c_str();
 	}
-	void SceneSerializer::deserialize(const std::string& filepath)
+	bool SceneSerializer::deserialize(const std::string& filepath)
 	{
-		// Deserialization logic goes here
+		std::ifstream file(filepath);
+		std::stringstream strStream;
+		strStream << file.rdbuf();
+
+		YAML::Node data = YAML::Load(strStream.str());
+		if (!data["Scene"])
+		{
+			TST_CORE_ERROR("Invalid scene file format: {0}", filepath);
+			return false;
+		}
+		std::string sceneName = data["Scene"].as<std::string>();
+		TST_CORE_INFO("Deserializing scene {0}", sceneName);
+
+		auto entities = data["Entities"];
+
+		if (entities)
+		{
+			for (const auto& entity : entities)
+			{
+				uint64_t uuId = entity["Entity"].as<uint64_t>();
+
+				std::string name;
+				auto& tagComponent = entity["TagComponent"];
+				if (tagComponent)
+				{
+					name = tagComponent["Tag"].as<std::string>();
+				}
+
+				Entity deserializedEntity = m_Scene->createEntity(name);
+
+				auto transformComp = entity["TransformComponent"];
+				if (transformComp)
+				{
+					auto& tc = deserializedEntity.getComponent<TransformComponent>();
+					tc.translation = transformComp["Translation"].as<glm::vec3>();
+					tc.rotation = transformComp["Rotation"].as<glm::vec3>();
+					tc.scale = transformComp["Scale"].as<glm::vec3>();
+				}
+
+				auto spriteRendererComp = entity["SpriteRendererComponent"];
+				if (spriteRendererComp)
+				{
+					auto& src = deserializedEntity.addComponent<SpriteRendererComponent>();
+					src.colour = spriteRendererComp["Colour"].as<glm::vec4>();
+					std::string texturePath = spriteRendererComp["Texture"].as<std::string>();
+					if (texturePath != "NULL")
+					{
+						src.texture = Texture2D::create(texturePath);
+					}
+				}
+
+				auto meshRendererComp = entity["MeshRendererComponent"];
+				if (meshRendererComp)
+				{
+					auto& mrc = deserializedEntity.addComponent<MeshRendererComponent>();
+					mrc.colour = meshRendererComp["Colour"].as<glm::vec4>();
+					std::string meshPath = meshRendererComp["Filepath"].as<std::string>();
+					if (!meshPath.empty() || meshPath != "Null")
+					{
+						mrc.mesh = Mesh::create(meshPath);
+					}
+				}
+
+				auto lightComp = entity["LightComponent"];
+				if (lightComp)
+				{
+					auto& lc = deserializedEntity.addComponent<LightComponent>();
+					lc.light.type = static_cast<Light::Type>(lightComp["Type"].as<int>());
+					lc.light.colour = lightComp["Colour"].as<glm::vec3>();
+					lc.light.intensity = lightComp["Intensity"].as<float>();
+					lc.enabled = lightComp["Enabled"].as<bool>();
+				}
+
+				auto cameraComp = entity["CameraComponent"];
+				if (cameraComp)
+				{
+					auto& cc = deserializedEntity.addComponent<CameraComponent>();
+					auto& camera = cc.camera;
+					auto cameraNode = cameraComp["Camera"];
+					camera.setProjectionType(static_cast<SceneCamera::ProjectionType>(cameraNode["ProjectionType"].as<int>()));
+					camera.setPerspectiveFov(cameraNode["PerspectiveFOV"].as<float>());
+					camera.setPerspectiveNear(cameraNode["PerspectiveNear"].as<float>());
+					camera.setPerspectiveFar(cameraNode["PerspectiveFar"].as<float>());
+					camera.setOrthoSize(cameraNode["OrthoSize"].as<float>());
+					camera.setOrthoNear(cameraNode["OrthoNear"].as<float>());
+					camera.setOrthoFar(cameraNode["OrthoFar"].as<float>());
+					cc.active = cameraComp["Active"].as<bool>();
+					cc.fixedAspect = cameraComp["FixedAspect"].as<bool>();
+				}
+
+			}
+		}
+		return true;
 	}
 	void SceneSerializer::serializeRuntime(const std::string& filepath)
 	{

@@ -30,6 +30,7 @@ add_subdirectory(Entt)
 add_subdirectory(Tinyobjloader)
 add_subdirectory(ImGui)
 add_subdirectory(Assimp)
+add_subdirectory(YamlCpp)
 
 
 if(TARGET glfw)
@@ -66,6 +67,10 @@ endif()
 
 if(TARGET assimp)
     set_target_properties(assimp PROPERTIES FOLDER "dependencies")
+endif()
+
+if(TARGET YAML_CPP)
+    set_target_properties(YAML_CPP PROPERTIES FOLDER "dependencies")
 endif()
 
 if(TARGET zlibstatic)

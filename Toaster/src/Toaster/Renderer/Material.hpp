@@ -47,14 +47,15 @@ namespace tst
 		void setName(const std::string& name) { m_Name = name; }
 		void setMaterialProperties(const MaterialProperties& materialProperties) { m_MaterialProperties = materialProperties; }
 
-		void setAmbient(const glm::vec3& ambient)	{ m_MaterialProperties.ambient = ambient;	  }
-		void setDiffuse(const glm::vec3& diffuse)	{ m_MaterialProperties.diffuse = diffuse;	  }
-		void setSpecular(const glm::vec3& specular) { m_MaterialProperties.specular = specular;	  }
-		void setEmissive(const glm::vec3& emissive) { m_MaterialProperties.emissive = emissive;	  }
-		void setShininess(float shininess)			{ m_MaterialProperties.shininess = shininess; }
-		void setOpacity(float opacity)				{ m_MaterialProperties.opacity = opacity;	  }
+		void setAmbient(const glm::vec3& ambient)	  { m_MaterialProperties.ambient = ambient;	  }
+		void setDiffuse(const glm::vec3& diffuse)	  { m_MaterialProperties.diffuse = diffuse;	  }
+		void setSpecular(const glm::vec3& specular)   { m_MaterialProperties.specular = specular;	  }
+		void setEmissive(const glm::vec3& emissive)   { m_MaterialProperties.emissive = emissive;	  }
+		void setShininess(float shininess)			  { m_MaterialProperties.shininess = shininess; }
+		void setOpacity(float opacity)				  { m_MaterialProperties.opacity = opacity;	  }
 		void setBackfaceCulling(bool backfaceCulling) { m_MaterialProperties.backfaceCulling = backfaceCulling; }
-		void setMetallic(float metallic)			{ m_MaterialProperties.metallic = metallic; }
+		void setMetallic(float metallic)			  { m_MaterialProperties.metallic = metallic; }
+		void setRoughness(float roughness)			  { m_MaterialProperties.roughness = roughness; }
 
 
 		void setDiffuseMap(const RefPtr<Texture2D>& diffuseMap)  { m_DiffuseMap  = diffuseMap;  }
@@ -64,6 +65,7 @@ namespace tst
 
 		bool hasTexture() const;
 		void bind(const RefPtr<Shader>& shader) const;
+		void unbind() const;
 
 		static RefPtr<Material> create(const std::string& name = "DefaultMat");
 		static RefPtr<Material> createDefault();

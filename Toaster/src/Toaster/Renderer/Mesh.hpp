@@ -82,6 +82,8 @@ namespace tst
         const std::vector<SubMesh>& getSubMeshes() const { return m_submeshes; }
         const MaterialLibrary& getMaterials() const { return m_materials; }
 
+        std::string getFilepath() const { return ((m_Filepath.has_value()) ? m_Filepath.value() : "Null"); }
+
         uint32_t getVertexCount() const { return static_cast<uint32_t>(m_vertices.size()); }
         uint32_t getIndexCount() const { return static_cast<uint32_t>(m_indices.size()); }
 
@@ -111,6 +113,7 @@ namespace tst
         RefPtr<VertexBuffer> m_vertexBuffer;
         RefPtr<IndexBuffer> m_indexBuffer;
 
+        std::optional<std::string> m_Filepath;
 
         static std::unordered_map<MeshFormat, ScopedPtr<MeshLoader>> s_loaders;
         static bool s_loadersInitialized;

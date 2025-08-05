@@ -126,7 +126,7 @@ namespace tst
 		//glGetIntegerv(GL_CURRENT_PROGRAM, &currentProgram);
 		//TST_CORE_INFO("SkyBox: Current shader before bind: {}", currentProgram);
 
-		render_data.viewProjectionMatrix = camera.getProjection() * glm::mat4(glm::mat3(view));
+		render_data.viewProjectionMatrix = camera.getProjection() * glm::mat4(glm::mat3(glm::inverse(view)));
 
 		RenderCommand::setDepthFunc(DepthFunc::LessOrEqual);
 		RenderCommand::checkError("SkyBox: After setDepthFunc");

@@ -54,15 +54,25 @@ namespace tst
         std::vector<uint32_t>& indices,
         std::vector<SubMesh>& submeshes)
     {
+        processNode(node, scene, vertices, indices, submeshes, aiMatrix4x4());
+    }
+
+    void FbxLoader::processNode(aiNode* node, const aiScene* scene,
+        std::vector<MeshVertex>& vertices,
+        std::vector<uint32_t>& indices,
+        std::vector<SubMesh>& submeshes, const aiMatrix4x4& parentTransform)
+    {
+        aiMatrix4x4 nodeTransform = parentTransform * node->mTransformation;
+
         // Process all meshes in this node
         for (unsigned int i = 0; i < node->mNumMeshes; i++) {
             aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
-            processMesh(mesh, scene, vertices, indices, submeshes);
+            processMesh(mesh, scene, vertices, indices, submeshes, nodeTransform);
         }
 
         // Process child nodes
         for (unsigned int i = 0; i < node->mNumChildren; i++) {
-            processNode(node->mChildren[i], scene, vertices, indices, submeshes);
+            processNode(node->mChildren[i], scene, vertices, indices, submeshes, nodeTransform);
         }
     }
 
@@ -80,6 +90,7 @@ namespace tst
             MeshVertex vertex;
 
             // Position
+
             vertex.position = glm::vec3(mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z);
 
             // Normal
@@ -105,6 +116,66 @@ namespace tst
         }
 
         // Process indices
+        for (unsigned int i = 0; i < mesh->mNumFaces; i++) {
+            aiFace face = mesh->mFaces[i];
+            for (unsigned int j = 0; j < face.mNumIndices; j++) {
+                indices.push_back(face.mIndices[j] + static_cast<uint32_t>(vertices.size()) - mesh->mNumVertices);
+            }
+        }
+
+        submesh.indexCount = static_cast<uint32_t>(indices.size()) - submesh.indexOffset;
+        submeshes.push_back(submesh);
+    }
+
+    void FbxLoader::processMesh(aiMesh* mesh, const aiScene* scene,
+        std::vector<MeshVertex>& vertices,
+        std::vector<uint32_t>& indices,
+        std::vector<SubMesh>& submeshes,
+        const aiMatrix4x4& transform)
+    {
+        SubMesh submesh;
+        submesh.indexOffset = static_cast<uint32_t>(indices.size());
+        submesh.materialIndex = mesh->mMaterialIndex;
+
+        // Calculate the normal transformation matrix (inverse transpose for normals)
+        aiMatrix4x4 normalMatrix = transform;
+        normalMatrix.Inverse().Transpose();
+        aiMatrix3x3 normalMatrix3x3(normalMatrix);
+
+        // Process vertices
+        for (unsigned int i = 0; i < mesh->mNumVertices; i++) {
+            MeshVertex vertex;
+
+            // Transform position to world space
+            aiVector3D worldPos = transform * mesh->mVertices[i];
+            vertex.position = glm::vec3(worldPos.x, worldPos.y, worldPos.z);
+
+            // Transform normal to world space
+            if (mesh->HasNormals()) {
+                aiVector3D worldNormal = (normalMatrix3x3 * mesh->mNormals[i]).Normalize();
+                vertex.normal = glm::vec3(worldNormal.x, worldNormal.y, worldNormal.z);
+            }
+
+            // Texture coordinates (unchanged)
+            if (mesh->mTextureCoords[0]) {
+                vertex.textureCoords = glm::vec2(mesh->mTextureCoords[0][i].x, mesh->mTextureCoords[0][i].y);
+            }
+            else {
+                vertex.textureCoords = glm::vec2(0.0f, 0.0f);
+            }
+
+            // Transform tangent and bitangent to world space
+            if (mesh->HasTangentsAndBitangents()) {
+                aiVector3D worldTangent = (normalMatrix3x3 * mesh->mTangents[i]).Normalize();
+                aiVector3D worldBitangent = (normalMatrix3x3 * mesh->mBitangents[i]).Normalize();
+                vertex.tangent = glm::vec3(worldTangent.x, worldTangent.y, worldTangent.z);
+                vertex.bitangent = glm::vec3(worldBitangent.x, worldBitangent.y, worldBitangent.z);
+            }
+
+            vertices.push_back(vertex);
+        }
+
+        // Process indices (unchanged)
         for (unsigned int i = 0; i < mesh->mNumFaces; i++) {
             aiFace face = mesh->mFaces[i];
             for (unsigned int j = 0; j < face.mNumIndices; j++) {
@@ -148,7 +219,9 @@ namespace tst
 
             int backfaceCulling = 0;
             mat->Get(AI_MATKEY_TWOSIDED, backfaceCulling);
-            material->setBackfaceCulling(backfaceCulling);
+
+            std::string nameStr(name.C_Str());
+            if (nameStr.contains("Outline") || nameStr.contains("outline") || backfaceCulling) { material->setBackfaceCulling(true); }
 
             // Load textures (now supports embedded textures)
             loadMaterialTextures(mat, aiTextureType_DIFFUSE, material, dir);
