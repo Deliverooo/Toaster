@@ -7,14 +7,12 @@ A simple 3d Graphics Engine written using C++20.
 > As of now the project can only support Windows, although it is planned to support Linux and MacOS in the future.
 
 ## Features
-- Basic rendering capabilities
+- Basic 3D Pbr rendering capabilities
 - Scene management
 - Entity-component system
-- Model loading and rendering
-- Texture loading and rendering
-- Basic lighting support
-- Camera system
-- Input handling
+- Scene serialization and deserialization
+- Model and material loading
+- Lighting system
 - Native C++ Scripting support
 
 planned features:
@@ -30,9 +28,9 @@ planned features:
 
 
 <p float="left" width=25%> 
-	<img src="https://github.com/Deliverooo/Toaster/blob/main/examples/images/KrustyKrab.png" width=25%>
+	<img src="https://github.com/Deliverooo/Toaster/blob/main/examples/images/GizmoLight.png" width=25%>
 	<img src="https://github.com/Deliverooo/Toaster/blob/main/examples/images/RayTracing.png" width=25%>
-	<img src="https://github.com/Deliverooo/Toaster/blob/main/examples/images/2DRendering.png" width=25%>
+	<img src="https://github.com/Deliverooo/Toaster/blob/main/examples/images/PbrPlankton.png" width=25%>
 	<img src="https://github.com/Deliverooo/Toaster/blob/main/examples/images/Ts.png" width=25%>
 </p>
 
