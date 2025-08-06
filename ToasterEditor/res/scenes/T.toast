@@ -4,44 +4,36 @@ Entities:
     TagComponent:
       Tag: light
     TransformComponent:
-      Translation: [-1.7990158, 1.482553, -3.7122314]
+      Translation: [-5.936115, 3.5841088, 2.8528504]
       Rotation: [0, 0, 0]
       Scale: [1, 1, 1]
     LightComponent:
-      Type: 0
+      Type: 1
       Colour: [1, 1, 1]
-      Intensity: 6.286
+      Intensity: 4
+      Constant: 1
+      Linear: 0.09
+      Quadratic: 0.032
+      InnerCone: 40
+      OuterOffset: 0.1
       Enabled: true
   - Entity: 12241557773261097666
     TagComponent:
       Tag: light
     TransformComponent:
-      Translation: [3.8, 4.2, -4.3]
-      Rotation: [0, 0, 0]
-      Scale: [1, 1, 1]
+      Translation: [0.88767225, 2.9751918, 2.8764458]
+      Rotation: [1.6743937, 0, 0]
+      Scale: [2.7619348, 0.9999944, 0.8809826]
     LightComponent:
-      Type: 0
+      Type: 2
       Colour: [1, 1, 1]
-      Intensity: 10.293
+      Intensity: 1
+      Constant: 1
+      Linear: 0.032
+      Quadratic: 0.09
+      InnerCone: 41.75
+      OuterOffset: 0.75
       Enabled: true
-  - Entity: 12241557773261097666
-    TagComponent:
-      Tag: entity
-    TransformComponent:
-      Translation: [0, 0, -9.9]
-      Rotation: [0, -3.2, 0]
-      Scale: [1, 1, 1]
-    CameraComponent:
-      Camera:
-        ProjectionType: 0
-        PerspectiveFOV: 90
-        PerspectiveNear: 0.1
-        PerspectiveFar: 200
-        OrthoSize: 10
-        OrthoNear: -1
-        OrthoFar: 0.1
-      Active: true
-      FixedAspect: false
   - Entity: 12241557773261097666
     TagComponent:
       Tag: entity
@@ -50,5 +42,5 @@ Entities:
       Filepath: C:\Users\oocon\OneDrive\Desktop\blender dev log\t.fbx
     TransformComponent:
       Translation: [0, 0, 0]
-      Rotation: [3.1415925, 0.115440264, 3.1415923]
+      Rotation: [0, 0, 0]
       Scale: [0.1, 0.1, 0.1]

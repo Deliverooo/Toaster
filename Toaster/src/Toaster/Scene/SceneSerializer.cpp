@@ -165,6 +165,11 @@ namespace tst
 			out << YAML::Key << "Type" << YAML::Value << static_cast<int>(light.light.type);
 			out << YAML::Key << "Colour" << YAML::Value << light.light.colour;
 			out << YAML::Key << "Intensity" << YAML::Value << light.light.intensity;
+			out << YAML::Key << "Constant" << YAML::Value << light.light.constant;
+			out << YAML::Key << "Linear" << YAML::Value << light.light.linear;
+			out << YAML::Key << "Quadratic" << YAML::Value << light.light.quadratic;
+			out << YAML::Key << "InnerCone" << YAML::Value << light.light.innerCone;
+			out << YAML::Key << "OuterOffset" << YAML::Value << light.light.outerOffset;
 			out << YAML::Key << "Enabled" << YAML::Value << light.enabled;
 			out << YAML::EndMap;
 		}
@@ -289,7 +294,13 @@ namespace tst
 					lc.light.type = static_cast<Light::Type>(lightComp["Type"].as<int>());
 					lc.light.colour = lightComp["Colour"].as<glm::vec3>();
 					lc.light.intensity = lightComp["Intensity"].as<float>();
+					lc.light.constant = lightComp["Constant"].as<float>();
+					lc.light.linear = lightComp["Linear"].as<float>();
+					lc.light.quadratic = lightComp["Quadratic"].as<float>();
+					lc.light.innerCone = lightComp["InnerCone"].as<float>();
+					lc.light.outerOffset = lightComp["OuterOffset"].as<float>();
 					lc.enabled = lightComp["Enabled"].as<bool>();
+
 				}
 
 				auto cameraComp = entity["CameraComponent"];

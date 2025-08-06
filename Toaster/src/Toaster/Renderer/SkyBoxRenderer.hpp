@@ -12,6 +12,7 @@ namespace tst {
 		static void terminate() noexcept;
 
 		static void render(const Camera& camera, const glm::mat4& view);
+		static void render(const EditorCamera& camera);
 
 		static void setSkyboxTexture(const RefPtr<Texture3D>& texture);
 

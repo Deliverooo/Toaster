@@ -3,19 +3,12 @@
 
 #include "glm/ext/matrix_clip_space.hpp"
 #include "glm/ext/matrix_transform.hpp"
+#include "Toaster/Core/Input.hpp"
+#include "Toaster/Core/KeyCodes.hpp"
+#include "Toaster/Core/MouseCodes.hpp"
 
 namespace tst
 {
-
-	//constexpr glm::mat4 iso(const float size, const float zNear, const float zFar)
-	//{
-	//	glm::mat4 projection = glm::ortho(-size, size, -size, size, zNear, zFar);
-	//	projection[0][0] = 1.0f / (size * 2.0f);
-	//	projection[1][1] = 1.0f / (size * 2.0f);
-	//	projection[2][2] = 1.0f / (zFar - zNear);
-	//	projection[3][3] = 1.0f;
-	//	return projection;
-	//}
 
 	SceneCamera::SceneCamera() : Camera()
 	{
@@ -61,6 +54,135 @@ namespace tst
 
 		}
 	}
+
+
+	EditorCamera::EditorCamera(float fov, float aspect, float zNear, float zFar) : Camera(glm::perspective(glm::radians(fov), aspect, zNear, zFar)), 
+		m_fov(fov), m_aspect(aspect), m_zNear(zNear), m_zFar(zFar)
+	{
+		recalculateViewMatrix();
+	}
+
+	void EditorCamera::onUpdate(DeltaTime dt)
+	{
+		static glm::vec2 lastMousePos = { Input::getMouseX(), Input::getMouseY() };
+		static glm::vec2 delta = { 0.0f, 0.0f };
+
+
+
+		//bool shiftDown = Input::isKeyPressed(Key::LeftShift);
+		//bool ctrlDown = Input::isKeyPressed(Key::LeftControl);
+		bool altDown = Input::isKeyPressed(Key::LeftAlt);
+
+		if (altDown)
+		{
+			glm::vec2 mousePos = { Input::getMousePos().first, Input::getMousePos().second };
+			delta = (mousePos - lastMousePos) * dt.getTime_s();
+			lastMousePos = mousePos;
+
+			if (Input::isMouseButtonPressed(MouseButton::Left))		{ zoomMouse(delta.y); }
+			else if (Input::isMouseButtonPressed(MouseButton::Right))    { orbitMouse(delta); }
+			else if (Input::isMouseButtonPressed(MouseButton::Middle))   { panMouse(delta); }
+
+
+		}
+
+		recalculateViewMatrix();
+	}
+
+	void EditorCamera::panMouse(const glm::vec2& mouseDelta)
+	{
+		glm::vec2 panSpeed = calcPanSpeed();
+		m_focalPoint += -getCameraRight() * mouseDelta.x * m_distance * panSpeed.x;
+		m_focalPoint += getCameraUp() * mouseDelta.y * m_distance * panSpeed.y;
+	}
+
+	void EditorCamera::orbitMouse(const glm::vec2& mouseDelta)
+	{
+		float yaw = getCameraUp().y < 0.0f ? -1.0f : 1.0f;
+		m_rotation.y += yaw * mouseDelta.x * 0.4f;
+		m_rotation.x += mouseDelta.y * 0.4f;
+	}
+
+	void EditorCamera::zoomMouse(const float zoomDelta)
+	{
+		m_distance -= zoomDelta * calcZoomSpeed();
+		if (m_distance < 1.0f)
+		{
+			m_focalPoint += getCameraForward();
+			m_distance = 1.0f;
+		}
+	}
+
+	void EditorCamera::onEvent(Event& e)
+	{
+		EventDispatcher dispatcher(e);
+		dispatcher.dispatch<MouseScrollEvent>([this](MouseScrollEvent &event) {
+			return onMouseScrolled(event);
+		});
+	}
+
+	bool EditorCamera::onMouseScrolled(MouseScrollEvent& e)
+	{
+		float delta = e.getScrollY() * 0.1f;
+		zoomMouse(delta);
+		recalculateViewMatrix();
+		return false;
+	}
+
+	void EditorCamera::recalculateViewMatrix()
+	{
+		m_position = calcPosition();
+		m_viewMatrix = glm::inverse(glm::translate(glm::mat4(1.0f), m_position) * glm::toMat4(getRotation()));
+	}
+
+	void EditorCamera::recalculateProjectionMatrix()
+	{
+		m_aspect = m_ViewportWidth / m_ViewportHeight;
+		m_projectionMatrix = glm::perspective(glm::radians(m_fov), m_aspect, m_zNear, m_zFar);
+	}
+
+	glm::vec3 EditorCamera::getCameraForward() const
+	{
+		return glm::rotate(getRotation(), glm::vec3(0.0f, 0.0f, -1.0f));
+	}
+
+	glm::vec3 EditorCamera::getCameraRight() const
+	{
+		return glm::rotate(getRotation(), glm::vec3(1.0f, 0.0f, 0.0f));
+	}
+
+	glm::vec3 EditorCamera::getCameraUp() const
+	{
+		return glm::rotate(getRotation(), glm::vec3(0.0f, 1.0f, 0.0f));
+	}
+
+	glm::vec3 EditorCamera::calcPosition() const
+	{
+		return m_focalPoint - getCameraForward() * m_distance;
+	}
+
+	glm::vec2 EditorCamera::calcPanSpeed() const
+	{
+		float x = std::min(m_ViewportWidth / 1000.0f, 2.4f);
+		float xFactor = 0.0366f * (x * x) - 0.1778f * x + 0.3021f;
+
+		float y = std::min(m_ViewportHeight / 1000.0f, 2.4f);
+		float yFactor = 0.0366f * (y * y) - 0.1778f * y + 0.3021f;
+
+		return { xFactor, yFactor };
+	}
+	float EditorCamera::calcZoomSpeed() const
+	{
+		float distance = m_distance * 0.2f;
+		distance = std::max(distance, 0.0f);
+		float speed = distance * distance;
+		speed = std::min(speed, 100.0f); // max speed = 100
+		return speed;
+	}
+
+
+
+
 
 
 

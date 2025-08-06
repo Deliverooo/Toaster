@@ -93,6 +93,7 @@ namespace tst
 			return;
 		}
 		glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_TRUE);
+		glfwWindowHint(GLFW_SAMPLES, 4);
 
 		m_window = glfwCreateWindow(m_windowData.width, m_windowData.height, m_windowData.title, nullptr, nullptr);
 

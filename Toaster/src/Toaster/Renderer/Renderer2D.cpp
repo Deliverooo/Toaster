@@ -250,6 +250,22 @@ namespace tst
 
 		render_data.textureSlotIndex = 1;
 	}
+	void Renderer2D::begin(const EditorCamera& camera)
+	{
+		auto& projection = camera.getProjection();
+		auto view = camera.getViewMatrix();
+
+		render_data.viewProjectionMatrix = projection * view;
+		render_data.cameraPosition = camera.getPosition();
+
+		render_data.flatTextureShader->bind();
+		render_data.flatTextureShader->uploadMatrix4f(render_data.viewProjectionMatrix, "u_ViewProjection");
+
+		render_data.quadIndex = 0;
+		render_data.quadVertexPtr = render_data.quadVertexBufferBase;
+
+		render_data.textureSlotIndex = 1;
+	}
 
 	void Renderer2D::begin(const RefPtr<PerspectiveCamera>& camera)
 	{

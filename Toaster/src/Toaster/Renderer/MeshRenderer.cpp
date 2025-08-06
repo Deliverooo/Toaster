@@ -24,11 +24,18 @@ namespace tst
 
 		struct LightData
 		{
+			int lightType{ 0 };
 			glm::vec3 position{ 1.0f, 1.0f, 1.0f };
 			glm::vec3 direction{ 0.0f, 0.0f, 0.0f };
 			glm::vec3 colour{ 1.0f, 1.0f, 1.0f };
 			float intensity = 0.5f;
-			int lightType{ 1 };
+
+			float constant = 1.0f; // Attenuation
+			float linear = 0.09f;   // Attenuation
+			float quadratic = 0.032f; // Attenuation
+
+			float innerCone = glm::radians(12.5f); // Spot light inner cone angle
+			float outerCone = glm::radians(17.5f); // Spot light outer cone angle
 		};
 
 		std::vector<LightData> lights;
@@ -79,6 +86,22 @@ namespace tst
 		render_data.lightIndex = 0;
 	}
 
+	void MeshRenderer::begin(const EditorCamera& camera)
+	{
+		auto& projection = camera.getProjection();
+		auto view = camera.getViewMatrix();
+
+		render_data.viewProjectionMatrix = projection * view;
+		render_data.cameraPosition = camera.getPosition();
+
+		render_data.meshShader->bind();
+		render_data.meshShader->uploadMatrix4f(render_data.viewProjectionMatrix, "u_ViewProjection");
+		render_data.meshShader->uploadVector3f(render_data.cameraPosition, "u_ViewPos");
+
+		render_data.lights.clear();
+		render_data.lightIndex = 0;
+	}
+
 	void MeshRenderer::flushLights()
 	{
 		render_data.meshShader->bind();
@@ -113,6 +136,12 @@ namespace tst
 
 			// Upload with validation
 
+			if (render_data.meshShader->hasUniform((base + "type").c_str()))
+			{
+				render_data.meshShader->uploadInt1(light.lightType, (base + "type").c_str());
+				RenderCommand::checkError("Uploading light type " + std::to_string(i));
+			}
+
 			if (render_data.meshShader->hasUniform((base + "position").c_str())) {
 				render_data.meshShader->uploadVector3f(light.position, (base + "position").c_str());
 				RenderCommand::checkError("Uploading light position " + std::to_string(i));
@@ -131,6 +160,31 @@ namespace tst
 			if (render_data.meshShader->hasUniform((base + "intensity").c_str())) {
 				render_data.meshShader->uploadFloat1(light.intensity, (base + "intensity").c_str());
 				RenderCommand::checkError("Uploading light intensity " + std::to_string(i));
+			}
+
+			if (render_data.meshShader->hasUniform((base + "constant").c_str())) {
+				render_data.meshShader->uploadFloat1(light.constant, (base + "constant").c_str());
+				RenderCommand::checkError("Uploading light constant " + std::to_string(i));
+			}
+
+			if (render_data.meshShader->hasUniform((base + "linear").c_str())) {
+				render_data.meshShader->uploadFloat1(light.linear, (base + "linear").c_str());
+				RenderCommand::checkError("Uploading light linear " + std::to_string(i));
+			}
+
+			if (render_data.meshShader->hasUniform((base + "quadratic").c_str())) {
+				render_data.meshShader->uploadFloat1(light.quadratic, (base + "quadratic").c_str());
+				RenderCommand::checkError("Uploading light quadratic " + std::to_string(i));
+			}
+
+			if (render_data.meshShader->hasUniform((base + "innerCone").c_str())) {
+				render_data.meshShader->uploadFloat1(light.innerCone, (base + "innerCone").c_str());
+				RenderCommand::checkError("Uploading light innerCone " + std::to_string(i));
+			}
+
+			if (render_data.meshShader->hasUniform((base + "outerCone").c_str())) {
+				render_data.meshShader->uploadFloat1(light.outerCone, (base + "outerCone").c_str());
+				RenderCommand::checkError("Uploading light outerCone " + std::to_string(i));
 			}
 		}
 
@@ -158,10 +212,18 @@ namespace tst
 		}
 
 		MeshRendererData::LightData lightData;
+		lightData.lightType = static_cast<int>(light.type);
 		lightData.position = lightPosition;
 		lightData.direction = lightDirection;
 		lightData.colour = light.colour;
 		lightData.intensity = light.intensity;
+
+		lightData.constant = light.constant;
+		lightData.linear = light.linear;
+		lightData.quadratic = light.quadratic;
+
+		lightData.innerCone = light.innerCone;
+		lightData.outerCone = light.innerCone + light.outerOffset;
 
 		if (render_data.lightIndex >= render_data.lights.size())
 		{

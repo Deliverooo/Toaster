@@ -5,6 +5,14 @@
 
 namespace tst
 {
+	GLenum framebufferTextureFormatToOpenGL(FramebufferTextureFormat format);
+	GLint framebufferTextureFormatToOpenGLInternal(FramebufferTextureFormat format);
+	GLint framebufferTextureWrappingToOpenGL(FramebufferTextureWrapping wrapping);
+	GLint framebufferTextureFilteringToOpenGL(FramebufferTextureFiltering filtering);
+	GLenum framebufferPixelDataTypeToOpenGL(FramebufferPixelDataType type);
+
+	GLenum framebufferTextureFormatToOpenGLType(FramebufferTextureFormat format);
+
 	class OpenGLFramebuffer : public Framebuffer
 	{
 	public:
@@ -18,8 +26,8 @@ namespace tst
 		virtual void unbind() const override;
 		virtual void resize(uint32_t width, uint32_t height) override;
 
-		virtual const uint32_t &getColourAttachmentId() const override { return m_colourAttachmentId; }
-		virtual const uint32_t &getDepthAttachmentId() const override { return m_depthAttachmentId; }
+		virtual const uint32_t &getColourAttachmentId(uint32_t index) const override { return m_colourAttachments[index]; }
+		virtual const uint32_t &getDepthAttachmentId() const override { return m_depthAttachment; }
 
 
 	private:
@@ -30,7 +38,10 @@ namespace tst
 
 		uint32_t m_framebufferId{ 0 };
 
-		uint32_t m_colourAttachmentId{ 0 };
-		uint32_t m_depthAttachmentId{ 0 };
+		std::vector<FramebufferTextureCreateInfo> m_colourAttachmentCreateInfos;
+		FramebufferTextureCreateInfo m_depthAttachmentCreateInfo{ FramebufferTextureFormat::None };
+
+		std::vector<uint32_t> m_colourAttachments;
+		uint32_t m_depthAttachment{ 0 };
 	};
 }

@@ -144,77 +144,30 @@ namespace tst
 
 	void ToasterEditorLayer::onAttach()
 	{
-		FramebufferCreateInfo framebufferCreateInfo{ 1280, 720 };
+		FramebufferCreateInfo framebufferCreateInfo;
+		framebufferCreateInfo.attachments = {
+			{ FramebufferTextureFormat::RGBA8, FramebufferTextureWrapping::ClampToEdge, FramebufferTextureWrapping::ClampToEdge },
+			{ FramebufferTextureFormat::RGBA8, FramebufferTextureWrapping::ClampToEdge, FramebufferTextureWrapping::ClampToEdge },
+			{ FramebufferTextureFormat::D24S8, FramebufferTextureWrapping::ClampToEdge, FramebufferTextureWrapping::ClampToEdge },
+		};
+		framebufferCreateInfo.width = 1280;
+		framebufferCreateInfo.height = 720;
 		m_Framebuffer = Framebuffer::create(framebufferCreateInfo);
 
 		loadAssets();
 
 		m_Scene = make_reference<Scene>();
 
-		/*m_MeshEntity = m_Scene->createEntity("Orbo");
-		auto &mr = m_MeshEntity.addComponent<MeshRendererComponent>();
-		mr.mesh = Mesh::create("C:\\Users\\oocon\\OneDrive\\Desktop\\blender dev log\\Orbo\\orbo_mesh.fbx");
-		mr.mesh->getMaterials().getMaterial(0)->setBackfaceCulling(true);
-		m_MeshEntity.getComponent<TransformComponent>().rotation.x = -1.570796f;
-
-		auto light = m_Scene->createEntity("Light");
-		auto& lc = light.addComponent<LightComponent>();
-		light.getComponent<TransformComponent>().translation.z = 2.8f;
-
-
-		m_CameraEntity = m_Scene->createEntity("camera");
-		m_CameraEntity.addComponent<CameraComponent>();
-
-
-		class CameraController : public ScriptableEntity
-		{
-		public:
-
-			void onCreate()
-			{
-				
-			}
-			void onDestroy()
-			{
-				
-			}
-			void onUpdate(DeltaTime dt)
-			{
-				static float clock = 0.0f;
-				clock += dt;
-
-				static float cameraSpeed = 5.0f;
-
-				if (m_entity.getComponent<CameraComponent>().active)
-				{
-					auto& trans = m_entity.getComponent<TransformComponent>().translation;
-
-					glm::vec3 cameraDirection{ 0.0f };
-
-					if (Input::isKeyPressed(TST_KEY_W)) { cameraDirection -= glm::vec3(0.0f, 0.0f, 1.0f) * dt.getTime_s() * cameraSpeed; }
-					if (Input::isKeyPressed(TST_KEY_S)) { cameraDirection += glm::vec3(0.0f, 0.0f, 1.0f) * dt.getTime_s() * cameraSpeed; }
-					if (Input::isKeyPressed(TST_KEY_A)) { cameraDirection -= glm::vec3(1.0f, 0.0f, 0.0f) * dt.getTime_s() * cameraSpeed; }
-					if (Input::isKeyPressed(TST_KEY_D)) { cameraDirection += glm::vec3(1.0f, 0.0f, 0.0f) * dt.getTime_s() * cameraSpeed; }
-
-					if (Input::isKeyPressed(TST_KEY_SPACE)) { cameraDirection += glm::vec3(0.0f, 1.0f, 0.0f) * dt.getTime_s() * cameraSpeed; }
-					if (Input::isKeyPressed(TST_KEY_LEFT_SHIFT)) { cameraDirection -= glm::vec3(0.0f, 1.0f, 0.0f) * dt.getTime_s() * cameraSpeed; }
-
-					trans += cameraDirection;
-				}
-
-			} 
-			
-		};
-
-		m_CameraEntity.addComponent<NativeScriptComponent>().bind<CameraController>();*/
-
 		m_SceneHierarchyPanel.setSceneContext(m_Scene);
 
-
+		m_EditorCamera = EditorCamera(45.0f, 1280.0f / 720.0f, 0.1f, 100.0f);
 	}
 
 	void ToasterEditorLayer::onUpdate(DeltaTime dt)
 	{
+		static float clock = 0.0f;
+		clock += dt;
+
 		// Ensure minimum viewport size to prevent aspect ratio issues
 		float safeViewportX = std::max(m_ViewportSize.x, 1.0f);
 		float safeViewportY = std::max(m_ViewportSize.y, 1.0f);
@@ -223,19 +176,23 @@ namespace tst
 			(safeViewportX != m_Framebuffer->getInfo().width || safeViewportY != m_Framebuffer->getInfo().height))
 		{
 			m_Framebuffer->resize(static_cast<uint32_t>(safeViewportX), static_cast<uint32_t>(safeViewportY));
-
+			m_EditorCamera.setViewportSize(static_cast<uint32_t>(safeViewportX), static_cast<uint32_t>(safeViewportY));
 			m_Scene->onViewportResize(static_cast<uint32_t>(safeViewportX), static_cast<uint32_t>(safeViewportY));
 		}
 
-		static float clock = 0.0f;
-		clock += dt;
+
+		if (m_ViewportFocused)
+		{
+		}
+		m_EditorCamera.onUpdate(dt);
+
 
 		MeshRenderer::resetStats();
 		m_Framebuffer->bind();
 		RenderCommand::setClearColour(m_clearColour);
 		RenderCommand::clear();
 
-		m_Scene->onUpdate(dt);
+		m_Scene->onEditorUpdate(m_EditorCamera, dt);
 
 
 	    m_Framebuffer->unbind();
@@ -243,8 +200,9 @@ namespace tst
 	void ToasterEditorLayer::onEvent(Event& e)
 	{
 
-		EventDispatcher eventDispatcher(e);
+		m_EditorCamera.onEvent(e);
 
+		EventDispatcher eventDispatcher(e);
 		eventDispatcher.dispatch<KeyPressedEvent>([this](KeyPressedEvent& e)
 			{
 				return onKeyPressedEvent(e);
@@ -534,15 +492,10 @@ namespace tst
 
 			ImGuizmo::SetRect(ImGui::GetWindowPos().x, ImGui::GetWindowPos().y, ImGui::GetWindowSize().x, ImGui::GetWindowSize().y);
 
-			auto camera = m_Scene->getActiveCameraEntity();
-			const auto& cameraComponent = camera.getComponent<CameraComponent>();
-			glm::mat4 view = glm::inverse(camera.getComponent<TransformComponent>().matrix());
-			glm::mat4 projection = cameraComponent.camera.getProjection();
-
 			auto &transformComp = selectedEntity.getComponent<TransformComponent>();
 			glm::mat4 transformMatrix = transformComp.matrix();
 
-			ImGuizmo::Manipulate(glm::value_ptr(view), glm::value_ptr(projection), static_cast<ImGuizmo::OPERATION>(m_GizmoType), ((m_IsLocalTransform) ? ImGuizmo::MODE::LOCAL : ImGuizmo::MODE::WORLD), glm::value_ptr(transformMatrix));
+			ImGuizmo::Manipulate(glm::value_ptr(m_EditorCamera.getViewMatrix()), glm::value_ptr(m_EditorCamera.getProjectionMatrix()), static_cast<ImGuizmo::OPERATION>(m_GizmoType), ((m_IsLocalTransform) ? ImGuizmo::MODE::LOCAL : ImGuizmo::MODE::WORLD), glm::value_ptr(transformMatrix));
 			if (ImGuizmo::IsUsing())
 			{
 				glm::vec3 translation, rotation, scale;
@@ -554,9 +507,6 @@ namespace tst
 				transformComp.rotation += deltaRotation;
 
 				transformComp.scale = scale;
-
-
-
 			}
 		}
 

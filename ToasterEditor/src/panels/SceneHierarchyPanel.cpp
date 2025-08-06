@@ -554,10 +554,9 @@ namespace tst
 				ImGui::Separator();
 
 				ImGui::Text("Cone Properties");
-				ImGui::DragFloat("Inner", &comp->light.innerCone, 1.0f, 0.0f, 6.28f);
-				ImGui::DragFloat("Outer", &comp->light.outerCone, 1.0f, 0.0f, 6.28f);
+				ImGui::DragFloat("Inner", &comp->light.innerCone, 0.25f, 0.0f, 180.0f);
+				ImGui::DragFloat("Blending", &comp->light.outerOffset, 0.05f, 0.01f, 30.0f);
 
-				if (comp->light.outerCone < comp->light.innerCone) { comp->light.outerCone = comp->light.innerCone; }
 			}
 		});
 	}

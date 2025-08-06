@@ -1,0 +1,71 @@
+Scene: Unnamed Scene
+Entities:
+  - Entity: 12241557773261097666
+    TagComponent:
+      Tag: Orbo
+    MeshRendererComponent:
+      Colour: [1, 0, 0.862, 1]
+      Filepath: C:\Users\oocon\OneDrive\Desktop\blender dev log\Orbo\orbo_mesh.fbx
+    TransformComponent:
+      Translation: [11.652486, 0.10620118, -4.7903867]
+      Rotation: [0, -0.6, 0]
+      Scale: [0.01, 0.01, 0.01]
+  - Entity: 12241557773261097666
+    TagComponent:
+      Tag: light
+    TransformComponent:
+      Translation: [10.859553, 1.8569769, -2.6633573]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    LightComponent:
+      Type: 1
+      Colour: [1, 0.78039217, 0.5921569]
+      Intensity: 3
+      Enabled: true
+  - Entity: 12241557773261097666
+    TagComponent:
+      Tag: entity
+    TransformComponent:
+      Translation: [0, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+  - Entity: 12241557773261097666
+    TagComponent:
+      Tag: Sponza
+    MeshRendererComponent:
+      Colour: [1, 0, 0.862, 1]
+      Filepath: C:\Users\oocon\Downloads\main_sponza\main_sponza\NewSponza_Main_Zup_003.fbx
+    TransformComponent:
+      Translation: [0, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [0.01, 0.01, 0.01]
+  - Entity: 12241557773261097666
+    TagComponent:
+      Tag: light
+    TransformComponent:
+      Translation: [10.042527, 4.083, -5.050836]
+      Rotation: [-2.636, 0, 0]
+      Scale: [0.4, 0.3999998, 0.9999955]
+    LightComponent:
+      Type: 1
+      Colour: [1, 0.7803551, 0.5907336]
+      Intensity: 5
+      Enabled: true
+  - Entity: 12241557773261097666
+    TagComponent:
+      Tag: Camera
+    TransformComponent:
+      Translation: [9.9, 1.8, -1]
+      Rotation: [0.1, -12.8, 0]
+      Scale: [1, 1, 1]
+    CameraComponent:
+      Camera:
+        ProjectionType: 0
+        PerspectiveFOV: 90
+        PerspectiveNear: 0.1
+        PerspectiveFar: 100
+        OrthoSize: 10
+        OrthoNear: -1
+        OrthoFar: 0.1
+      Active: true
+      FixedAspect: false

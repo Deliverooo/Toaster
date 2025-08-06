@@ -26,6 +26,7 @@ namespace tst {
 		TST_CORE_INFO("OpenGL Version: {0}", (const char*)glGetString(GL_VERSION));
 		TST_CORE_INFO("GLSL Version: {0}", (const char*)glGetString(GL_SHADING_LANGUAGE_VERSION));
 
+		glEnable(GL_MULTISAMPLE);
 		glEnable(GL_DEBUG_OUTPUT);
 
 #ifdef _DEBUG

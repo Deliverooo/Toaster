@@ -14,6 +14,7 @@ namespace tst
 		static void terminate() noexcept;
 
 		static void begin(const Camera& camera, const glm::mat4& transform);
+		static void begin(const EditorCamera& camera);
 		static void end();
 
 		static void uploadLightingData(const Light& light, const glm::vec3& lightPosition, const glm::vec3& lightDirection);

@@ -29,7 +29,9 @@ namespace tst
 
 	void RayTracerLayer::onAttach()
 	{
-		FramebufferCreateInfo framebufferCreateInfo{ 1280, 720 };
+		FramebufferCreateInfo framebufferCreateInfo{};
+		framebufferCreateInfo.width = 1280;
+		framebufferCreateInfo.height = 720;
 		m_Framebuffer = Framebuffer::create(framebufferCreateInfo);
 
 

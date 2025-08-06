@@ -32,6 +32,7 @@ namespace tst
 
 		static void begin(const RefPtr<OrthoCamera2D>& camera);
 		static void begin(const Camera& camera, const glm::mat4& transform);
+		static void begin(const EditorCamera& camera);
 		static void begin(const RefPtr<PerspectiveCamera>& camera);
 
 		static void end();

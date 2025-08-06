@@ -3,21 +3,23 @@ Entities:
   - Entity: 12241557773261097666
     TagComponent:
       Tag: light
-    SpriteRendererComponent:
-      Colour: [1, 0, 0.862, 1]
-      Texture: "NULL"
     TransformComponent:
-      Translation: [-0.2, 2.7, 0.1]
-      Rotation: [0, 0, 0]
-      Scale: [0.3, 0.2, 1]
+      Translation: [4.5305643, 3.046699, -4.539811]
+      Rotation: [1.5415921, -0.041593026, -3.1415923]
+      Scale: [0.9999893, 0.9999894, 0.99999464]
     LightComponent:
-      Type: 0
+      Type: 2
       Colour: [1, 1, 1]
-      Intensity: 1.893
+      Intensity: 2
+      Constant: 1.0
+      Linear: 0.09
+      Quadratic: 0.032
+      InnerCone: 40.0
+      OuterCone: 45.0
       Enabled: true
   - Entity: 12241557773261097666
     TagComponent:
-      Tag: entity
+      Tag: Terrain
     MeshRendererComponent:
       Colour: [1, 0, 0.862, 1]
       Filepath: C:\Users\oocon\CLionProjects\Engine3d\resources\models\terrain\Terrain.obj
@@ -27,19 +29,16 @@ Entities:
       Scale: [1, 1, 1]
   - Entity: 12241557773261097666
     TagComponent:
-      Tag: entity
+      Tag: light
+    SpriteRendererComponent:
+      Colour: [1, 1, 1, 1]
+      Texture: "NULL"
     TransformComponent:
-      Translation: [-1.3, 3.3, 4.9]
-      Rotation: [-0.4, 0, 0]
-      Scale: [1, 1, 1]
-    CameraComponent:
-      Camera:
-        ProjectionType: 0
-        PerspectiveFOV: 90
-        PerspectiveNear: 0.1
-        PerspectiveFar: 100
-        OrthoSize: 10
-        OrthoNear: -1
-        OrthoFar: 0.1
-      Active: true
-      FixedAspect: false
+      Translation: [-3.8509572, 3.024257, 3.278158]
+      Rotation: [0, 0, 0]
+      Scale: [0.3, 0.2, 1]
+    LightComponent:
+      Type: 1
+      Colour: [1, 1, 1]
+      Intensity: 10
+      Enabled: true

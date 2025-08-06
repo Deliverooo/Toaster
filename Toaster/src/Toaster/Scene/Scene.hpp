@@ -2,9 +2,10 @@
 
 #include "Toaster/Core/Time.hpp"
 #include "entt.hpp"
+#include "Toaster/Renderer/Camera.hpp"
 
 
-namespace tst
+ namespace tst
 {
 	class Entity;
 
@@ -15,7 +16,8 @@ namespace tst
 		Scene();
 		~Scene();
 
-		void onUpdate(DeltaTime dt);
+		void onRuntimeUpdate(DeltaTime dt);
+		void onEditorUpdate(EditorCamera& camera, DeltaTime dt);
 		void onViewportResize(uint32_t width, uint32_t height);
 
 		Entity createEntity(const std::string& name);

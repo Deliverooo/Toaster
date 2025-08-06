@@ -1,10 +1,14 @@
 #pragma once
 #include <glm/glm.hpp>
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/quaternion.hpp>
+
+#include "Toaster/Core/Time.hpp"
+#include "Toaster/Events/Event.hpp"
+#include "Toaster/Events/MouseEvent.hpp"
 
 namespace tst
 {
-	//constexpr glm::mat4 iso(const float size, const float zNear = -1.0f, const float zFar = 10.0f);
-
 	// The base class for all cameras in the engine.
 	// It provides a projection matrix that can be used for rendering.
 	// This class is not meant to be instantiated directly, but rather to be inherited by other camera classes.
@@ -33,7 +37,7 @@ namespace tst
 
 		void setOrtho(float size, float zNear, float zFar);
 		void setPerspective(float fov, float zNear, float zFar);
-		//void setIso(float fov, float zNear, float zFar);
+
 
 		void setViewportSize(uint32_t width, uint32_t height);
 
@@ -58,14 +62,6 @@ namespace tst
 		float getPerspectiveFar() const { return m_PersFar; }
 		void setPerspectiveFar(float zFar) { m_PersFar = zFar; recalculateProjectionMatrix(); }
 
-		//float getIsoSize() const { return m_IsoSize; }
-		//void setIsoSize(float size) { m_IsoSize = size; recalculateProjectionMatrix(); }
-
-		//float getIsoNear() const { return m_IsoNear; }
-		//void setIsoNear(float zNear) { m_IsoNear = zNear; recalculateProjectionMatrix(); }
-
-		//float getIsoFar() const { return m_IsoFar; }
-		//void setIsoFar(float zFar) { m_IsoFar = zFar; recalculateProjectionMatrix(); }
 
 		enum class ProjectionType : int
 		{
@@ -95,10 +91,71 @@ namespace tst
 		float m_PersFov {  90.0f };
 		float m_PersNear{  0.1f  };
 		float m_PersFar { 100.0f };
+	};
 
-		//float m_IsoSize{ 10.0f };
-		//float m_IsoNear{ -1.0f };
-		//float m_IsoFar { 10.0f };
+	class EditorCamera : public Camera
+	{
+	public:
+		virtual ~EditorCamera() override = default;
+		EditorCamera(float fov = 45.0f, float aspect = 1.77f, float zNear = 0.1f, float zFar = 100.0f);
+
+		void setViewportSize(uint32_t width, uint32_t height) { m_ViewportWidth = static_cast<float>(width); m_ViewportHeight = static_cast<float>(height);	recalculateProjectionMatrix(); }
+
+		void setPosition(const glm::vec3& position) { m_position = position; recalculateViewMatrix(); }
+		void setRotation(const glm::vec3& rotation) { m_rotation = rotation; recalculateViewMatrix(); }
+
+		const glm::vec3& getPosition() const { return m_position; }
+		glm::quat getRotation() const { return glm::quat(glm::vec3(-m_rotation.x, -m_rotation.y, -m_rotation.z)); }
+		const glm::mat4& getViewMatrix() const { return m_viewMatrix; }
+		const glm::mat4& getProjectionMatrix() const { return m_projectionMatrix; }
+
+		glm::vec3 getCameraForward() const;
+		glm::vec3 getCameraRight() const;
+		glm::vec3 getCameraUp() const;
+
+		void onUpdate(DeltaTime dt);
+		void onEvent(Event& e);
+
+	private:
+		void recalculateViewMatrix();
+		void recalculateProjectionMatrix();
+		glm::vec3 calcPosition() const;
+
+		bool onMouseScrolled(MouseScrollEvent& e);
+
+		void panMouse(const glm::vec2& mouseDelta);
+		void orbitMouse(const glm::vec2& mouseDelta);
+		void zoomMouse(const float zoomDelta);
+
+		glm::vec2 calcPanSpeed() const;
+		float calcZoomSpeed() const;
+
+		glm::mat4 m_viewMatrix;
+
+		union
+		{
+			glm::vec3 m_rotation{ 0.0f, 0.0f, 0.0f };
+			struct
+			{
+				float m_pitch;
+				float m_yaw;
+				float m_roll;
+			};
+		};
+
+		glm::vec3 m_position  { 0.0f, 0.0f, 0.0f };
+		glm::vec3 m_focalPoint{ 0.0f, 0.0f, 0.0f };
+
+		// The distance of the camera from the focal point
+		float m_distance{ 10.0f };
+
+		float m_fov{ 45.0f };
+		float m_aspect{ 1.77f };
+		float m_zNear{ 0.1f };
+		float m_zFar{ 1000.0f };
+
+		float m_ViewportWidth{ 1280.0f };
+		float m_ViewportHeight{ 720.0f };
 	};
 
 	//-----------------------Perspective Camera-----------------------

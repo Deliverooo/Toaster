@@ -92,8 +92,7 @@ namespace tst
 		glm::vec4 m_clearColour{ 0.15f, 0.15f, 0.15f, 1.0f };
 		glm::vec2 m_ViewportSize{1280, 720};
 
-
-		ParticleSystem3D m_particleSystem;
+		EditorCamera m_EditorCamera;
 
 		RefPtr<Scene> m_Scene;
 

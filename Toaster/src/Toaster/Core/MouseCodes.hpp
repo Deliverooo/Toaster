@@ -1,6 +1,25 @@
 #pragma once
 
-// this was pretty much entirely taken from glfw3.h
+namespace tst
+{
+	using MouseCode = uint16_t;
+
+	namespace MouseButton
+	{
+		enum : MouseCode
+		{
+			Left = 0,
+			Right = 1,
+			Middle = 2,
+
+			B4 = 3,
+			B5 = 4,
+			B6 = 5,
+			B7 = 6,
+			B8 = 7,
+		};
+	}
+}
 
 enum class TstMouseCode
 {

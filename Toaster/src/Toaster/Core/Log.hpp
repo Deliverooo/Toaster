@@ -36,7 +36,7 @@ namespace tst {
 #define TST_INFO(...)	 tst::Log::getClientLogger()->info(__VA_ARGS__)
 #define TST_TRACE(...)	 tst::Log::getClientLogger()->trace(__VA_ARGS__)
 
-#define TST_ASSERT(expr, msg)	if(!(expr)){ tst::Log::getCoreLogger()->error(##msg); __debugbreak();}
+#define TST_ASSERT(expr, msg) if(!(expr)){ tst::Log::getCoreLogger()->error(##msg); __debugbreak();}
 #define TST_BREAKPOINT() tst::Log::getCoreLogger()->trace("Breakpoint Reached"); __debugbreak()
 
 #else

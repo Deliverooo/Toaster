@@ -44,8 +44,73 @@ namespace tst
 
 	}
 
+	void Scene::onEditorUpdate(EditorCamera& camera, DeltaTime dt)
+	{
+		// Check if we have any 2D entities before calling Renderer2D
+		auto group2d = m_registry.group<SpriteRendererComponent>(entt::get<TransformComponent>);
+		if (!group2d.empty()) {
+			// 2D Primitive Rendering
+			Renderer2D::begin(camera);
+			for (auto entity : group2d)
+			{
+				const auto& [spriteRenderer, transform] = group2d.get<SpriteRendererComponent, TransformComponent>(entity);
 
-	void Scene::onUpdate(DeltaTime dt)
+				if (spriteRenderer.texture)
+				{
+					Renderer2D::drawQuad(transform.matrix(), spriteRenderer.texture, 1.0f, spriteRenderer.colour);
+				}
+				else
+				{
+					Renderer2D::drawQuad(transform.matrix(), spriteRenderer.colour);
+				}
+			}
+			Renderer2D::end();
+
+
+			TST_RC_CHECK_ERROR("After Renderer2D cleanup");
+		}
+
+		// Mesh Rendering
+		MeshRenderer::begin(camera);
+
+		auto lightGroup = m_registry.group<LightComponent>(entt::get<TransformComponent>);
+		for (auto light : lightGroup)
+		{
+			const auto& [lightComp, transform] = lightGroup.get<LightComponent, TransformComponent>(light);
+
+			if (lightComp.enabled)
+			{
+				glm::vec3 lightDirection = glm::vec3(0.0f, 0.0f, -1.0f);
+
+				glm::mat4 rotationMatrix = glm::rotate(glm::mat4(1.0f), transform.rotation.x, glm::vec3(1, 0, 0)) *
+					glm::rotate(glm::mat4(1.0f), transform.rotation.y, glm::vec3(0, 1, 0)) *
+					glm::rotate(glm::mat4(1.0f), transform.rotation.z, glm::vec3(0, 0, 1));
+
+				lightDirection = glm::vec3(rotationMatrix * glm::vec4(lightDirection, 0.0f));
+
+				MeshRenderer::uploadLightingData(lightComp.light, transform.translation, lightDirection);
+			}
+		}
+		MeshRenderer::flushLights();
+		TST_RC_CHECK_ERROR("After MeshRenderer FlushLights");
+
+
+		auto meshGroup = m_registry.group<MeshRendererComponent>(entt::get<TransformComponent>);
+		for (auto entity : meshGroup)
+		{
+			const auto& [meshRenderer, transform] = meshGroup.get<MeshRendererComponent, TransformComponent>(entity);
+			MeshRenderer::drawMesh(meshRenderer.mesh, transform.matrix());
+		}
+		MeshRenderer::end();
+		RenderCommand::cleanState();
+
+		TST_RC_CHECK_ERROR("Before SkyBox rendering");
+
+		SkyBoxRenderer::render(camera);
+	}
+
+
+	void Scene::onRuntimeUpdate(DeltaTime dt)
 	{
 
 		m_registry.view<NativeScriptComponent>().each([&](auto entity, auto& scriptComp)
@@ -85,67 +150,7 @@ namespace tst
 		{
 
 
-			// Check if we have any 2D entities before calling Renderer2D
-			auto group2d = m_registry.group<SpriteRendererComponent>(entt::get<TransformComponent>);
-			if (!group2d.empty()) {
-				// 2D Primitive Rendering
-				Renderer2D::begin(*mainCamera, *cameraView);
-				for (auto entity : group2d)
-				{
-					const auto& [spriteRenderer, transform] = group2d.get<SpriteRendererComponent, TransformComponent>(entity);
-
-					if (spriteRenderer.texture)
-					{
-						Renderer2D::drawQuad(transform.matrix(), spriteRenderer.texture, 1.0f, spriteRenderer.colour);
-					}
-					else
-					{
-						Renderer2D::drawQuad(transform.matrix(), spriteRenderer.colour);
-					}
-				}
-				Renderer2D::end();
-
-
-				TST_RC_CHECK_ERROR("After Renderer2D cleanup");
-			}
-
-			// Mesh Rendering
-			MeshRenderer::begin(*mainCamera, *cameraView);
-
-			auto lightGroup = m_registry.group<LightComponent>(entt::get<TransformComponent>);
-			for (auto light : lightGroup)
-			{
-				const auto& [lightComp, transform] = lightGroup.get<LightComponent, TransformComponent>(light);
-
-				if (lightComp.enabled)
-				{
-					glm::vec3 lightDirection = glm::vec3(0.0f, 0.0f, -1.0f);
-
-					glm::mat4 rotationMatrix = glm::rotate(glm::mat4(1.0f), transform.rotation.x, glm::vec3(1, 0, 0)) *
-						glm::rotate(glm::mat4(1.0f), transform.rotation.y, glm::vec3(0, 1, 0)) *
-						glm::rotate(glm::mat4(1.0f), transform.rotation.z, glm::vec3(0, 0, 1));
-
-					lightDirection = glm::vec3(rotationMatrix * glm::vec4(lightDirection, 0.0f));
-
-					MeshRenderer::uploadLightingData(lightComp.light, transform.translation, lightDirection);
-				}
-			}
-			MeshRenderer::flushLights();
-			TST_RC_CHECK_ERROR("After MeshRenderer FlushLights");
-
-
-			auto meshGroup = m_registry.group<MeshRendererComponent>(entt::get<TransformComponent>);
-			for (auto entity : meshGroup)
-			{
-				const auto& [meshRenderer, transform] = meshGroup.get<MeshRendererComponent, TransformComponent>(entity);
-				MeshRenderer::drawMesh(meshRenderer.mesh, transform.matrix());
-			}
-			MeshRenderer::end();
-			RenderCommand::cleanState();
-
-			TST_RC_CHECK_ERROR("Before SkyBox rendering");
-
-			SkyBoxRenderer::render(*mainCamera, *cameraView);
+			
 		}
 	}
 

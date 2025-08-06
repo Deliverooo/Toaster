@@ -25,8 +25,9 @@ namespace tst {
         float quadratic{ 0.032f };
 
         // Spot light specific
-        float innerCone{ glm::radians(12.5f) };
-        float outerCone{ glm::radians(17.5f) };
+        float innerCone{ 40.0f };
+        float outerOffset{ 0.1f };
+        //float outerCone{ 40.0f };
 
         
     };

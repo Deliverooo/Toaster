@@ -1,0 +1,29 @@
+Scene: Unnamed Scene
+Entities:
+  - Entity: 12241557773261097666
+    TagComponent:
+      Tag: light
+    TransformComponent:
+      Translation: [-0.4884236, 1.0256287, 0.9296022]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    LightComponent:
+      Type: 1
+      Colour: [1, 1, 1]
+      Intensity: 1
+      Constant: 1
+      Linear: 0.09
+      Quadratic: 0.19
+      InnerCone: 40
+      OuterOffset: 0.1
+      Enabled: true
+  - Entity: 12241557773261097666
+    TagComponent:
+      Tag: entity
+    MeshRendererComponent:
+      Colour: [1, 0, 0.862, 1]
+      Filepath: C:\Users\oocon\Downloads\NormalText001.fbx
+    TransformComponent:
+      Translation: [0, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [0.025, 0.025, 0.025]
