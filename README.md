@@ -28,10 +28,10 @@ planned features:
 
 
 <p float="left" width=25%> 
+	<img src="https://github.com/Deliverooo/Toaster/blob/main/examples/images/NormalMapping.png" width=25%>
 	<img src="https://github.com/Deliverooo/Toaster/blob/main/examples/images/GizmoLight.png" width=25%>
-	<img src="https://github.com/Deliverooo/Toaster/blob/main/examples/images/RayTracing.png" width=25%>
+	<img src="https://github.com/Deliverooo/Toaster/blob/main/examples/images/Shiny.png" width=25%>
 	<img src="https://github.com/Deliverooo/Toaster/blob/main/examples/images/PbrPlankton.png" width=25%>
-	<img src="https://github.com/Deliverooo/Toaster/blob/main/examples/images/Ts.png" width=25%>
 </p>
 
 
