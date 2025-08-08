@@ -6,6 +6,7 @@
 #include "Toaster/Core/Input.hpp"
 #include "Toaster/Core/KeyCodes.hpp"
 #include "Toaster/Core/MouseCodes.hpp"
+#include "Toaster/Events/KeyEvent.hpp"
 
 namespace tst
 {
@@ -116,10 +117,29 @@ namespace tst
 	void EditorCamera::onEvent(Event& e)
 	{
 		EventDispatcher dispatcher(e);
-		dispatcher.dispatch<MouseScrollEvent>([this](MouseScrollEvent &event) {
+		dispatcher.dispatch<MouseScrollEvent>([this](MouseScrollEvent &event)
+		{
 			return onMouseScrolled(event);
 		});
+
+		dispatcher.dispatch<KeyPressedEvent>([this](KeyPressedEvent& event)
+		{
+			return onKeyPressedEvent(event);
+		});
 	}
+
+	bool EditorCamera::onKeyPressedEvent(KeyPressedEvent& e)
+	{
+		if (e.getKeycode() == Key::H)
+		{
+			m_position = { 0.0f, 0.0f, 0.0f };
+			m_focalPoint = { 0.0f, 0.0f, 0.0f };
+			m_distance = 10.0f;
+		}
+
+		return false;
+	}
+
 
 	bool EditorCamera::onMouseScrolled(MouseScrollEvent& e)
 	{

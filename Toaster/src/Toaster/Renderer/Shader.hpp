@@ -23,7 +23,7 @@ namespace tst
 		virtual std::string getName() const = 0;
 		virtual uint32_t getId() const = 0;
 
-		virtual bool hasUniform(const char* name) = 0;
+		virtual bool hasUniform(const std::string &name) = 0;
 
 		virtual void shaderDebugInfo() const = 0;
 		virtual void uploadMatrix2f(const glm::mat2& mat, const char* name) = 0;

@@ -1,15 +1,13 @@
 #include "tstpch.h"
 #include "MeshRenderer.hpp"
 
+#include "DebugRenderer.hpp"
 #include "RenderCommand.hpp"
 #include "Shader.hpp"
 #include "Toaster/Util/MathUtil.hpp"
 
 #include "glm/gtc/type_ptr.hpp"
 
-
-// TODO - Remove This is is for debugging purposes only
-//#include <glad/glad.h>
 
 namespace tst
 {
@@ -42,6 +40,11 @@ namespace tst
 		uint32_t lightIndex = 0;
 
 		MeshRenderer::Stats stats{};
+
+		RenderQueue renderQueue;
+		CullingSystem cullingSystem;
+
+		std::vector<MeshRenderer::MaterialBatch> materialBatches;
 	};
 
 	static MeshRendererData render_data;
@@ -68,6 +71,10 @@ namespace tst
 		render_data.meshShader = Shader::create("MeshShader", TST_CORE_RESOURCE_DIR"/shaders/MeshShader.vert.glsl", TST_CORE_RESOURCE_DIR"/shaders/MeshShader.frag.glsl");
 
 		render_data.lights.reserve(32);
+
+		render_data.renderQueue.setCullingSystem(&render_data.cullingSystem);
+
+		DebugRenderer::init();
 	}
 
 	void MeshRenderer::begin(const Camera& camera, const glm::mat4& transform)
@@ -94,23 +101,29 @@ namespace tst
 		render_data.viewProjectionMatrix = projection * view;
 		render_data.cameraPosition = camera.getPosition();
 
+		render_data.cullingSystem.updateFrustum(render_data.viewProjectionMatrix);
+
 		render_data.meshShader->bind();
 		render_data.meshShader->uploadMatrix4f(render_data.viewProjectionMatrix, "u_ViewProjection");
 		render_data.meshShader->uploadVector3f(render_data.cameraPosition, "u_ViewPos");
 
 		render_data.lights.clear();
 		render_data.lightIndex = 0;
+
+		render_data.renderQueue.clear();
+		render_data.materialBatches.clear();
 	}
+
 
 	void MeshRenderer::flushLights()
 	{
 		render_data.meshShader->bind();
 
-		RenderCommand::checkError("Binding shader in flushLights");
+		TST_RC_CHECK_ERROR("Binding shader in flushLights");
 
 		// Upload light count first
 		render_data.meshShader->uploadInt1(static_cast<int>(render_data.lightIndex), "u_LightCount");
-		RenderCommand::checkError("Uploading light count");
+		TST_RC_CHECK_ERROR("Uploading light count");
 
 		// If no lights, we're done
 		if (render_data.lightIndex == 0) {
@@ -139,52 +152,52 @@ namespace tst
 			if (render_data.meshShader->hasUniform((base + "type").c_str()))
 			{
 				render_data.meshShader->uploadInt1(light.lightType, (base + "type").c_str());
-				RenderCommand::checkError("Uploading light type " + std::to_string(i));
+				TST_RC_CHECK_ERROR("Uploading light type " + std::to_string(i));
 			}
 
 			if (render_data.meshShader->hasUniform((base + "position").c_str())) {
 				render_data.meshShader->uploadVector3f(light.position, (base + "position").c_str());
-				RenderCommand::checkError("Uploading light position " + std::to_string(i));
+				TST_RC_CHECK_ERROR("Uploading light position " + std::to_string(i));
 			}
 
 			if (render_data.meshShader->hasUniform((base + "direction").c_str())) {
 				render_data.meshShader->uploadVector3f(light.direction, (base + "direction").c_str());
-				RenderCommand::checkError("Uploading light direction " + std::to_string(i));
+				TST_RC_CHECK_ERROR("Uploading light direction " + std::to_string(i));
 			}
 
 			if (render_data.meshShader->hasUniform((base + "colour").c_str())) {
 				render_data.meshShader->uploadVector3f(light.colour, (base + "colour").c_str());
-				RenderCommand::checkError("Uploading light colour " + std::to_string(i));
+				TST_RC_CHECK_ERROR("Uploading light colour " + std::to_string(i));
 			}
 
 			if (render_data.meshShader->hasUniform((base + "intensity").c_str())) {
 				render_data.meshShader->uploadFloat1(light.intensity, (base + "intensity").c_str());
-				RenderCommand::checkError("Uploading light intensity " + std::to_string(i));
+				TST_RC_CHECK_ERROR("Uploading light intensity " + std::to_string(i));
 			}
 
 			if (render_data.meshShader->hasUniform((base + "constant").c_str())) {
 				render_data.meshShader->uploadFloat1(light.constant, (base + "constant").c_str());
-				RenderCommand::checkError("Uploading light constant " + std::to_string(i));
+				TST_RC_CHECK_ERROR("Uploading light constant " + std::to_string(i));
 			}
 
 			if (render_data.meshShader->hasUniform((base + "linear").c_str())) {
 				render_data.meshShader->uploadFloat1(light.linear, (base + "linear").c_str());
-				RenderCommand::checkError("Uploading light linear " + std::to_string(i));
+				TST_RC_CHECK_ERROR("Uploading light linear " + std::to_string(i));
 			}
 
 			if (render_data.meshShader->hasUniform((base + "quadratic").c_str())) {
 				render_data.meshShader->uploadFloat1(light.quadratic, (base + "quadratic").c_str());
-				RenderCommand::checkError("Uploading light quadratic " + std::to_string(i));
+				TST_RC_CHECK_ERROR("Uploading light quadratic " + std::to_string(i));
 			}
 
 			if (render_data.meshShader->hasUniform((base + "innerCone").c_str())) {
 				render_data.meshShader->uploadFloat1(light.innerCone, (base + "innerCone").c_str());
-				RenderCommand::checkError("Uploading light innerCone " + std::to_string(i));
+				TST_RC_CHECK_ERROR("Uploading light innerCone " + std::to_string(i));
 			}
 
 			if (render_data.meshShader->hasUniform((base + "outerCone").c_str())) {
 				render_data.meshShader->uploadFloat1(light.outerCone, (base + "outerCone").c_str());
-				RenderCommand::checkError("Uploading light outerCone " + std::to_string(i));
+				TST_RC_CHECK_ERROR("Uploading light outerCone " + std::to_string(i));
 			}
 		}
 
@@ -195,12 +208,104 @@ namespace tst
 	void MeshRenderer::terminate() noexcept
 	{
 		TST_CORE_TRACE("MeshRenderer terminate called");
+
+		DebugRenderer::terminate();
 	}
 
 	void MeshRenderer::end()
 	{
 		render_data.lightIndex = 0;
 		render_data.lights.clear();
+	}
+
+	void MeshRenderer::flush()
+	{
+		render_data.renderQueue.sort();
+
+		renderPass(RenderPass::ZPrePass);
+		renderPass(RenderPass::Opaque);
+		renderPass(RenderPass::AlphaTest);
+		renderPass(RenderPass::Transparent);
+
+		const auto& queueStats = render_data.renderQueue.getStats();
+		render_data.stats.culledObjects = queueStats.culled;
+		render_data.stats.totalSubmitted = queueStats.totalSubmitted;
+
+	}
+
+	void MeshRenderer::renderPass(RenderPass pass)
+	{
+		const auto& commands = render_data.renderQueue.getCommands(pass);
+
+		if (commands.empty()) { return; }
+
+		groupByMaterial(commands);
+
+		for (const auto &batch : render_data.materialBatches)
+		{
+			renderMaterialBatch(batch);
+		}
+	}
+
+	void MeshRenderer::groupByMaterial(const std::vector<SubMeshRenderCommand>& commands)
+	{
+		render_data.materialBatches.clear();
+
+		std::unordered_map<RefPtr<Material>, size_t> materialToIndex;
+
+		for (const auto &command : commands)
+		{
+			auto it = materialToIndex.find(command.material);
+
+			if (it == materialToIndex.end())
+			{
+				MaterialBatch batch;
+				batch.material = command.material;
+				batch.commands.push_back(command);
+
+				materialToIndex[command.material] = render_data.materialBatches.size();
+				render_data.materialBatches.push_back(batch);
+			} else
+			{
+				render_data.materialBatches[it->second].commands.push_back(command);
+			}
+		}
+	}
+
+	void MeshRenderer::renderMaterialBatch(const MaterialBatch& batch)
+	{
+		batch.material->bind(render_data.meshShader);
+
+		bool backFaceCull = batch.material->getRenderState().backfaceCulling;
+		if (backFaceCull) { RenderCommand::enableBackfaceCulling(); }
+
+
+		for (const auto &command : batch.commands)
+		{
+			renderSubmesh(command);
+		}
+
+		batch.material->unbind();
+
+		if (backFaceCull) { RenderCommand::disableBackfaceCulling(); }
+	}
+
+	void MeshRenderer::renderSubmesh(const SubMeshRenderCommand& command)
+	{
+
+		//TST_CORE_INFO("Rendering submesh {0} With material index {1} ({2})", command.submeshIndex, command.materialIndex, command.material ? command.material->getName() : "Null");
+
+		render_data.meshShader->uploadMatrix4f(command.transform, "u_Model");
+
+		glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(command.transform)));
+		render_data.meshShader->uploadMatrix3f(normalMatrix, "u_NormalMatrix");
+
+		command.mesh->bind();
+
+		RenderCommand::drawIndexedBaseVertex(command.mesh->getVertexArray(), command.indexCount, command.indexOffset, 0);
+
+		render_data.stats.drawCallCount++;
+		render_data.stats.triangleCount += command.indexCount / 3;
 	}
 
 	void MeshRenderer::uploadLightingData(const Light& light, const glm::vec3& lightPosition, const glm::vec3& lightDirection)
@@ -236,9 +341,6 @@ namespace tst
 
 		render_data.lightIndex++;
 	}
-
-
-
 
 	void MeshRenderer::drawMesh(const RefPtr<Mesh>& mesh, const glm::mat4& transform)
 	{
@@ -278,7 +380,7 @@ namespace tst
 
 				material->bind(render_data.meshShader);
 
-				if (material->getMaterialProperties().backfaceCulling)
+				if (material->getRenderState().backfaceCulling)
 				{
 					RenderCommand::enableBackfaceCulling();
 				}
@@ -301,14 +403,10 @@ namespace tst
 		mesh->unbind();
 		RenderCommand::cleanState();
 
-
-		// Check for any OpenGL errors after mesh rendering
-		RenderCommand::checkError("After MeshRenderer cleanup");
+		TST_RC_CHECK_ERROR("After MeshRenderer cleanup");
 
 		render_data.stats.meshCount++;
 	}
-
-
 
 	void MeshRenderer::drawMesh(const RefPtr<Mesh>& mesh, const glm::vec3& position, const glm::vec3& rotation, const glm::vec3& scale)
 	{
@@ -316,6 +414,10 @@ namespace tst
 		drawMesh(mesh, transform);
 	}
 
+	void MeshRenderer::submitMesh(const RefPtr<Mesh>& mesh, const glm::mat4& transform, uint32_t entityId)
+	{
+		render_data.renderQueue.submitMesh(mesh, transform, entityId, render_data.cameraPosition);
+	}
 
 	MeshRenderer::Stats MeshRenderer::getStats()
 	{

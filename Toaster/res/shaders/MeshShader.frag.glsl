@@ -86,7 +86,7 @@ uniform Material u_Material;
 
 // The final output colour to be displayed
 out vec4 FragColour;
-
+out int EntityId;
 
 // pie
 #define PI 3.14159265359
@@ -292,4 +292,6 @@ void main() {
     colour = pow(colour, vec3(1.0f / gamma));
     
     FragColour = vec4(colour, transparency);
+
+    EntityId = 50;
 }

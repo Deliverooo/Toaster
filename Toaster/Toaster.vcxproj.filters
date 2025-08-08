@@ -246,6 +246,9 @@
     <ClInclude Include="src\tstpch.h">
       <Filter>src</Filter>
     </ClInclude>
+    <ClInclude Include="src\Toaster\Renderer\RenderQueue.hpp" />
+    <ClInclude Include="src\Toaster\Renderer\FrustumCulling.hpp" />
+    <ClInclude Include="src\Toaster\Renderer\DebugRenderer.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\dependencies\ImGuizmo\ImGuizmo.cpp">
@@ -395,5 +398,20 @@
     <ClCompile Include="src\tstpch.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="src\Toaster\Renderer\RenderQueue.cpp" />
+    <ClCompile Include="src\Toaster\Renderer\FrustumCulling.cpp" />
+    <ClCompile Include="src\Toaster\Renderer\DebugRenderer.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="res\shaders\FlatTextureShader.glsl" />
+    <None Include="res\shaders\LightingShader.glsl" />
+    <None Include="res\shaders\MeshShader.frag.glsl" />
+    <None Include="res\shaders\MeshShader.glsl" />
+    <None Include="res\shaders\MeshShader.vert.glsl" />
+    <None Include="res\shaders\SkyBoxShader.frag.glsl" />
+    <None Include="res\shaders\SkyBoxShader.glsl" />
+    <None Include="res\shaders\SkyBoxShader.vert.glsl" />
+    <None Include="res\shaders\LineShader.vert.glsl" />
+    <None Include="res\shaders\LineShader.frag.glsl" />
   </ItemGroup>
 </Project>

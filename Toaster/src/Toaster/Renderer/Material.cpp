@@ -7,11 +7,25 @@
 
 namespace tst
 {
+	const std::string Material::s_baseUniformName = "u_Material.";
+
     Material::Material(const std::string& name)
         : m_Name(name)
     {
-        m_MaterialProperties = {};
 
+        m_CustomProperties["diffuse"]   = glm::vec3{ 0.0f, 0.0f, 0.0f };
+        m_CustomProperties["specular"]  = glm::vec3{ 0.8f, 0.8f, 0.8f };
+        m_CustomProperties["emissive"]  = glm::vec3{ 1.0f, 1.0f, 1.0f };
+        m_CustomProperties["ambient"]   = glm::vec3{ 0.0f, 0.0f, 0.0f };
+
+        m_CustomProperties["shininess"]         = 64.0f;
+        m_CustomProperties["opacity"]           = 1.0f;
+        m_CustomProperties["metallic"]          = 0.0f;
+        m_CustomProperties["roughness"]         = 0.6f;
+
+        m_RenderState = {};
+
+        m_MaterialProperties = {};
 
         m_DiffuseMap  = nullptr;
         m_SpecularMap = nullptr;
@@ -26,85 +40,112 @@ namespace tst
 
     void Material::bind(const RefPtr<Shader>& shader) const
     {
-        if (!shader) { return; }
+        if (!shader)
+        {
+            TST_CORE_ERROR("Shader is null, cannot bind material");
+            return;
+		}
 
-		static RefPtr<Texture2D> whiteTexture = Texture2D::create(0xffffffff);
+		m_lastBoundShader = shader;
+        uploadUniforms(shader);
+        bindTextures();
 
-        shader->uploadVector3f(m_MaterialProperties.ambient, "u_Material.ambient");
-        shader->uploadVector3f(m_MaterialProperties.diffuse, "u_Material.diffuse");
-        shader->uploadVector3f(m_MaterialProperties.specular, "u_Material.specular");
-        shader->uploadVector3f(m_MaterialProperties.emissive, "u_Material.emissive");
-        shader->uploadFloat1(m_MaterialProperties.shininess, "u_Material.shininess");
-        shader->uploadFloat1(m_MaterialProperties.opacity, "u_Material.opacity");
-        shader->uploadFloat1(m_MaterialProperties.metallic, "u_Material.metallic");
-        shader->uploadFloat1(m_MaterialProperties.roughness, "u_Material.roughness");
 
+    }
+
+    void Material::bindTextures() const
+    {
+        static RefPtr<Texture2D> whiteTexture = Texture2D::create(0xffffffff);
         int textureSlot = 1;
 
-        if (m_DiffuseMap)
-        {
 
-            m_DiffuseMap->bind(textureSlot);
+        RefPtr<Texture2D> diffuseTex = (m_DiffuseMap == nullptr) ? whiteTexture : m_DiffuseMap;
+        diffuseTex->bind(textureSlot);
+        if (auto shader = m_lastBoundShader.lock())
+        {
             shader->uploadInt1(textureSlot, "u_Material.diffuseMap");
-            shader->uploadBool(true, "u_Material.hasDiffuseMap");
-            textureSlot++;
+            shader->uploadBool(m_DiffuseMap != nullptr, "u_Material.hasDiffuseMap");
         }
-        else
-        {
-			// Ensure we always have a valid texture bound even if no diffuse map is set, this was causing OpenGL errors and is undefined behavior
-			// Having a white texture also allows a solid colour to be mixed with the diffuse colour
-			whiteTexture->bind(textureSlot);
-			shader->uploadInt1(textureSlot, "u_Material.diffuseMap");
-            shader->uploadBool(false, "u_Material.hasDiffuseMap");
-			textureSlot++;
-        }
+        textureSlot++;
 
-        if (m_SpecularMap)
+        RefPtr<Texture2D> specularTex = (m_SpecularMap == nullptr) ? whiteTexture : m_SpecularMap;
+        specularTex->bind(textureSlot);
+        if (auto shader = m_lastBoundShader.lock())
         {
-            m_SpecularMap->bind(textureSlot);
             shader->uploadInt1(textureSlot, "u_Material.specularMap");
-            shader->uploadBool(true, "u_Material.hasSpecularMap");
-            textureSlot++;
+            shader->uploadBool(m_SpecularMap != nullptr, "u_Material.hasSpecularMap");
         }
-        else
-        {
-			whiteTexture->bind(textureSlot);
-			shader->uploadInt1(textureSlot, "u_Material.specularMap");
-            shader->uploadBool(false, "u_Material.hasSpecularMap");
-			textureSlot++;
-        }
+        textureSlot++;
 
-        if (m_NormalMap)
+        RefPtr<Texture2D> normalTex = (m_NormalMap == nullptr) ? whiteTexture : m_NormalMap;
+        normalTex->bind(textureSlot);
+        if (auto shader = m_lastBoundShader.lock())
         {
-            TST_CORE_INFO("Binding Normal Map");
-            m_NormalMap->bind(textureSlot);
             shader->uploadInt1(textureSlot, "u_Material.normalMap");
-            shader->uploadBool(true, "u_Material.hasNormalMap");
-            textureSlot++;
+            shader->uploadBool(m_NormalMap != nullptr, "u_Material.hasNormalMap");
         }
-        else
+        textureSlot++;
+
+        RefPtr<Texture2D> heightTex = (m_HeightMap == nullptr) ? whiteTexture : m_HeightMap;
+        heightTex->bind(textureSlot);
+        if (auto shader = m_lastBoundShader.lock())
         {
-            whiteTexture->bind(textureSlot);
-			shader->uploadInt1(textureSlot, "u_Material.normalMap");
-            shader->uploadBool(false, "u_Material.hasNormalMap");
-            textureSlot++;
+            shader->uploadInt1(textureSlot, "u_Material.heightMap");
+            shader->uploadBool(m_HeightMap != nullptr, "u_Material.hasHeightMap");
+        }
+        textureSlot++;
+
+        
+    }
+
+    struct Material::MaterialUniformUploader
+    {
+        const RefPtr<Shader>& shader;
+        const std::string& uniformName;
+
+        void operator()(float value) const {
+            shader->uploadFloat1(value, (Material::s_baseUniformName + uniformName).c_str());
         }
 
-        if (m_HeightMap)
-        {
-            m_HeightMap->bind(textureSlot);
-            shader->uploadInt1(textureSlot, "u_Material.heightMap");
-            shader->uploadBool(true, "u_Material.hasHeightMap");
-            textureSlot++;
+        void operator()(int value) const {
+            shader->uploadInt1(value, (Material::s_baseUniformName + uniformName).c_str());
         }
-        else
+
+        void operator()(bool value) const {
+            shader->uploadBool(value, (Material::s_baseUniformName + uniformName).c_str());
+        }
+
+        void operator()(const glm::vec3& value) const {
+            shader->uploadVector3f(value, (Material::s_baseUniformName + uniformName).c_str());
+        }
+
+        void operator()(const glm::vec4& value) const {
+            shader->uploadVector4f(value, (Material::s_baseUniformName + uniformName).c_str());
+        }
+
+        void operator()(const glm::mat3& value) const {
+            shader->uploadMatrix3f(value, (Material::s_baseUniformName + uniformName).c_str());
+        }
+
+        void operator()(const glm::mat4& value) const {
+            shader->uploadMatrix4f(value, (Material::s_baseUniformName + uniformName).c_str());
+        }
+    };
+
+    void Material::uploadUniforms(const RefPtr<Shader>& shader) const
+    {
+
+        for (const auto& [name, value] : m_CustomProperties)
         {
-            whiteTexture->bind(textureSlot);
-            shader->uploadInt1(textureSlot, "u_Material.heightMap");
-            shader->uploadBool(false, "u_Material.hasHeightMap");
-            textureSlot++;
+			const std::string& fullName = Material::s_baseUniformName + name;
+            if (!shader->hasUniform(fullName)) { continue; }
+
+            // Basically a way to provide a function that executes based on the type of the variant
+            std::visit(MaterialUniformUploader{ shader, name }, value);
         }
     }
+
+
 
     void Material::unbind() const
     {
@@ -124,14 +165,14 @@ namespace tst
     {
         auto material = create("DefaultMaterial");
 
-        material->setAmbient({ 0.2f, 0.2f, 0.2f });
-        material->setDiffuse({ 0.8f, 0.8f, 0.8f });
-        material->setSpecular({ 0.2f, 0.2f, 0.2f });
-        material->setEmissive({ 0.0f, 0.0f, 0.0f });
-        material->setShininess(32.0f);
-        material->setOpacity(1.0f);
-		material->setBackfaceCulling(false);
-		material->setMetallic(0.0f);
+        material->setProperty("u_Material.ambient", glm::vec3{ 0.2f, 0.2f, 0.2f });
+        material->setProperty("u_Material.diffuse", glm::vec3{ 0.8f, 0.8f, 0.8f });
+        material->setProperty("u_Material.specular", glm::vec3{ 0.2f, 0.2f, 0.2f });
+        material->setProperty("u_Material.emissive", glm::vec3{ 0.0f, 0.0f, 0.0f });
+        material->setProperty("u_Material.shininess", 32.0f);
+        material->setProperty("u_Material.opacity", 1.0f);
+		material->setProperty("u_Material.metallic", 0.0f);
+		material->setProperty("u_Material.roughness", 1.0f);
 
         return material;
     }

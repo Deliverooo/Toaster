@@ -2,6 +2,7 @@
 #include "Camera.hpp"
 #include "Light.hpp"
 #include "Mesh.hpp"
+#include "RenderQueue.hpp"
 
 namespace tst
 {
@@ -20,27 +21,42 @@ namespace tst
 		static void uploadLightingData(const Light& light, const glm::vec3& lightPosition, const glm::vec3& lightDirection);
 		static void flushLights();
 
+		static void flush();
+
 		// Mesh rendering - Add these declarations
 		static void drawMesh(const RefPtr<Mesh>& mesh, const glm::mat4& transform);
 		static void drawMesh(const RefPtr<Mesh>& mesh, const glm::vec3& position, const glm::vec3& rotation, const glm::vec3& scale);
 
+		static void submitMesh(const RefPtr<Mesh>& mesh, const glm::mat4& transform, uint32_t entityId);
 
 		struct Stats
 		{
-			uint32_t drawCallCount{ 0 };
-			uint32_t quadCount{ 0 };
-			uint32_t triangleCount{ 0 };
-			uint32_t textureBindings{ 0 };
-			uint32_t verticesSubmitted{ 0 };
-			uint32_t meshCount{ 0 };
-
-			uint32_t totalVertexCount() { return quadCount * 4 + triangleCount * 3; }
-			uint32_t totalIndexCount() { return quadCount * 6 + triangleCount * 6; }
-			float batchEfficiency() { return drawCallCount > 0 ? static_cast<float>(quadCount) / static_cast<float>(drawCallCount) : 0.0f; }
+			uint32_t drawCallCount = 0;
+			uint32_t triangleCount = 0;
+			uint32_t textureBindings = 0;
+			uint32_t verticesSubmitted = 0;
+			uint32_t meshCount = 0;
+			uint32_t culledObjects = 0;
+			uint32_t totalSubmitted = 0;
 		};
 
 		static Stats getStats();
 		static void resetStats();
+
+
+		struct MaterialBatch
+		{
+			RefPtr<Material> material;
+			std::vector<SubMeshRenderCommand> commands;
+		};
+
+	private:
+
+		static void renderSubmesh(const SubMeshRenderCommand& command);
+
+		static void renderPass(RenderPass pass);
+		static void groupByMaterial(const std::vector<SubMeshRenderCommand>& commands);
+		static void renderMaterialBatch(const MaterialBatch& batch);
 
 	};
 }

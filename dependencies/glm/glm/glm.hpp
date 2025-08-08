@@ -101,6 +101,8 @@
 /// included  a specific file.
 ///
 
+#define GLM_ENABLE_EXPERIMENTAL
+
 #include "detail/_fixes.hpp"
 
 #include "detail/setup.hpp"

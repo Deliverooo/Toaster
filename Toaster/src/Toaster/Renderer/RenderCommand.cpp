@@ -24,9 +24,9 @@ namespace tst
 	}
 
 
-	void RenderCommand::drawArrays(const RefPtr<VertexArray>& vertexArray, const uint32_t count)
+	void RenderCommand::drawArrays(const RefPtr<VertexArray>& vertexArray, const uint32_t count, const DrawMode drawMode)
 	{
-		m_rendererApi->drawArrays(vertexArray, count);
+		m_rendererApi->drawArrays(vertexArray, count, drawMode);
 	}
 
 	void RenderCommand::clear()
@@ -66,10 +66,12 @@ namespace tst
 	}
 
 #ifdef _DEBUG
+#ifdef TST_API_ENABLE_CHECK_ERRORS
 	void RenderCommand::checkError(const std::string& operation)
 	{
 		m_rendererApi->checkError(operation);
 	}
+#endif
 #endif
 
 

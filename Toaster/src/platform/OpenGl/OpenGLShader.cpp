@@ -247,16 +247,29 @@ namespace tst
 
 	void OpenGLShader::bind() const
 	{
-		// Check if this shader is already bound
 		GLint currentProgram;
 		glGetIntegerv(GL_CURRENT_PROGRAM, &currentProgram);
 
 		if (currentProgram == static_cast<GLint>(m_shaderId)) {
-			return; // Already bound
+			return; // Already bound, avoid state change
+		}
+
+		// Validate program before binding
+		GLint isLinked = GL_FALSE;
+		glGetProgramiv(m_shaderId, GL_LINK_STATUS, &isLinked);
+
+		if (isLinked == GL_FALSE) {
+			TST_CORE_ERROR("Attempting to bind unlinked shader program '{}'", m_shaderName);
+			return;
 		}
 
 		glUseProgram(m_shaderId);
-		RenderCommand::checkError("Binding shader '" + m_shaderName + "'");
+
+		// Clear any potential GL errors after binding
+		GLenum error = glGetError();
+		if (error != GL_NO_ERROR) {
+			TST_CORE_WARN("GL error {} after binding shader '{}'", error, m_shaderName);
+		}
 	}
 
 	void OpenGLShader::unbind() const
@@ -309,34 +322,34 @@ namespace tst
 		}
 	}
 
-	int OpenGLShader::getUniformLocation(const char* name)
+	int OpenGLShader::getUniformLocation(const std::string& name)
 	{
 		// Use std::string as key to avoid pointer lifetime issues
-		std::string nameStr(name);
 
-		auto it = m_uniformLocations.find(nameStr);
+		auto it = m_uniformLocations.find(name);
 		if (it != m_uniformLocations.end())
 		{
 			return it->second;
 		}
 
-		int location = glGetUniformLocation(m_shaderId, name);
+		int location = glGetUniformLocation(m_shaderId, name.c_str());
 
 		// Always cache the result, even if it's -1
-		m_uniformLocations[nameStr] = location;
+		m_uniformLocations[name] = location;
 
 		if (location == -1) {
 			static std::unordered_set<std::string> warned_uniforms;
-			if (warned_uniforms.find(nameStr) == warned_uniforms.end()) {
+			if (warned_uniforms.find(name) == warned_uniforms.end()) {
 				TST_CORE_WARN("Uniform '{}' not found in shader '{}'", name, m_shaderName);
-				warned_uniforms.insert(nameStr);
+				warned_uniforms.insert(name);
 			}
 		}
 
 		return location;
 	}
 
-	bool OpenGLShader::hasUniform(const char* name)
+
+	bool OpenGLShader::hasUniform(const std::string &name)
 	{
 	   return getUniformLocation(name) != -1;
 	}

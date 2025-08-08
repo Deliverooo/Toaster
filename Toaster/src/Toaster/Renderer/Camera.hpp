@@ -1,11 +1,15 @@
 #pragma once
 #include <glm/glm.hpp>
-#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/quaternion.hpp>
 
 #include "Toaster/Core/Time.hpp"
 #include "Toaster/Events/Event.hpp"
 #include "Toaster/Events/MouseEvent.hpp"
+
+namespace tst
+{
+	class KeyPressedEvent;
+}
 
 namespace tst
 {
@@ -97,7 +101,7 @@ namespace tst
 	{
 	public:
 		virtual ~EditorCamera() override = default;
-		EditorCamera(float fov = 45.0f, float aspect = 1.77f, float zNear = 0.1f, float zFar = 100.0f);
+		EditorCamera(float fov = 45.0f, float aspect = 1.77f, float zNear = 0.001f, float zFar = 2000.0f);
 
 		void setViewportSize(uint32_t width, uint32_t height) { m_ViewportWidth = static_cast<float>(width); m_ViewportHeight = static_cast<float>(height);	recalculateProjectionMatrix(); }
 
@@ -122,6 +126,7 @@ namespace tst
 		glm::vec3 calcPosition() const;
 
 		bool onMouseScrolled(MouseScrollEvent& e);
+		bool onKeyPressedEvent(KeyPressedEvent& e);
 
 		void panMouse(const glm::vec2& mouseDelta);
 		void orbitMouse(const glm::vec2& mouseDelta);

@@ -3,6 +3,7 @@
 #include "imgui_internal.h"
 #include "Imguizmo.h"
 #include "Toaster/Renderer/MeshRenderer.hpp"
+#include "Toaster/Renderer/SkyBoxRenderer.hpp"
 #include "util/Random.hpp"
 #include "Toaster/Scene/Scene.hpp"
 #include "Toaster/Scene/SceneSerializer.hpp"
@@ -145,11 +146,8 @@ namespace tst
 	void ToasterEditorLayer::onAttach()
 	{
 		FramebufferCreateInfo framebufferCreateInfo;
-		framebufferCreateInfo.attachments = {
-			{ FramebufferTextureFormat::RGBA8, FramebufferTextureWrapping::ClampToEdge, FramebufferTextureWrapping::ClampToEdge },
-			{ FramebufferTextureFormat::RGBA8, FramebufferTextureWrapping::ClampToEdge, FramebufferTextureWrapping::ClampToEdge },
-			{ FramebufferTextureFormat::D24S8, FramebufferTextureWrapping::ClampToEdge, FramebufferTextureWrapping::ClampToEdge },
-		};
+		framebufferCreateInfo.attachments = { FramebufferTextureFormat::RGBA8, FramebufferTextureFormat::RED_INTEGER, FramebufferTextureFormat::D32F_S8 };
+
 		framebufferCreateInfo.width = 1280;
 		framebufferCreateInfo.height = 720;
 		m_Framebuffer = Framebuffer::create(framebufferCreateInfo);
@@ -160,7 +158,7 @@ namespace tst
 
 		m_SceneHierarchyPanel.setSceneContext(m_Scene);
 
-		m_EditorCamera = EditorCamera(45.0f, 1280.0f / 720.0f, 0.1f, 100.0f);
+		m_EditorCamera = EditorCamera(45.0f, 1280.0f / 720.0f, 0.1f, 1000.0f);
 	}
 
 	void ToasterEditorLayer::onUpdate(DeltaTime dt)
@@ -192,8 +190,26 @@ namespace tst
 		RenderCommand::setClearColour(m_clearColour);
 		RenderCommand::clear();
 
+		m_Framebuffer->clearAttachment(1, -1);
+
 		m_Scene->onEditorUpdate(m_EditorCamera, dt);
 
+		auto [mx, my] = ImGui::GetMousePos();
+		mx -= m_ViewportBounds[0].x;
+		my -= m_ViewportBounds[0].y;
+		glm::vec2 viewportSize = m_ViewportBounds[1] - m_ViewportBounds[0];
+		my = viewportSize.y - my;
+		int mouseX = (int)mx;
+		int mouseY = (int)my;
+
+		if (mouseX >= 0 && mouseY >= 0 && mouseX < static_cast<int>(viewportSize.x) && mouseY < static_cast<int>(viewportSize.y))
+		{
+			int pixelData = m_Framebuffer->readPixel(1, mouseX, mouseY);
+		}
+
+
+		// Temporary fix
+		SkyBoxRenderer::render(m_EditorCamera);
 
 	    m_Framebuffer->unbind();
 	}
@@ -434,7 +450,7 @@ namespace tst
 
 		ImGui::Text("Quad Count:");
 		ImGui::SameLine();
-		ImGui::TextColored({ 0.0f, 1.0f, 0.0f, 1.0f }, "%d", MeshRenderer::getStats().quadCount);
+		ImGui::TextColored({ 0.0f, 1.0f, 0.0f, 1.0f }, "%d", MeshRenderer::getStats().triangleCount);
 		ImGui::PopItemWidth();
 
 		ImGui::Text("Texture Bindings:");
@@ -447,42 +463,33 @@ namespace tst
 		ImGui::TextColored({ 0.0f, 1.0f, 0.0f, 1.0f }, "%d", MeshRenderer::getStats().verticesSubmitted);
 		ImGui::PopItemWidth();
 
-		ImGui::Text("Vertex Count:");
-		ImGui::SameLine();
-		ImGui::TextColored({ 0.0f, 1.0f, 0.0f, 1.0f }, "%d", MeshRenderer::getStats().totalVertexCount());
-		ImGui::PopItemWidth();
-
-		ImGui::Text("Index Count:");
-		ImGui::SameLine();
-		ImGui::TextColored({ 0.0f, 1.0f, 0.0f, 1.0f }, "%d", MeshRenderer::getStats().totalIndexCount());
-		ImGui::PopItemWidth();
-
-		ImGui::Text("Batch Efficiency:");
-		ImGui::SameLine();
-		ImGui::TextColored({ 0.0f, 1.0f, 0.0f, 1.0f }, "%f", MeshRenderer::getStats().batchEfficiency());
-		ImGui::PopItemWidth();
-
 		ImGui::End();
 
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, { 0, 0 });
 
 		ImGui::Begin("Viewport");
 
+		auto viewportMinRegion = ImGui::GetWindowContentRegionMin();
+		auto viewportMaxRegion = ImGui::GetWindowContentRegionMax();
+		auto viewportOffset = ImGui::GetWindowPos();
+
+		m_ViewportBounds[0] = { viewportMinRegion.x + viewportOffset.x, viewportMinRegion.y + viewportOffset.y };
+		m_ViewportBounds[1] = { viewportMaxRegion.x + viewportOffset.x, viewportMaxRegion.y + viewportOffset.y };
+
 		m_ViewportFocused = ImGui::IsWindowFocused();
 		m_ViewportHovered = ImGui::IsWindowHovered();
+
 		bool shouldBlockEvents = (!m_ViewportFocused || !m_ViewportHovered);
 		Application::getInstance().getImguiLayer()->setBlockEvents(shouldBlockEvents);
 
-
 		ImVec2 viewportSize = ImGui::GetContentRegionAvail();
 		m_ViewportSize = { viewportSize.x, viewportSize.y };
-		m_ViewportSize.x = std::max(m_ViewportSize.x, 1.0f);
-		m_ViewportSize.y = std::max(m_ViewportSize.y, 1.0f);
 
-		static bool flatShading = true;
-		static bool depthPass = false;
+
+
 
 		ImGui::Image(m_Framebuffer->getColourAttachmentId(), { m_ViewportSize.x, m_ViewportSize.y }, ImVec2(0, 1), ImVec2(1, 0)); 
+
 
 		Entity selectedEntity = m_SceneHierarchyPanel.getSelectedEntity();
 		if (selectedEntity && m_GizmoType != -1)

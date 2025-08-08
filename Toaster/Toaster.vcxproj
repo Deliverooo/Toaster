@@ -170,7 +170,9 @@
     <ClInclude Include="src\Toaster\Events\MouseEvent.hpp" />
     <ClInclude Include="src\Toaster\Renderer\Buffer.hpp" />
     <ClInclude Include="src\Toaster\Renderer\Camera.hpp" />
+    <ClInclude Include="src\Toaster\Renderer\DebugRenderer.hpp" />
     <ClInclude Include="src\Toaster\Renderer\Framebuffer.hpp" />
+    <ClInclude Include="src\Toaster\Renderer\FrustumCulling.hpp" />
     <ClInclude Include="src\Toaster\Renderer\Light.hpp" />
     <ClInclude Include="src\Toaster\Renderer\Loaders\BlendLoader.hpp" />
     <ClInclude Include="src\Toaster\Renderer\Loaders\FbxLoader.hpp" />
@@ -185,6 +187,7 @@
     <ClInclude Include="src\Toaster\Renderer\Renderer3D.hpp" />
     <ClInclude Include="src\Toaster\Renderer\RendererAPI.hpp" />
     <ClInclude Include="src\Toaster\Renderer\RenderingContext.hpp" />
+    <ClInclude Include="src\Toaster\Renderer\RenderQueue.hpp" />
     <ClInclude Include="src\Toaster\Renderer\Shader.hpp" />
     <ClInclude Include="src\Toaster\Renderer\SkyBoxRenderer.hpp" />
     <ClInclude Include="src\Toaster\Renderer\Texture.hpp" />
@@ -227,7 +230,9 @@
     <ClCompile Include="src\Toaster\Core\Time.cpp" />
     <ClCompile Include="src\Toaster\Renderer\Buffer.cpp" />
     <ClCompile Include="src\Toaster\Renderer\Camera.cpp" />
+    <ClCompile Include="src\Toaster\Renderer\DebugRenderer.cpp" />
     <ClCompile Include="src\Toaster\Renderer\Framebuffer.cpp" />
+    <ClCompile Include="src\Toaster\Renderer\FrustumCulling.cpp" />
     <ClCompile Include="src\Toaster\Renderer\Loaders\BlendLoader.cpp" />
     <ClCompile Include="src\Toaster\Renderer\Loaders\FbxLoader.cpp" />
     <ClCompile Include="src\Toaster\Renderer\Loaders\ObjLoader.cpp" />
@@ -240,6 +245,7 @@
     <ClCompile Include="src\Toaster\Renderer\Renderer2D.cpp" />
     <ClCompile Include="src\Toaster\Renderer\Renderer3D.cpp" />
     <ClCompile Include="src\Toaster\Renderer\RendererAPI.cpp" />
+    <ClCompile Include="src\Toaster\Renderer\RenderQueue.cpp" />
     <ClCompile Include="src\Toaster\Renderer\Shader.cpp" />
     <ClCompile Include="src\Toaster\Renderer\SkyBoxRenderer.cpp" />
     <ClCompile Include="src\Toaster\Renderer\Texture.cpp" />
@@ -295,6 +301,18 @@
     <ProjectReference Include="..\dependencies\YamlCpp\YamlCpp.vcxproj">
       <Project>{3BF5F3B0-A7D4-724C-B0EC-FD221C4BD9AD}</Project>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="res\shaders\FlatTextureShader.glsl" />
+    <None Include="res\shaders\LightingShader.glsl" />
+    <None Include="res\shaders\LineShader.frag.glsl" />
+    <None Include="res\shaders\LineShader.vert.glsl" />
+    <None Include="res\shaders\MeshShader.frag.glsl" />
+    <None Include="res\shaders\MeshShader.glsl" />
+    <None Include="res\shaders\MeshShader.vert.glsl" />
+    <None Include="res\shaders\SkyBoxShader.frag.glsl" />
+    <None Include="res\shaders\SkyBoxShader.glsl" />
+    <None Include="res\shaders\SkyBoxShader.vert.glsl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

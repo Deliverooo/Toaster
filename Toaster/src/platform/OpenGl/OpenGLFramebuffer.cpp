@@ -21,6 +21,7 @@ namespace tst
 		case FramebufferTextureFormat::RGB32F: return GL_RGB32F;
 		case FramebufferTextureFormat::D32F_S8: return GL_DEPTH24_STENCIL8; // OpenGL uses this for depth+stencil
 		case FramebufferTextureFormat::D24S8: return GL_DEPTH24_STENCIL8; // OpenGL uses this for depth+stencil
+		case FramebufferTextureFormat::RED_INTEGER: return GL_RED_INTEGER;
 		default:
 			TST_ASSERT(false, "Unknown framebuffer texture format!");
 			return 0;
@@ -39,6 +40,7 @@ namespace tst
 		case FramebufferTextureFormat::RGB32F: return GL_RGB32F;
 		case FramebufferTextureFormat::D32F_S8: return GL_DEPTH24_STENCIL8; // OpenGL uses this for depth+stencil
 		case FramebufferTextureFormat::D24S8: return GL_DEPTH24_STENCIL8; // OpenGL uses this for depth+stencil
+		case FramebufferTextureFormat::RED_INTEGER: return GL_R32I; // OpenGL uses this for integer formats
 		default:
 			TST_ASSERT(false, "Unknown framebuffer texture format!");
 			return 0;
@@ -200,6 +202,15 @@ namespace tst
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	}
 
+	void OpenGLFramebuffer::clearAttachment(uint32_t attachmentIndex, int value)
+	{
+		TST_ASSERT(attachmentIndex < m_colourAttachments.size(), "Attachment index out of bounds!");
+
+		auto& attachmentCreateInfo = m_colourAttachmentCreateInfos[attachmentIndex];
+		glClearTexImage(m_colourAttachments[attachmentIndex], 0, framebufferTextureFormatToOpenGL(attachmentCreateInfo.format), GL_INT, &value);
+	}
+
+
 	void OpenGLFramebuffer::invalidate()
 	{
 		if (m_framebufferId)
@@ -252,6 +263,16 @@ namespace tst
 		TST_ASSERT(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE, "Framebuffer is not complete!");
 
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	}
+
+	int OpenGLFramebuffer::readPixel(uint32_t attachmentIndex, int x, int y)
+	{
+		TST_ASSERT(attachmentIndex < m_colourAttachments.size(), "Attachment index out of bounds!");
+		
+		glReadBuffer(GL_COLOR_ATTACHMENT0 + attachmentIndex);
+		int pixelData;
+		glReadPixels(x, y, 1, 1, GL_RED_INTEGER, GL_INT, &pixelData);
+		return pixelData;
 	}
 
 	void OpenGLFramebuffer::resize(uint32_t width, uint32_t height)

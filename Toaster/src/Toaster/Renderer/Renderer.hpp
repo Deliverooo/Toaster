@@ -13,11 +13,7 @@ namespace tst
 	{
 	public:
 
-
-
 		static RendererAPI::API getApi() { return RendererAPI::getApi(); }
-
-
 		//static void submit(const RefPtr<VertexArray>& vertexArray, const RefPtr<Shader>& shader, const glm::mat4& transform);
 
 		static void resizeViewport(uint32_t width, uint32_t height);

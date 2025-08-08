@@ -19,7 +19,7 @@ namespace tst
 
 		virtual void reload() const override;
 
-		virtual bool hasUniform(const char* name) override;
+		virtual bool hasUniform(const std::string &name) override;
 
 		virtual uint32_t getId() const override { return m_shaderId; };
 
@@ -83,13 +83,13 @@ namespace tst
 		void uploadUniformMatrix4f(const glm::mat4 &mat, const char* name);
 
 	private:
-	private:
 		uint32_t m_shaderId;
-		std::unordered_map<std::string, int> m_uniformLocations; // Changed from const char* to std::string
+		std::unordered_map<std::string, int> m_uniformLocations;
 		std::string m_shaderName;
 
-		int getUniformLocation(const char* name);
-		unsigned int shaderTypeLookup(std::string type);
+		int getUniformLocation(const std::string &name);
+		uint32_t shaderTypeLookup(std::string type);
+
 		uint32_t compileShader(const std::string& shaderSrc, const unsigned int shaderType);
 		std::unordered_map<unsigned int, std::string> processShader(const std::string& shaderSrc);
 	};

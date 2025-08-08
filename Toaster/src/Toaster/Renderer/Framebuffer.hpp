@@ -15,6 +15,7 @@ namespace tst
 		RGB32F,
 		D32F_S8,
 		D24S8,
+		RED_INTEGER,
 	};
 
 	enum class FramebufferTextureWrapping : uint8_t
@@ -56,6 +57,8 @@ namespace tst
 
 	struct FramebufferTextureCreateInfo
 	{
+		FramebufferTextureCreateInfo() = default;
+		FramebufferTextureCreateInfo(FramebufferTextureFormat format) : format(format) {}
 		FramebufferTextureFormat	format			{ FramebufferTextureFormat::None };
 		FramebufferTextureWrapping	wrapS			{ FramebufferTextureWrapping::Repeat };
 		FramebufferTextureWrapping	wrapT			{ FramebufferTextureWrapping::Repeat };
@@ -93,6 +96,11 @@ namespace tst
 
 		virtual void bind() const = 0;
 		virtual void unbind() const = 0;
+
+		virtual int readPixel(uint32_t attachmentIndex, int x, int y) = 0;
+
+
+		virtual void clearAttachment(uint32_t attachmentIndex, int value) = 0;
 
 		virtual const uint32_t &getColourAttachmentId(uint32_t index = 0) const = 0;
 		virtual const uint32_t &getDepthAttachmentId() const = 0;

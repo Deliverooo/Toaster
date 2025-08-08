@@ -1,10 +1,9 @@
 #pragma once
+#include <variant>
+
 #include "Toaster/Core/Log.hpp"
-
 #include "Shader.hpp"
-
 #include <glm/glm.hpp>
-
 #include "Texture.hpp"
 
 
@@ -20,14 +19,39 @@ namespace tst
 		float shininess			{ 64.0f };
 		float opacity			{ 1.0f  };
 		float indexOfRefraction { 1.55f };
-
-
 		float metallic { 0.0f };
 		float roughness{ 0.6f };
 		float ao	   { 1.0f };
 
 		bool backfaceCulling{ false };
 	};
+
+	using MaterialPropertyType = std::variant<glm::vec3, glm::vec4, float, int, bool, glm::mat3, glm::mat4>;
+
+
+	struct RenderState
+	{
+		bool depthTest{ true };
+		bool backfaceCulling{ false };
+		bool blending{ true };
+
+		enum class BlendMode
+		{
+			None,
+			AlphaBlend,
+			Additive,
+			Multiply
+		} blendMode{ BlendMode::None };
+
+		bool wireframe{ false };
+	};
+	struct TextureBinding
+	{
+		RefPtr<Texture2D> texture;
+		std::string uniformName;
+		bool hasTexture{ false };
+	};
+
 
 	class TST_API Material
 	{
@@ -53,10 +77,41 @@ namespace tst
 		void setEmissive(const glm::vec3& emissive)   { m_MaterialProperties.emissive = emissive;	  }
 		void setShininess(float shininess)			  { m_MaterialProperties.shininess = shininess; }
 		void setOpacity(float opacity)				  { m_MaterialProperties.opacity = opacity;	  }
-		void setBackfaceCulling(bool backfaceCulling) { m_MaterialProperties.backfaceCulling = backfaceCulling; }
 		void setMetallic(float metallic)			  { m_MaterialProperties.metallic = metallic; }
 		void setRoughness(float roughness)			  { m_MaterialProperties.roughness = roughness; }
 
+
+
+		template <typename T>
+		void setProperty(const std::string& name, const T& value)
+		{
+			static_assert(std::is_constructible_v<MaterialPropertyType, T> && "Material Property type is not supported");
+			m_CustomProperties[name] = value;
+			makeDirty();
+		}
+
+		template <typename T>
+		T getProperty(const std::string& name) const
+		{
+
+			auto it = m_CustomProperties.find({ name });
+			if (it != m_CustomProperties.end())
+			{
+				if (auto* val = std::get_if<T>(&it->second)) {
+					return *val;
+				}
+			}
+			TST_CORE_ERROR("Material property '{0}' not found or type mismatch", name);
+			return T{};
+		}
+
+		const RenderState& getRenderState() const { return m_RenderState; }
+		void setRenderState(const RenderState& renderState) { m_RenderState = renderState; makeDirty(); }
+
+		void setBackfaceCulling(bool backfaceCulling) { m_RenderState.backfaceCulling = backfaceCulling; makeDirty(); }
+
+
+		void makeDirty() { m_IsDirty = true; }
 
 		void setDiffuseMap(const RefPtr<Texture2D>& diffuseMap)  { m_DiffuseMap  = diffuseMap;  }
 		void setSpecularMap(const RefPtr<Texture2D>& specularMap){ m_SpecularMap = specularMap; }
@@ -70,10 +125,26 @@ namespace tst
 		static RefPtr<Material> create(const std::string& name = "DefaultMat");
 		static RefPtr<Material> createDefault();
 
+		static const std::string s_baseUniformName;
+
 	private:
+
+		struct MaterialUniformUploader;
+
+		void bindTextures() const;
+		void uploadUniforms(const RefPtr<Shader> &shader) const;
+
+
+		mutable bool m_IsDirty{ true };
+		mutable std::weak_ptr<Shader> m_lastBoundShader;
 
 		std::string m_Name;
 		MaterialProperties m_MaterialProperties;
+
+		std::unordered_map<std::string, MaterialPropertyType> m_CustomProperties;
+
+
+		RenderState m_RenderState;
 
 		RefPtr<Texture2D> m_DiffuseMap;
 		RefPtr<Texture2D> m_SpecularMap;
@@ -95,8 +166,6 @@ namespace tst
 		uint32_t getMaterialCount() const { return static_cast<uint32_t>(m_materials.size()); }
 
 		void clear() { m_materials.clear(); }
-
-		//bool loadFromMtlFile(const std::string& filepath);
 
 	private:
 		std::vector<RefPtr<Material>> m_materials;

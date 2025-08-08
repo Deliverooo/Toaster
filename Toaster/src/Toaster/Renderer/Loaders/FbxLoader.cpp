@@ -208,14 +208,14 @@ namespace tst
             // Get material properties
             aiColor3D colour(1.0f, 1.0f, 1.0f);
             mat->Get(AI_MATKEY_COLOR_DIFFUSE, colour);
-            material->setDiffuse(glm::vec3(colour.r, colour.g, colour.b));
+            material->setProperty("diffuse", glm::vec3(colour.r, colour.g, colour.b));
 
             mat->Get(AI_MATKEY_COLOR_SPECULAR, colour);
-            material->setSpecular(glm::vec3(colour.r, colour.g, colour.b));
+            material->setProperty("specular", glm::vec3(colour.r, colour.g, colour.b));
 
             float shininess = 32.0f;
             mat->Get(AI_MATKEY_SHININESS, shininess);
-            material->setShininess(shininess);
+            material->setProperty("shininess", shininess);
 
             int backfaceCulling = 0;
             mat->Get(AI_MATKEY_TWOSIDED, backfaceCulling);

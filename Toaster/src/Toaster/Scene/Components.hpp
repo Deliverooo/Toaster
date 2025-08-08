@@ -78,6 +78,8 @@ namespace tst
 
 		RefPtr<Mesh> mesh = nullptr;
 		glm::vec4 colour = { 1.0f, 0.0f, 0.862f, 1.0f };
+
+		bool showBoundingBox{ false };
 	};
 
 	struct LightComponent

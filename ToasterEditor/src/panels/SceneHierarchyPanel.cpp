@@ -1,8 +1,9 @@
-#include "SceneHierarchyPanel.hpp"
+﻿#include "SceneHierarchyPanel.hpp"
 
 
 #include "Toaster/Scene/Components.hpp"
 #include <filesystem>
+#include <optional>
 
 
 #include "imgui_internal.h"
@@ -15,57 +16,308 @@
 namespace tst
 {
 
-	SceneHierarchyPanel::SceneHierarchyPanel(const RefPtr<Scene>& scene)
+	SceneHierarchyPanel::SceneHierarchyPanel(const RefPtr<Scene>& scene) : m_sceneContext(scene)
 	{
-		m_sceneContext = scene;
+		initComponentIcons();
 	}
 
 	void SceneHierarchyPanel::setSceneContext(const RefPtr<Scene>& sceneContext)
 	{
 		m_sceneContext = sceneContext;
 		m_selectedEntity = {};
+		clearSelection();
+	}
+
+	void SceneHierarchyPanel::initComponentIcons()
+	{
+		m_componentIcons["Transform"]		= "↔️↕";
+		m_componentIcons["Camera"]			= "🎥";
+		m_componentIcons["Light"]			= "💡";
+		m_componentIcons["Mesh Renderer"]	= "🗿";
+		m_componentIcons["Sprite Renderer"] = "🐸";
+		m_componentIcons["Tag"]				= "🏷️";
+	}
+
+	void SceneHierarchyPanel::pushStyleColours()
+	{
+		ImGui::PushStyleColor(ImGuiCol_WindowBg,		{ 0.1f, 0.1f, 0.1f, 0.95f });
+		ImGui::PushStyleColor(ImGuiCol_Header,			{ 0.2f, 0.2f, 0.2f, 0.80f });
+		ImGui::PushStyleColor(ImGuiCol_HeaderHovered,	m_uiSettings.hoverColour);
+		ImGui::PushStyleColor(ImGuiCol_HeaderActive,	m_uiSettings.selectionColour);
+		ImGui::PushStyleColor(ImGuiCol_TreeLines,		{ 0.4f, 0.4f, 0.4f, 1.0f });
+
+		ImGui::PushStyleColor(ImGuiCol_Button,			{ 0.2f, 0.2f, 0.2f, 0.60f });
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered,	{ 0.3f, 0.3f, 0.3f, 0.80f });
+		ImGui::PushStyleColor(ImGuiCol_ButtonActive,	{ 0.2f, 0.2f, 0.2f, 1.00f });
+	}
+
+	void SceneHierarchyPanel::popStyleColours()
+	{
+		ImGui::PopStyleColor(8);
+	}
+
+	void SceneHierarchyPanel::drawToolbar()
+	{
+		ImGui::BeginGroup();
+
+		if (ImGui::Button("+ Entity"))
+		{
+			auto entity = m_sceneContext->createEntity("New Entity");
+			selectEntity(entity);
+		}
+
+		ImGui::SameLine();
+
+		if (ImGui::Button("- Delete"))
+		{
+			if (m_selectedEntity)
+			{
+				m_sceneContext->removeEntity(m_selectedEntity);
+				if (onEntityDeleted) { onEntityDeleted(m_selectedEntity); }
+				m_selectedEntity = {};
+			}
+		}
+
+		ImGui::SameLine();
+
+		ImGui::Checkbox("Icons", &m_uiSettings.showIcons);
+		ImGui::SameLine();
+		ImGui::Checkbox("Compact", &m_uiSettings.compactMode);
+
+		ImGui::EndGroup();
+	}
+
+	void SceneHierarchyPanel::handleEntityDragDrop(Entity entity)
+	{
+		if (ImGui::BeginDragDropSource())
+		{
+			ImGui::SetDragDropPayload("ENTITY_DRAG", &entity, sizeof(Entity));
+			ImGui::Text("Move %s", entity.getComponent<TagComponent>().name.c_str());
+			m_draggedEntity = entity;
+			m_isDragging = true;
+			ImGui::EndDragDropSource();
+		}
+
+		if (ImGui::BeginDragDropTarget())
+		{
+			if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ENTITY_DRAG"))
+			{
+				Entity droppedEntity = *(Entity*)payload->Data;
+				// TODO: Implement entity parenting logic
+
+			}
+			ImGui::EndDragDropTarget();
+		}
+	}
+
+
+	void SceneHierarchyPanel::drawSearchBar()
+	{
+		if (m_uiSettings.showSearch)
+		{
+			ImGui::SetNextItemWidth(-1);
+
+			char searchBuff[255];
+			strcpy_s(searchBuff, sizeof(searchBuff), m_uiSettings.searchFilter.c_str());
+
+			if (ImGui::InputTextWithHint("##Search", "Search for an entity", searchBuff, sizeof(searchBuff)))
+			{
+				m_uiSettings.searchFilter = searchBuff;
+			}
+		}
+	}
+
+	bool SceneHierarchyPanel::matchesSearchFilter(Entity entity) const
+	{
+		if (m_uiSettings.searchFilter.empty()) { return true; }
+
+		if (!entity.hasComponent<TagComponent>()) { return false; }
+
+		auto& tag = entity.getComponent<TagComponent>();
+		std::string entityName = tag.name;
+		std::string filter = m_uiSettings.searchFilter;
+
+
+		std::transform(entityName.begin(), entityName.end(), entityName.begin(), ::tolower);
+		std::transform(filter.begin(), filter.end(), filter.begin(), ::tolower);
+
+		return entityName.find(filter) != std::string::npos;
+	}
+
+	void SceneHierarchyPanel::drawEntityContextMenu(Entity entity)
+	{
+		if (ImGui::MenuItem("Duplicate"))
+		{
+			// TODO - Implement entity duplication
+		}
+
+		if (ImGui::MenuItem("Delete", "Del"))
+		{
+			m_sceneContext->removeEntity(entity);
+			if (entity == m_selectedEntity) { m_selectedEntity = {}; }
+		}
+
+		ImGui::Separator();
+
+		if (ImGui::BeginMenu("Add Component"))
+		{
+			if (ImGui::MenuItem("Camera") && !entity.hasComponent<CameraComponent>())
+			{
+				entity.addComponent<CameraComponent>();
+			}
+			if (ImGui::MenuItem("Light") && !entity.hasComponent<LightComponent>())
+			{
+				entity.addComponent<LightComponent>();
+			}
+			if (ImGui::MenuItem("Mesh Renderer") && !entity.hasComponent<MeshRendererComponent>())
+			{
+				entity.addComponent<MeshRendererComponent>();
+			}
+			if (ImGui::MenuItem("Sprite Renderer") && !entity.hasComponent<SpriteRendererComponent>())
+			{
+				entity.addComponent<SpriteRendererComponent>();
+			}
+
+			ImGui::EndMenu();
+		}
+
+		ImGui::Separator();
+
+		if (ImGui::MenuItem("Focus Camera"))
+		{
+			// TODO - Focus camera on selected entity
+		}
+	}
+
+	void SceneHierarchyPanel::drawHierarchyContextMenu()
+	{
+		if (ImGui::BeginPopupContextWindow(nullptr, ImGuiPopupFlags_NoOpenOverItems | ImGuiPopupFlags_MouseButtonRight))
+		{
+			if (ImGui::BeginMenu("Create"))
+			{
+				if (ImGui::MenuItem("Empty Entity"))
+				{
+					auto entity = m_sceneContext->createEntity("Empty Entity");
+					selectEntity(entity);
+				}
+
+				if (ImGui::MenuItem("Camera"))
+				{
+					auto entity = m_sceneContext->createEntity("Camera");
+					entity.addComponent<CameraComponent>();
+					selectEntity(entity);
+				}
+
+				if (ImGui::MenuItem("Light"))
+				{
+					auto entity = m_sceneContext->createEntity("Light");
+					entity.addComponent<LightComponent>();
+					selectEntity(entity);
+				}
+
+				ImGui::EndMenu();
+			}
+			ImGui::Separator();
+
+			if (ImGui::MenuItem("Select All"))
+			{
+				// TODO: Implement select all
+			}
+
+			if (ImGui::MenuItem("Deselect All"))
+			{
+				clearSelection();
+			}
+
+			ImGui::EndPopup();
+		}
+	}
+
+	void SceneHierarchyPanel::selectEntity(Entity entity, bool addToSelection)
+	{
+		if (!addToSelection) { clearSelection(); }
+
+		m_selectedEntity = entity;
+		m_selectedEntities.insert(entity);
+
+		if (onEntitySelected) { onEntitySelected(entity); }
+	}
+
+	void SceneHierarchyPanel::clearSelection()
+	{
+		m_selectedEntities.clear();
+		m_selectedEntity = { entt::null, nullptr };
+	}
+
+	void SceneHierarchyPanel::deselectEntity(Entity entity)
+	{
+		m_selectedEntities.erase(entity);
+
+		if (m_selectedEntity == entity) { m_selectedEntity = { entt::null, nullptr }; }
 	}
 
 
 
-	void SceneHierarchyPanel::drawEntityNode(Entity entity)
+
+
+	void SceneHierarchyPanel::drawEntityNode(Entity entity, int depth = 0)
 	{
+		if (!matchesSearchFilter(entity)) { return; }
+
+
 		auto& tag = entity.getComponent<TagComponent>();
 
-		ImGuiTreeNodeFlags flags = ((entity == m_selectedEntity) ? ImGuiTreeNodeFlags_Selected : 0) | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
-		bool opened = ImGui::TreeNodeEx((void*)(uint32_t)entity, flags, "%s", tag.name.c_str());
+
+		bool isSelected = (entity == m_selectedEntity);
+
+		ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow |	ImGuiTreeNodeFlags_SpanAvailWidth;
+
+		if (isSelected) { flags |= ImGuiTreeNodeFlags_Selected; }
+
+		flags |= ImGuiTreeNodeFlags_Leaf;
+
+		float indentSize = m_uiSettings.hierarchyIndentation * depth;
+		if (depth > 0)
+		{
+			ImGui::Indent(indentSize);
+		}
+
+		const char* entityIcon = "📦";
+
+		std::string displayName = m_uiSettings.showIcons ? (std::string(entityIcon) + " " + tag.name) : tag.name;
+
+		bool opened = ImGui::TreeNodeEx((void*)(uint32_t)entity, flags, "%s", displayName.c_str());
+
 
 		if (ImGui::IsItemClicked())
 		{
-			m_selectedEntity = entity;
+			selectEntity(entity);
 		}
 
-		bool deleted = false;
+		// Enhanced hover effects
+		if (ImGui::IsItemHovered())
+		{
+			ImGui::SetTooltip("Entity: %s\nID: %u", tag.name.c_str(), (uint32_t)entity);
+		}
+
+		handleEntityDragDrop(entity);
+
+		// Context menu
 		if (ImGui::BeginPopupContextItem())
 		{
-			if (ImGui::MenuItem("Delete"))
-			{
-				deleted = true;
-			}
-
-
-
+			drawEntityContextMenu(entity);
 			ImGui::EndPopup();
 		}
 
 		if (opened)
 		{
+			// Draw children here if you implement hierarchy
 			ImGui::TreePop();
 		}
 
-		if (deleted)
+		if (depth > 0)
 		{
-			m_sceneContext->removeEntity(entity);
-
-			if (m_selectedEntity == entity)
-			{
-				m_selectedEntity = {};
-			}
+			ImGui::Unindent(indentSize);
 		}
 	}
 
@@ -209,6 +461,7 @@ namespace tst
 		ImGui::PopItemWidth();
 
 		ComponentUiDrawInfo transformDrawInfo{};
+		transformDrawInfo.removable = false;
 		transformDrawInfo.displayName = "Transform";
 		drawComponent<TransformComponent>(&entity, transformDrawInfo, [](TransformComponent* comp)
 		{
@@ -444,6 +697,16 @@ namespace tst
 						ImGui::TreePop();
 					}
 
+					ImGui::Separator();
+
+					if (ImGui::TreeNode("Viewport Display"))
+					{
+
+						ImGui::Checkbox("Show Bounding Box", &comp->showBoundingBox);
+
+						ImGui::TreePop();
+					}
+
 					// Display material information
 					ImGui::Separator();
 
@@ -458,34 +721,24 @@ namespace tst
 								{
 									ImGui::PushID(material->getName().c_str());
 
-									auto& props = material->getMaterialProperties();
 
+									glm::vec3 diffuse = material->getProperty<glm::vec3>("diffuse");
+									if (ImGui::ColorEdit3("Diffuse", glm::value_ptr(diffuse))) { material->setProperty("diffuse", diffuse); }
 
-									glm::vec3 diffuse{ props.diffuse };
-									if (ImGui::ColorEdit3("Diffuse", glm::value_ptr(diffuse)))
-									{
-										material->setDiffuse(diffuse);
-									}
-									float opacity = props.opacity;
-									if (ImGui::SliderFloat("Opacity", &opacity, 0.0f, 1.0f)) { material->setOpacity(opacity); }
+									float opacity = material->getProperty<float>("opacity");
+									if (ImGui::SliderFloat("Opacity", &opacity, 0.0f, 1.0f)) { material->setProperty("opacity", opacity); }
 
-									glm::vec3 specular{ props.specular };
-									if (ImGui::ColorEdit3("Specular", glm::value_ptr(specular)))
-									{
-										material->setSpecular(specular);
-									}
+									glm::vec3 specular = material->getProperty<glm::vec3>("specular");
+									if (ImGui::ColorEdit3("Specular", glm::value_ptr(specular))) { material->setProperty("specular", specular); }
 
-									float roughness = props.roughness;
-									if (ImGui::SliderFloat("Roughness", &roughness, 0.0f, 1.0f)) { material->setRoughness(roughness); }
+									float roughness = material->getProperty<float>("roughness");
+									if (ImGui::SliderFloat("Roughness", &roughness, 0.0f, 1.0f)) { material->setProperty("roughness", roughness); }
 
-									float metallic = props.metallic;
-									if (ImGui::SliderFloat("Metallic", &metallic, 0.0f, 1.0f)) { material->setMetallic(metallic); }
+									float metallic = material->getProperty<float>("metallic");
+									if (ImGui::SliderFloat("Metallic", &metallic, 0.0f, 1.0f)) { material->setProperty("metallic", metallic); }
 
-									bool backFaceCulling = props.backfaceCulling;
-									if (ImGui::Checkbox("Backface Culling", &backFaceCulling))
-									{
-										material->setBackfaceCulling(backFaceCulling);
-									}
+									bool backFaceCulling = material->getRenderState().backfaceCulling;
+									if (ImGui::Checkbox("Backface Culling", &backFaceCulling)) { material->setBackfaceCulling(backFaceCulling); }
 
 									ImGui::Text("Has Diffuse Map: %s", material->getDiffuseMap() ? "Yes" : "No");
 									ImGui::Text("Has Specular Map: %s", material->getSpecularMap() ? "Yes" : "No");
@@ -564,99 +817,162 @@ namespace tst
 	template<typename T>
 	void SceneHierarchyPanel::drawComponent(Entity* entity, const ComponentUiDrawInfo& drawInfo, void(*uiFunc)(T*))
 	{
-		if (entity->hasComponent<T>())
+		if (!entity->hasComponent<T>()) { return; }
+
+		ImVec2 contentRegionAvail = ImGui::GetContentRegionAvail();
+
+		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6, 6));
+		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,	ImVec2(8, 4));
+
+		float lineHeight = GImGui->FontSize + GImGui->Style.FramePadding.y * 2.0f;
+		ImGui::Separator();
+
+		ImGui::PushID(typeid(T).name());
+
+		bool open = false;
+		if (drawInfo.collapsible)
 		{
-			ImVec2 contentRegionAvail = ImGui::GetContentRegionAvail();
-
-			ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4, 4));
-
-			float lineHeight = GImGui->FontSize + GImGui->Style.FramePadding.y * 2.0f;
-			ImGui::Separator();
-
-			bool open = ImGui::TreeNodeEx((void*)typeid(T).hash_code(), drawInfo.treeNodeFlags, drawInfo.displayName);
-			ImGui::PopStyleVar();
-
-			ImGui::SameLine(contentRegionAvail.x - lineHeight * 1.0f);
-
-			if (ImGui::Button("...", ImVec2{lineHeight * 1.5f, lineHeight}))
+			open = ImGui::TreeNodeEx((void*)typeid(T).hash_code(), drawInfo.treeNodeFlags, "%s %s", (drawInfo.icon) ? drawInfo.icon : "", drawInfo.displayName);
+		}
+		else
+		{
+			ImGui::AlignTextToFramePadding();
+			if (drawInfo.icon)
 			{
-				ImGui::OpenPopup("Component Properties");
-			}
-
-			bool removeComponent = false;
-
-			if (ImGui::BeginPopup("Component Properties"))
+				ImGui::Text("%s %s", drawInfo.icon, drawInfo.displayName);
+			} else
 			{
-				if (ImGui::MenuItem("Remove Component"))
-				{
-					removeComponent = true;
-				}
-				ImGui::EndPopup();
+				ImGui::Text("%s", drawInfo.displayName);
 			}
+			open = true;
+		}
 
-			if (open)
-			{
-				auto& comp = entity->getComponent<T>();
+		ImGui::SameLine(contentRegionAvail.x - lineHeight * 2.0f);
 
-				uiFunc(&comp);
+		ImGui::PushStyleColor(ImGuiCol_Button,			ImVec4(0, 0, 0, 0));
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered,	ImVec4(0.3f, 0.3f, 0.3f, 0.5f));
+		ImGui::PushStyleColor(ImGuiCol_ButtonActive,	ImVec4(0.2f, 0.2f, 0.2f, 0.7f));
 
-				ImGui::TreePop();
-			}
+		if (ImGui::Button("*", ImVec2(lineHeight * 1.5f, lineHeight)))
+		{
+			ImGui::OpenPopup("ComponentOptions");
+		}
 
-			if (removeComponent)
+		ImGui::PopStyleColor(3);
+
+		bool removeComponent = false;
+		if (ImGui::BeginPopup("ComponentOptions"))
+		{
+			if (ImGui::MenuItem("Reset"))
 			{
 				entity->removeComponent<T>();
+				entity->addComponent<T>();
 			}
+			if (drawInfo.removable && ImGui::MenuItem("Remove Component"))
+			{
+				removeComponent = true;
+			}
+
+			ImGui::Separator();
+
+			if (ImGui::MenuItem("Copy Component"))
+			{
+				// TODO Add component copying
+			}
+			if (ImGui::MenuItem("Paste Component"))
+			{
+				// TODO Add component pasting
+			}
+
+			ImGui::EndPopup();
 		}
+
+		if (open && drawInfo.collapsible)
+		{
+			ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, 16.0f);
+			ImGui::Indent();
+
+			auto& comp = entity->getComponent<T>();
+			if (uiFunc){ uiFunc(&comp); }
+
+			ImGui::Unindent();
+			ImGui::PopStyleVar();
+
+			ImGui::TreePop();
+		}
+		else if (open && !drawInfo.collapsible)
+		{
+			auto& comp = entity->getComponent<T>();
+			if (uiFunc) { uiFunc(&comp); }
+		}
+
+		if (removeComponent)
+		{
+			entity->removeComponent<T>();
+		}
+
+		ImGui::PopID();
+		ImGui::PopStyleVar(2);
+		
 	}
 
 
 	void SceneHierarchyPanel::onImGuiRender()
 	{
+
+		pushStyleColours();
+
 		ImGui::Begin("Scene Hierarchy");
 
-		m_sceneContext->m_registry.view<entt::entity>().each([this](auto entityId)
-		{
-			Entity entity = { entityId, m_sceneContext.get()};
-			drawEntityNode(entity);
-		});
+		drawToolbar();
+		ImGui::Separator();
 
-		if (ImGui::IsMouseDown(0) && ImGui::IsWindowHovered())
-		{
-			m_selectedEntity = {};
-		}
+		drawSearchBar();
 
-		ImGui::PushStyleVar(ImGuiStyleVar_PopupRounding, 5.0f);
-		if (ImGui::BeginPopupContextWindow(nullptr, ImGuiPopupFlags_NoOpenOverItems | ImGuiPopupFlags_MouseButtonRight))
+		if (m_uiSettings.showSearch) { ImGui::Separator(); }
+
+		ImGui::BeginChild("Entity List", { 0, 0 }, false);
+
+		if (m_sceneContext)
 		{
-			if (ImGui::BeginMenu("New"))
+			m_sceneContext->m_registry.view<entt::entity>().each([this](auto entityId)
 			{
-				if (ImGui::MenuItem("Entity")) { m_sceneContext->createEntity("entity"); }
-
-				if (ImGui::MenuItem("Light")) { m_sceneContext->createEntity("light").addComponent<LightComponent>(); }
-
-				ImGui::EndMenu();
-			}
-
-			ImGui::MenuItem("Cut");
-			ImGui::MenuItem("Copy");
-			ImGui::MenuItem("Paste");
-
-
-			ImGui::EndPopup();
+				Entity entity = { entityId, m_sceneContext.get() };
+				drawEntityNode(entity);
+			});
 		}
-		ImGui::PopStyleVar();
 
+		if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGui::IsAnyItemHovered())
+		{
+			clearSelection();
+		}
 
+		drawHierarchyContextMenu();
+
+		ImGui::EndChild();
 		ImGui::End();
 
+
 		ImGui::Begin("Inspector");
+
 		if (m_selectedEntity)
 		{
 			drawComponents(m_selectedEntity);
-			
 		}
+		else
+		{
+			ImGui::TextDisabled("No entity selected");
+
+			if (ImGui::Button("Create New Entity"))
+			{
+				auto entity = m_sceneContext->createEntity("New Entity");
+				selectEntity(entity);
+			}
+		}
+
 		ImGui::End();
+
+		popStyleColours();
 	}
 
 }

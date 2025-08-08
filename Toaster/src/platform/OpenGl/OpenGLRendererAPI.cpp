@@ -182,9 +182,9 @@ namespace tst
 		vertexArray->unbind();
 	}
 
-	void OpenGLRendererAPI::drawArrays(const RefPtr<VertexArray>& vertexArray, const uint32_t count)
+	void OpenGLRendererAPI::drawArrays(const RefPtr<VertexArray>& vertexArray, const uint32_t count, const DrawMode drawMode)
 	{
-		glDrawArrays(GL_TRIANGLES, 0, count);
+		glDrawArrays(static_cast<GLenum>(drawMode), 0, count);
 	}
 
 	void OpenGLRendererAPI::resizeViewport(uint32_t width, uint32_t height)

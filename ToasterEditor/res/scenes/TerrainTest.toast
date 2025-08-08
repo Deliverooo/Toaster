@@ -4,18 +4,62 @@ Entities:
     TagComponent:
       Tag: light
     TransformComponent:
-      Translation: [4.5305643, 3.046699, -4.539811]
-      Rotation: [1.5415921, -0.041593026, -3.1415923]
-      Scale: [0.9999893, 0.9999894, 0.99999464]
+      Translation: [-4.1043415, 1.9440918, 5.6360703]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    LightComponent:
+      Type: 1
+      Colour: [1, 1, 1]
+      Intensity: 3.644
+      Constant: 1
+      Linear: 0.09
+      Quadratic: 0.032
+      InnerCone: 40
+      OuterOffset: 0.1
+      Enabled: true
+  - Entity: 12241557773261097666
+    TagComponent:
+      Tag: Orbo
+    MeshRendererComponent:
+      Colour: [1, 0, 0.862, 1]
+      Filepath: C:\Users\oocon\OneDrive\Desktop\blender dev log\Orbo\orbo_mesh.fbx
+    TransformComponent:
+      Translation: [-7.5707064, 1.3601396, 3.080679]
+      Rotation: [-2.972867, 0.6889028, 3.027805]
+      Scale: [0.025000023, 0.025000006, 0.024999985]
+  - Entity: 12241557773261097666
+    TagComponent:
+      Tag: light
+    TransformComponent:
+      Translation: [-4.445574, 1.0292604, -2.6616967]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    LightComponent:
+      Type: 1
+      Colour: [1, 1, 1]
+      Intensity: 7
+      Constant: 1
+      Linear: 0.09
+      Quadratic: 0.032
+      InnerCone: 40
+      OuterOffset: 0.1
+      Enabled: true
+  - Entity: 12241557773261097666
+    TagComponent:
+      Tag: light
+    TransformComponent:
+      Translation: [3.9249573, 2.4634442, 0.3448601]
+      Rotation: [1.5203558, 0, 0]
+      Scale: [1, 0.9999975, 0.9999975]
     LightComponent:
       Type: 2
       Colour: [1, 1, 1]
-      Intensity: 2
-      Constant: 1.0
+      Intensity: 1
+      Constant: 1
       Linear: 0.09
       Quadratic: 0.032
-      InnerCone: 40.0
-      OuterCone: 45.0
+      InnerCone: 40
+      OuterOffset: 0.1
       Enabled: true
   - Entity: 12241557773261097666
     TagComponent:
@@ -27,18 +71,3 @@ Entities:
       Translation: [0, 0, 0]
       Rotation: [0, 0, 0]
       Scale: [1, 1, 1]
-  - Entity: 12241557773261097666
-    TagComponent:
-      Tag: light
-    SpriteRendererComponent:
-      Colour: [1, 1, 1, 1]
-      Texture: "NULL"
-    TransformComponent:
-      Translation: [-3.8509572, 3.024257, 3.278158]
-      Rotation: [0, 0, 0]
-      Scale: [0.3, 0.2, 1]
-    LightComponent:
-      Type: 1
-      Colour: [1, 1, 1]
-      Intensity: 10
-      Enabled: true

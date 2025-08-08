@@ -11,6 +11,7 @@ namespace tst
 	GLint framebufferTextureFilteringToOpenGL(FramebufferTextureFiltering filtering);
 	GLenum framebufferPixelDataTypeToOpenGL(FramebufferPixelDataType type);
 
+
 	GLenum framebufferTextureFormatToOpenGLType(FramebufferTextureFormat format);
 
 	class OpenGLFramebuffer : public Framebuffer
@@ -25,6 +26,9 @@ namespace tst
 		virtual void bind() const override;
 		virtual void unbind() const override;
 		virtual void resize(uint32_t width, uint32_t height) override;
+
+		virtual int readPixel(uint32_t attachmentIndex, int x, int y) override;
+		virtual void clearAttachment(uint32_t attachmentIndex, int value) override;
 
 		virtual const uint32_t &getColourAttachmentId(uint32_t index) const override { return m_colourAttachments[index]; }
 		virtual const uint32_t &getDepthAttachmentId() const override { return m_depthAttachment; }

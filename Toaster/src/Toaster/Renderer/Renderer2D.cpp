@@ -17,6 +17,8 @@ namespace tst
 		glm::vec2 textureCoords;
 		float textureIndex;
 		float tilingFactor;
+
+		int entityId;
 	};
 
 	struct RenderData
@@ -132,9 +134,7 @@ namespace tst
 
 		TST_PROFILE_FN();
 
-
 		render_data.quadVertexArray = VertexArray::create();
-
 		render_data.quadVertexBuffer = VertexBuffer::create(render_data.maxVertices * sizeof(QuadVertex));
 
 		render_data.quadVertexBuffer->setLayout({
@@ -145,7 +145,6 @@ namespace tst
 			{"TilingFactor",	 ShaderDataType::Float},
 			});
 		render_data.quadVertexArray->addVertexBuffer(render_data.quadVertexBuffer);
-
 		render_data.quadVertexBufferBase = new QuadVertex[render_data.maxVertices];
 
 		uint32_t* quadIndices = new uint32_t[render_data.maxIndices];

@@ -11,6 +11,7 @@
 #include <glm/glm.hpp>
 
 #include "Entity.hpp"
+#include "Toaster/Renderer/DebugRenderer.hpp"
 #include "Toaster/Renderer/MeshRenderer.hpp"
 #include "Toaster/Renderer/RenderCommand.hpp"
 #include "Toaster/Renderer/SkyBoxRenderer.hpp"
@@ -67,7 +68,6 @@ namespace tst
 			Renderer2D::end();
 
 
-			TST_RC_CHECK_ERROR("After Renderer2D cleanup");
 		}
 
 		// Mesh Rendering
@@ -92,21 +92,41 @@ namespace tst
 			}
 		}
 		MeshRenderer::flushLights();
-		TST_RC_CHECK_ERROR("After MeshRenderer FlushLights");
 
 
 		auto meshGroup = m_registry.group<MeshRendererComponent>(entt::get<TransformComponent>);
 		for (auto entity : meshGroup)
 		{
 			const auto& [meshRenderer, transform] = meshGroup.get<MeshRendererComponent, TransformComponent>(entity);
-			MeshRenderer::drawMesh(meshRenderer.mesh, transform.matrix());
+			if (meshRenderer.mesh)
+			{
+				MeshRenderer::submitMesh(meshRenderer.mesh, transform.matrix(), static_cast<uint32_t>(entity));
+
+			}
 		}
+		MeshRenderer::flush();
 		MeshRenderer::end();
+
+		if (m_showDebugVisualization)
+		{
+			DebugRenderer::begin(camera);
+
+			// Test
+			DebugRenderer::drawLine({ -5.0f, 0.0f, 0.0f }, { 5.0f, 0.0f, 0.0f }, { 1.0f, 0.0f, 0.0f, 1.0f });
+
+			for (auto entity : meshGroup)
+			{
+				const auto& [meshRenderer, transform] = meshGroup.get<MeshRendererComponent, TransformComponent>(entity);
+				if (meshRenderer.mesh && meshRenderer.showBoundingBox)
+				{
+					DebugRenderer::drawMeshBoundingBox(meshRenderer.mesh, transform.matrix(), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f));
+				}
+			}
+
+			DebugRenderer::end();
+		}
+
 		RenderCommand::cleanState();
-
-		TST_RC_CHECK_ERROR("Before SkyBox rendering");
-
-		SkyBoxRenderer::render(camera);
 	}
 
 

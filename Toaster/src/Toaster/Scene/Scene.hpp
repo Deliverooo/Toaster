@@ -40,5 +40,7 @@
 		friend class Entity;
 		friend class SceneHierarchyPanel;
 		friend class SceneSerializer;
+
+		bool m_showDebugVisualization{ true };
 	};
 }

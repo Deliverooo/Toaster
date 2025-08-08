@@ -15,7 +15,7 @@ namespace tst
 
 		static void drawIndexed(const RefPtr<VertexArray>& vertexArray, uint32_t count = 0);
 		static void drawIndexedBaseVertex(const RefPtr<VertexArray>& vertexArray, uint32_t indexCount, uint32_t indexOffset, uint32_t baseVertex);
-		static void drawArrays(const RefPtr<VertexArray>& vertexArray, const uint32_t count);
+		static void drawArrays(const RefPtr<VertexArray>& vertexArray, const uint32_t count, const DrawMode drawMode = DrawMode::Triangles);
 
 		static void enableDepthTesting();
 		static void disableDepthTesting();
@@ -35,12 +35,17 @@ namespace tst
 
 		// Debugging utility
 #ifdef _DEBUG
-		static void checkError(const std::string& operation);
+	#ifdef TST_API_ENABLE_CHECK_ERRORS
+			static void checkError(const std::string& operation);
+			#define TST_RC_CHECK_ERROR(expr) RenderCommand::checkError(expr);
+		#else
+			static void checkError(const std::string& operation) {}
+			#define TST_RC_CHECK_ERROR(expr)
+	#endif
 
-#define TST_RC_CHECK_ERROR(expr) RenderCommand::checkError(expr)
-#else
-		static void checkError(const std::string& operation) {}
-#define TST_RC_CHECK_ERROR(expr)
+	#else
+		static void checkError(const std::string& operation){}
+		#define TST_RC_CHECK_ERROR(expr)
 #endif
 
 
