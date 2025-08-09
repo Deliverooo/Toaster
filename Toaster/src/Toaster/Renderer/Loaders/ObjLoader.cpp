@@ -9,8 +9,8 @@
 namespace tst
 {
 
-	bool ObjLoader::load(const std::string& filepath, std::vector<MeshVertex>& vertices, std::vector<uint32_t>& indices, std::vector<SubMesh>& submeshes, MaterialLibrary& materialLibrary)
-	{
+    bool ObjLoader::load(const std::string& filepath, std::vector<MeshVertex>& vertices, std::vector<uint32_t>& indices, std::vector<SubMesh>& submeshes, std::vector<MaterialID> &material_ids)
+    {
 
         tinyobj::ObjReaderConfig reader_config;
 
@@ -34,30 +34,36 @@ namespace tst
         auto& shapes = reader.GetShapes();
         auto& materials = reader.GetMaterials();
 
+        std::vector<MaterialID> createdMaterials;
+        createdMaterials.reserve(materials.size());
+
 
         for (const auto& mat : materials)
         {
-            auto material = Material::create(mat.name);
+
+            MaterialID matId = MaterialSystem::createMaterial(mat.name);
+
+            auto material = MaterialSystem::getMaterial(matId);
 
             // Better default values if material properties are missing
-            material->setAmbient({
+            material->setProperty<glm::vec3>("ambient", {
                 mat.ambient[0] > 0 ? mat.ambient[0] : 0.1f,
                 mat.ambient[1] > 0 ? mat.ambient[1] : 0.1f,
                 mat.ambient[2] > 0 ? mat.ambient[2] : 0.1f
                 });
-            material->setDiffuse({
+            material->setProperty<glm::vec3>("diffuse",{
                 mat.diffuse[0] > 0 ? mat.diffuse[0] : 0.8f,
                 mat.diffuse[1] > 0 ? mat.diffuse[1] : 0.8f,
                 mat.diffuse[2] > 0 ? mat.diffuse[2] : 0.8f
                 });
-            material->setSpecular({
+            material->setProperty<glm::vec3>("specular", {
                 mat.specular[0] >= 0 ? mat.specular[0] : 0.2f,
                 mat.specular[1] >= 0 ? mat.specular[1] : 0.2f,
                 mat.specular[2] >= 0 ? mat.specular[2] : 0.2f
                 });
-            material->setEmissive({ mat.emission[0], mat.emission[1], mat.emission[2] });
-            material->setShininess(mat.shininess > 0 ? mat.shininess : 32.0f);
-            material->setOpacity(mat.dissolve > 0 ? mat.dissolve : 0.5f);
+            material->setProperty<glm::vec3>("emission", { mat.emission[0], mat.emission[1], mat.emission[2] });
+            material->setProperty<float>("shininess", mat.shininess > 0 ? mat.shininess : 32.0f);
+            material->setProperty<float>("opacity", mat.dissolve > 0 ? mat.dissolve : 0.5f);
 
 
             static TextureParams defaultParams = {
@@ -131,7 +137,7 @@ namespace tst
                 }
             }
 
-            materialLibrary.addMaterial(material);
+            createdMaterials.push_back(matId);
 
             TST_CORE_INFO("Material '{}' loaded:", mat.name);
             TST_CORE_INFO("  Diffuse: ({}, {}, {})", mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]);
@@ -139,9 +145,9 @@ namespace tst
             TST_CORE_INFO("  Has diffuse texture: {}", !mat.diffuse_texname.empty());
         }
 
-        if (materialLibrary.getMaterialCount() == 0)
+        if (createdMaterials.empty())
         {
-            materialLibrary.addMaterial(Material::createDefault());
+            createdMaterials.push_back(TST_DEFAULT_MATERIAL);
         }
 
         std::unordered_map<MeshVertex, uint32_t> uniqueVertices{};
@@ -199,22 +205,26 @@ namespace tst
 
             submesh.indexCount = static_cast<uint32_t>(indices.size()) - submesh.indexOffset;
 
-            // Assign material to submesh
-            if (!shapes[s].mesh.material_ids.empty() && shapes[s].mesh.material_ids[0] >= 0)
+            MaterialID materialId;
+            if (!shapes[s].mesh.material_ids.empty() && shapes[s].mesh.material_ids[0] >= 0 &&
+                shapes[s].mesh.material_ids[0] < static_cast<int>(createdMaterials.size()))
             {
-                submesh.materialIndex = static_cast<uint32_t>(shapes[s].mesh.material_ids[0]);
+                // Fix: Use the MaterialID from your created materials array directly
+                materialId = createdMaterials[shapes[s].mesh.material_ids[0]];
             }
             else
             {
-                submesh.materialIndex = 0; // Default material
+                materialId = TST_DEFAULT_MATERIAL; // Use 0, not TST_DEFAULT_MATERIAL
             }
 
+            submesh.materialId = materialId;
+            material_ids.push_back(materialId);
             submeshes.push_back(submesh);
         }
 
-        TST_CORE_INFO("Loaded mesh with {0} vertices, {1} indices, {2} submeshes, {3} materials", vertices.size(), indices.size(), submeshes.size(), materialLibrary.getMaterialCount());
+        TST_CORE_INFO("Loaded mesh with {0} vertices, {1} indices, {2} submeshes, {3} materials", vertices.size(), indices.size(), submeshes.size(), createdMaterials.size());
 
         return true;
-	}
+    }
 
 }

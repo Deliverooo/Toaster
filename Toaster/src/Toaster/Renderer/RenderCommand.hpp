@@ -4,7 +4,7 @@
 
 namespace tst
 {
-	class RenderCommand
+	class GraphicsAPI 
 	{
 	public:
 
@@ -37,7 +37,7 @@ namespace tst
 #ifdef _DEBUG
 	#ifdef TST_API_ENABLE_CHECK_ERRORS
 			static void checkError(const std::string& operation);
-			#define TST_RC_CHECK_ERROR(expr) RenderCommand::checkError(expr);
+			#define TST_RC_CHECK_ERROR(expr) GraphicsAPI::checkError(expr);
 		#else
 			static void checkError(const std::string& operation) {}
 			#define TST_RC_CHECK_ERROR(expr)

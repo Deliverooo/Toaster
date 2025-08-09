@@ -151,6 +151,7 @@
   <ItemGroup>
     <ClInclude Include="..\dependencies\ImGuizmo\ImGuizmo.h" />
     <ClInclude Include="src\Toaster.h" />
+    <ClInclude Include="src\Toaster\Asset\Asset.hpp" />
     <ClInclude Include="src\Toaster\CameraController.hpp" />
     <ClInclude Include="src\Toaster\Core\Application.hpp" />
     <ClInclude Include="src\Toaster\Core\Core.hpp" />
@@ -173,21 +174,25 @@
     <ClInclude Include="src\Toaster\Renderer\DebugRenderer.hpp" />
     <ClInclude Include="src\Toaster\Renderer\Framebuffer.hpp" />
     <ClInclude Include="src\Toaster\Renderer\FrustumCulling.hpp" />
+    <ClInclude Include="src\Toaster\Renderer\Loaders\GltfLoader.hpp" />
     <ClInclude Include="src\Toaster\Renderer\Light.hpp" />
     <ClInclude Include="src\Toaster\Renderer\Loaders\BlendLoader.hpp" />
     <ClInclude Include="src\Toaster\Renderer\Loaders\FbxLoader.hpp" />
     <ClInclude Include="src\Toaster\Renderer\Loaders\ObjLoader.hpp" />
     <ClInclude Include="src\Toaster\Renderer\Material.hpp" />
+    <ClInclude Include="src\Toaster\Renderer\MaterialSystem.hpp" />
     <ClInclude Include="src\Toaster\Renderer\Mesh.hpp" />
     <ClInclude Include="src\Toaster\Renderer\MeshRenderer.hpp" />
     <ClInclude Include="src\Toaster\Renderer\RenderCommand.hpp" />
     <ClInclude Include="src\Toaster\Renderer\RenderCore.hpp" />
+    <ClInclude Include="src\Toaster\Renderer\RenderPipeline.hpp" />
+    <ClInclude Include="src\Toaster\Renderer\RenderQueue.hpp" />
     <ClInclude Include="src\Toaster\Renderer\Renderer.hpp" />
     <ClInclude Include="src\Toaster\Renderer\Renderer2D.hpp" />
     <ClInclude Include="src\Toaster\Renderer\Renderer3D.hpp" />
     <ClInclude Include="src\Toaster\Renderer\RendererAPI.hpp" />
     <ClInclude Include="src\Toaster\Renderer\RenderingContext.hpp" />
-    <ClInclude Include="src\Toaster\Renderer\RenderQueue.hpp" />
+    <ClInclude Include="src\Toaster\Renderer\RenderSubmission.hpp" />
     <ClInclude Include="src\Toaster\Renderer\Shader.hpp" />
     <ClInclude Include="src\Toaster\Renderer\SkyBoxRenderer.hpp" />
     <ClInclude Include="src\Toaster\Renderer\Texture.hpp" />
@@ -222,6 +227,7 @@
     <ClCompile Include="..\dependencies\ImGuizmo\ImGuizmo.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="src\Toaster\Asset\Asset.cpp" />
     <ClCompile Include="src\Toaster\CameraController.cpp" />
     <ClCompile Include="src\Toaster\Core\Application.cpp" />
     <ClCompile Include="src\Toaster\Core\Layer.cpp" />
@@ -233,19 +239,23 @@
     <ClCompile Include="src\Toaster\Renderer\DebugRenderer.cpp" />
     <ClCompile Include="src\Toaster\Renderer\Framebuffer.cpp" />
     <ClCompile Include="src\Toaster\Renderer\FrustumCulling.cpp" />
+    <ClCompile Include="src\Toaster\Renderer\Loaders\GltfLoader.cpp" />
     <ClCompile Include="src\Toaster\Renderer\Loaders\BlendLoader.cpp" />
     <ClCompile Include="src\Toaster\Renderer\Loaders\FbxLoader.cpp" />
     <ClCompile Include="src\Toaster\Renderer\Loaders\ObjLoader.cpp" />
     <ClCompile Include="src\Toaster\Renderer\Material.cpp" />
+    <ClCompile Include="src\Toaster\Renderer\MaterialSystem.cpp" />
     <ClCompile Include="src\Toaster\Renderer\Mesh.cpp" />
     <ClCompile Include="src\Toaster\Renderer\MeshRenderer.cpp" />
     <ClCompile Include="src\Toaster\Renderer\RenderCommand.cpp" />
     <ClCompile Include="src\Toaster\Renderer\RenderCore.cpp" />
+    <ClCompile Include="src\Toaster\Renderer\RenderPipeline.cpp" />
+    <ClCompile Include="src\Toaster\Renderer\RenderQueue.cpp" />
     <ClCompile Include="src\Toaster\Renderer\Renderer.cpp" />
     <ClCompile Include="src\Toaster\Renderer\Renderer2D.cpp" />
     <ClCompile Include="src\Toaster\Renderer\Renderer3D.cpp" />
     <ClCompile Include="src\Toaster\Renderer\RendererAPI.cpp" />
-    <ClCompile Include="src\Toaster\Renderer\RenderQueue.cpp" />
+    <ClCompile Include="src\Toaster\Renderer\RenderSubmission.cpp" />
     <ClCompile Include="src\Toaster\Renderer\Shader.cpp" />
     <ClCompile Include="src\Toaster\Renderer\SkyBoxRenderer.cpp" />
     <ClCompile Include="src\Toaster\Renderer\Texture.cpp" />

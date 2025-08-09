@@ -114,7 +114,13 @@
     <ClInclude Include="src\Toaster\Renderer\Camera.hpp">
       <Filter>src\Toaster\Renderer</Filter>
     </ClInclude>
+    <ClInclude Include="src\Toaster\Renderer\DebugRenderer.hpp">
+      <Filter>src\Toaster\Renderer</Filter>
+    </ClInclude>
     <ClInclude Include="src\Toaster\Renderer\Framebuffer.hpp">
+      <Filter>src\Toaster\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Toaster\Renderer\FrustumCulling.hpp">
       <Filter>src\Toaster\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="src\Toaster\Renderer\Light.hpp">
@@ -142,6 +148,9 @@
       <Filter>src\Toaster\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="src\Toaster\Renderer\RenderCore.hpp">
+      <Filter>src\Toaster\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Toaster\Renderer\RenderQueue.hpp">
       <Filter>src\Toaster\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="src\Toaster\Renderer\Renderer.hpp">
@@ -246,9 +255,11 @@
     <ClInclude Include="src\tstpch.h">
       <Filter>src</Filter>
     </ClInclude>
-    <ClInclude Include="src\Toaster\Renderer\RenderQueue.hpp" />
-    <ClInclude Include="src\Toaster\Renderer\FrustumCulling.hpp" />
-    <ClInclude Include="src\Toaster\Renderer\DebugRenderer.hpp" />
+    <ClInclude Include="src\Toaster\Renderer\MaterialSystem.hpp" />
+    <ClInclude Include="src\Toaster\Renderer\RenderPipeline.hpp" />
+    <ClInclude Include="src\Toaster\Renderer\RenderSubmission.hpp" />
+    <ClInclude Include="src\Toaster\Renderer\Loaders\GltfLoader.hpp" />
+    <ClInclude Include="src\Toaster\Asset\Asset.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\dependencies\ImGuizmo\ImGuizmo.cpp">
@@ -278,7 +289,13 @@
     <ClCompile Include="src\Toaster\Renderer\Camera.cpp">
       <Filter>src\Toaster\Renderer</Filter>
     </ClCompile>
+    <ClCompile Include="src\Toaster\Renderer\DebugRenderer.cpp">
+      <Filter>src\Toaster\Renderer</Filter>
+    </ClCompile>
     <ClCompile Include="src\Toaster\Renderer\Framebuffer.cpp">
+      <Filter>src\Toaster\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Toaster\Renderer\FrustumCulling.cpp">
       <Filter>src\Toaster\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="src\Toaster\Renderer\Loaders\BlendLoader.cpp">
@@ -303,6 +320,9 @@
       <Filter>src\Toaster\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="src\Toaster\Renderer\RenderCore.cpp">
+      <Filter>src\Toaster\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Toaster\Renderer\RenderQueue.cpp">
       <Filter>src\Toaster\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="src\Toaster\Renderer\Renderer.cpp">
@@ -398,20 +418,22 @@
     <ClCompile Include="src\tstpch.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="src\Toaster\Renderer\RenderQueue.cpp" />
-    <ClCompile Include="src\Toaster\Renderer\FrustumCulling.cpp" />
-    <ClCompile Include="src\Toaster\Renderer\DebugRenderer.cpp" />
+    <ClCompile Include="src\Toaster\Renderer\MaterialSystem.cpp" />
+    <ClCompile Include="src\Toaster\Renderer\RenderPipeline.cpp" />
+    <ClCompile Include="src\Toaster\Renderer\RenderSubmission.cpp" />
+    <ClCompile Include="src\Toaster\Renderer\Loaders\GltfLoader.cpp" />
+    <ClCompile Include="src\Toaster\Asset\Asset.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="res\shaders\FlatTextureShader.glsl" />
     <None Include="res\shaders\LightingShader.glsl" />
+    <None Include="res\shaders\LineShader.frag.glsl" />
+    <None Include="res\shaders\LineShader.vert.glsl" />
     <None Include="res\shaders\MeshShader.frag.glsl" />
     <None Include="res\shaders\MeshShader.glsl" />
     <None Include="res\shaders\MeshShader.vert.glsl" />
     <None Include="res\shaders\SkyBoxShader.frag.glsl" />
     <None Include="res\shaders\SkyBoxShader.glsl" />
     <None Include="res\shaders\SkyBoxShader.vert.glsl" />
-    <None Include="res\shaders\LineShader.vert.glsl" />
-    <None Include="res\shaders\LineShader.frag.glsl" />
   </ItemGroup>
 </Project>

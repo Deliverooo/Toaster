@@ -6,8 +6,9 @@
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
+#include <filesystem>
 
-#include "assimp/version.h"
+#include "Toaster/Renderer/MaterialSystem.hpp"
 
 namespace tst
 {
@@ -15,13 +16,11 @@ namespace tst
         std::vector<MeshVertex>& vertices,
         std::vector<uint32_t>& indices,
         std::vector<SubMesh>& submeshes,
-        MaterialLibrary& materials)
+        std::vector<MaterialID>& materialIDs)
     {
-
         TST_CORE_WARN("Blender Support is deprecated :(");
 
         Assimp::Importer importer;
-
 
         aiString extensions;
         importer.GetExtensionList(extensions);
@@ -52,7 +51,6 @@ namespace tst
                 TST_CORE_ERROR("Possible fixes:");
                 TST_CORE_ERROR("1. Use an old version of Blender if you really want to use .blend files");
                 TST_CORE_ERROR("2. In Blender, goto [ File -> Export -> .xxx] and choose the appropriate format");
-
             }
             return false;
         }
@@ -70,8 +68,10 @@ namespace tst
         TST_CORE_INFO("Meshes: {0}, Materials: {1}, Textures: {2}",
             scene->mNumMeshes, scene->mNumMaterials, scene->mNumTextures);
 
-        processMaterials(scene, materials, filepath);
+        // Process materials using new MaterialSystem
+        processMaterials(scene, materialIDs, filepath);
 
+        // Process mesh data
         processNode(scene->mRootNode, scene, vertices, indices, submeshes);
 
         TST_CORE_INFO("Successfully processed Blend: {0} vertices, {1} indices, {2} submeshes",
@@ -79,6 +79,72 @@ namespace tst
 
         return true;
     }
+
+    //bool BlendLoader::loadLegacy(const std::string& filepath,
+    //    std::vector<MeshVertex>& vertices,
+    //    std::vector<uint32_t>& indices,
+    //    std::vector<SubMesh>& submeshes,
+    //    MaterialLibrary& materials)
+    //{
+    //    // Your existing implementation (original load method)
+    //    TST_CORE_WARN("Blender Support is deprecated :(");
+
+    //    Assimp::Importer importer;
+
+    //    aiString extensions;
+    //    importer.GetExtensionList(extensions);
+    //    TST_CORE_INFO("Toaster supported extensions: {0}", extensions.C_Str());
+
+    //    bool blendSupported = importer.IsExtensionSupported(".blend");
+    //    TST_CORE_INFO("Blend support: {0}", blendSupported ? "YES" : "NO");
+
+    //    if (!blendSupported) {
+    //        TST_CORE_ERROR("Toaster's Assimp installation does not support .blend files");
+    //        return false;
+    //    }
+
+    //    unsigned int flags = aiProcess_Triangulate;
+
+    //    TST_CORE_INFO("Attempting to load Blend file: {0}", filepath);
+
+    //    const aiScene* scene = importer.ReadFile(filepath, flags);
+
+    //    if (!scene) {
+    //        std::string error = importer.GetErrorString();
+    //        TST_CORE_ERROR("Failed to load Blend file: {0}", error);
+
+    //        if (error.find("BlenderDNA") != std::string::npos) {
+    //            TST_CORE_ERROR("This appears to be a Blender DNA parsing error.");
+    //            TST_CORE_ERROR("The Cause:");
+    //            TST_CORE_ERROR("1. Direct export from blender to .blend files is not supported :)\n");
+    //            TST_CORE_ERROR("Possible fixes:");
+    //            TST_CORE_ERROR("1. Use an old version of Blender if you really want to use .blend files");
+    //            TST_CORE_ERROR("2. In Blender, goto [ File -> Export -> .xxx] and choose the appropriate format");
+    //        }
+    //        return false;
+    //    }
+
+    //    if (scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE) {
+    //        TST_CORE_WARN("Scene loaded but marked as incomplete");
+    //    }
+
+    //    if (!scene->mRootNode) {
+    //        TST_CORE_ERROR("Scene has no root node");
+    //        return false;
+    //    }
+
+    //    TST_CORE_INFO("Successfully loaded Blend file structure");
+    //    TST_CORE_INFO("Meshes: {0}, Materials: {1}, Textures: {2}",
+    //        scene->mNumMeshes, scene->mNumMaterials, scene->mNumTextures);
+
+    //    processMaterialsLegacy(scene, materials, filepath);
+    //    processNode(scene->mRootNode, scene, vertices, indices, submeshes);
+
+    //    TST_CORE_INFO("Successfully processed Blend: {0} vertices, {1} indices, {2} submeshes",
+    //        vertices.size(), indices.size(), submeshes.size());
+
+    //    return true;
+    //}
 
     void BlendLoader::processNode(aiNode* node, const aiScene* scene,
         std::vector<MeshVertex>& vertices,
@@ -104,7 +170,16 @@ namespace tst
     {
         SubMesh submesh;
         submesh.indexOffset = static_cast<uint32_t>(indices.size());
-        submesh.materialIndex = mesh->mMaterialIndex;
+
+        // Fix: Convert Assimp's 0-based material index to your MaterialSystem's 1-based index
+        if (mesh->mMaterialIndex < scene->mNumMaterials) {
+            submesh.materialId = static_cast<MaterialID>(mesh->mMaterialIndex + 1);
+        }
+        else {
+            submesh.materialId = TST_DEFAULT_MATERIAL;
+            TST_CORE_WARN("Blend: Material index {} out of range, using default material", mesh->mMaterialIndex);
+        }
+        TST_CORE_INFO("{0}", submesh.materialId);
 
         // Process vertices
         for (unsigned int i = 0; i < mesh->mNumVertices; i++) {
@@ -147,7 +222,97 @@ namespace tst
         submeshes.push_back(submesh);
     }
 
-    void BlendLoader::processMaterials(const aiScene* scene, MaterialLibrary& materials, const std::string& directory)
+    void BlendLoader::processMaterials(const aiScene* scene, std::vector<MaterialID>& materialIDs, const std::string& directory)
+    {
+        std::string dir = std::filesystem::path(directory).remove_filename().string();
+
+        materialIDs.reserve(scene->mNumMaterials);
+
+        for (unsigned int i = 0; i < scene->mNumMaterials; i++) {
+            aiMaterial* mat = scene->mMaterials[i];
+
+            // Get material name
+            aiString name;
+            mat->Get(AI_MATKEY_NAME, name);
+            std::string materialName = name.C_Str();
+            if (materialName.empty()) {
+                materialName = "BlendMaterial_" + std::to_string(i);
+            }
+
+            // Create material in MaterialSystem
+            MaterialID matID = MaterialSystem::createMaterial(materialName);
+            auto material = MaterialSystem::getMaterial(matID);
+
+            if (material) {
+                // Get diffuse color
+                aiColor3D colour(1.0f, 1.0f, 1.0f);
+                mat->Get(AI_MATKEY_COLOR_DIFFUSE, colour);
+                material->setProperty("diffuse", glm::vec3(colour.r, colour.g, colour.b));
+
+                // Get specular color
+                mat->Get(AI_MATKEY_COLOR_SPECULAR, colour);
+                material->setProperty("specular", glm::vec3(colour.r, colour.g, colour.b));
+
+                // Get shininess
+                float shininess = 32.0f;
+                mat->Get(AI_MATKEY_SHININESS, shininess);
+                material->setProperty("shininess", shininess);
+
+                // Load textures
+                loadMaterialTextures(mat, aiTextureType_DIFFUSE, material, dir);
+                loadMaterialTextures(mat, aiTextureType_SPECULAR, material, dir);
+                loadMaterialTextures(mat, aiTextureType_NORMALS, material, dir);
+                loadMaterialTextures(mat, aiTextureType_HEIGHT, material, dir);
+            }
+
+            materialIDs.push_back(matID);
+            TST_CORE_INFO("Created Blend material '{}' with ID: {}", materialName, matID);
+        }
+
+        // Ensure we have at least a default material
+        if (materialIDs.empty()) {
+            materialIDs.push_back(TST_DEFAULT_MATERIAL);
+        }
+    }
+
+    void BlendLoader::loadMaterialTextures(aiMaterial* mat, aiTextureType type,
+        RefPtr<Material> material, const std::string& directory)
+    {
+        for (unsigned int i = 0; i < mat->GetTextureCount(type); i++) {
+            aiString str;
+            mat->GetTexture(type, i, &str);
+
+            std::string texturePath = directory + "/" + str.C_Str();
+
+            try {
+                auto texture = Texture2D::create(texturePath);
+
+                switch (type) {
+                case aiTextureType_DIFFUSE:
+                    material->setDiffuseMap(texture);
+                    TST_CORE_INFO("Loaded Blend diffuse texture: {}", texturePath);
+                    break;
+                case aiTextureType_SPECULAR:
+                    material->setSpecularMap(texture);
+                    TST_CORE_INFO("Loaded Blend specular texture: {}", texturePath);
+                    break;
+                case aiTextureType_NORMALS:
+                    material->setNormalMap(texture);
+                    TST_CORE_INFO("Loaded Blend normal texture: {}", texturePath);
+                    break;
+                case aiTextureType_HEIGHT:
+                    material->setHeightMap(texture);
+                    TST_CORE_INFO("Loaded Blend height texture: {}", texturePath);
+                    break;
+                }
+            }
+            catch (const std::exception& e) {
+                TST_CORE_WARN("Failed to load Blend texture: {0} - {1}", texturePath, e.what());
+            }
+        }
+    }
+
+    void BlendLoader::processMaterialsLegacy(const aiScene* scene, MaterialLibrary& materials, const std::string& directory)
     {
         std::string dir = directory.substr(0, directory.find_last_of('/'));
 
@@ -165,27 +330,27 @@ namespace tst
             // Get diffuse colour
             aiColor3D colour(1.0f, 1.0f, 1.0f);
             mat->Get(AI_MATKEY_COLOR_DIFFUSE, colour);
-            material->setDiffuse(glm::vec3(colour.r, colour.g, colour.b));
+            material->setProperty("diffuse", glm::vec3(colour.r, colour.g, colour.b));
 
             // Get specular colour
             mat->Get(AI_MATKEY_COLOR_SPECULAR, colour);
-            material->setSpecular(glm::vec3(colour.r, colour.g, colour.b));
+            material->setProperty("specular", glm::vec3(colour.r, colour.g, colour.b));
 
             // Get shininess
             float shininess = 32.0f;
             mat->Get(AI_MATKEY_SHININESS, shininess);
-            material->setShininess(shininess);
+            material->setProperty("shininess", shininess);
 
             // Load textures
-            loadMaterialTextures(mat, aiTextureType_DIFFUSE, material, dir);
-            loadMaterialTextures(mat, aiTextureType_SPECULAR, material, dir);
-            loadMaterialTextures(mat, aiTextureType_NORMALS, material, dir);
+            loadMaterialTexturesLegacy(mat, aiTextureType_DIFFUSE, material, dir);
+            loadMaterialTexturesLegacy(mat, aiTextureType_SPECULAR, material, dir);
+            loadMaterialTexturesLegacy(mat, aiTextureType_NORMALS, material, dir);
 
             materials.addMaterial(material);
         }
     }
 
-    void BlendLoader::loadMaterialTextures(aiMaterial* mat, aiTextureType type,
+    void BlendLoader::loadMaterialTexturesLegacy(aiMaterial* mat, aiTextureType type,
         RefPtr<Material> material, const std::string& directory)
     {
         for (unsigned int i = 0; i < mat->GetTextureCount(type); i++) {
@@ -221,7 +386,6 @@ namespace tst
     {
         return { ".blend", ".BLEND" };
     }
-
 }
 
 #endif

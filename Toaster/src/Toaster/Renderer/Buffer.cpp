@@ -8,7 +8,7 @@ namespace tst
 {
 	RefPtr<VertexBuffer> VertexBuffer::create(float* vertices, uint32_t size)
 	{
-		switch (Renderer::getApi())
+		switch (RendererAPI::getApi())
 		{
 		case RendererAPI::API::None:
 			{
@@ -33,7 +33,7 @@ namespace tst
 	}
 	RefPtr<VertexBuffer> VertexBuffer::create(uint32_t size)
 	{
-		switch (Renderer::getApi())
+		switch (RendererAPI::getApi())
 		{
 		case RendererAPI::API::None:
 			{
@@ -59,7 +59,7 @@ namespace tst
 
 	RefPtr<IndexBuffer> IndexBuffer::create(uint32_t* indices, uint32_t count)
 	{
-		switch (Renderer::getApi())
+		switch (RendererAPI::getApi())
 		{
 		case RendererAPI::API::None:
 			{

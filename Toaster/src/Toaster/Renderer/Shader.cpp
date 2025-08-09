@@ -33,7 +33,7 @@ namespace tst
 
 	RefPtr<Shader> Shader::create(const std::string& name,const std::string& vertexPath, const std::string& fragmentPath)
     {
-        switch (Renderer::getApi())
+        switch (RendererAPI::getApi())
         {
         case RendererAPI::API::None: { TST_ASSERT(false, "Render Api cannot be None!"); return nullptr; }
         case RendererAPI::API::OpenGL: { return std::make_shared<OpenGLShader>(name, vertexPath, fragmentPath); }
@@ -46,7 +46,7 @@ namespace tst
 
     RefPtr<Shader> Shader::create(const std::string& shaderPath)
     {
-        switch (Renderer::getApi())
+        switch (RendererAPI::getApi())
         {
         case RendererAPI::API::None: { TST_ASSERT(false, "Render Api cannot be None!"); return nullptr; }
         case RendererAPI::API::OpenGL: { return std::make_shared<OpenGLShader>(shaderPath); }
@@ -59,7 +59,7 @@ namespace tst
 
     RefPtr<Shader> Shader::create(const std::string& shaderName, const std::string& shaderPath)
     {
-        switch (Renderer::getApi())
+        switch (RendererAPI::getApi())
         {
         case RendererAPI::API::None: { TST_ASSERT(false, "Render Api cannot be None!"); return nullptr; }
         case RendererAPI::API::OpenGL: { return std::make_shared<OpenGLShader>(shaderName, shaderPath); }

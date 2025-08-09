@@ -100,7 +100,7 @@ namespace tst
         debug_data.lineVertexArray->bind();
 
         glLineWidth(2.0f);
-        RenderCommand::drawArrays(debug_data.lineVertexArray, static_cast<uint32_t>(debug_data.lineVertices.size()), DrawMode::Lines);
+        GraphicsAPI::drawArrays(debug_data.lineVertexArray, static_cast<uint32_t>(debug_data.lineVertices.size()), DrawMode::Lines);
 
 
         debug_data.stats.drawCalls++;

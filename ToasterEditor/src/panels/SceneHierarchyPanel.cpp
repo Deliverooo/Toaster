@@ -30,25 +30,25 @@ namespace tst
 
 	void SceneHierarchyPanel::initComponentIcons()
 	{
-		m_componentIcons["Transform"]		= "↔️↕";
-		m_componentIcons["Camera"]			= "🎥";
-		m_componentIcons["Light"]			= "💡";
-		m_componentIcons["Mesh Renderer"]	= "🗿";
+		m_componentIcons["Transform"] = "↔️↕";
+		m_componentIcons["Camera"] = "🎥";
+		m_componentIcons["Light"] = "💡";
+		m_componentIcons["Mesh Renderer"] = "🗿";
 		m_componentIcons["Sprite Renderer"] = "🐸";
-		m_componentIcons["Tag"]				= "🏷️";
+		m_componentIcons["Tag"] = "🏷️";
 	}
 
 	void SceneHierarchyPanel::pushStyleColours()
 	{
-		ImGui::PushStyleColor(ImGuiCol_WindowBg,		{ 0.1f, 0.1f, 0.1f, 0.95f });
-		ImGui::PushStyleColor(ImGuiCol_Header,			{ 0.2f, 0.2f, 0.2f, 0.80f });
-		ImGui::PushStyleColor(ImGuiCol_HeaderHovered,	m_uiSettings.hoverColour);
-		ImGui::PushStyleColor(ImGuiCol_HeaderActive,	m_uiSettings.selectionColour);
-		ImGui::PushStyleColor(ImGuiCol_TreeLines,		{ 0.4f, 0.4f, 0.4f, 1.0f });
+		ImGui::PushStyleColor(ImGuiCol_WindowBg, { 0.1f, 0.1f, 0.1f, 0.95f });
+		ImGui::PushStyleColor(ImGuiCol_Header, { 0.2f, 0.2f, 0.2f, 0.80f });
+		ImGui::PushStyleColor(ImGuiCol_HeaderHovered, m_uiSettings.hoverColour);
+		ImGui::PushStyleColor(ImGuiCol_HeaderActive, m_uiSettings.selectionColour);
+		ImGui::PushStyleColor(ImGuiCol_TreeLines, { 0.4f, 0.4f, 0.4f, 1.0f });
 
-		ImGui::PushStyleColor(ImGuiCol_Button,			{ 0.2f, 0.2f, 0.2f, 0.60f });
-		ImGui::PushStyleColor(ImGuiCol_ButtonHovered,	{ 0.3f, 0.3f, 0.3f, 0.80f });
-		ImGui::PushStyleColor(ImGuiCol_ButtonActive,	{ 0.2f, 0.2f, 0.2f, 1.00f });
+		ImGui::PushStyleColor(ImGuiCol_Button, { 0.2f, 0.2f, 0.2f, 0.60f });
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, { 0.3f, 0.3f, 0.3f, 0.80f });
+		ImGui::PushStyleColor(ImGuiCol_ButtonActive, { 0.2f, 0.2f, 0.2f, 1.00f });
 	}
 
 	void SceneHierarchyPanel::popStyleColours()
@@ -270,7 +270,7 @@ namespace tst
 
 		bool isSelected = (entity == m_selectedEntity);
 
-		ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow |	ImGuiTreeNodeFlags_SpanAvailWidth;
+		ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
 
 		if (isSelected) { flags |= ImGuiTreeNodeFlags_Selected; }
 
@@ -323,7 +323,7 @@ namespace tst
 
 	static void drawVec3Ctrl(const char* label, glm::vec3* vec, const glm::vec3& reset = glm::vec3(1.0f), float columnWidth = 100.0f, const char* v1 = "X", const char* v2 = "Y", const char* v3 = "Z")
 	{
-		ImGuiIO &io = ImGui::GetIO();
+		ImGuiIO& io = ImGui::GetIO();
 		auto boldFnt = io.Fonts->Fonts[2];
 
 		static std::string v1StrId = std::string("##") + v1;
@@ -339,7 +339,7 @@ namespace tst
 
 
 		ImGui::PushMultiItemsWidths(3, ImGui::CalcItemWidth());
-		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{2, 0});
+		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{ 2, 0 });
 		ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0.5f);
 
 		static ImVec4 textColour = { 1.0f, 1.0f, 1.0f, 1.0f };
@@ -349,13 +349,13 @@ namespace tst
 
 
 		ImGui::PushStyleColor(ImGuiCol_Text, textColour);
-		ImGui::PushStyleColor(ImGuiCol_Button,		  { 0.7f, 0.1f, 0.1f, 1.0f });
+		ImGui::PushStyleColor(ImGuiCol_Button, { 0.7f, 0.1f, 0.1f, 1.0f });
 		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, { 0.9f, 0.2f, 0.2f, 1.0f });
-		ImGui::PushStyleColor(ImGuiCol_ButtonActive,  { 0.7f, 0.1f, 0.1f, 1.0f });
+		ImGui::PushStyleColor(ImGuiCol_ButtonActive, { 0.7f, 0.1f, 0.1f, 1.0f });
 
 		ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 2.5f);
 		ImGui::PushFont(boldFnt);
-		if (ImGui::Button(v1, buttonSize))	{ vec->x = reset.x;	}
+		if (ImGui::Button(v1, buttonSize)) { vec->x = reset.x; }
 		ImGui::PopFont();
 		ImGui::PopStyleVar();
 		ImGui::SameLine();
@@ -364,7 +364,7 @@ namespace tst
 		ImGui::SameLine();
 		ImGui::PopStyleColor(4);
 
-		
+
 
 		ImGui::PushStyleColor(ImGuiCol_Text, textColour);
 		ImGui::PushStyleColor(ImGuiCol_Button, { 0.1f, 0.7f, 0.1f, 1.0f });
@@ -390,7 +390,7 @@ namespace tst
 
 		ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 2.5f);
 		ImGui::PushFont(boldFnt);
-		if (ImGui::Button(v3, buttonSize)) { vec->z = reset.z;	}
+		if (ImGui::Button(v3, buttonSize)) { vec->z = reset.z; }
 		ImGui::PopFont();
 		ImGui::PopStyleVar();
 		ImGui::SameLine();
@@ -464,16 +464,16 @@ namespace tst
 		transformDrawInfo.removable = false;
 		transformDrawInfo.displayName = "Transform";
 		drawComponent<TransformComponent>(&entity, transformDrawInfo, [](TransformComponent* comp)
-		{
-			ImGui::Spacing();
-			drawVec3Ctrl("Position", &comp->translation, { 0.0f, 0.0f, 0.0f });
-			ImGui::Spacing();
-			drawVec3Ctrl("Rotation", &comp->rotation, { 0.0f, 0.0f, 0.0f });
-			ImGui::Spacing();
-			drawVec3Ctrl("Scale", &comp->scale, {1.0f, 1.0f, 1.0f});
-			ImGui::Spacing();
-				
-		});
+			{
+				ImGui::Spacing();
+				drawVec3Ctrl("Position", &comp->translation, { 0.0f, 0.0f, 0.0f });
+				ImGui::Spacing();
+				drawVec3Ctrl("Rotation", &comp->rotation, { 0.0f, 0.0f, 0.0f });
+				ImGui::Spacing();
+				drawVec3Ctrl("Scale", &comp->scale, { 1.0f, 1.0f, 1.0f });
+				ImGui::Spacing();
+
+			});
 
 		ComponentUiDrawInfo cameraDrawInfo{};
 		cameraDrawInfo.displayName = "Camera";
@@ -523,15 +523,15 @@ namespace tst
 					float nearClip = camera.getOrthoNear();
 					float farClip = camera.getOrthoFar();
 
-					if (ImGui::DragFloat("Ortho Size", &orthoSize, 0.1f, 0.1f, 10.0f))	  { camera.setOrthoSize(orthoSize); }
+					if (ImGui::DragFloat("Ortho Size", &orthoSize, 0.1f, 0.1f, 10.0f)) { camera.setOrthoSize(orthoSize); }
 					if (ImGui::DragFloat("Near Clip", &nearClip, 0.01f, -100.0f, 100.0f)) { camera.setOrthoNear(nearClip); }
-					if (ImGui::DragFloat("Far Clip", &farClip, 0.01f, -100.0f, 100.0f))	  { camera.setOrthoFar(farClip); }
+					if (ImGui::DragFloat("Far Clip", &farClip, 0.01f, -100.0f, 100.0f)) { camera.setOrthoFar(farClip); }
 				}
 			});
 
 		ComponentUiDrawInfo spriteRendererDrawInfo{};
 		spriteRendererDrawInfo.displayName = "Sprite Renderer";
-		drawComponent<SpriteRendererComponent>(&entity, spriteRendererDrawInfo, [](SpriteRendererComponent *comp)
+		drawComponent<SpriteRendererComponent>(&entity, spriteRendererDrawInfo, [](SpriteRendererComponent* comp)
 			{
 				if (ImGui::Button("Load Texture"))
 				{
@@ -659,7 +659,8 @@ namespace tst
 						ImGui::TreePop();
 					}
 					ImGui::PopFont();
-				} else
+				}
+				else
 				{
 					ImGui::ColorEdit4("Base Colour", glm::value_ptr(comp->colour));
 				}
@@ -673,7 +674,7 @@ namespace tst
 
 				if (ImGui::Button("Load Mesh"))
 				{
-					std::string meshPath = FileDialog::openFile("Mesh Files (*.fbx; *.obj; *.gltf)\0*.fbx;*.obj;*.gltf\0");
+					std::string meshPath = FileDialog::openFile("Mesh Files (*.fbx; *.obj; *.gltf; *.glb)\0*.fbx;*.obj;*.gltf;*.glb\0");
 					if (!meshPath.empty())
 					{
 						if (meshPath.front() == '"') {
@@ -693,7 +694,7 @@ namespace tst
 						ImGui::Text("Vertices: %d", comp->mesh->getVertexCount());
 						ImGui::Text("Triangles: %d", comp->mesh->getIndexCount() / 3);
 						ImGui::Text("Submeshes: %d", (int)comp->mesh->getSubMeshes().size());
-						ImGui::Text("Materials: %d", comp->mesh->getMaterials().getMaterialCount());
+						ImGui::Text("Materials: %d", comp->mesh->getMaterialIDs().size());
 						ImGui::TreePop();
 					}
 
@@ -712,9 +713,9 @@ namespace tst
 
 					if (ImGui::TreeNode("Materials"))
 					{
-						for (uint32_t i = 0; i < comp->mesh->getMaterials().getMaterialCount(); i++)
+						for (uint32_t i = 0; i < comp->mesh->getMaterialIDs().size(); i++)
 						{
-							if (auto material = comp->mesh->getMaterials().getMaterial(i))
+							if (auto material = comp->mesh->getMaterial(i))
 							{
 
 								if (ImGui::TreeNode(material->getName().c_str()))
@@ -761,57 +762,57 @@ namespace tst
 		ComponentUiDrawInfo lightDrawInfo{};
 		lightDrawInfo.displayName = "Light";
 		drawComponent<LightComponent>(&entity, lightDrawInfo, [](LightComponent* comp)
-		{
-			const char* lightTypes[] = { "Directional", "Point", "Spot" };
-			const char* currentLightType = lightTypes[(int)comp->light.type];
-
-			if (ImGui::BeginCombo("Type", currentLightType))
 			{
-				for (int i = 0; i < 3; i++)
+				const char* lightTypes[] = { "Directional", "Point", "Spot" };
+				const char* currentLightType = lightTypes[(int)comp->light.type];
+
+				if (ImGui::BeginCombo("Type", currentLightType))
 				{
-
-					bool selected = currentLightType == lightTypes[i];
-
-					if (ImGui::Selectable(lightTypes[i], selected))
+					for (int i = 0; i < 3; i++)
 					{
-						currentLightType = lightTypes[i];
-						comp->light.type = static_cast<Light::Type>(i);
+
+						bool selected = currentLightType == lightTypes[i];
+
+						if (ImGui::Selectable(lightTypes[i], selected))
+						{
+							currentLightType = lightTypes[i];
+							comp->light.type = static_cast<Light::Type>(i);
+						}
+
+						if (selected)
+						{
+							ImGui::SetItemDefaultFocus();
+						}
 					}
 
-					if (selected)
-					{
-						ImGui::SetItemDefaultFocus();
-					}
+					ImGui::EndCombo();
 				}
 
-				ImGui::EndCombo();
-			}
+				ImGui::ColorEdit3("Colour", glm::value_ptr(comp->light.colour));
 
-			ImGui::ColorEdit3("Colour", glm::value_ptr(comp->light.colour));
+				ImGui::DragFloat("Intensity", &comp->light.intensity, 0.001f, 0.0f, 100.0f);
 
-			ImGui::DragFloat("Intensity", &comp->light.intensity, 0.001f, 0.0f, 100.0f);
+				if (comp->light.type != Light::Type::Directional)
+				{
+					ImGui::Separator();
 
-			if (comp->light.type != Light::Type::Directional)
-			{
-				ImGui::Separator();
-
-				ImGui::Text("Attenuation");
-				ImGui::DragFloat("Constant", &comp->light.constant, 0.01f, 0.0f, 2.0f);
-				ImGui::DragFloat("Linear", &comp->light.linear, 0.001f, 0.0f, 2.0f);
-				ImGui::DragFloat("Quadratic", &comp->light.quadratic, 0.01f, 0.0f, 2.0f);
-			}
+					ImGui::Text("Attenuation");
+					ImGui::DragFloat("Constant", &comp->light.constant, 0.01f, 0.0f, 2.0f);
+					ImGui::DragFloat("Linear", &comp->light.linear, 0.001f, 0.0f, 2.0f);
+					ImGui::DragFloat("Quadratic", &comp->light.quadratic, 0.01f, 0.0f, 2.0f);
+				}
 
 
-			if (comp->light.type == Light::Type::Spot)
-			{
-				ImGui::Separator();
+				if (comp->light.type == Light::Type::Spot)
+				{
+					ImGui::Separator();
 
-				ImGui::Text("Cone Properties");
-				ImGui::DragFloat("Inner", &comp->light.innerCone, 0.25f, 0.0f, 180.0f);
-				ImGui::DragFloat("Blending", &comp->light.outerOffset, 0.05f, 0.01f, 30.0f);
+					ImGui::Text("Cone Properties");
+					ImGui::DragFloat("Inner", &comp->light.innerCone, 0.25f, 0.0f, 180.0f);
+					ImGui::DragFloat("Blending", &comp->light.outerOffset, 0.05f, 0.01f, 30.0f);
 
-			}
-		});
+				}
+			});
 	}
 
 	template<typename T>
@@ -822,7 +823,7 @@ namespace tst
 		ImVec2 contentRegionAvail = ImGui::GetContentRegionAvail();
 
 		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6, 6));
-		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,	ImVec2(8, 4));
+		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8, 4));
 
 		float lineHeight = GImGui->FontSize + GImGui->Style.FramePadding.y * 2.0f;
 		ImGui::Separator();
@@ -840,7 +841,8 @@ namespace tst
 			if (drawInfo.icon)
 			{
 				ImGui::Text("%s %s", drawInfo.icon, drawInfo.displayName);
-			} else
+			}
+			else
 			{
 				ImGui::Text("%s", drawInfo.displayName);
 			}
@@ -849,9 +851,9 @@ namespace tst
 
 		ImGui::SameLine(contentRegionAvail.x - lineHeight * 2.0f);
 
-		ImGui::PushStyleColor(ImGuiCol_Button,			ImVec4(0, 0, 0, 0));
-		ImGui::PushStyleColor(ImGuiCol_ButtonHovered,	ImVec4(0.3f, 0.3f, 0.3f, 0.5f));
-		ImGui::PushStyleColor(ImGuiCol_ButtonActive,	ImVec4(0.2f, 0.2f, 0.2f, 0.7f));
+		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.3f, 0.3f, 0.5f));
+		ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.2f, 0.2f, 0.2f, 0.7f));
 
 		if (ImGui::Button("*", ImVec2(lineHeight * 1.5f, lineHeight)))
 		{
@@ -893,7 +895,7 @@ namespace tst
 			ImGui::Indent();
 
 			auto& comp = entity->getComponent<T>();
-			if (uiFunc){ uiFunc(&comp); }
+			if (uiFunc) { uiFunc(&comp); }
 
 			ImGui::Unindent();
 			ImGui::PopStyleVar();
@@ -913,7 +915,7 @@ namespace tst
 
 		ImGui::PopID();
 		ImGui::PopStyleVar(2);
-		
+
 	}
 
 
@@ -936,10 +938,10 @@ namespace tst
 		if (m_sceneContext)
 		{
 			m_sceneContext->m_registry.view<entt::entity>().each([this](auto entityId)
-			{
-				Entity entity = { entityId, m_sceneContext.get() };
-				drawEntityNode(entity);
-			});
+				{
+					Entity entity = { entityId, m_sceneContext.get() };
+					drawEntityNode(entity);
+				});
 		}
 
 		if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGui::IsAnyItemHovered())

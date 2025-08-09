@@ -1,8 +1,8 @@
 #include "tstpch.h"
 
-#include "FbxLoader.hpp"
+#include "GltfLoader.hpp"
 
-#ifdef TST_ENABLE_FBX
+#ifdef TST_ENABLE_GLTF
 
 #include <filesystem>
 #include <assimp/Importer.hpp>
@@ -12,12 +12,12 @@
 
 namespace tst
 {
-
-    bool FbxLoader::load(const std::string& filepath,
+    
+    bool GltfLoader::load(const std::string& filepath,
         std::vector<MeshVertex>& vertices,
         std::vector<uint32_t>& indices,
         std::vector<SubMesh>& submeshes,
-        std::vector<MaterialID>& materialIDs)
+        std::vector<MaterialID> &material_ids)
     {
         Assimp::Importer importer;
 
@@ -32,73 +32,58 @@ namespace tst
         const aiScene* scene = importer.ReadFile(filepath, flags);
 
         if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
-            TST_CORE_ERROR("Failed to load FBX file: {0}", importer.GetErrorString());
+            TST_CORE_ERROR("Failed to load GLTF file: {0}", importer.GetErrorString());
             return false;
         }
 
-        // Store scene reference for embedded texture access
-        m_CurrentScene = scene;
 
-        // Process materials first using new MaterialSystem
-        processMaterials(scene, materialIDs, filepath);
+        // Process materials first
+        processMaterials(scene, material_ids, filepath);
 
-        // Process all meshes - pass the materialIDs
-        processNode(scene->mRootNode, scene, vertices, indices, submeshes, materialIDs);
+        // Process all meshes
+        processNode(scene->mRootNode, scene, vertices, indices, submeshes);
 
-        TST_CORE_INFO("Successfully loaded FBX: {0} vertices, {1} indices, {2} submeshes",
+        TST_CORE_INFO("Successfully loaded GLTF: {0} vertices, {1} indices, {2} submeshes",
             vertices.size(), indices.size(), submeshes.size());
 
         return true;
     }
 
-    void FbxLoader::processNode(aiNode* node, const aiScene* scene,
+    void GltfLoader::processNode(aiNode* node, const aiScene* scene,
         std::vector<MeshVertex>& vertices,
         std::vector<uint32_t>& indices,
-        std::vector<SubMesh>& submeshes,
-        const std::vector<MaterialID>& materialIDs)
+        std::vector<SubMesh>& submeshes)
     {
-        processNode(node, scene, vertices, indices, submeshes, aiMatrix4x4(), materialIDs);
+        processNode(node, scene, vertices, indices, submeshes, aiMatrix4x4());
     }
 
-    void FbxLoader::processNode(aiNode* node, const aiScene* scene,
+    void GltfLoader::processNode(aiNode* node, const aiScene* scene,
         std::vector<MeshVertex>& vertices,
         std::vector<uint32_t>& indices,
-        std::vector<SubMesh>& submeshes,
-        const aiMatrix4x4& parentTransform,
-        const std::vector<MaterialID>& materialIDs)
+        std::vector<SubMesh>& submeshes, const aiMatrix4x4& parentTransform)
     {
         aiMatrix4x4 nodeTransform = parentTransform * node->mTransformation;
 
         // Process all meshes in this node
         for (unsigned int i = 0; i < node->mNumMeshes; i++) {
             aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
-            processMesh(mesh, scene, vertices, indices, submeshes, nodeTransform, materialIDs);
+            processMesh(mesh, scene, vertices, indices, submeshes, nodeTransform);
         }
 
         // Process child nodes
         for (unsigned int i = 0; i < node->mNumChildren; i++) {
-            processNode(node->mChildren[i], scene, vertices, indices, submeshes, nodeTransform, materialIDs);
+            processNode(node->mChildren[i], scene, vertices, indices, submeshes, nodeTransform);
         }
     }
 
-    void FbxLoader::processMesh(aiMesh* mesh, const aiScene* scene,
+    void GltfLoader::processMesh(aiMesh* mesh, const aiScene* scene,
         std::vector<MeshVertex>& vertices,
         std::vector<uint32_t>& indices,
-        std::vector<SubMesh>& submeshes,
-        const std::vector<MaterialID>& materialIDs)
+        std::vector<SubMesh>& submeshes)
     {
         SubMesh submesh;
         submesh.indexOffset = static_cast<uint32_t>(indices.size());
-
-        // Use the MaterialID from the materialIDs array directly
-        if (mesh->mMaterialIndex < materialIDs.size()) {
-            submesh.materialId = materialIDs[mesh->mMaterialIndex];
-        }
-        else {
-            submesh.materialId = TST_DEFAULT_MATERIAL;
-            TST_CORE_WARN("FBX: Material index {} out of range, using default material", mesh->mMaterialIndex);
-        }
-        TST_CORE_INFO("Mesh material index: {}, using MaterialID: {}", mesh->mMaterialIndex, submesh.materialId);
+        submesh.materialId = mesh->mMaterialIndex;
 
         // Process vertices
         for (unsigned int i = 0; i < mesh->mNumVertices; i++) {
@@ -142,26 +127,15 @@ namespace tst
         submeshes.push_back(submesh);
     }
 
-    void FbxLoader::processMesh(aiMesh* mesh, const aiScene* scene,
+    void GltfLoader::processMesh(aiMesh* mesh, const aiScene* scene,
         std::vector<MeshVertex>& vertices,
         std::vector<uint32_t>& indices,
         std::vector<SubMesh>& submeshes,
-        const aiMatrix4x4& transform,
-        const std::vector<MaterialID>& materialIDs)
+        const aiMatrix4x4& transform)
     {
         SubMesh submesh;
         submesh.indexOffset = static_cast<uint32_t>(indices.size());
-
-        // Use the MaterialID from the materialIDs array directly
-        if (mesh->mMaterialIndex < materialIDs.size()) {
-            submesh.materialId = materialIDs[mesh->mMaterialIndex];
-        }
-        else {
-            submesh.materialId = TST_DEFAULT_MATERIAL;
-            TST_CORE_WARN("FBX: Material index {} out of range, using default material", mesh->mMaterialIndex);
-        }
-
-        TST_CORE_INFO("Mesh material index: {}, using MaterialID: {}", mesh->mMaterialIndex, submesh.materialId);
+        submesh.materialId = mesh->mMaterialIndex;
 
         // Calculate the normal transformation matrix (inverse transpose for normals)
         aiMatrix4x4 normalMatrix = transform;
@@ -213,69 +187,53 @@ namespace tst
         submeshes.push_back(submesh);
     }
 
-    void FbxLoader::processMaterials(const aiScene* scene, std::vector<MaterialID>& materialIDs, const std::string& directory)
+    void GltfLoader::processMaterials(const aiScene* scene, std::vector<MaterialID>& material_ids, const std::string& directory)
     {
         // Store scene reference for embedded texture access
         m_CurrentScene = scene;
 
         std::string dir = std::filesystem::path(directory).replace_extension("").remove_filename().string();
 
-        materialIDs.reserve(scene->mNumMaterials);
-
         for (unsigned int i = 0; i < scene->mNumMaterials; i++) {
             aiMaterial* mat = scene->mMaterials[i];
+
+            // Create material
+            auto material = Material::create();
 
             // Get material name
             aiString name;
             mat->Get(AI_MATKEY_NAME, name);
-            std::string materialName = name.C_Str();
-            if (materialName.empty()) {
-                materialName = "FbxMaterial_" + std::to_string(i);
-            }
+            material->setName(name.C_Str());
 
-            // Create material in MaterialSystem
-            MaterialID matID = MaterialSystem::createMaterial(materialName);
-            auto material = MaterialSystem::getMaterial(matID);
+            // Get material properties
+            aiColor3D colour(1.0f, 1.0f, 1.0f);
+            mat->Get(AI_MATKEY_COLOR_DIFFUSE, colour);
+            material->setProperty("diffuse", glm::vec3(colour.r, colour.g, colour.b));
 
-            if (material) {
-                // Get material properties
-                aiColor3D colour(1.0f, 1.0f, 1.0f);
-                mat->Get(AI_MATKEY_COLOR_DIFFUSE, colour);
-                material->setProperty("diffuse", glm::vec3(colour.r, colour.g, colour.b));
+            mat->Get(AI_MATKEY_COLOR_SPECULAR, colour);
+            material->setProperty("specular", glm::vec3(colour.r, colour.g, colour.b));
 
-                mat->Get(AI_MATKEY_COLOR_SPECULAR, colour);
-                material->setProperty("specular", glm::vec3(colour.r, colour.g, colour.b));
+            float shininess = 32.0f;
+            mat->Get(AI_MATKEY_SHININESS, shininess);
+            material->setProperty("shininess", shininess);
 
-                float shininess = 32.0f;
-                mat->Get(AI_MATKEY_SHININESS, shininess);
-                material->setProperty("shininess", shininess);
+            int backfaceCulling = 0;
+            mat->Get(AI_MATKEY_TWOSIDED, backfaceCulling);
 
-                int backfaceCulling = 0;
-                mat->Get(AI_MATKEY_TWOSIDED, backfaceCulling);
+            std::string nameStr(name.C_Str());
+            if (nameStr.contains("Outline") || nameStr.contains("outline") || backfaceCulling) { material->setBackfaceCulling(true); }
 
-                std::string nameStr(name.C_Str());
-                if (nameStr.contains("Outline") || nameStr.contains("outline") || backfaceCulling) {
-                    material->setBackfaceCulling(true);
-                }
+            // Load textures (now supports embedded textures)
+            loadMaterialTextures(mat, aiTextureType_DIFFUSE, material, dir);
+            loadMaterialTextures(mat, aiTextureType_SPECULAR, material, dir);
+            loadMaterialTextures(mat, aiTextureType_NORMALS, material, dir);
+            loadMaterialTextures(mat, aiTextureType_HEIGHT, material, dir);
 
-                // Load textures (now supports embedded textures)
-                loadMaterialTextures(mat, aiTextureType_DIFFUSE, material, dir);
-                loadMaterialTextures(mat, aiTextureType_SPECULAR, material, dir);
-                loadMaterialTextures(mat, aiTextureType_NORMALS, material, dir);
-                loadMaterialTextures(mat, aiTextureType_HEIGHT, material, dir);
-            }
-
-            materialIDs.push_back(matID);
-            TST_CORE_INFO("Created FBX material '{}' with ID: {}", materialName, matID);
-        }
-
-        // Ensure we have at least a default material
-        if (materialIDs.empty()) {
-            materialIDs.push_back(TST_DEFAULT_MATERIAL);
+            //materials.addMaterial(material);
         }
     }
 
-    void FbxLoader::loadMaterialTextures(aiMaterial* mat, aiTextureType type,
+    void GltfLoader::loadMaterialTextures(aiMaterial* mat, aiTextureType type,
         RefPtr<Material> material, const std::string& directory)
     {
         for (unsigned int i = 0; i < mat->GetTextureCount(type); i++) {
@@ -321,7 +279,7 @@ namespace tst
         }
     }
 
-    RefPtr<Texture2D> FbxLoader::loadEmbeddedTexture(const std::string& texturePath, const aiScene* scene)
+    RefPtr<Texture2D> GltfLoader::loadEmbeddedTexture(const std::string& texturePath, const aiScene* scene)
     {
         // Parse embedded texture index from path (format: "*0", "*1", etc.)
         if (texturePath.length() < 2) {
@@ -375,9 +333,9 @@ namespace tst
         }
     }
 
-    std::vector<std::string> FbxLoader::getSupportedExtensions() const
+    std::vector<std::string> GltfLoader::getSupportedExtensions() const
     {
-        return { ".fbx", ".FBX" };
+        return { ".gltf", ".glb" };
     }
 }
 

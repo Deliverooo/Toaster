@@ -53,82 +53,233 @@ namespace tst
 	}
 
 
-	void RenderQueue::submitMesh(const RefPtr<Mesh>& mesh, const glm::mat4& transform, uint32_t entityId, const glm::vec3& cameraPos)
-	{
-		if (!mesh) { return; }
+    void RenderQueue::submitMesh(const RefPtr<Mesh>& mesh, const glm::mat4& transform, uint32_t entityId, const glm::vec3& cameraPos)
+    {
+        if (!mesh) { return; }
 
-		const auto& submeshes = mesh->getSubMeshes();
-		const auto& materials = mesh->getMaterials();
+        const auto& submeshes = mesh->getSubMeshes();
+        float distance = glm::length(glm::vec3(transform[3]) - cameraPos);
 
-		float distance = glm::length(glm::vec3(transform[3]) - cameraPos);
+        std::vector<SubMeshRenderCommand> candidates;
+        candidates.reserve(submeshes.size());
 
-		std::vector<SubMeshRenderCommand> candidates;
-		candidates.reserve(submeshes.size());
+        for (uint32_t i = 0; i < submeshes.size(); i++)
+        {
+            const auto& submesh = submeshes[i];
 
-		for (uint32_t i = 0; i < submeshes.size(); i++)
-		{
-			const auto& submesh = submeshes[i];
-			auto material = materials.getMaterial(submesh.materialIndex);
+            // Get material from mesh's material library or use default
+            auto material = mesh->getMaterial(i);
+            if (!material) {
+                // Use default material from MaterialSystem
+                auto defaultId = MaterialSystem::getMaterialID("Default");
+                material = MaterialSystem::getMaterial(defaultId);
+            }
 
-			if (!material) { continue; }
+            if (!material) {
+                TST_CORE_WARN("No material found for submesh {0}", i);
+                continue;
+            }
 
-			SubMeshRenderCommand smCommand;
-			smCommand.mesh = mesh;
-			smCommand.material = material;
-			smCommand.transform = transform;
-			smCommand.entityId = entityId;
-			smCommand.distanceToCamera = distance;
-			smCommand.submeshIndex = i;
+            SubMeshRenderCommand smCommand;
+            smCommand.mesh = mesh;
+            smCommand.material = material;
+            smCommand.transform = transform;
+            smCommand.entityId = entityId;
+            smCommand.distanceToCamera = distance;
+            smCommand.submeshIndex = i;
 
-			smCommand.indexOffset = submesh.indexOffset;
-			smCommand.indexCount = submesh.indexCount;
-			smCommand.materialIndex = submesh.materialIndex;
+            smCommand.indexOffset = submesh.indexOffset;
+            smCommand.indexCount = submesh.indexCount;
+            smCommand.materialIndex = submesh.materialId;
 
-			smCommand.calcWorldBounds();
+            smCommand.calcWorldBounds();
 
-			candidates.push_back(smCommand);
-			m_stats.totalSubmitted++;
-		}
+            candidates.push_back(smCommand);
+            m_stats.totalSubmitted++;
+        }
 
-		if (m_cullingSystem && !candidates.empty())
-		{
-			std::vector<AABB> aabbs;
-			aabbs.reserve(candidates.size());
+        // Process culling
+        if (m_cullingSystem && !candidates.empty())
+        {
+            std::vector<AABB> aabbs;
+            aabbs.reserve(candidates.size());
 
-			for (const auto& cmd : candidates)
-			{
-				aabbs.push_back(cmd.worldAABB);
-			}
+            for (const auto& cmd : candidates)
+            {
+                aabbs.push_back(cmd.worldAABB);
+            }
 
-			std::vector<bool> cullResults;
-			m_cullingSystem->cullObjects(aabbs, cullResults);
+            std::vector<bool> cullResults;
+            m_cullingSystem->cullObjects(aabbs, cullResults);
 
-			m_stats.frustumTests += candidates.size();
+            m_stats.frustumTests += candidates.size();
 
-			for (size_t i = 0; i < candidates.size(); ++i)
-			{
-				if (cullResults[i])
-				{
-					m_stats.culled++;
-					continue;
-				}
+            for (size_t i = 0; i < candidates.size(); ++i)
+            {
+                if (cullResults[i])
+                {
+                    m_stats.culled++;
+                    continue;
+                }
 
-				candidates[i].sortKey = candidates[i].calcSortKey();
-				RenderPass pass = RenderPass::Opaque;
-				m_renderPasses[pass].push_back(candidates[i]);
-				m_stats.rendered++;
-			}
-		} else
-		{
-			for (auto& cmd : candidates)
-			{
-				cmd.sortKey = cmd.calcSortKey();
-				RenderPass pass = RenderPass::Opaque;
-				m_renderPasses[pass].push_back(cmd);
-				m_stats.rendered++;
-			}
-		}
-	}
+                candidates[i].sortKey = candidates[i].calcSortKey();
+
+                // Determine render pass based on material properties
+                RenderPass pass = determineRenderPass(candidates[i].material);
+                m_renderPasses[pass].push_back(candidates[i]);
+                m_stats.rendered++;
+            }
+        }
+        else
+        {
+            for (auto& cmd : candidates)
+            {
+                cmd.sortKey = cmd.calcSortKey();
+
+                // Determine render pass based on material properties
+                RenderPass pass = determineRenderPass(cmd.material);
+                m_renderPasses[pass].push_back(cmd);
+                m_stats.rendered++;
+            }
+        }
+    }
+
+    void RenderQueue::submitMeshWithMaterialSlots(const RefPtr<Mesh>& mesh, const glm::mat4& transform, uint32_t entityId, const glm::vec3& cameraPos, const std::vector<MaterialSlot>& materialSlots)
+    {
+        if (!mesh) { return; }
+
+        const auto& submeshes = mesh->getSubMeshes();
+        float distance = glm::length(glm::vec3(transform[3]) - cameraPos);
+
+        std::vector<SubMeshRenderCommand> candidates;
+        candidates.reserve(submeshes.size());
+
+        for (uint32_t i = 0; i < submeshes.size(); i++)
+        {
+            const auto& submesh = submeshes[i];
+
+            // Get material from component material slots
+            RefPtr<Material> material = nullptr;
+
+            if (i < materialSlots.size())
+            {
+                material = materialSlots[i].getEffectiveMaterial();
+            }
+
+            // Fallback to mesh's own material
+            if (!material)
+            {
+                material = mesh->getMaterial(i);
+            }
+
+            // Final fallback to default material
+            if (!material)
+            {
+                auto defaultId = MaterialSystem::getMaterialID("Default");
+                material = MaterialSystem::getMaterial(defaultId);
+            }
+
+            if (!material) {
+                TST_CORE_WARN("No material found for submesh {0}", i);
+                continue;
+            }
+
+            SubMeshRenderCommand smCommand;
+            smCommand.mesh = mesh;
+            smCommand.material = material;
+            smCommand.transform = transform;
+            smCommand.entityId = entityId;
+            smCommand.distanceToCamera = distance;
+            smCommand.submeshIndex = i;
+
+            smCommand.indexOffset = submesh.indexOffset;
+            smCommand.indexCount = submesh.indexCount;
+            smCommand.materialIndex = submesh.materialId;
+
+            smCommand.calcWorldBounds();
+
+            candidates.push_back(smCommand);
+            m_stats.totalSubmitted++;
+        }
+
+        // ADD THE MISSING CULLING LOGIC HERE:
+        // Process culling
+        if (m_cullingSystem && !candidates.empty())
+        {
+            std::vector<AABB> aabbs;
+            aabbs.reserve(candidates.size());
+
+            for (const auto& cmd : candidates)
+            {
+                aabbs.push_back(cmd.worldAABB);
+            }
+
+            std::vector<bool> cullResults;
+            m_cullingSystem->cullObjects(aabbs, cullResults);
+
+            m_stats.frustumTests += candidates.size();
+
+            for (size_t i = 0; i < candidates.size(); ++i)
+            {
+                if (cullResults[i])
+                {
+                    m_stats.culled++;
+                    continue;
+                }
+
+                candidates[i].sortKey = candidates[i].calcSortKey();
+
+                // Determine render pass based on material properties
+                RenderPass pass = determineRenderPass(candidates[i].material);
+                m_renderPasses[pass].push_back(candidates[i]);
+                m_stats.rendered++;
+            }
+        }
+        else
+        {
+            for (auto& cmd : candidates)
+            {
+                cmd.sortKey = cmd.calcSortKey();
+
+                // Determine render pass based on material properties
+                RenderPass pass = determineRenderPass(cmd.material);
+                m_renderPasses[pass].push_back(cmd);
+                m_stats.rendered++;
+            }
+        }
+    }
+
+    RenderPass RenderQueue::determineRenderPass(const RefPtr<Material>& material) const
+    {
+        if (!material) return RenderPass::Opaque;
+
+        // Check material properties to determine render pass
+        const auto& renderState = material->getRenderState();
+
+        // Check for transparency
+        float opacity = 1.0f;
+        if (material->hasProperty("opacity"))
+        {
+            opacity = material->getProperty_float("opacity");
+        }
+
+        if (opacity < 1.0f || renderState.blending)
+        {
+            return RenderPass::Transparent;
+        }
+
+        // Check for alpha testing
+        if (material->hasProperty("alphaTest"))
+        {
+            bool alphaTest = material->getProperty_bool("alphaTest");
+            if (alphaTest)
+            {
+                return RenderPass::AlphaTest;
+            }
+        }
+
+        return RenderPass::Opaque;
+    }
 
 	void RenderQueue::sort()
 	{
@@ -169,7 +320,5 @@ namespace tst
 		}
 		m_stats.reset();
 	}
-
-
 
 }

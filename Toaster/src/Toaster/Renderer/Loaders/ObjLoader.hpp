@@ -12,7 +12,7 @@ namespace tst
 			std::vector<MeshVertex>& vertices,
 			std::vector<uint32_t>& indices,
 			std::vector<SubMesh>& submeshes,
-			MaterialLibrary& materials) override;
+			std::vector<MaterialID>& material_ids) override;
 
 
 		virtual std::vector<std::string> getSupportedExtensions() const override

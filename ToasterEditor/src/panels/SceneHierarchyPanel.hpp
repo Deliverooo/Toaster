@@ -8,11 +8,11 @@
 
 
 
-namespace tst 
+namespace tst
 {
 
 
-	
+
 	struct HierarchyNode
 	{
 		Entity entity;
@@ -80,12 +80,14 @@ namespace tst
 		};
 
 		template<typename T>
-		void drawComponent(Entity* entity, const ComponentUiDrawInfo &drawInfo, void(*uiFunc)(T*));
+		void drawComponent(Entity* entity, const ComponentUiDrawInfo& drawInfo, void(*uiFunc)(T*));
 
 		void pushStyleColours();
 		void popStyleColours();
 		void drawToolbar();
 		void drawSearchBar();
+
+		void selectEntity(Entity entity, bool addToSelection = false);
 
 	private:
 
@@ -93,12 +95,11 @@ namespace tst
 		void handleEntityDragDrop(Entity entity);
 		bool isEntityVisible(Entity entity) const;
 
-		void selectEntity(Entity entity, bool addToSelection = false);
 		void deselectEntity(Entity entity);
 		void clearSelection();
 
 
-		RefPtr<Scene> m_sceneContext{nullptr};
+		RefPtr<Scene> m_sceneContext{ nullptr };
 		Entity m_selectedEntity{ entt::null, nullptr };
 		std::unordered_set<entt::entity> m_selectedEntities;
 

@@ -319,7 +319,7 @@ namespace tst
 			}
 		}
 
-		RenderCommand::drawIndexed(render_data.quadVertexArray, render_data.quadIndex);
+		GraphicsAPI::drawIndexed(render_data.quadVertexArray, render_data.quadIndex);
 
 		render_data.stats.drawCallCount++;
 		render_data.stats.verticesSubmitted += (render_data.quadVertexPtr - render_data.quadVertexBufferBase);
@@ -343,7 +343,7 @@ namespace tst
 				}
 			}
 
-			RenderCommand::drawIndexed(render_data.quadVertexArray, render_data.quadIndex);
+			GraphicsAPI::drawIndexed(render_data.quadVertexArray, render_data.quadIndex);
 
 			render_data.stats.drawCallCount++;
 		}

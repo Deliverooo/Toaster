@@ -7,6 +7,7 @@
 #include "glm/gtx/quaternion.hpp"
 #include "Toaster/Renderer/Camera.hpp"
 #include "Toaster/Renderer/Light.hpp"
+#include "Toaster/Renderer/MaterialSystem.hpp"
 #include "Toaster/Renderer/Mesh.hpp"
 #include "Toaster/Util/MathUtil.hpp"
 
@@ -49,37 +50,105 @@ namespace tst
 		RefPtr<Texture2D> texture = nullptr;
 	};
 
-	struct MaterialComponent
-	{
-		MaterialComponent() = default;
-		MaterialComponent(const glm::vec4& colour) : colour(colour) {}
-
-		glm::vec4 colour{ 1.0f, 0.0f, 0.862f, 1.0f };
-	};
-
-
 	struct CameraComponent
 	{
 		CameraComponent() = default;
-
-
 		SceneCamera camera;
 		bool active{ true };
 		bool fixedAspect{ false };
 	};
 
+	struct MaterialSlot
+	{
+		MaterialSlot() = default;
+		MaterialSlot(MaterialID material_id) : material(material_id) {}
+		MaterialSlot(MaterialInstanceID instance_id) : materialInstance(instance_id) {}
+
+		MaterialID material{ TST_INVALID_MATERIAL };
+		MaterialInstanceID materialInstance{ TST_INVALID_MATERIAL_INSTANCE };
+
+		void setMaterial(MaterialID material_id) { material = material_id; materialInstance = TST_INVALID_MATERIAL_INSTANCE; }
+		void setMaterialInstance(MaterialInstanceID instance_id) { materialInstance = instance_id; material = TST_INVALID_MATERIAL; }
+
+		RefPtr<Material> getEffectiveMaterial() const
+		{
+			if (materialInstance != TST_INVALID_MATERIAL_INSTANCE) {
+				return MaterialSystem::getMaterialInstance(materialInstance);
+			}
+
+			if (material != TST_INVALID_MATERIAL) {
+				return MaterialSystem::getMaterial(material);
+			}
+
+			return nullptr;
+		}
+
+	};
+
+
+	// Advanced render settings component
+	struct RenderSettingsComponent
+	{
+		RenderSettingsComponent() = default;
+
+		// Rendering flags
+		bool visible = true;
+		bool castShadows = true;
+		bool receiveShadows = true;
+
+		// Culling and LOD
+		float lodBias = 1.0f;
+		uint32_t renderLayer = 0;
+
+		// Advanced settings
+		bool wireframe = false;
+		glm::vec4 tintColour = glm::vec4(1.0f);
+
+		// Material animation support
+		float animationTime = 0.0f;
+		bool enableAnimation = false;
+	};
+
 	struct MeshRendererComponent
 	{
 		MeshRendererComponent() = default;
-		MeshRendererComponent(const glm::vec4& colour) : colour(colour) {}
-		MeshRendererComponent(RefPtr<Mesh> mesh, const glm::vec4& colour = { 1.0f, 1.0f, 1.0f, 1.0f })
-			: mesh(mesh), colour(colour) {
+		MeshRendererComponent(const RefPtr<Mesh> &mesh) : mesh(mesh)
+		{
+			if (mesh) { initMaterialSlots(); }
 		}
 
-		RefPtr<Mesh> mesh = nullptr;
-		glm::vec4 colour = { 1.0f, 0.0f, 0.862f, 1.0f };
+		RefPtr<Mesh> mesh{ nullptr };
+		std::vector<MaterialSlot> materialSlots;
 
-		bool showBoundingBox{ false };
+		bool castShadows = true;
+		bool receiveShadows = true;
+		bool showBoundingBox = false;
+		bool showWireframe = false;
+		uint32_t renderLayer = 0;
+		uint32_t lightMapIndex = 0;
+		glm::vec4 lightMapScaleOffset = glm::vec4(1.0f, 1.0f, 0.0f, 0.0f);
+
+	private:
+		void initMaterialSlots()
+		{
+			const auto& submeshes = mesh->getSubMeshes();
+			materialSlots.resize(submeshes.size());
+
+			const auto& meshMaterials = mesh->getMaterialIDs();
+			for (size_t i = 0; i < submeshes.size(); i++)
+			{
+				auto meshMaterial = mesh->getMaterial(meshMaterials[i]);
+				if (meshMaterial)
+				{
+					auto globMatId = MaterialSystem::createMaterial(meshMaterial->getName());
+					materialSlots[i].setMaterial(globMatId);
+				} else
+				{
+					auto defaultId = MaterialSystem::getMaterialID("Default");
+					materialSlots[i].setMaterial(defaultId);
+				}
+			}
+		}
 	};
 
 	struct LightComponent

@@ -3,6 +3,7 @@
 #include "Application.hpp"
 #include "Toaster/Events/ApplicationEvent.hpp"
 #include "Toaster/Renderer/MeshRenderer.hpp"
+#include "Toaster/Renderer/RenderCommand.hpp"
 #include "Toaster/Renderer/Renderer.hpp"
 #include "Toaster/Renderer/Renderer2D.hpp"
 #include "Toaster/Renderer/Renderer3D.hpp"
@@ -27,6 +28,7 @@ namespace tst
 				onEvent(e);
 			});
 
+		MaterialSystem::init();
 		MeshRenderer::init();
 		Renderer2D::init();
 		SkyBoxRenderer::init();
@@ -57,10 +59,10 @@ namespace tst
 		TST_PROFILE_FN();
 
 		EventDispatcher event_dispatcher(event);
-		event_dispatcher.dispatch<WindowClosedEvent>([this](WindowClosedEvent &e){
+		event_dispatcher.dispatch<WindowClosedEvent>([this](WindowClosedEvent& e) {
 			m_running = false;
 			return true;
-		});
+			});
 		event_dispatcher.dispatch<WindowResizedEvent>([this](WindowResizedEvent& e) {
 			{
 				if (e.getWidth() == 0 || e.getHeight() == 0)
@@ -71,15 +73,15 @@ namespace tst
 
 				m_minimized = false;
 
-				Renderer::resizeViewport(e.getWidth(), e.getHeight());
+				GraphicsAPI::resizeViewport(e.getWidth(), e.getHeight());
 			}
 			return false;
-		});
+			});
 		event_dispatcher.dispatch<KeyPressedEvent>([this](KeyPressedEvent& e) {
 
 
 			return false;
-		});
+			});
 
 		// Iterate through the layer stack in reverse order
 		// This allows the topmost layer to handle the event first

@@ -5,69 +5,68 @@
 
 namespace tst
 {
-	RendererAPI* RenderCommand::m_rendererApi = new OpenGLRendererAPI;
+	RendererAPI* GraphicsAPI::m_rendererApi = new OpenGLRendererAPI;
 
-	void RenderCommand::init()
+	void GraphicsAPI::init()
 	{
 		m_rendererApi->init();
 	}
 
 
-	void RenderCommand::drawIndexed(const RefPtr<VertexArray>& vertexArray, uint32_t count)
+	void GraphicsAPI::drawIndexed(const RefPtr<VertexArray>& vertexArray, uint32_t count)
 	{
 		m_rendererApi->drawIndexed(vertexArray, count);
 	}
 
-	void RenderCommand::drawIndexedBaseVertex(const RefPtr<VertexArray>& vertexArray, uint32_t indexCount, uint32_t indexOffset, uint32_t baseVertex)
+	void GraphicsAPI::drawIndexedBaseVertex(const RefPtr<VertexArray>& vertexArray, uint32_t indexCount, uint32_t indexOffset, uint32_t baseVertex)
 	{
-		m_rendererApi->drawIndexedBaseVertex(vertexArray, indexCount, indexOffset, baseVertex);
+		GraphicsAPI::m_rendererApi->drawIndexedBaseVertex(vertexArray, indexCount, indexOffset, baseVertex);
 	}
 
 
-	void RenderCommand::drawArrays(const RefPtr<VertexArray>& vertexArray, const uint32_t count, const DrawMode drawMode)
+	void GraphicsAPI::drawArrays(const RefPtr<VertexArray>& vertexArray, const uint32_t count, const DrawMode drawMode)
 	{
 		m_rendererApi->drawArrays(vertexArray, count, drawMode);
 	}
 
-	void RenderCommand::clear()
+	void GraphicsAPI::clear()
 	{
 		m_rendererApi->clear();
 	}
 
-	void RenderCommand::cleanState()
+	void GraphicsAPI::cleanState()
 	{
 		m_rendererApi->cleanState();
 	}
 
-
-	void RenderCommand::disableDepthTesting()
+	void GraphicsAPI::disableDepthTesting()
 	{
 		m_rendererApi->disableDepthTesting();
 	}
 
-	void RenderCommand::enableDepthTesting()
+	void GraphicsAPI::enableDepthTesting()
 	{
 		m_rendererApi->enableDepthTesting();
 	}
 
-	void RenderCommand::enableDepthMask()
+	void GraphicsAPI::enableDepthMask()
 	{
 		m_rendererApi->enableDepthMask();
 	}
 
-	void RenderCommand::disableDepthMask()
+	void GraphicsAPI::disableDepthMask()
 	{
 		m_rendererApi->disableDepthMask();
 	}
 
-	void RenderCommand::setDepthFunc(DepthFunc func)
+	void GraphicsAPI::setDepthFunc(DepthFunc func)
 	{
 		m_rendererApi->setDepthFunc(func);
 	}
 
 #ifdef _DEBUG
 #ifdef TST_API_ENABLE_CHECK_ERRORS
-	void RenderCommand::checkError(const std::string& operation)
+	void GraphicsAPI::checkError(const std::string& operation)
 	{
 		m_rendererApi->checkError(operation);
 	}
@@ -75,22 +74,22 @@ namespace tst
 #endif
 
 
-	void RenderCommand::enableBackfaceCulling()
+	void GraphicsAPI::enableBackfaceCulling()
 	{
 		m_rendererApi->enableBackfaceCulling();
 	}
 
-	void RenderCommand::disableBackfaceCulling()
+	void GraphicsAPI::disableBackfaceCulling()
 	{
 		m_rendererApi->disableBackfaceCulling();
 	}
 
-	void RenderCommand::setClearColour(const glm::vec4& colour)
+	void GraphicsAPI::setClearColour(const glm::vec4& colour)
 	{
 		m_rendererApi->setClearColour(colour);
 	}
 
-	void RenderCommand::resizeViewport(uint32_t width, uint32_t height)
+	void GraphicsAPI::resizeViewport(uint32_t width, uint32_t height)
 	{
 		m_rendererApi->resizeViewport(width, height);
 	}

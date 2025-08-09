@@ -52,7 +52,7 @@ namespace tst
 
 	void MeshRenderer::init()
 	{
-		RenderCommand::init();
+		GraphicsAPI::init();
 
 		render_data.whiteTexture = Texture2D::create(1, 1);
 		TST_ASSERT(render_data.whiteTexture != nullptr, "No");
@@ -224,7 +224,7 @@ namespace tst
 
 		renderPass(RenderPass::ZPrePass);
 		renderPass(RenderPass::Opaque);
-		renderPass(RenderPass::AlphaTest);
+		//renderPass(RenderPass::AlphaTest);
 		renderPass(RenderPass::Transparent);
 
 		const auto& queueStats = render_data.renderQueue.getStats();
@@ -241,7 +241,7 @@ namespace tst
 
 		groupByMaterial(commands);
 
-		for (const auto &batch : render_data.materialBatches)
+		for (const auto& batch : render_data.materialBatches)
 		{
 			renderMaterialBatch(batch);
 		}
@@ -253,7 +253,7 @@ namespace tst
 
 		std::unordered_map<RefPtr<Material>, size_t> materialToIndex;
 
-		for (const auto &command : commands)
+		for (const auto& command : commands)
 		{
 			auto it = materialToIndex.find(command.material);
 
@@ -265,7 +265,8 @@ namespace tst
 
 				materialToIndex[command.material] = render_data.materialBatches.size();
 				render_data.materialBatches.push_back(batch);
-			} else
+			}
+			else
 			{
 				render_data.materialBatches[it->second].commands.push_back(command);
 			}
@@ -277,17 +278,17 @@ namespace tst
 		batch.material->bind(render_data.meshShader);
 
 		bool backFaceCull = batch.material->getRenderState().backfaceCulling;
-		if (backFaceCull) { RenderCommand::enableBackfaceCulling(); }
+		if (backFaceCull) { GraphicsAPI::enableBackfaceCulling(); }
 
 
-		for (const auto &command : batch.commands)
+		for (const auto& command : batch.commands)
 		{
 			renderSubmesh(command);
 		}
 
 		batch.material->unbind();
 
-		if (backFaceCull) { RenderCommand::disableBackfaceCulling(); }
+		if (backFaceCull) { GraphicsAPI::disableBackfaceCulling(); }
 	}
 
 	void MeshRenderer::renderSubmesh(const SubMeshRenderCommand& command)
@@ -300,9 +301,12 @@ namespace tst
 		glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(command.transform)));
 		render_data.meshShader->uploadMatrix3f(normalMatrix, "u_NormalMatrix");
 
+		//TST_CORE_INFO("Entity Id {0}", command.entityId);
+		render_data.meshShader->uploadInt1(command.entityId, "u_EntityId");
+
 		command.mesh->bind();
 
-		RenderCommand::drawIndexedBaseVertex(command.mesh->getVertexArray(), command.indexCount, command.indexOffset, 0);
+		GraphicsAPI::drawIndexedBaseVertex(command.mesh->getVertexArray(), command.indexCount, command.indexOffset, 0);
 
 		render_data.stats.drawCallCount++;
 		render_data.stats.triangleCount += command.indexCount / 3;
@@ -357,13 +361,14 @@ namespace tst
 		render_data.meshShader->uploadMatrix3f(normalMatrix, "u_NormalMatrix");
 
 		// Enable depth testing for proper 3D rendering
-		RenderCommand::enableDepthTesting();
+		GraphicsAPI::enableDepthTesting();
 
 		mesh->bind();
 
 		// Render each submesh with its material
 		const auto& submeshes = mesh->getSubMeshes();
-		const auto& materials = mesh->getMaterials();
+
+		std::vector<MaterialID> materialIds;
 
 		render_data.skyboxTexture->bind();
 		render_data.meshShader->uploadInt1(0, "u_Skybox");
@@ -376,16 +381,16 @@ namespace tst
 			for (const auto& submesh : submeshes)
 			{
 				// Get the material for this submesh
-				auto material = materials.getMaterial(submesh.materialIndex);
+				auto material = mesh->getMaterial(submesh.materialId);
 
 				material->bind(render_data.meshShader);
 
 				if (material->getRenderState().backfaceCulling)
 				{
-					RenderCommand::enableBackfaceCulling();
+					GraphicsAPI::enableBackfaceCulling();
 				}
 				// Draw the submesh
-				RenderCommand::drawIndexedBaseVertex(
+				GraphicsAPI::drawIndexedBaseVertex(
 					mesh->getVertexArray(),
 					submesh.indexCount,
 					submesh.indexOffset,
@@ -393,7 +398,7 @@ namespace tst
 				);
 
 				material->unbind();
-				RenderCommand::disableBackfaceCulling();
+				GraphicsAPI::disableBackfaceCulling();
 
 				render_data.stats.drawCallCount++;
 				render_data.stats.triangleCount += submesh.indexCount / 3;
@@ -401,7 +406,7 @@ namespace tst
 		}
 
 		mesh->unbind();
-		RenderCommand::cleanState();
+		GraphicsAPI::cleanState();
 
 		TST_RC_CHECK_ERROR("After MeshRenderer cleanup");
 
@@ -414,9 +419,12 @@ namespace tst
 		drawMesh(mesh, transform);
 	}
 
-	void MeshRenderer::submitMesh(const RefPtr<Mesh>& mesh, const glm::mat4& transform, uint32_t entityId)
+	// Add this enhanced version to support material slots from components
+	void MeshRenderer::submitMesh(const RefPtr<Mesh>& mesh, const glm::mat4& transform, uint32_t entityId, const MeshRendererComponent& meshRenderer)
 	{
-		render_data.renderQueue.submitMesh(mesh, transform, entityId, render_data.cameraPosition);
+		if (!mesh) return;
+
+		render_data.renderQueue.submitMeshWithMaterialSlots(mesh, transform, entityId, render_data.cameraPosition, meshRenderer.materialSlots);
 	}
 
 	MeshRenderer::Stats MeshRenderer::getStats()

@@ -28,6 +28,7 @@ namespace tst
 		static void drawMesh(const RefPtr<Mesh>& mesh, const glm::vec3& position, const glm::vec3& rotation, const glm::vec3& scale);
 
 		static void submitMesh(const RefPtr<Mesh>& mesh, const glm::mat4& transform, uint32_t entityId);
+		static void submitMesh(const RefPtr<Mesh>& mesh, const glm::mat4& transform, uint32_t entityId, const MeshRendererComponent& meshRenderer);
 
 		struct Stats
 		{

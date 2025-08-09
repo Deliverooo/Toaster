@@ -17,7 +17,7 @@ namespace tst
 
 	RefPtr<Texture2D> Texture2D::create(const std::string& filepath, const TextureParams& params)
 	{
-		switch (Renderer::getApi())
+		switch (RendererAPI::getApi())
 		{
 		case RendererAPI::API::None: { TST_ASSERT(false, "Render Api cannot be None!"); return nullptr; }
 		case RendererAPI::API::OpenGL: { return std::make_shared<OpenGLTexture2D>(filepath, params); }
@@ -35,7 +35,7 @@ namespace tst
 
 	RefPtr<Texture2D> Texture2D::create(const ColourRgba& colour, const TextureParams& params)
 	{
-		switch (Renderer::getApi())
+		switch (RendererAPI::getApi())
 		{
 		case RendererAPI::API::None: { TST_ASSERT(false, "Render Api cannot be None!"); return nullptr; }
 		case RendererAPI::API::OpenGL: { return std::make_shared<OpenGLTexture2D>(colour, params); }
@@ -48,7 +48,7 @@ namespace tst
 
 	RefPtr<Texture2D> Texture2D::create(const ColourFloat& colour, const TextureParams& params)
 	{
-		switch (Renderer::getApi())
+		switch (RendererAPI::getApi())
 		{
 		case RendererAPI::API::None: { TST_ASSERT(false, "Render Api cannot be None!"); return nullptr; }
 		case RendererAPI::API::OpenGL: { return std::make_shared<OpenGLTexture2D>(colour, params); }
@@ -66,7 +66,7 @@ namespace tst
 
 	RefPtr<Texture2D> Texture2D::create(const uint32_t colour, const TextureParams& params)
 	{
-		switch (Renderer::getApi())
+		switch (RendererAPI::getApi())
 		{
 		case RendererAPI::API::None: { TST_ASSERT(false, "Render Api cannot be None!"); return nullptr; }
 		case RendererAPI::API::OpenGL: { return std::make_shared<OpenGLTexture2D>(colour, params); }
@@ -84,7 +84,7 @@ namespace tst
 
 	RefPtr<Texture2D> Texture2D::create(const uint32_t width, const uint32_t height, const TextureParams& params)
 	{
-		switch (Renderer::getApi())
+		switch (RendererAPI::getApi())
 		{
 		case RendererAPI::API::None: { TST_ASSERT(false, "Render Api cannot be None!"); return nullptr; }
 		case RendererAPI::API::OpenGL: { return std::make_shared<OpenGLTexture2D>(width, height, params); }
@@ -109,7 +109,7 @@ namespace tst
 
 	RefPtr<Texture3D> Texture3D::create(const std::vector<std::string>& texturePaths, const TextureParams& params)
 	{
-		switch (Renderer::getApi())
+		switch (RendererAPI::getApi())
 		{
 		case RendererAPI::API::None:   { TST_ASSERT(false, "Render Api cannot be None!"); return nullptr; }
 		case RendererAPI::API::OpenGL: { return std::make_shared<OpenGLTexture3D>(texturePaths, params); }
@@ -127,7 +127,7 @@ namespace tst
 
 	RefPtr<Texture3D> Texture3D::create(const ColourRgba& colour, const TextureParams &params)
 	{
-		switch (Renderer::getApi())
+		switch (RendererAPI::getApi())
 		{
 		case RendererAPI::API::None:   { TST_ASSERT(false, "Render Api cannot be None!"); return nullptr; }
 		case RendererAPI::API::OpenGL: { return std::make_shared<OpenGLTexture3D>(colour, params); }
@@ -145,7 +145,7 @@ namespace tst
 
 	RefPtr<Texture3D> Texture3D::create(const ColourFloat& colour, const TextureParams &params)
 	{
-		switch (Renderer::getApi())
+		switch (RendererAPI::getApi())
 		{
 		case RendererAPI::API::None:   { TST_ASSERT(false, "Render Api cannot be None!"); return nullptr; }
 		case RendererAPI::API::OpenGL: { return std::make_shared<OpenGLTexture3D>(colour, params); }
@@ -163,7 +163,7 @@ namespace tst
 
 	RefPtr<Texture3D> Texture3D::create(const uint32_t colour, const TextureParams &params)
 	{
-		switch (Renderer::getApi())
+		switch (RendererAPI::getApi())
 		{
 		case RendererAPI::API::None:   { TST_ASSERT(false, "Render Api cannot be None!"); return nullptr; }
 		case RendererAPI::API::OpenGL: { return std::make_shared<OpenGLTexture3D>(colour, params); }
@@ -181,7 +181,7 @@ namespace tst
 
 	RefPtr<Texture3D> Texture3D::create(const uint32_t width, const uint32_t height, const TextureParams &params)
 	{
-		switch (Renderer::getApi())
+		switch (RendererAPI::getApi())
 		{
 		case RendererAPI::API::None:   { TST_ASSERT(false, "Render Api cannot be None!"); return nullptr; }
 		case RendererAPI::API::OpenGL: { return std::make_shared<OpenGLTexture3D>(width, height, params); }

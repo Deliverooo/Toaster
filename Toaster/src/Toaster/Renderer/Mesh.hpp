@@ -16,13 +16,14 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 #include "Material.hpp"
+#include "MaterialSystem.hpp"
 
 
 namespace tst
 {
     enum class MeshFormat
     {
-	    Unknown = 0,
+        Unknown = 0,
         OBJ,
         FBX,
         GLTF,
@@ -56,7 +57,9 @@ namespace tst
     {
         uint32_t indexOffset;
         uint32_t indexCount;
-        uint32_t materialIndex;
+        MaterialID materialId;
+
+        SubMesh() : indexOffset(0), indexCount(0), materialId(TST_DEFAULT_MATERIAL) {}
     };
 
     class MeshLoader;
@@ -80,7 +83,11 @@ namespace tst
         const std::vector<MeshVertex>& getVertices() const { return m_vertices; }
         const std::vector<uint32_t>& getIndices() const { return m_indices; }
         const std::vector<SubMesh>& getSubMeshes() const { return m_submeshes; }
-        const MaterialLibrary& getMaterials() const { return m_materials; }
+
+        // New methods for MaterialSystem integration
+        const std::vector<MaterialID>& getMaterialIDs() const { return m_materialIDs; }
+        RefPtr<Material> getMaterial(uint32_t submeshIndex) const;
+        MaterialID getMaterialID(uint32_t submeshIndex) const;
 
         std::string getFilepath() const { return ((m_Filepath.has_value()) ? m_Filepath.value() : "Null"); }
 
@@ -90,7 +97,7 @@ namespace tst
         static RefPtr<Mesh> create(const std::vector<MeshVertex>& vertices, const std::vector<uint32_t>& indices);
         static RefPtr<Mesh> create(const std::string& filepath);
 
-		const RefPtr<VertexArray>& getVertexArray() const { return m_vertexArray; }
+        const RefPtr<VertexArray>& getVertexArray() const { return m_vertexArray; }
 
     private:
         void setupMesh();
@@ -107,7 +114,8 @@ namespace tst
         std::vector<MeshVertex> m_vertices;
         std::vector<uint32_t> m_indices;
         std::vector<SubMesh> m_submeshes;
-        MaterialLibrary m_materials;
+
+        std::vector<MaterialID> m_materialIDs;
 
         RefPtr<VertexArray> m_vertexArray;
         RefPtr<VertexBuffer> m_vertexBuffer;
@@ -125,11 +133,19 @@ namespace tst
     public:
         virtual ~MeshLoader() = default;
 
+        // -=[LEGACY]=-
         virtual bool load(const std::string& filepath,
             std::vector<MeshVertex>& vertices,
             std::vector<uint32_t>& indices,
             std::vector<SubMesh>& submeshes,
-            MaterialLibrary& materials) = 0;
+            MaterialLibrary& materials) {return false;};
+        // -=[LEGACY]=-
+
+        virtual bool load(const std::string& filepath,
+            std::vector<MeshVertex>& vertices,
+            std::vector<uint32_t>& indices,
+            std::vector<SubMesh>& submeshes,
+            std::vector<MaterialID>& materials) = 0;
 
         virtual std::vector<std::string> getSupportedExtensions() const = 0;
     };

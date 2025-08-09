@@ -11,6 +11,8 @@ in vec2 v_TexCoord;
 in vec3 v_Tangent;
 in vec3 v_Bitangent;
 
+in flat int v_EntityId;
+
 uniform vec3 u_ViewPos;
 
 // While this not neccesaraly needed, having a skybox texture allows us to create reflections that mirror the environment textures around them
@@ -293,5 +295,5 @@ void main() {
     
     FragColour = vec4(colour, transparency);
 
-    EntityId = 50;
+    EntityId = v_EntityId;
 }

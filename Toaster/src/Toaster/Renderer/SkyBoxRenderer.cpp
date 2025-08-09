@@ -125,13 +125,13 @@ namespace tst
 
 		render_data.viewProjectionMatrix = camera.getProjection() * glm::mat4(glm::mat3(glm::inverse(view)));
 
-		RenderCommand::setDepthFunc(DepthFunc::LessOrEqual);
-		RenderCommand::checkError("SkyBox: After setDepthFunc");
+		GraphicsAPI::setDepthFunc(DepthFunc::LessOrEqual);
+		GraphicsAPI::checkError("SkyBox: After setDepthFunc");
 
 		// Ensure clean slate
 
 		render_data.skyboxShader->unbind();
-		RenderCommand::checkError("SkyBox: After clearing shader state");
+		GraphicsAPI::checkError("SkyBox: After clearing shader state");
 
 		// Validate our shader before binding
 		if (!render_data.skyboxShader) {
@@ -140,7 +140,7 @@ namespace tst
 		}
 
 		render_data.skyboxShader->bind();
-		RenderCommand::checkError("SkyBox: After shader bind");
+		GraphicsAPI::checkError("SkyBox: After shader bind");
 
 		// Check if the uniform exists before uploading
 		if (!render_data.skyboxShader->hasUniform("u_ViewProjection")) {
@@ -150,22 +150,22 @@ namespace tst
 
 		TST_CORE_INFO("SkyBox: Uploading u_ViewProjection uniform");
 		render_data.skyboxShader->uploadMatrix4f(render_data.viewProjectionMatrix, "u_ViewProjection");
-		RenderCommand::checkError("SkyBox: After uploading u_ViewProjection");
+		GraphicsAPI::checkError("SkyBox: After uploading u_ViewProjection");
 
 		render_data.skyboxVertexArray->bind();
-		RenderCommand::checkError("SkyBox: After VAO bind");
+		GraphicsAPI::checkError("SkyBox: After VAO bind");
 
 		render_data.skyboxTexture->bind(0);
-		RenderCommand::checkError("SkyBox: After texture bind");
+		GraphicsAPI::checkError("SkyBox: After texture bind");
 
-		RenderCommand::drawArrays(render_data.skyboxVertexArray, 36);
-		RenderCommand::checkError("SkyBox: After draw call");
+		GraphicsAPI::drawArrays(render_data.skyboxVertexArray, 36);
+		GraphicsAPI::checkError("SkyBox: After draw call");
 
 		render_data.skyboxShader->unbind();
-		RenderCommand::checkError("SkyBox: After shader unbind");
+		GraphicsAPI::checkError("SkyBox: After shader unbind");
 
-		RenderCommand::setDepthFunc(DepthFunc::Less);
-		RenderCommand::checkError("SkyBox: After restoring depth func");
+		GraphicsAPI::setDepthFunc(DepthFunc::Less);
+		GraphicsAPI::checkError("SkyBox: After restoring depth func");
 		render_data.skyboxFramebuffer->unbind();
 	}
 	void SkyBoxRenderer::render(const EditorCamera &camera)
@@ -173,7 +173,7 @@ namespace tst
 
 		render_data.viewProjectionMatrix = camera.getProjectionMatrix() * glm::mat4(glm::mat3(camera.getViewMatrix()));
 
-		RenderCommand::setDepthFunc(DepthFunc::LessOrEqual);
+		GraphicsAPI::setDepthFunc(DepthFunc::LessOrEqual);
 
 		// Validate our shader before binding
 		if (!render_data.skyboxShader) {
@@ -194,10 +194,10 @@ namespace tst
 		render_data.skyboxVertexArray->bind();
 		render_data.skyboxTexture->bind(0);
 
-		RenderCommand::drawArrays(render_data.skyboxVertexArray, 36);
+		GraphicsAPI::drawArrays(render_data.skyboxVertexArray, 36);
 
 		render_data.skyboxShader->unbind();
-		RenderCommand::setDepthFunc(DepthFunc::Less);
+		GraphicsAPI::setDepthFunc(DepthFunc::Less);
 	}
 
 	void SkyBoxRenderer::setSkyboxTexture(const RefPtr<Texture3D>& texture)

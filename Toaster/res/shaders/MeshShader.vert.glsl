@@ -10,14 +10,18 @@ uniform mat4 u_ViewProjection;
 uniform mat4 u_Model;
 uniform mat3 u_NormalMatrix;
 
+uniform int u_EntityId;
+
 out vec3 v_FragPos;
 out vec3 v_Normal;
 out vec2 v_TexCoord;
 out vec3 v_Tangent;
 out vec3 v_Bitangent;
+out int v_EntityId;
 
 void main()
 {
+    v_EntityId = u_EntityId;
     vec4 worldPos = u_Model * vec4(a_Position, 1.0);
     v_FragPos = worldPos.xyz;
     v_Normal = u_NormalMatrix * a_Normal;

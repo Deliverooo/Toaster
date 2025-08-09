@@ -1,0 +1,29 @@
+Scene: Unnamed Scene
+Entities:
+  - Entity: 12241557773261097666
+    TagComponent:
+      Tag: Light
+    TransformComponent:
+      Translation: [-1.0290678, 0.3202351, 2.061837]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    LightComponent:
+      Type: 1
+      Colour: [1, 1, 1]
+      Intensity: 1
+      Constant: 1
+      Linear: 0.09
+      Quadratic: 0.032
+      InnerCone: 40
+      OuterOffset: 0.1
+      Enabled: true
+  - Entity: 12241557773261097666
+    TagComponent:
+      Tag: New Entity
+    MeshRendererComponent:
+      Colour: [2.3693558e-38, 0, 1, 1]
+      Filepath: C:\Users\oocon\OneDrive\Desktop\blender dev log\Orbo\orbo_mesh.fbx
+    TransformComponent:
+      Translation: [0, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [0.020000039, 0.020000039, 0.020000039]

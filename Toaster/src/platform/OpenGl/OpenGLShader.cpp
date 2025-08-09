@@ -370,7 +370,7 @@ namespace tst
 		int location = getUniformLocation(name);
 		if (location != -1) {
 			glUniform1iv(location, count, arr);
-			RenderCommand::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
+			GraphicsAPI::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
 		}
 	}
 
@@ -398,7 +398,7 @@ namespace tst
 		int location = getUniformLocation(name);
 		if (location != -1) {
 			glUniform1i(location, x);
-			RenderCommand::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
+			GraphicsAPI::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
 		}
 	}
 	void OpenGLShader::uploadUniform2i(const int x, const int y, const char* name)
@@ -406,7 +406,7 @@ namespace tst
 		int location = getUniformLocation(name);
 		if (location != -1) {
 			glUniform2i(location, x, y);
-			RenderCommand::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
+			GraphicsAPI::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
 		}
 	}
 
@@ -415,7 +415,7 @@ namespace tst
 		int location = getUniformLocation(name);
 		if (location != -1) {
 			glUniform3i(location, x, y, z);
-			RenderCommand::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
+			GraphicsAPI::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
 		}
 	}
 
@@ -424,7 +424,7 @@ namespace tst
 		int location = getUniformLocation(name);
 		if (location != -1) {
 			glUniform4i(location, x, y, z, w);
-			RenderCommand::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
+			GraphicsAPI::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
 		}
 	}
 	void OpenGLShader::uploadUniform1f(const float x, const char* name)
@@ -432,7 +432,7 @@ namespace tst
 		int location = getUniformLocation(name);
 		if (location != -1) {
 			glUniform1f(location, x);
-			RenderCommand::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
+			GraphicsAPI::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
 		}
 	}
 
@@ -441,7 +441,7 @@ namespace tst
 		int location = getUniformLocation(name);
 		if (location != -1) {
 			glUniform2f(location, x, y);
-			RenderCommand::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
+			GraphicsAPI::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
 		}
 	}
 
@@ -450,7 +450,7 @@ namespace tst
 		int location = getUniformLocation(name);
 		if (location != -1) {
 			glUniform3f(location, x, y, z);
-			RenderCommand::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
+			GraphicsAPI::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
 		}
 	}
 
@@ -459,7 +459,7 @@ namespace tst
 		int location = getUniformLocation(name);
 		if (location != -1) {
 			glUniform4f(location, x, y, z, w);
-			RenderCommand::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
+			GraphicsAPI::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
 		}
 	}
 	void OpenGLShader::uploadUniform1d(const double x, const char* name)
@@ -467,7 +467,7 @@ namespace tst
 		int location = getUniformLocation(name);
 		if (location != -1) {
 			glUniform1d(location, x);
-			RenderCommand::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
+			GraphicsAPI::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
 		}
 	}
 
@@ -476,7 +476,7 @@ namespace tst
 		int location = getUniformLocation(name);
 		if (location != -1) {
 			glUniform2d(location, x, y);
-			RenderCommand::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
+			GraphicsAPI::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
 		}
 	}
 
@@ -485,7 +485,7 @@ namespace tst
 		int location = getUniformLocation(name);
 		if (location != -1) {
 			glUniform3d(location, x, y, z);
-			RenderCommand::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
+			GraphicsAPI::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
 		}
 	}
 
@@ -494,7 +494,7 @@ namespace tst
 		int location = getUniformLocation(name);
 		if (location != -1) {
 			glUniform4d(location, x, y, z, w);
-			RenderCommand::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
+			GraphicsAPI::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
 		}
 	}
 
@@ -503,7 +503,7 @@ namespace tst
 		int location = getUniformLocation(name);
 		if (location != -1) {
 			glUniform1iv(location, 1, &vec.x);
-			RenderCommand::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
+			GraphicsAPI::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
 		}
 	}
 
@@ -512,7 +512,7 @@ namespace tst
 		int location = getUniformLocation(name);
 		if (location != -1) {
 			glUniform2iv(location, 1, glm::value_ptr(vec));
-			RenderCommand::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
+			GraphicsAPI::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
 		}
 	}
 
@@ -521,7 +521,7 @@ namespace tst
 		int location = getUniformLocation(name);
 		if (location != -1) {
 			glUniform3iv(location, 1, glm::value_ptr(vec));
-			RenderCommand::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
+			GraphicsAPI::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
 		}
 	}
 
@@ -530,7 +530,7 @@ namespace tst
 		int location = getUniformLocation(name);
 		if (location != -1) {
 			glUniform4iv(location, 1, glm::value_ptr(vec));
-			RenderCommand::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
+			GraphicsAPI::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
 		}
 	}
 
@@ -539,7 +539,7 @@ namespace tst
 		int location = getUniformLocation(name);
 		if (location != -1) {
 			glUniform1fv(location, 1, &vec.x);
-			RenderCommand::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
+			GraphicsAPI::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
 		}
 	}
 
@@ -548,7 +548,7 @@ namespace tst
 		int location = getUniformLocation(name);
 		if (location != -1) {
 			glUniform2fv(location, 1, glm::value_ptr(vec));
-			RenderCommand::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
+			GraphicsAPI::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
 		}
 	}
 
@@ -557,7 +557,7 @@ namespace tst
 		int location = getUniformLocation(name);
 		if (location != -1) {
 			glUniform3fv(location, 1, glm::value_ptr(vec));
-			RenderCommand::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
+			GraphicsAPI::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
 		}
 	}
 
@@ -566,7 +566,7 @@ namespace tst
 		int location = getUniformLocation(name);
 		if (location != -1) {
 			glUniform4fv(location, 1, glm::value_ptr(vec));
-			RenderCommand::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
+			GraphicsAPI::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
 		}
 	}
 
@@ -575,7 +575,7 @@ namespace tst
 		int location = getUniformLocation(name);
 		if (location != -1) {
 			glUniformMatrix2fv(location, 1, GL_FALSE, glm::value_ptr(mat));
-			RenderCommand::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
+			GraphicsAPI::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
 		}
 	}
 
@@ -584,7 +584,7 @@ namespace tst
 		int location = getUniformLocation(name);
 		if (location != -1) {
 			glUniformMatrix3fv(location, 1, GL_FALSE, glm::value_ptr(mat));
-			RenderCommand::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
+			GraphicsAPI::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
 		}
 	}
 
@@ -593,7 +593,7 @@ namespace tst
 		int location = getUniformLocation(name);
 		if (location != -1) {
 			glUniformMatrix4fv(location, 1, GL_FALSE, glm::value_ptr(mat));
-			RenderCommand::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
+			GraphicsAPI::checkError("Uploading uniform '" + std::string(name) + "' to shader '" + m_shaderName + "'");
 		}
 	}
 }

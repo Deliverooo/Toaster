@@ -14,6 +14,7 @@
 #include "Toaster/Renderer/DebugRenderer.hpp"
 #include "Toaster/Renderer/MeshRenderer.hpp"
 #include "Toaster/Renderer/RenderCommand.hpp"
+#include "Toaster/Renderer/Renderer.hpp"
 #include "Toaster/Renderer/SkyBoxRenderer.hpp"
 
 
@@ -47,28 +48,7 @@ namespace tst
 
 	void Scene::onEditorUpdate(EditorCamera& camera, DeltaTime dt)
 	{
-		// Check if we have any 2D entities before calling Renderer2D
-		auto group2d = m_registry.group<SpriteRendererComponent>(entt::get<TransformComponent>);
-		if (!group2d.empty()) {
-			// 2D Primitive Rendering
-			Renderer2D::begin(camera);
-			for (auto entity : group2d)
-			{
-				const auto& [spriteRenderer, transform] = group2d.get<SpriteRendererComponent, TransformComponent>(entity);
 
-				if (spriteRenderer.texture)
-				{
-					Renderer2D::drawQuad(transform.matrix(), spriteRenderer.texture, 1.0f, spriteRenderer.colour);
-				}
-				else
-				{
-					Renderer2D::drawQuad(transform.matrix(), spriteRenderer.colour);
-				}
-			}
-			Renderer2D::end();
-
-
-		}
 
 		// Mesh Rendering
 		MeshRenderer::begin(camera);
@@ -94,39 +74,69 @@ namespace tst
 		MeshRenderer::flushLights();
 
 
+		
+
 		auto meshGroup = m_registry.group<MeshRendererComponent>(entt::get<TransformComponent>);
 		for (auto entity : meshGroup)
 		{
 			const auto& [meshRenderer, transform] = meshGroup.get<MeshRendererComponent, TransformComponent>(entity);
 			if (meshRenderer.mesh)
 			{
-				MeshRenderer::submitMesh(meshRenderer.mesh, transform.matrix(), static_cast<uint32_t>(entity));
-
+				// Use the enhanced version that considers material slots
+				MeshRenderer::submitMesh(meshRenderer.mesh, transform.matrix(), static_cast<uint32_t>(entity), meshRenderer);
 			}
 		}
+
 		MeshRenderer::flush();
 		MeshRenderer::end();
 
-		if (m_showDebugVisualization)
-		{
-			DebugRenderer::begin(camera);
 
-			// Test
-			DebugRenderer::drawLine({ -5.0f, 0.0f, 0.0f }, { 5.0f, 0.0f, 0.0f }, { 1.0f, 0.0f, 0.0f, 1.0f });
 
-			for (auto entity : meshGroup)
+		//if (m_showDebugVisualization)
+		//{
+		//	DebugRenderer::begin(camera);
+
+		//	// Test
+		//	DebugRenderer::drawLine({ -5.0f, 0.0f, 0.0f }, { 5.0f, 0.0f, 0.0f }, { 1.0f, 0.0f, 0.0f, 1.0f });
+
+		//	for (auto entity : meshGroup)
+		//	{
+		//		const auto& [meshRenderer, transform] = meshGroup.get<MeshRendererComponent, TransformComponent>(entity);
+
+
+		//		if (meshRenderer.mesh && meshRenderer.showBoundingBox)
+		//		{
+		//			DebugRenderer::drawMeshBoundingBox(meshRenderer.mesh, transform.matrix(), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f));
+		//		}
+		//	}
+
+		//	DebugRenderer::end();
+		//}
+
+		GraphicsAPI::cleanState();
+
+		// Check if we have any 2D entities before calling Renderer2D
+		auto group2d = m_registry.group<SpriteRendererComponent>(entt::get<TransformComponent>);
+		if (!group2d.empty()) {
+			// 2D Primitive Rendering
+			Renderer2D::begin(camera);
+			for (auto entity : group2d)
 			{
-				const auto& [meshRenderer, transform] = meshGroup.get<MeshRendererComponent, TransformComponent>(entity);
-				if (meshRenderer.mesh && meshRenderer.showBoundingBox)
+				const auto& [spriteRenderer, transform] = group2d.get<SpriteRendererComponent, TransformComponent>(entity);
+
+				if (spriteRenderer.texture)
 				{
-					DebugRenderer::drawMeshBoundingBox(meshRenderer.mesh, transform.matrix(), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f));
+					Renderer2D::drawQuad(transform.matrix(), spriteRenderer.texture, 1.0f, spriteRenderer.colour);
+				}
+				else
+				{
+					Renderer2D::drawQuad(transform.matrix(), spriteRenderer.colour);
 				}
 			}
+			Renderer2D::end();
 
-			DebugRenderer::end();
+
 		}
-
-		RenderCommand::cleanState();
 	}
 
 
@@ -170,7 +180,7 @@ namespace tst
 		{
 
 
-			
+
 		}
 	}
 

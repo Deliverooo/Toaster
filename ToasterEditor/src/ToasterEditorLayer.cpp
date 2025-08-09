@@ -4,6 +4,7 @@
 #include "Imguizmo.h"
 #include "Toaster/Renderer/MeshRenderer.hpp"
 #include "Toaster/Renderer/SkyBoxRenderer.hpp"
+#include "Toaster/Renderer/RenderCommand.hpp"
 #include "util/Random.hpp"
 #include "Toaster/Scene/Scene.hpp"
 #include "Toaster/Scene/SceneSerializer.hpp"
@@ -145,6 +146,8 @@ namespace tst
 
 	void ToasterEditorLayer::onAttach()
 	{
+		TST_CORE_TRACE("Toaster Editor layer :: On attach");
+
 		FramebufferCreateInfo framebufferCreateInfo;
 		framebufferCreateInfo.attachments = { FramebufferTextureFormat::RGBA8, FramebufferTextureFormat::RED_INTEGER, FramebufferTextureFormat::D32F_S8 };
 
@@ -159,6 +162,8 @@ namespace tst
 		m_SceneHierarchyPanel.setSceneContext(m_Scene);
 
 		m_EditorCamera = EditorCamera(45.0f, 1280.0f / 720.0f, 0.1f, 1000.0f);
+
+
 	}
 
 	void ToasterEditorLayer::onUpdate(DeltaTime dt)
@@ -187,8 +192,8 @@ namespace tst
 
 		MeshRenderer::resetStats();
 		m_Framebuffer->bind();
-		RenderCommand::setClearColour(m_clearColour);
-		RenderCommand::clear();
+		GraphicsAPI::setClearColour(m_clearColour);
+		GraphicsAPI::clear();
 
 		m_Framebuffer->clearAttachment(1, -1);
 
@@ -205,6 +210,12 @@ namespace tst
 		if (mouseX >= 0 && mouseY >= 0 && mouseX < static_cast<int>(viewportSize.x) && mouseY < static_cast<int>(viewportSize.y))
 		{
 			int pixelData = m_Framebuffer->readPixel(1, mouseX, mouseY);
+
+			Entity hoveredEntity = { static_cast<entt::entity>(pixelData), m_Scene.get() };
+			if (static_cast<uint32_t>(hoveredEntity) != -1 && Input::isMouseButtonPressed(MouseButton::Left))
+			{
+				m_SceneHierarchyPanel.selectEntity(hoveredEntity, true);
+			}
 		}
 
 
@@ -462,6 +473,19 @@ namespace tst
 		ImGui::SameLine();
 		ImGui::TextColored({ 0.0f, 1.0f, 0.0f, 1.0f }, "%d", MeshRenderer::getStats().verticesSubmitted);
 		ImGui::PopItemWidth();
+
+		ImGui::Text("Culled Objects:");
+		ImGui::SameLine();
+		ImGui::TextColored({ 1.0f, 0.5f, 0.0f, 1.0f }, "%d", MeshRenderer::getStats().culledObjects);
+
+		ImGui::Text("Total Submitted:");
+		ImGui::SameLine();
+		ImGui::TextColored({ 0.0f, 1.0f, 0.0f, 1.0f }, "%d", MeshRenderer::getStats().totalSubmitted);
+
+		ImGui::Text("Cull Efficiency:");
+		ImGui::SameLine();
+		float efficiency = (float)MeshRenderer::getStats().culledObjects / std::max(1u, MeshRenderer::getStats().totalSubmitted) * 100.0f;
+		ImGui::TextColored({ 0.0f, 1.0f, 0.0f, 1.0f }, "%.1f%%", efficiency);
 
 		ImGui::End();
 

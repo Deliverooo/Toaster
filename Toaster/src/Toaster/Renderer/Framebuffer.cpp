@@ -9,7 +9,7 @@ namespace tst
 
 	RefPtr<Framebuffer> Framebuffer::create(const FramebufferCreateInfo& createInfo)
 	{
-		switch (Renderer::getApi())
+		switch (RendererAPI::getApi())
 		{
 		case RendererAPI::API::None: { TST_ASSERT(false, "Render Api cannot be None!"); return nullptr; }
 		case RendererAPI::API::OpenGL: { return std::make_shared<OpenGLFramebuffer>(createInfo); }
