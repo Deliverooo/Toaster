@@ -44,8 +44,9 @@ namespace toaster::gpu::upload
 			if (completedValue >= it->timelineValue)
 			{
 				destroyBuffer(it->staging);
-				resetCommandList(it->commandList); // Return the associated command list to the free pool
-				it = g_impl->submitted.erase(it);  // Why is C++ like ts
+				resetCommandList(it->commandList);
+				freeCommandList(it->commandList); // Return the associated command list to the free pool
+				it = g_impl->submitted.erase(it); // Why is C++ like ts
 			}
 			else
 				++it;
@@ -97,7 +98,9 @@ namespace toaster::gpu::upload
 		BufferHandle staging{createBuffer(staging_desc)};
 
 		CommandListHandle command_list{getOrCreateCommandList(EQueueType::eTransfer)};
-		uint64            staging_offset{0u};
+		openCommandList(command_list);
+
+		uint64 staging_offset{0u};
 		for (const auto &upload: g_impl->pending)
 		{
 			staging_offset = TST_ALIGN(staging_offset, stagingAlignment);
@@ -107,20 +110,21 @@ namespace toaster::gpu::upload
 			{
 				case PendingUpload::EType::eBuffer:
 				{
-					copyBuffer(command_list, staging, upload.handle, upload.data.size(), staging_offset, upload.destinationOffset);
+					copyBuffer(command_list, staging, static_cast<BufferHandle>(upload.handle), upload.data.size(), staging_offset, upload.destinationOffset);
 
 					break;
 				}
 				case PendingUpload::EType::eTexture:
 				{
-					copyBufferToTexture(command_list, staging, upload.handle, staging_offset, upload.textureUploadDesc.mipLevel, upload.textureUploadDesc.baseLayer,
-										upload.textureUploadDesc.layerCount, upload.textureUploadDesc.extent);
+					copyBufferToTexture(command_list, staging, static_cast<TextureHandle>(upload.handle), staging_offset, upload.textureUploadDesc.mipLevel,
+										upload.textureUploadDesc.baseLayer, upload.textureUploadDesc.layerCount, upload.textureUploadDesc.extent);
 					break;
 				}
 			}
 
 			staging_offset += upload.data.size();
 		}
+		closeCommandList(command_list);
 
 		const uint64 timeline_value{frame::acquireTransferTimelineCounterValue()};
 
@@ -133,6 +137,7 @@ namespace toaster::gpu::upload
 	{
 		flushUploads();
 		waitSemaphores(frame::getTransferTimelineSemaphore(), frame::getTransferTimelineCounterValue());
+		collectCompletedUploads();
 	}
 
 	auto uploadDataToBuffer(BufferHandle p_dst_buffer, const void *p_data, uint64 p_size, uint64 p_offset) -> void

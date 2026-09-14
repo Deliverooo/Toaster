@@ -4,22 +4,10 @@ set(SRC
 
 add_executable(toaster_test WIN32 ${SRC} )
 
-include(FetchContent)
-
-#GLFW ---
-FetchContent_Declare(
-		glfw
-		GIT_REPOSITORY https://github.com/glfw/glfw.git
-		GIT_TAG master
-)
-FetchContent_MakeAvailable(glfw)
-#GLFW ---
-
 target_link_libraries(toaster_test PRIVATE
 		Toaster::ToastOS
-		Toaster::ToastGPU
-		glfw
-		stb
+		Toaster::ToastKernel
+		Toaster::ToastAsset
 )
 
 set(SHADER_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/shaders)

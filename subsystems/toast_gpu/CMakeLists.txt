@@ -3,6 +3,7 @@ set(GPU_SRC
 		${CMAKE_CURRENT_SOURCE_DIR}/src/frame.cpp
 		${CMAKE_CURRENT_SOURCE_DIR}/src/upload.cpp
 		${CMAKE_CURRENT_SOURCE_DIR}/src/vma_impl.cpp
+		${CMAKE_CURRENT_SOURCE_DIR}/src/allocation.cpp
 )
 
 if (TOASTER_BUILD_SHARED_LIBS)

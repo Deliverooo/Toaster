@@ -1,5 +1,9 @@
 set(RENDER_SRC
 		${CMAKE_CURRENT_SOURCE_DIR}/src/transform_system.cpp
+		${CMAKE_CURRENT_SOURCE_DIR}/src/render_context.cpp
+		${CMAKE_CURRENT_SOURCE_DIR}/src/texture.cpp
+		${CMAKE_CURRENT_SOURCE_DIR}/src/mesh.cpp
+		${CMAKE_CURRENT_SOURCE_DIR}/src/material.cpp
 )
 
 if (TOASTER_BUILD_SHARED_LIBS)

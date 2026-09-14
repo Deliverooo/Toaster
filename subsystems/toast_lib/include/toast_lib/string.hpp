@@ -3,17 +3,19 @@
 #include "toast_lib.hpp"
 
 #include <string>
+#include <string_view>
 
 namespace toaster
 {
 	using CString  = const char *;
 	using CWString = const wchar_t *;
 
-	using String    = std::string;
-	using WString   = std::wstring;
-	using U8String  = std::u8string;
-	using U16String = std::u16string;
-	using U32String = std::u32string;
+	using String     = std::string;
+	using StringView = std::string_view;
+	using WString    = std::wstring;
+	using U8String   = std::u8string;
+	using U16String  = std::u16string;
+	using U32String  = std::u32string;
 
 	template<typename Type> requires std::is_arithmetic_v<Type>
 	auto to_string(Type p_val) -> String

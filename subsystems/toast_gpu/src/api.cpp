@@ -114,6 +114,7 @@ namespace toaster::gpu
 		EQueueType queueType{EQueueType::eGraphics};
 
 		bool open{false};
+		bool secondary{false};
 	};
 
 	struct Semaphore
@@ -127,7 +128,7 @@ namespace toaster::gpu
 		VmaAllocation allocation{nullptr};
 		uint64        size{0u};
 
-		vk::DeviceAddress address{0u};
+		DeviceAddress address{0u};
 
 		void *mapped{nullptr};
 
@@ -220,17 +221,17 @@ namespace toaster::gpu
 
 		#pragma region descriptor heaps
 
-		Pool2<ResourceDescriptorHeap> resourceHeaps;
-		Pool2<SamplerDescriptorHeap>  samplerHeaps;
+		Pool<ResourceDescriptorHeap> resourceHeaps;
+		Pool<SamplerDescriptorHeap>  samplerHeaps;
 
 		#pragma endregion
 
 		#pragma region command lists
 
-		Pool2<CommandList> commandLists;
+		Pool<CommandList> commandLists;
 
-		std::array<std::vector<CommandListHandle>, 3u> freeCommandLists;     // Free command lists per queue type
-		std::array<uint32, 3u>                         openCommandListCount; // Number of open command lists per queue type
+		std::array<std::vector<CommandListHandle>, 3u> freeCommandLists;   // Free command lists per queue type
+		std::array<std::vector<CommandListHandle>, 3u> freeSecondaryLists; // Free command lists per queue type
 
 		std::array<vk::CommandPool, 3u> transientPools; // Mostly used for allocating command buffers for image layout transitions
 
@@ -238,40 +239,40 @@ namespace toaster::gpu
 
 		#pragma region synchronisation
 
-		Pool2<Semaphore> semaphores;
+		Pool<Semaphore> semaphores;
 
 		#pragma endregion
 
 		#pragma region buffers
 
-		Pool2<Buffer> buffers;
+		Pool<Buffer> buffers;
 
 		#pragma endregion
 
 		#pragma region textures
 
-		Pool2<Texture>                    textures;
+		Pool<Texture>                     textures;
 		std::unordered_set<TextureHandle> undefinedTextures; // All the textures that are in the undefined format and are awaiting a layout transition
 
 		#pragma endregion
 
 		#pragma region samplers
 
-		Pool2<Sampler> samplers;
+		Pool<Sampler> samplers;
 
 		#pragma endregion
 
 		#pragma region swapchain
 
-		Pool2<Surface> surfaces;
+		Pool<Surface> surfaces;
 
-		Pool2<Swapchain> swapchains;
+		Pool<Swapchain> swapchains;
 
 		#pragma endregion
 
 		#pragma region shaders
 
-		Pool2<Shader> shaders;
+		Pool<Shader> shaders;
 
 		#pragma endregion
 	};
@@ -638,6 +639,27 @@ namespace toaster::gpu
 		return out_flags;
 	}
 
+	constexpr auto getVulkanSampleCount(ESampleCount p_sample_count) -> vk::SampleCountFlagBits
+	{
+		switch (p_sample_count)
+		{
+			case ESampleCount::e1: return vk::SampleCountFlagBits::e1;
+				break;
+			case ESampleCount::e2: return vk::SampleCountFlagBits::e2;
+				break;
+			case ESampleCount::e4: return vk::SampleCountFlagBits::e4;
+				break;
+			case ESampleCount::e8: return vk::SampleCountFlagBits::e8;
+				break;
+			case ESampleCount::e16: return vk::SampleCountFlagBits::e16;
+				break;
+			case ESampleCount::e32: return vk::SampleCountFlagBits::e32;
+				break;
+			case ESampleCount::e64: return vk::SampleCountFlagBits::e64;
+				break;
+		}
+	}
+
 	auto initGPUContext(const GPUContextDesc &p_desc) -> void
 	{
 		if (g_impl)
@@ -919,34 +941,34 @@ namespace toaster::gpu
 
 		#pragma region destroy callbacks
 
-		g_impl->commandLists.setDestructorFn([](CommandList *p_data) mutable noexcept-> void
+		g_impl->commandLists.setDestructorFn([](CommandList *p_data, void *) mutable noexcept-> void
 		{
 			g_impl->logicalDevice.destroyCommandPool(p_data->pool);
 		});
 
-		g_impl->resourceHeaps.setDestructorFn([](ResourceDescriptorHeap *p_data) mutable noexcept-> void
+		g_impl->resourceHeaps.setDestructorFn([](ResourceDescriptorHeap *p_data, void *) mutable noexcept-> void
 		{
 			vmaUnmapMemory(g_impl->allocator, p_data->heapAllocation);
 			vmaDestroyBuffer(g_impl->allocator, p_data->heapBuffer, p_data->heapAllocation);
 		});
 
-		g_impl->samplerHeaps.setDestructorFn([](SamplerDescriptorHeap *p_data) mutable noexcept-> void
+		g_impl->samplerHeaps.setDestructorFn([](SamplerDescriptorHeap *p_data, void *) mutable noexcept-> void
 		{
 			vmaUnmapMemory(g_impl->allocator, p_data->heapAllocation);
 			vmaDestroyBuffer(g_impl->allocator, p_data->heapBuffer, p_data->heapAllocation);
 		});
 
-		g_impl->semaphores.setDestructorFn([](Semaphore *p_data) mutable noexcept-> void
+		g_impl->semaphores.setDestructorFn([](Semaphore *p_data, void *) mutable noexcept-> void
 		{
 			g_impl->logicalDevice.destroySemaphore(p_data->semaphore);
 		});
 
-		g_impl->buffers.setDestructorFn([](Buffer *p_data) mutable noexcept-> void
+		g_impl->buffers.setDestructorFn([](Buffer *p_data, void *) mutable noexcept-> void
 		{
 			vmaDestroyBuffer(g_impl->allocator, p_data->buffer, p_data->allocation);
 		});
 
-		g_impl->textures.setDestructorFn([](Texture *p_data) mutable noexcept-> void
+		g_impl->textures.setDestructorFn([](Texture *p_data, void *) mutable noexcept-> void
 		{
 			if (p_data->imageView)
 				g_impl->logicalDevice.destroyImageView(p_data->imageView);
@@ -959,12 +981,12 @@ namespace toaster::gpu
 			p_data->imageView  = nullptr;
 		});
 
-		g_impl->surfaces.setDestructorFn([](Surface *p_data) mutable noexcept-> void
+		g_impl->surfaces.setDestructorFn([](Surface *p_data, void *) mutable noexcept-> void
 		{
 			g_impl->vulkanInstance.destroySurfaceKHR(p_data->surface);
 		});
 
-		g_impl->swapchains.setDestructorFn([](Swapchain *p_data) mutable noexcept-> void
+		g_impl->swapchains.setDestructorFn([](Swapchain *p_data, void *) mutable noexcept-> void
 		{
 			for (auto &attachment: p_data->attachments)
 				g_impl->textures.destroy(attachment);
@@ -978,7 +1000,7 @@ namespace toaster::gpu
 			g_impl->logicalDevice.destroySwapchainKHR(p_data->swapchain);
 		});
 
-		g_impl->shaders.setDestructorFn([](Shader *p_data) mutable noexcept-> void
+		g_impl->shaders.setDestructorFn([](Shader *p_data, void *) mutable noexcept-> void
 		{
 			g_impl->logicalDevice.destroyShaderEXT(p_data->shader, nullptr, FunctionDispatcher::get());
 		});
@@ -1072,6 +1094,8 @@ namespace toaster::gpu
 		command_buffer_alloc_info.level              = vk::CommandBufferLevel::ePrimary;
 		vk::CommandBuffer cmd{g_impl->logicalDevice.allocateCommandBuffers(command_buffer_alloc_info).front()};
 
+		g_impl->logicalDevice.setDebugUtilsObjectNameEXT(cmd, "Image memory barrier cmd", FunctionDispatcher::get());
+
 		cmd.begin({vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
 		cmd.pipelineBarrier2(dependency_info);
 		cmd.end();
@@ -1079,25 +1103,16 @@ namespace toaster::gpu
 		return cmd;
 	}
 
-	auto getOrCreateCommandList(EQueueType p_queue_type) -> CommandListHandle
+	auto getOrCreateCommandList(EQueueType p_queue_type, bool p_secondary) -> CommandListHandle
 	{
-		auto &free_lists{g_impl->freeCommandLists[static_cast<uint32>(p_queue_type)]};
+		auto &free_lists{p_secondary ? g_impl->freeSecondaryLists[static_cast<uint32>(p_queue_type)] : g_impl->freeCommandLists[static_cast<uint32>(p_queue_type)]};
 		if (!free_lists.empty())
 		{
 			CommandListHandle command_list_handle{free_lists.back()};
 			free_lists.pop_back();
 
-			CommandList &command_list{g_impl->commandLists[command_list_handle]};
-			TST_PERMA_ASSERT(!command_list.open);
-			command_list.open = true;
-
-			++g_impl->openCommandListCount[static_cast<uint32>(p_queue_type)];
-
-			command_list.cmd.begin({vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
-
 			return command_list_handle;
 		}
-
 		vk::CommandPoolCreateInfo command_pool_create_info{};
 		command_pool_create_info.queueFamilyIndex = g_impl->queueFamilyIndices.get(p_queue_type);
 		command_pool_create_info.flags            = vk::CommandPoolCreateFlagBits::eTransient;
@@ -1106,14 +1121,78 @@ namespace toaster::gpu
 		vk::CommandBufferAllocateInfo command_buffer_alloc_info{};
 		command_buffer_alloc_info.commandPool        = pool;
 		command_buffer_alloc_info.commandBufferCount = 1u;
-		command_buffer_alloc_info.level              = vk::CommandBufferLevel::ePrimary;
+		command_buffer_alloc_info.level              = p_secondary ? vk::CommandBufferLevel::eSecondary : vk::CommandBufferLevel::ePrimary;
 		vk::CommandBuffer cmd{g_impl->logicalDevice.allocateCommandBuffers(command_buffer_alloc_info).front()};
 
-		cmd.begin({vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
+		g_impl->logicalDevice.setDebugUtilsObjectNameEXT(cmd, p_queue_type == EQueueType::eTransfer ? "Transfer cmd" : "Graphics cmd", FunctionDispatcher::get());
 
-		++g_impl->openCommandListCount[static_cast<uint32>(p_queue_type)];
+		return g_impl->commandLists.emplace(CommandList{cmd, pool, p_queue_type, false, p_secondary});
+	}
 
-		return g_impl->commandLists.emplace(CommandList{cmd, pool, p_queue_type, true});
+	auto openCommandList(CommandListHandle p_command_list, const CommandListInheritanceInfo *p_inheritance_info) -> void
+	{
+		CommandList &cmd{g_impl->commandLists[p_command_list]};
+
+		TST_ASSERT(!cmd.open);
+		cmd.open = true;
+
+		vk::CommandBufferInheritanceDescriptorHeapInfoEXT descriptor_heap_inheritance_info{};
+		if (cmd.secondary && p_inheritance_info)
+		{
+			ResourceDescriptorHeap &resource_heap{g_impl->resourceHeaps[p_inheritance_info->resourceHeap]};
+			SamplerDescriptorHeap & sampler_heap{g_impl->samplerHeaps[p_inheritance_info->samplerHeap]};
+
+			descriptor_heap_inheritance_info.pResourceHeapBindInfo = &resource_heap.bindInfo;
+			descriptor_heap_inheritance_info.pSamplerHeapBindInfo  = &sampler_heap.bindInfo;
+		}
+
+		vk::CommandBufferInheritanceRenderingInfo rendering_inheritance_info{};
+		std::vector<vk::Format>                   colour_attachment_formats;
+		if (cmd.secondary && p_inheritance_info)
+		{
+			colour_attachment_formats = p_inheritance_info->colourAttachmentFormats | std::views::transform([](EFormat format) -> vk::Format
+			{
+				return getVulkanFormat(format);
+			}) | std::ranges::to<std::vector>();
+
+			rendering_inheritance_info.colorAttachmentCount    = colour_attachment_formats.size();
+			rendering_inheritance_info.pColorAttachmentFormats = colour_attachment_formats.data();
+			rendering_inheritance_info.depthAttachmentFormat   = getVulkanFormat(p_inheritance_info->depthAttachmentFormat);
+			rendering_inheritance_info.stencilAttachmentFormat = getVulkanFormat(p_inheritance_info->stencilAttachmentFormat);
+			rendering_inheritance_info.rasterizationSamples    = getVulkanSampleCount(p_inheritance_info->samples);
+			rendering_inheritance_info.pNext                   = &descriptor_heap_inheritance_info;
+		}
+
+		vk::CommandBufferInheritanceInfo inheritance_info{};
+		if (cmd.secondary && p_inheritance_info)
+			inheritance_info.pNext = &rendering_inheritance_info;
+
+		vk::CommandBufferBeginInfo begin_info{};
+		begin_info.flags = cmd.secondary ? vk::CommandBufferUsageFlagBits::eRenderPassContinue : vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
+		if (cmd.secondary && p_inheritance_info)
+			begin_info.pInheritanceInfo = &inheritance_info;
+
+		cmd.cmd.begin(begin_info);
+	}
+
+	auto closeCommandList(CommandListHandle p_command_list) -> void
+	{
+		CommandList &cmd{g_impl->commandLists[p_command_list]};
+
+		TST_ASSERT(cmd.open);
+		cmd.open = false;
+		cmd.cmd.end();
+	}
+
+	auto freeCommandList(CommandListHandle p_command_list) -> void
+	{
+		CommandList &cmd{g_impl->commandLists[p_command_list]};
+		TST_ASSERT(!cmd.open);
+
+		if (cmd.secondary)
+			g_impl->freeSecondaryLists[static_cast<uint32>(cmd.queueType)].push_back(p_command_list);
+		else
+			g_impl->freeCommandLists[static_cast<uint32>(cmd.queueType)].push_back(p_command_list);
 	}
 
 	auto resetCommandList(CommandListHandle p_command_list) -> void
@@ -1121,13 +1200,9 @@ namespace toaster::gpu
 		CommandList &command_list{g_impl->commandLists[p_command_list]};
 
 		if (command_list.open)
-		{
 			command_list.open = false;
-			--g_impl->openCommandListCount[static_cast<uint32>(command_list.queueType)];
-		}
 
 		g_impl->logicalDevice.resetCommandPool(command_list.pool);
-		g_impl->freeCommandLists[static_cast<uint32>(command_list.queueType)].push_back(p_command_list);
 	}
 
 	// Accepts raw Vulkan semaphores
@@ -1141,13 +1216,8 @@ namespace toaster::gpu
 		for (uint64 i{0u}; i < p_command_lists.size(); ++i)
 		{
 			CommandList &cmd_list{g_impl->commandLists[p_command_lists[i]]};
-			if (cmd_list.open)
-			{
-				cmd_list.open = false;
-				--g_impl->openCommandListCount[static_cast<uint32>(p_queue_type)];
-			}
-
-			cmd_list.cmd.end();
+			TST_ASSERT(!cmd_list.open);
+			TST_ASSERT_MSG(!cmd_list.secondary, "Cannot submit a secondary command buffer!");
 
 			auto &cmd_submit_info{command_buffer_submit_infos[i]};
 			cmd_submit_info.commandBuffer = cmd_list.cmd;
@@ -1200,6 +1270,22 @@ namespace toaster::gpu
 		submit(p_queue_type, p_command_lists, wait_infos, signal_infos);
 	}
 
+	auto executeCommandLists(CommandListHandle p_primary_command_list, InitialiserList<const CommandListHandle> p_secondary_command_lists) -> void
+	{
+		CommandList &cmd{g_impl->commandLists[p_primary_command_list]};
+		TST_ASSERT(!cmd.secondary && cmd.open);
+
+		std::vector<vk::CommandBuffer> secondary_lists(p_secondary_command_lists.size());
+		for (uint32 i{0u}; i < p_secondary_command_lists.size(); ++i)
+		{
+			CommandList &secondary{g_impl->commandLists[p_secondary_command_lists[i]]};
+			TST_ASSERT(secondary.secondary && !secondary.open);
+			secondary_lists[i] = secondary.cmd;
+		}
+
+		cmd.cmd.executeCommands(secondary_lists, FunctionDispatcher::get());
+	}
+
 	auto copyBuffer(CommandListHandle p_command_list, BufferHandle p_src_buffer, BufferHandle p_dst_buffer, uint64 p_size, uint64 p_src_offset,
 					uint64            p_dst_offset) -> void
 	{
@@ -1225,6 +1311,7 @@ namespace toaster::gpu
 							 uint32            p_base_layer, uint32         p_layer_count, tsm::uint3   p_extent) -> void
 	{
 		CommandList &cmd{g_impl->commandLists[p_command_list]};
+		TST_ASSERT(cmd.open);
 
 		Buffer & src_buffer{g_impl->buffers[p_src_buffer]};
 		Texture *dst_texture{g_impl->textures.tryGet(p_dst_texture)};
@@ -1365,6 +1452,7 @@ namespace toaster::gpu
 		rendering_info.pColorAttachments    = colour_attachments.data();
 		rendering_info.pDepthAttachment     = p_rendering_info.depthAttachment.has_value() ? &depth_attachment : nullptr;
 		rendering_info.pStencilAttachment   = p_rendering_info.stencilAttachment.has_value() ? &stencil_attachment : nullptr;
+		rendering_info.flags                = vk::RenderingFlagBits::eContentsSecondaryCommandBuffers;
 
 		CommandList &cmd{g_impl->commandLists[p_command_list]};
 		cmd.cmd.beginRendering(rendering_info, FunctionDispatcher::get());
@@ -1416,6 +1504,19 @@ namespace toaster::gpu
 		CommandList &          cmd{g_impl->commandLists[p_command_list]};
 		SamplerDescriptorHeap &sampler_heap{g_impl->samplerHeaps[p_sampler_heap]};
 		cmd.cmd.bindSamplerHeapEXT(sampler_heap.bindInfo, FunctionDispatcher::get());
+	}
+
+	auto bindIndexBuffer(CommandListHandle p_command_list, BufferHandle p_index_buffer) -> void
+	{
+		CommandList & cmd{g_impl->commandLists[p_command_list]};
+		const Buffer *index_buffer{g_impl->buffers.tryGet(p_index_buffer)};
+
+		cmd.cmd.setVertexInputEXT({}, {}, FunctionDispatcher::get());
+
+		if (index_buffer)
+			cmd.cmd.bindIndexBuffer(index_buffer->buffer, 0u, vk::IndexType::eUint32, FunctionDispatcher::get());
+		// else
+		// cmd.cmd.bindIndexBuffer(nullptr, 0u, vk::IndexType::eUint32, FunctionDispatcher::get());
 	}
 
 	auto setPrimitiveTopology(CommandListHandle p_command_list, EPrimitiveTopology p_primitive_topology) -> void
@@ -1547,24 +1648,7 @@ namespace toaster::gpu
 	{
 		CommandList &cmd{g_impl->commandLists[p_command_list]};
 
-		vk::SampleCountFlagBits sample_count{vk::SampleCountFlagBits::e1};
-		switch (p_sample_count)
-		{
-			case ESampleCount::e1: sample_count = vk::SampleCountFlagBits::e1;
-				break;
-			case ESampleCount::e2: sample_count = vk::SampleCountFlagBits::e2;
-				break;
-			case ESampleCount::e4: sample_count = vk::SampleCountFlagBits::e4;
-				break;
-			case ESampleCount::e8: sample_count = vk::SampleCountFlagBits::e8;
-				break;
-			case ESampleCount::e16: sample_count = vk::SampleCountFlagBits::e16;
-				break;
-			case ESampleCount::e32: sample_count = vk::SampleCountFlagBits::e32;
-				break;
-			case ESampleCount::e64: sample_count = vk::SampleCountFlagBits::e64;
-				break;
-		}
+		vk::SampleCountFlagBits sample_count{getVulkanSampleCount(p_sample_count)};
 		cmd.cmd.setRasterizationSamplesEXT(sample_count, FunctionDispatcher::get());
 
 		cmd.cmd.setSampleMaskEXT(sample_count, 0xFFFFFFFF, FunctionDispatcher::get()); // I don't think I should expose this
@@ -1964,7 +2048,7 @@ namespace toaster::gpu
 		vmaCreateBuffer(g_impl->allocator, reinterpret_cast<const VkBufferCreateInfo *>(&buffer_create_info), &allocation_create_info,
 						reinterpret_cast<VkBuffer *>(&buffer), &allocation, &allocation_info);
 
-		vk::DeviceAddress device_address{0u};
+		DeviceAddress device_address{0u};
 		if (buffer_usage_flags & vk::BufferUsageFlagBits::eShaderDeviceAddress)
 			device_address = g_impl->logicalDevice.getBufferAddress({buffer});
 
@@ -1989,6 +2073,12 @@ namespace toaster::gpu
 		Buffer &buffer{g_impl->buffers[p_buffer]};
 		TST_ASSERT_MSG(buffer.mapped != nullptr, "Buffer is not host visible");
 		return buffer.mapped;
+	}
+
+	auto getBufferAddress(BufferHandle p_buffer) -> DeviceAddress
+	{
+		Buffer &buffer{g_impl->buffers[p_buffer]};
+		return buffer.address;
 	}
 
 	auto createSurface(void *p_hwnd) -> SurfaceHandle
@@ -2408,7 +2498,9 @@ namespace toaster::gpu
 	auto insertPreRenderSwapchainResourceBarrier(CommandListHandle p_command_list, TextureHandle p_attachment_texture) -> void
 	{
 		CommandList &cmd{g_impl->commandLists[p_command_list]};
-		Texture &    attachment{g_impl->textures[p_attachment_texture]};
+		TST_ASSERT(cmd.open);
+
+		Texture &attachment{g_impl->textures[p_attachment_texture]};
 
 		vk::ImageMemoryBarrier2 undefined_to_general{};
 		undefined_to_general.image               = attachment.image;
@@ -2437,6 +2529,7 @@ namespace toaster::gpu
 	{
 		Swapchain &  swapchain{g_impl->swapchains[p_swapchain]};
 		CommandList &cmd{g_impl->commandLists[p_command_list]};
+		TST_ASSERT(cmd.open);
 
 		Texture &colour_attachment{g_impl->textures[swapchain.attachments[swapchain.imageIndex]]};
 
@@ -2456,6 +2549,8 @@ namespace toaster::gpu
 		dependency_info.setImageMemoryBarriers(general_to_present_src);
 
 		cmd.cmd.pipelineBarrier2(dependency_info);
+
+		closeCommandList(p_command_list);
 
 		std::vector<vk::SemaphoreSubmitInfo> raw_waits;
 		raw_waits.reserve(1u + p_wait_semaphore_infos.size());

@@ -1,212 +1,238 @@
+#include <future>
 #include <print>
 #include <toast_os/console.hpp>
 #include <toast_os/entry_points.hpp>
 
-#include <toast_gpu/api.hpp>
-#include <toast_gpu/frame.hpp>
-#include <toast_gpu/upload.hpp>
+#include <toast_kernel/application.hpp>
+
+#include <stb/stb_image.h>
+
+#include "toast_asset/mesh_importer.hpp"
+#include "toast_asset/texture_importer.hpp"
+#include "toast_gpu/upload.hpp"
+#include "toast_kernel/camera.hpp"
+#include "toast_render/mesh.hpp"
+#include "toast_render/texture.hpp"
 
 using namespace toaster;
-
-#include <GLFW/glfw3.h>
-#define GLFW_EXPOSE_NATIVE_WIN32
-#include <GLFW/glfw3native.h>
-
-#undef min
-#undef max
 
 #include <test.vert.h>
 #include <test.frag.h>
 
-#include <stb/stb_image.h>
+class TestLayer : public IAppLayer
+{
+public:
+	TestLayer()           = default;
+	~TestLayer() override = default;
+
+	auto onInit() -> void override
+	{
+		m_textureManager = makeUnique<render::TextureManager>(m_renderCtx);
+		m_meshManager    = makeUnique<render::MeshManager>();
+
+		asset::TextureImporter texture_importer{m_textureManager.get()};
+		m_textureReal = texture_importer.importFromFile("../test/resources/textures/doorbell_pig.jpg");
+
+		asset::MeshImporter mesh_importer{m_meshManager.get()};
+		m_mesh = mesh_importer.importStaticFromFile("C:/dev/Toaster-2.0/resources/meshes/Backrooms.fbx");
+		// m_mesh = mesh_importer.importStaticFromFile("../test/resources/meshes/Orbo_Geo.gltf");
+
+		gpu::SamplerHandle sampler{gpu::createSampler(gpu::SamplerDesc{})};
+
+		m_samplerHeapSlot = gpu::allocSamplerHeapSlot(m_renderCtx->getSamplerHeap());
+		gpu::writeSamplerDescriptor(m_renderCtx->getSamplerHeap(), m_samplerHeapSlot, sampler);
+
+		m_vs = gpu::createShader(gpu::ShaderDesc{
+									 "main",
+									 c_test_vert_bytecode,
+									 sizeof(c_test_vert_bytecode) / sizeof(uint32),
+									 gpu::EShaderStageFlagBits::eVertex,
+									 gpu::EShaderStageFlagBits::ePixel
+								 });
+
+		m_ps = gpu::createShader(gpu::ShaderDesc{
+									 "main",
+									 c_test_frag_bytecode,
+									 sizeof(c_test_frag_bytecode) / sizeof(uint32),
+									 gpu::EShaderStageFlagBits::ePixel,
+									 gpu::EShaderStageFlagBits::eNone
+								 });
+
+		m_camera = Camera{90.0f, m_app->getWindow().getAspectRatio()};
+		{
+			gpu::BufferDesc camera_buffer_desc{};
+			camera_buffer_desc.size       = sizeof(CameraCB);
+			camera_buffer_desc.usage      = gpu::EBufferUsageFlagBits::eUniformBuffer;
+			camera_buffer_desc.memoryType = gpu::EMemoryType::eHostVisibleCoherent;
+
+			m_cameraBuffers.resize(Application::maxFramesInFlight);
+			for (auto &buffer: m_cameraBuffers)
+				buffer = gpu::createBuffer(camera_buffer_desc);
+		}
+
+		m_secondaryBuffers.resize(Application::maxFramesInFlight);
+		for (auto &cmd: m_secondaryBuffers)
+		{
+			cmd.emplace_back(gpu::getOrCreateCommandList(gpu::EQueueType::eGraphics, true));
+		}
+	}
+
+	auto onDestroy() -> void override
+	{
+		gpu::destroyShader(m_ps);
+		gpu::destroyShader(m_vs);
+
+		gpu::freeSamplerHeapSlot(m_renderCtx->getSamplerHeap(), m_samplerHeapSlot);
+
+		for (auto &cmd_vec: m_secondaryBuffers)
+			for (auto &cmd: cmd_vec)
+				gpu::freeCommandList(cmd);
+
+		m_meshManager.reset();
+		m_textureManager.reset();
+	}
+
+	auto onUpdate(float32 p_dt) -> void override
+	{
+		if (m_inputCtx->isMouseButtonDown(EMouseButton::eRight))
+		{
+			if (m_inputCtx->getCursorMode() != ECursorMode::eDisabled)
+				m_inputCtx->setCursorMode(ECursorMode::eDisabled);
+
+			m_camera.onUpdate(*m_inputCtx, p_dt);
+		}
+		else
+		{
+			if (m_inputCtx->getCursorMode() != ECursorMode::eNormal)
+				m_inputCtx->setCursorMode(ECursorMode::eNormal);
+		}
+
+		CameraCB camera_cb{};
+		m_camera.populateConstantBuffer(camera_cb);
+		gpu::writeBufferData(m_cameraBuffers[m_app->getFrameIndex()], &camera_cb, sizeof(CameraCB));
+	}
+
+	auto onRender(gpu::CommandListHandle p_cmd) -> void override
+	{
+		for (auto &list: m_secondaryBuffers[m_app->getFrameIndex()])
+			gpu::resetCommandList(list);
+
+		auto &secondary_cmd{m_secondaryBuffers[m_app->getFrameIndex()][0]};
+
+		gpu::TextureHandle render_tex{m_app->getWindow().getCurrentTexture()};
+		gpu::TextureDesc   render_tex_desc{gpu::getTextureDesc(render_tex)};
+
+		gpu::RenderingInfo rendering_info{};
+		rendering_info.colourAttachments = {
+			gpu::RenderingAttachmentInfo{gpu::ClearColourValue{1.0f, 0.0f, 1.0f, 1.0f}, render_tex, nullptr, gpu::EAttachmentUsageOP::eClearStore}
+		};
+		rendering_info.renderArea = tsm::Rect{m_app->getWindow().getSize()};
+
+		gpu::bindResourceHeap(p_cmd, m_renderCtx->getResourceHeap());
+		gpu::bindSamplerHeap(p_cmd, m_renderCtx->getSamplerHeap());
+
+		gpu::beginRendering(p_cmd, rendering_info);
+
+		std::future<void> future{
+			std::async(std::launch::async, [this, secondary_cmd, render_tex_desc, rendering_info]() -> void
+			{
+				gpu::CommandListInheritanceInfo inheritance_info{};
+				inheritance_info.resourceHeap            = m_renderCtx->getResourceHeap();
+				inheritance_info.samplerHeap             = m_renderCtx->getSamplerHeap();
+				inheritance_info.colourAttachmentFormats = {render_tex_desc.format};
+				inheritance_info.samples                 = gpu::ESampleCount::e1;
+				gpu::openCommandList(secondary_cmd, &inheritance_info);
+
+				gpu::bindShaders(secondary_cmd, {m_vs, m_ps});
+
+				gpu::setPrimitiveTopology(secondary_cmd, gpu::EPrimitiveTopology::eTriangleList);
+				gpu::setPrimitiveRestart(secondary_cmd, false);
+
+				gpu::setViewport(secondary_cmd, tsm::Viewport{rendering_info.renderArea});
+				gpu::setScissor(secondary_cmd, rendering_info.renderArea);
+
+				gpu::setRasterizerDiscardEnable(secondary_cmd, false);
+				gpu::setPolygonMode(secondary_cmd, gpu::EPolygonMode::eFill);
+				gpu::setCullMode(secondary_cmd, gpu::ECullMode::eBack);
+				gpu::setFrontFace(secondary_cmd, gpu::EFrontFace::eCCW);
+				gpu::setDepthBias(secondary_cmd, false);
+				gpu::setLineWidth(secondary_cmd, 1.0f);
+
+				gpu::setRasterizationSamples(secondary_cmd, gpu::ESampleCount::e1);
+
+				gpu::setDepthState(secondary_cmd, false);
+				gpu::setStencilState(secondary_cmd, false);
+
+				struct PushData
+				{
+					uintptr cameraBuffer;
+					uintptr vertexBuffer;
+					uintptr indexBuffer;
+
+					uint32 vertexBufferOffset;
+					uint32 indexBufferOffset;
+
+					uint32 texture;
+					uint32 sampler;
+				};
+
+				const render::StaticMesh &static_mesh{m_meshManager->getStaticMesh(m_mesh)};
+
+				PushData push_data{};
+				push_data.cameraBuffer = gpu::getBufferAddress(m_cameraBuffers[m_app->getFrameIndex()]);
+
+				push_data.vertexBuffer = gpu::getBufferAddress(m_meshManager->getStaticMeshVertexBuffer());
+				push_data.indexBuffer  = gpu::getBufferAddress(m_meshManager->getStaticMeshIndexBuffer());
+
+				push_data.vertexBufferOffset = gpu::alloc::getAllocationOffset(static_mesh.vertexBufferAllocation) / sizeof(render::StaticMeshVertex);
+				push_data.indexBufferOffset  = gpu::alloc::getAllocationOffset(static_mesh.indexBufferAllocation) / sizeof(uint32);
+
+				push_data.texture = m_textureManager->getTexture(m_textureReal).shaderReadHeapSlot;
+				push_data.sampler = m_samplerHeapSlot;
+				gpu::pushData(secondary_cmd, push_data);
+
+				gpu::bindIndexBuffer(secondary_cmd, nullptr);
+
+				for (const auto &submesh: static_mesh.submeshes)
+				{
+					gpu::draw(secondary_cmd, submesh.indexCount, 1u, submesh.indexOffset);
+				}
+
+				gpu::closeCommandList(secondary_cmd);
+			})
+		};
+		future.wait();
+		gpu::executeCommandLists(p_cmd, secondary_cmd);
+
+		gpu::endRendering(p_cmd);
+	}
+
+private:
+	render::TextureHandle m_textureReal{nullptr};
+
+	render::StaticMeshHandle m_mesh{nullptr};
+
+	uint32 m_samplerHeapSlot{UINT32_MAX};
+
+	gpu::ShaderHandle m_vs{nullptr};
+	gpu::ShaderHandle m_ps{nullptr};
+
+	Camera                         m_camera;
+	std::vector<gpu::BufferHandle> m_cameraBuffers;
+
+	std::vector<std::vector<gpu::CommandListHandle> > m_secondaryBuffers;
+
+	UniquePtr<render::MeshManager>    m_meshManager{nullptr};
+	UniquePtr<render::TextureManager> m_textureManager{nullptr};
+};
 
 TST_WINMAIN()
 {
 	os::createOutputConsole();
 	{
-		constexpr uint32 max_frames_in_flight{3u};
-
-		gpu::GPUContextDesc ctx_desc{};
-		ctx_desc.enableDebugInfo                 = true;
-		ctx_desc.maxConcurrentSwapchainWorkloads = max_frames_in_flight;
-
-		glfwInit();
-		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-
-		gpu::initGPUContext(ctx_desc);
-		gpu::frame::initFrameContext({max_frames_in_flight});
-		gpu::upload::initUploadContext({});
-
-		GLFWwindow *window{glfwCreateWindow(1920, 1080, "Toaster Test", nullptr, nullptr)};
-
-		struct CallbackData
-		{
-			bool   is_resized{false};
-			uint32 width{0u};
-			uint32 height{0u};
-		} cb_data{};
-
-		cb_data.width  = 1920u;
-		cb_data.height = 1080u;
-
-		glfwSetWindowUserPointer(window, &cb_data);
-
-		glfwSetFramebufferSizeCallback(window, +[](GLFWwindow *p_window, int32 p_width, int32 p_height) -> void
-		{
-			auto data{static_cast<CallbackData *>(glfwGetWindowUserPointer(p_window))};
-			data->is_resized = true;
-			data->width      = static_cast<uint32>(p_width);
-			data->height     = static_cast<uint32>(p_height);
-		});
-
-		gpu::SurfaceHandle   surface{gpu::createSurface(glfwGetWin32Window(window))};
-		gpu::SwapchainHandle swapchain{gpu::createSwapchain(surface, {1920u, 1080u})};
-
-		gpu::ResourceDescriptorHeapHandle resource_heap{gpu::createResourceDescriptorHeap({})};
-		gpu::SamplerDescriptorHeapHandle  sampler_heap{gpu::createSamplerDescriptorHeap({})};
-
-		int32  image_width, image_height, nr_channels;
-		uint8 *data{stbi_load("../test/resources/textures/doorbell_pig.jpg", &image_width, &image_height, &nr_channels, 4)};
-		TST_PERMA_ASSERT(data);
-
-		gpu::TextureHandle test_tex{
-			gpu::createTexture(gpu::TextureDesc{
-								   {(uint32) image_width, (uint32) image_height, 1u},
-								   1u,
-								   1u,
-								   gpu::ETextureType::e2D,
-								   gpu::ESampleCount::e1,
-								   gpu::EFormat::eR8G8B8A8Srgb,
-								   gpu::ETextureUsageFlagBits::eTransferDst | gpu::ETextureUsageFlagBits::eSampled
-							   })
-		};
-
-		gpu::upload::uploadDataToTexture(test_tex, data, image_width * image_height * sizeof(uint32), gpu::upload::TextureUploadDesc{{0u, 0u, 0u}, 0u, 0u, 1u});
-
-		stbi_image_free(data);
-
-		gpu::SamplerHandle sampler{gpu::createSampler(gpu::SamplerDesc{})};
-
-		uint32 texture_heap_slot{gpu::allocTextureHeapSlot(resource_heap)};
-		gpu::writeTextureDescriptor(resource_heap, texture_heap_slot, test_tex, false);
-
-		uint32 sampler_heap_slot{gpu::allocSamplerHeapSlot(sampler_heap)};
-		gpu::writeSamplerDescriptor(sampler_heap, sampler_heap_slot, sampler);
-
-		gpu::ShaderHandle vertex_shader{
-			gpu::createShader(gpu::ShaderDesc{
-								  "main",
-								  c_test_vert_bytecode,
-								  sizeof(c_test_vert_bytecode) / sizeof(uint32),
-								  gpu::EShaderStageFlagBits::eVertex,
-								  gpu::EShaderStageFlagBits::ePixel
-							  })
-		};
-
-		gpu::ShaderHandle pixel_shader{
-			gpu::createShader(gpu::ShaderDesc{
-								  "main",
-								  c_test_frag_bytecode,
-								  sizeof(c_test_frag_bytecode) / sizeof(uint32),
-								  gpu::EShaderStageFlagBits::ePixel,
-								  gpu::EShaderStageFlagBits::eNone
-							  })
-		};
-
-		uint32 frame_index{0u};
-		while (!glfwWindowShouldClose(window))
-		{
-			glfwPollEvents();
-
-			if (cb_data.is_resized)
-			{
-				if (cb_data.width == 0u || cb_data.height == 0u)
-					continue;
-
-				if (!gpu::resizeSwapchain(swapchain, {cb_data.width, cb_data.height}))
-					continue;
-
-				cb_data.is_resized = false;
-			}
-
-			gpu::upload::flushUploads();
-			gpu::frame::beginFrame(frame_index);
-
-			gpu::TextureHandle tex{gpu::acquireNextImage(swapchain)};
-			if (!tex)
-			{
-				gpu::resizeSwapchain(swapchain, {cb_data.width, cb_data.height});
-				continue;
-			}
-
-			gpu::CommandListHandle cmd{gpu::getOrCreateCommandList(gpu::EQueueType::eGraphics)};
-
-			gpu::insertPreRenderSwapchainResourceBarrier(cmd, tex);
-
-			gpu::RenderingInfo rendering_info{};
-			rendering_info.colourAttachments = {
-				gpu::RenderingAttachmentInfo{gpu::ClearColourValue{1.0f, 0.0f, 0.0f, 1.0f}, tex, nullptr, gpu::EAttachmentUsageOP::eClearStore}
-			};
-			rendering_info.renderArea = tsm::Rect{{cb_data.width, cb_data.height}};
-			gpu::beginRendering(cmd, rendering_info);
-
-			gpu::bindShaders(cmd, {vertex_shader, pixel_shader});
-			gpu::bindResourceHeap(cmd, resource_heap);
-			gpu::bindSamplerHeap(cmd, sampler_heap);
-
-			gpu::setPrimitiveTopology(cmd, gpu::EPrimitiveTopology::eTriangleList);
-			gpu::setPrimitiveRestart(cmd, false);
-
-			gpu::setViewport(cmd, tsm::Viewport{rendering_info.renderArea});
-			gpu::setScissor(cmd, rendering_info.renderArea);
-
-			gpu::setRasterizerDiscardEnable(cmd, false);
-			gpu::setPolygonMode(cmd, gpu::EPolygonMode::eFill);
-			gpu::setCullMode(cmd, gpu::ECullMode::eBack);
-			gpu::setFrontFace(cmd, gpu::EFrontFace::eCCW);
-			gpu::setDepthBias(cmd, false);
-			gpu::setLineWidth(cmd, 1.0f);
-
-			gpu::setRasterizationSamples(cmd, gpu::ESampleCount::e1);
-
-			gpu::setDepthState(cmd, false);
-			gpu::setStencilState(cmd, false);
-
-			struct PushData
-			{
-				uint32 textureHeapSlot;
-				uint32 samplerHeapSlot;
-			};
-
-			gpu::pushData(cmd, PushData{texture_heap_slot, sampler_heap_slot});
-
-			gpu::draw(cmd, 3u, 1u);
-
-			gpu::endRendering(cmd);
-
-			gpu::frame::submitAndPresent(swapchain, cmd);
-
-			frame_index = (frame_index + 1u) % max_frames_in_flight;
-		}
-
-		gpu::waitIdle();
-
-		gpu::destroyResourceDescriptorHeap(resource_heap);
-		gpu::destroySamplerDescriptorHeap(sampler_heap);
-
-		gpu::destroyShader(pixel_shader);
-		gpu::destroyShader(vertex_shader);
-
-		gpu::destroySwapchain(swapchain);
-
-		gpu::destroySurface(surface);
-		glfwDestroyWindow(window);
-
-		gpu::upload::shutdownUploadContext();
-		gpu::frame::shutdownFrameContext();
-		gpu::shutdownGPUContext();
-
-		glfwTerminate();
+		Application app{};
+		app.addLayer<TestLayer>();
+		app.run();
 	}
 
 	os::destroyOutputConsole();

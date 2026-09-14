@@ -20,6 +20,8 @@ namespace toaster::gpu
 	TST_DECLARE_GPU_HANDLE(Swapchain);
 	TST_DECLARE_GPU_HANDLE(Shader);
 
+	using DeviceAddress = uintptr;
+
 	#pragma region descriptor heap
 
 	struct TST_GPU_API ResourceDescriptorHeapDesc
@@ -338,6 +340,18 @@ namespace toaster::gpu
 
 	#pragma endregion
 
+	struct TST_GPU_API CommandListInheritanceInfo
+	{
+		ResourceDescriptorHeapHandle resourceHeap{nullptr};
+		SamplerDescriptorHeapHandle  samplerHeap{nullptr};
+
+		std::vector<EFormat> colourAttachmentFormats;
+		EFormat              depthAttachmentFormat{EFormat::eUndefined};
+		EFormat              stencilAttachmentFormat{EFormat::eUndefined};
+
+		ESampleCount samples{ESampleCount::e1};
+	};
+
 	enum class EQueueType : uint8
 	{
 		eGraphics, eCompute, eTransfer
@@ -360,9 +374,16 @@ namespace toaster::gpu
 	#pragma region command list
 
 	// If there is a command list in the free pool, returns that. Else returns a new one
-	[[nodiscard]] auto TST_GPU_API getOrCreateCommandList(EQueueType p_queue_type) -> CommandListHandle;
+	[[nodiscard]] auto TST_GPU_API getOrCreateCommandList(EQueueType p_queue_type, bool p_secondary = false) -> CommandListHandle;
 
-	// Resets the command list and adds it to the free pool
+	auto TST_GPU_API openCommandList(CommandListHandle p_command_list, const CommandListInheritanceInfo *p_inheritance_info = nullptr) -> void;
+	auto TST_GPU_API closeCommandList(CommandListHandle p_command_list) -> void;
+
+	// Don't worry, this doesn't actually 'free' the command list. It just returns it to the pool, so when getOrCreateCommandList is called, it is able to be returned
+	// instead of having to allocate a new one.
+	auto TST_GPU_API freeCommandList(CommandListHandle p_command_list) -> void;
+
+	// Resets the command list. Check out this image for when it is appropriate to call this: https://docs.vulkan.org/spec/latest/_images/commandbuffer_lifecycle.svg
 	auto TST_GPU_API resetCommandList(CommandListHandle p_command_list) -> void; // Secretly resets the command pool because it is ¿better?
 
 	// After submitting a command list, remember to reset it so it can be recycled and used again
@@ -381,6 +402,8 @@ namespace toaster::gpu
 	auto TST_GPU_API submit(EQueueType                                 p_queue_type, InitialiserList<const CommandListHandle> p_command_lists,
 							InitialiserList<const SemaphoreSubmitInfo> p_wait_semaphore_infos,
 							InitialiserList<const SemaphoreSubmitInfo> p_signal_semaphore_infos) -> void;
+
+	auto TST_GPU_API executeCommandLists(CommandListHandle p_primary_command_list, InitialiserList<const CommandListHandle> p_secondary_command_lists) -> void;
 
 	// Copy commands
 	auto TST_GPU_API copyBuffer(CommandListHandle p_command_list, BufferHandle p_src_buffer, BufferHandle p_dst_buffer, uint64 p_size, uint64 p_src_offset = 0u,
@@ -406,6 +429,8 @@ namespace toaster::gpu
 
 	auto TST_GPU_API bindResourceHeap(CommandListHandle p_command_list, ResourceDescriptorHeapHandle p_resource_heap) -> void;
 	auto TST_GPU_API bindSamplerHeap(CommandListHandle p_command_list, SamplerDescriptorHeapHandle p_sampler_heap) -> void;
+
+	auto TST_GPU_API bindIndexBuffer(CommandListHandle p_command_list, BufferHandle p_index_buffer) -> void;
 
 	auto TST_GPU_API setPrimitiveTopology(CommandListHandle p_command_list, EPrimitiveTopology p_primitive_topology) -> void;
 	auto TST_GPU_API setPrimitiveRestart(CommandListHandle p_command_list, bool p_enable, uint32 p_index = UINT32_MAX) -> void; // This should be false 99% of the time
@@ -466,6 +491,8 @@ namespace toaster::gpu
 
 	auto TST_GPU_API               writeBufferData(BufferHandle p_buffer, const void *p_data, uint64 p_size, uint64 p_offset = 0u) -> void; // If host-visible
 	[[nodiscard]] auto TST_GPU_API getBufferMappedData(BufferHandle p_buffer) -> void *;
+
+	[[nodiscard]] auto TST_GPU_API getBufferAddress(BufferHandle p_buffer) -> DeviceAddress;
 
 	#pragma endregion
 

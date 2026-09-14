@@ -19,6 +19,9 @@ namespace toaster::gpu::frame
 	// Waits on timeline semaphores and resets previous command lists
 	auto TST_GPU_API beginFrame(uint32 p_frame_index) -> void;
 
+	// Adds a command list to the queue of command lists that will be reset when begin frame is called and the semaphores are waited on
+	auto TST_GPU_API addCommandListToBeReset(CommandListHandle p_command_list) -> void;
+
 	// Returns true if successful, false if the present operation was unsuccessful. Recreate if false
 	// Prefer over the standard on from <api.hpp> because this has automatic timeline semaphore tracking
 	auto TST_GPU_API submitAndPresent(SwapchainHandle p_swapchain, CommandListHandle p_command_list) -> bool;
@@ -30,4 +33,10 @@ namespace toaster::gpu::frame
 
 	auto TST_GPU_API defferBufferDeletion(BufferHandle p_buffer) -> void;
 	auto TST_GPU_API defferTextureDeletion(TextureHandle p_texture) -> void;
+
+	// Used so that the gpu doesn't ever reference an invalid heap slot
+	auto TST_GPU_API defferBufferSlotFreeing(ResourceDescriptorHeapHandle p_resource_heap, uint32 p_slot) -> void;
+	auto TST_GPU_API defferTextureSlotFreeing(ResourceDescriptorHeapHandle p_resource_heap, uint32 p_slot) -> void;
+
+	// You won't need to deffer a sampler heap slot freeing
 }
