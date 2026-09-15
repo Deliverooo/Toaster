@@ -31,12 +31,14 @@ public:
 		m_textureManager = makeUnique<render::TextureManager>(m_renderCtx);
 		m_meshManager    = makeUnique<render::MeshManager>();
 
+		std::filesystem::current_path("../test");
+
 		asset::TextureImporter texture_importer{m_textureManager.get()};
-		m_textureReal = texture_importer.importFromFile("../test/resources/textures/doorbell_pig.jpg");
+		m_textureReal = texture_importer.importFromFile("resources/textures/doorbell_pig.jpg");
 
 		m_cpuMeshData = std::async(std::launch::async, []()
 		{
-			return asset::MeshImporter::importStaticFromFile(R"(C:\dev\Toaster-2.0\resources\meshes\Backrooms.fbx)");
+			return asset::MeshImporter::importStaticFromFile("resources/meshes/Backrooms.fbx");
 		});
 		// auto cpu_mesh_data{asset::MeshImporter::importStaticFromFile("../test/resources/meshes/Orbo_Geo.gltf")};
 
