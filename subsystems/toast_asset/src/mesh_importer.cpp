@@ -12,17 +12,14 @@ static constexpr uint32 s_MeshImportFlags{
 
 namespace toaster::asset
 {
-	MeshImporter::MeshImporter(render::MeshManager *p_mesh_manager) : m_meshManager(p_mesh_manager)
-	{
-	}
-
-	auto MeshImporter::importStaticFromFile(const std::filesystem::path &p_path) -> render::StaticMeshHandle
+	auto MeshImporter::importStaticFromFile(const std::filesystem::path &p_path) -> MeshImportData
 	{
 		Assimp::Importer importer{};
 		const aiScene *  scene{importer.ReadFile(p_path.string(), s_MeshImportFlags)};
 		TST_PERMA_ASSERT(scene);
 
-		std::vector<render::Submesh>        submeshes;
+		MeshImportData out_data{};
+
 		std::vector<render::MaterialHandle> materials;
 
 		for (uint32 i{0u}; i < scene->mNumMaterials; ++i)
@@ -35,9 +32,6 @@ namespace toaster::asset
 		if (!scene->HasMaterials())
 			materials.emplace_back(nullptr);
 
-		std::vector<render::StaticMeshVertex> vertices;
-		std::vector<uint32>                   indices;
-
 		for (uint32 m{0u}; m < scene->mNumMeshes; ++m)
 		{
 			const aiMesh *mesh{scene->mMeshes[m]};
@@ -45,9 +39,9 @@ namespace toaster::asset
 			std::vector<render::StaticMeshVertex> mesh_vertices(mesh->mNumVertices);
 			std::vector<uint32>                   mesh_indices(mesh->mNumFaces * 3u);
 
-			auto &submesh{submeshes.emplace_back()};
-			submesh.vertexOffset = static_cast<int32>(vertices.size());
-			submesh.indexOffset  = indices.size();
+			auto &submesh{out_data.submeshes.emplace_back()};
+			submesh.vertexOffset = static_cast<int32>(out_data.vertices.size());
+			submesh.indexOffset  = out_data.indices.size();
 			submesh.indexCount   = mesh->mNumFaces * 3u;
 			submesh.material     = materials[mesh->mMaterialIndex]; // This is why I am loading the materials first
 
@@ -69,10 +63,10 @@ namespace toaster::asset
 					mesh_indices[(i * face.mNumIndices) + j] = face.mIndices[j] + submesh.vertexOffset;
 			}
 
-			vertices.insert(vertices.end(), mesh_vertices.begin(), mesh_vertices.end());
-			indices.insert(indices.end(), mesh_indices.begin(), mesh_indices.end());
+			out_data.vertices.insert(out_data.vertices.end(), mesh_vertices.begin(), mesh_vertices.end());
+			out_data.indices.insert(out_data.indices.end(), mesh_indices.begin(), mesh_indices.end());
 		}
 
-		return m_meshManager->createStaticMesh(vertices, indices, submeshes);
+		return std::move(out_data);
 	}
 }

@@ -6,6 +6,7 @@
 #include <GLFW/glfw3native.h>
 
 #include "toast_gpu/frame.hpp"
+#include "toast_kernel/events/window_event.hpp"
 
 #ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
 #define DWMWA_USE_IMMERSIVE_DARK_MODE 20
@@ -98,6 +99,8 @@ namespace toaster
 				data->inputCtx.m_firstMouse = true;
 		});
 
+		//TODO: Actually finish setting up the callbacks...
+
 		HWND hwnd{glfwGetWin32Window(m_window)};
 
 		// Dark titlebar looks good.
@@ -164,6 +167,11 @@ namespace toaster
 
 		if (!gpu::resizeSwapchain(m_swapchain, getSize()))
 			return false;
+
+		// Instead of dispatching the window resize from the GLFW callback, it is safer to do it here. As to not interfere with any Vulkan code.
+		WindowResizeEvent event{getSize()};
+		if (m_cbData.eventCallback)
+			m_cbData.eventCallback(event);
 
 		m_cbData.resized = false;
 		return true;

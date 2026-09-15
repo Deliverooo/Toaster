@@ -51,8 +51,9 @@ namespace toaster::render
 	auto MeshManager::createStaticMesh(const std::vector<StaticMeshVertex> &p_vertices, const std::vector<uint32> &p_indices,
 									   const std::vector<Submesh> &         p_submeshes) -> StaticMeshHandle
 	{
-		const uint64 vertex_buffer_size{p_vertices.size() * sizeof(StaticMeshVertex)};
-		const uint64 index_buffer_size{p_indices.size() * sizeof(uint32)};
+		std::scoped_lock<std::mutex> lock{m_mutex};
+		const uint64                 vertex_buffer_size{p_vertices.size() * sizeof(StaticMeshVertex)};
+		const uint64                 index_buffer_size{p_indices.size() * sizeof(uint32)};
 
 		StaticMesh static_mesh{};
 		static_mesh.submeshes              = p_submeshes;
@@ -70,6 +71,7 @@ namespace toaster::render
 
 	auto MeshManager::destroyStaticMesh(StaticMeshHandle p_handle) -> void
 	{
+		std::scoped_lock<std::mutex> lock{m_mutex};
 		m_staticMeshes.destroy(p_handle);
 	}
 }

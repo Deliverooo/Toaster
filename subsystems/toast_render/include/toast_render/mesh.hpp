@@ -1,9 +1,12 @@
 #pragma once
 
+#include <mutex>
+
 #include "material.hpp"
 
 namespace toaster::render
 {
+
 	struct TST_RENDER_API StaticMeshVertex
 	{
 		XMFLOAT3 position;
@@ -35,7 +38,7 @@ namespace toaster::render
 	class TST_RENDER_API MeshManager
 	{
 	public:
-		MeshManager(uint64 p_max_static_mesh_vertices = 5u * 1028u * 1028u, uint64 p_max_static_mesh_indices = 3u * 1028u * 1028u); // Arbitrary values
+		MeshManager(uint64 p_max_static_mesh_vertices = 50u * 1028u * 1028u, uint64 p_max_static_mesh_indices = 30u * 1028u * 1028u);
 		~MeshManager();
 
 		[[nodiscard]] auto createStaticMesh(const std::vector<StaticMeshVertex> &p_vertices, const std::vector<uint32> &p_indices,
@@ -61,5 +64,7 @@ namespace toaster::render
 
 		gpu::alloc::VirtualBlockHandle m_staticMeshVertexBufferBlock{nullptr};
 		gpu::alloc::VirtualBlockHandle m_staticMeshIndexBufferBlock{nullptr};
+
+		std::mutex m_mutex;
 	};
 }

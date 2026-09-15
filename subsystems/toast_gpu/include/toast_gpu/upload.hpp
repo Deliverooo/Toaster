@@ -28,6 +28,6 @@ namespace toaster::gpu::upload
 
 	auto TST_GPU_API uploadDataToTexture(TextureHandle p_dst_texture, const void *p_data, uint64 p_size, const TextureUploadDesc &p_desc) -> void;
 
-	auto TST_GPU_API cancelBufferUpload(BufferHandle p_buffer) -> void; // Only works if called before flushUploads!
+	auto TST_GPU_API cancelBufferUpload(BufferHandle p_buffer) -> void;    // Only works if called before flushUploads!
 	auto TST_GPU_API cancelTextureUpload(TextureHandle p_texture) -> void; // Only works if called before flushUploads!
 }

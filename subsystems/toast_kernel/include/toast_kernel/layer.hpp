@@ -1,6 +1,7 @@
 #pragma once
 
 #include "toast_kernel.hpp"
+#include "events/event.hpp"
 #include "toast_gpu/api.hpp"
 #include "toast_math/math_vector.hpp"
 #include "toast_render/render_context.hpp"
@@ -29,7 +30,7 @@ namespace toaster
 		{
 		}
 
-		virtual auto onResize([[maybe_unused]] tsm::uint2 p_size) -> void
+		virtual auto onEvent([[maybe_unused]] Event &p_event) -> void
 		{
 		}
 

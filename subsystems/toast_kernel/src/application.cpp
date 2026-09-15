@@ -17,6 +17,16 @@ namespace toaster
 		window_desc.startMaximized = true;
 		window_desc.title          = "Toaster-3.0";
 		m_window                   = makeUnique<Window>(window_desc);
+
+		m_window->setEventCallback([this](Event &p_event)
+		{
+			for (auto layer: m_layers)
+			{
+				if (p_event.isHandled())
+					continue;
+				layer->onEvent(p_event);
+			}
+		});
 	}
 
 	Application::~Application()
