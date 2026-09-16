@@ -7,6 +7,7 @@
 #include <algorithm>
 
 #define VK_USE_PLATFORM_WIN32_KHR
+#include <mutex>
 #include <vulkan/vulkan.hpp>
 
 #include <vma/vk_mem_alloc.h>
@@ -253,6 +254,8 @@ namespace toaster::gpu
 
 		Pool<Texture>                     textures;
 		std::unordered_set<TextureHandle> undefinedTextures; // All the textures that are in the undefined format and are awaiting a layout transition
+
+		std::mutex undefinedTexturesMutex;
 
 		#pragma endregion
 
@@ -1052,6 +1055,8 @@ namespace toaster::gpu
 
 	auto getPendingImageMemoryBarriers(EQueueType p_queue_type) -> vk::CommandBuffer
 	{
+		std::scoped_lock<std::mutex> lock{g_impl->undefinedTexturesMutex};
+
 		if (g_impl->undefinedTextures.empty() || p_queue_type == EQueueType::eTransfer) // Transfer queues cannot perform layout transitions
 			return nullptr;
 
@@ -1327,6 +1332,8 @@ namespace toaster::gpu
 			p_extent.y = (dst_texture->desc.extent.y >> p_mip_level) ? (dst_texture->desc.extent.y >> p_mip_level) : 1u;
 		if (p_extent.z == 0u)
 			p_extent.z = (dst_texture->desc.extent.z >> p_mip_level) ? (dst_texture->desc.extent.z >> p_mip_level) : 1u;
+
+		std::scoped_lock<std::mutex> lock{g_impl->undefinedTexturesMutex};
 
 		auto undefined_it{std::ranges::find(g_impl->undefinedTextures, p_dst_texture)};
 		if (undefined_it != g_impl->undefinedTextures.end())
@@ -2276,6 +2283,7 @@ namespace toaster::gpu
 
 		TextureHandle texture_handle{g_impl->textures.emplace(Texture{image, image_view, allocation, p_desc, false})};
 
+		std::scoped_lock<std::mutex> lock{g_impl->undefinedTexturesMutex};
 		g_impl->undefinedTextures.insert(texture_handle);
 
 		return texture_handle;
@@ -2283,6 +2291,7 @@ namespace toaster::gpu
 
 	auto destroyTexture(TextureHandle p_texture) -> void
 	{
+		std::scoped_lock<std::mutex> lock{g_impl->undefinedTexturesMutex};
 		g_impl->textures.destroy(p_texture);
 		g_impl->undefinedTextures.erase(p_texture);
 	}

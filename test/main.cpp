@@ -33,14 +33,40 @@ public:
 
 		std::filesystem::current_path("../test");
 
-		asset::TextureImporter texture_importer{m_textureManager.get()};
-		m_textureReal = texture_importer.importFromFile("resources/textures/doorbell_pig.jpg");
+		m_whiteTexture = m_textureManager->createTexture(gpu::TextureDesc{
+															 tsm::uint3{1u, 1u, 1u},
+															 1u,
+															 1u,
+															 gpu::ETextureType::e2D,
+															 gpu::ESampleCount::e1,
+															 gpu::EFormat::eR8G8B8A8Srgb,
+															 gpu::ETextureUsageFlagBits::eSampled | gpu::ETextureUsageFlagBits::eTransferDst
+														 });
 
-		m_cpuMeshData = std::async(std::launch::async, []()
+		uint32 white_texture_data{0xFFFFFFFF};
+		m_textureManager->setData(m_whiteTexture, &white_texture_data, sizeof(uint32));
+
+		gpu::upload::flushUploadsAndWait();
+		m_textureManager->pollTextureUploads();
+
+		m_textureReal = m_textureManager->registerTexture();
+		std::thread([this]()-> void
 		{
-			return asset::MeshImporter::importStaticFromFile("resources/meshes/Backrooms.fbx");
-		});
-		// auto cpu_mesh_data{asset::MeshImporter::importStaticFromFile("../test/resources/meshes/Orbo_Geo.gltf")};
+			asset::TextureImporter texture_importer{m_textureManager.get()};
+			texture_importer.importFromFile(m_textureReal, "resources/textures/brick_wall_001_diffuse_8k.png");
+		}).detach();
+
+		m_mesh = m_meshManager->registerStaticMesh();
+
+		std::thread([this]()-> void
+		{
+			auto &gpu_mesh{m_meshManager->getStaticMesh(m_mesh)};
+			gpu_mesh.state->store(render::EMeshState::eLoading);
+
+			const auto cpu_mesh_data{asset::MeshImporter::importStaticFromFile("resources/meshes/Backrooms.fbx")};
+
+			m_meshManager->uploadStaticMeshData(m_mesh, cpu_mesh_data.vertices, cpu_mesh_data.indices, cpu_mesh_data.submeshes);
+		}).detach();
 
 		gpu::SamplerHandle sampler{gpu::createSampler(gpu::SamplerDesc{})};
 
@@ -124,14 +150,17 @@ public:
 
 	auto onRender(gpu::CommandListHandle p_cmd) -> void override
 	{
+		m_textureManager->pollTextureUploads();
+		m_meshManager->pollMeshUploads();
+
 		for (auto &list: m_secondaryBuffers[m_app->getFrameIndex()])
 			gpu::resetCommandList(list);
 
-		if (m_cpuMeshData.valid() && m_cpuMeshData.wait_for(std::chrono::seconds(0u)) == std::future_status::ready && !m_mesh)
-		{
-			auto data{m_cpuMeshData.get()};
-			m_mesh = m_meshManager->createStaticMesh(data.vertices, data.indices, data.submeshes);
-		}
+		// if (m_cpuMeshData.valid() && m_cpuMeshData.wait_for(std::chrono::seconds(0u)) == std::future_status::ready && !m_mesh)
+		// {
+		// auto data{m_cpuMeshData.get()};
+		// m_mesh = m_meshManager->createStaticMesh(data.vertices, data.indices, data.submeshes);
+		// }
 
 		auto &secondary_cmd{m_secondaryBuffers[m_app->getFrameIndex()][0]};
 
@@ -194,7 +223,14 @@ public:
 					uint32 sampler;
 				};
 
-				if (m_mesh)
+				render::TextureHandle texture_to_render{m_textureReal};
+				auto &                gpu_texture{m_textureManager->getTexture(m_textureReal)};
+				if (gpu_texture.state->load() != render::ETextureState::eReady)
+					texture_to_render = m_whiteTexture;
+
+				auto &gpu_mesh{m_meshManager->getStaticMesh(m_mesh)};
+
+				if (gpu_mesh.state->load() == render::EMeshState::eReady)
 				{
 					const render::StaticMesh &static_mesh{m_meshManager->getStaticMesh(m_mesh)};
 
@@ -207,7 +243,7 @@ public:
 					push_data.vertexBufferOffset = gpu::alloc::getAllocationOffset(static_mesh.vertexBufferAllocation) / sizeof(render::StaticMeshVertex);
 					push_data.indexBufferOffset  = gpu::alloc::getAllocationOffset(static_mesh.indexBufferAllocation) / sizeof(uint32);
 
-					push_data.texture = m_textureManager->getTexture(m_textureReal).shaderReadHeapSlot;
+					push_data.texture = m_textureManager->getTexture(texture_to_render).shaderReadHeapSlot;
 					push_data.sampler = m_samplerHeapSlot;
 					gpu::pushData(secondary_cmd, push_data);
 
@@ -250,10 +286,10 @@ public:
 private:
 	gpu::TextureHandle m_depthAttachment{nullptr};
 
+	render::TextureHandle m_whiteTexture{nullptr};
 	render::TextureHandle m_textureReal{nullptr};
 
-	std::future<asset::MeshImportData> m_cpuMeshData;
-	render::StaticMeshHandle           m_mesh{nullptr};
+	render::StaticMeshHandle m_mesh{nullptr};
 
 	uint32 m_samplerHeapSlot{UINT32_MAX};
 

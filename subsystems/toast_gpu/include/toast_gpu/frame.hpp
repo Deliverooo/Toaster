@@ -37,6 +37,4 @@ namespace toaster::gpu::frame
 	// Used so that the gpu doesn't ever reference an invalid heap slot
 	auto TST_GPU_API defferBufferSlotFreeing(ResourceDescriptorHeapHandle p_resource_heap, uint32 p_slot) -> void;
 	auto TST_GPU_API defferTextureSlotFreeing(ResourceDescriptorHeapHandle p_resource_heap, uint32 p_slot) -> void;
-
-	// You won't need to deffer a sampler heap slot freeing
 }

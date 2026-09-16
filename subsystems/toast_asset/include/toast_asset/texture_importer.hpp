@@ -12,7 +12,7 @@ namespace toaster::asset
 	public:
 		TextureImporter(render::TextureManager *p_texture_manager);
 
-		auto importFromFile(const std::filesystem::path &p_path) -> render::TextureHandle;
+		auto importFromFile(render::TextureHandle p_dst_texture, const std::filesystem::path &p_path) -> void;
 
 	private:
 		NonOwningPtr<render::TextureManager> m_textureManager{nullptr};

@@ -1,6 +1,7 @@
 #include "toast_gpu/upload.hpp"
 
 #include <cstring>
+#include <mutex>
 
 namespace toaster::gpu::upload
 {
@@ -30,6 +31,8 @@ namespace toaster::gpu::upload
 	{
 		std::vector<PendingUpload>   pending;
 		std::vector<SubmittedUpload> submitted;
+
+		std::mutex uploadMutex;
 	};
 
 	static UploadContextImpl *g_impl{nullptr};
@@ -83,6 +86,8 @@ namespace toaster::gpu::upload
 
 	auto flushUploads() -> void
 	{
+		std::scoped_lock<std::mutex> lock{g_impl->uploadMutex};
+
 		collectCompletedUploads();
 		if (g_impl->pending.empty())
 			return;
@@ -140,8 +145,10 @@ namespace toaster::gpu::upload
 		collectCompletedUploads();
 	}
 
-	auto uploadDataToBuffer(BufferHandle p_dst_buffer, const void *p_data, uint64 p_size, uint64 p_offset) -> void
+	auto uploadDataToBuffer(BufferHandle p_dst_buffer, const void *p_data, uint64 p_size, uint64 p_offset) -> uint64
 	{
+		std::scoped_lock<std::mutex> lock{g_impl->uploadMutex};
+
 		TST_ASSERT_MSG(p_data != nullptr && p_size > 0u, "Upload data must actually exist");
 		PendingUpload upload{};
 		upload.type              = PendingUpload::EType::eBuffer;
@@ -150,10 +157,13 @@ namespace toaster::gpu::upload
 		upload.data.resize(p_size);
 		std::memcpy(upload.data.data(), p_data, p_size);
 		g_impl->pending.emplace_back(std::move(upload));
+		return frame::getTransferTimelineCounterValue() + 1u;
 	}
 
-	auto uploadDataToTexture(TextureHandle p_dst_texture, const void *p_data, uint64 p_size, const TextureUploadDesc &p_desc) -> void
+	auto uploadDataToTexture(TextureHandle p_dst_texture, const void *p_data, uint64 p_size, const TextureUploadDesc &p_desc) -> uint64
 	{
+		std::scoped_lock<std::mutex> lock{g_impl->uploadMutex};
+
 		TST_ASSERT_MSG(p_data != nullptr && p_size > 0u, "Texture upload data must actually exist");
 		TST_ASSERT_MSG(p_desc.layerCount > 0u, "Texture upload layer count must be non-zero");
 
@@ -164,6 +174,7 @@ namespace toaster::gpu::upload
 		upload.data.resize(p_size);
 		std::memcpy(upload.data.data(), p_data, p_size);
 		g_impl->pending.emplace_back(std::move(upload));
+		return frame::getTransferTimelineCounterValue() + 1u;
 	}
 
 	auto cancelBufferUpload(BufferHandle p_buffer) -> void

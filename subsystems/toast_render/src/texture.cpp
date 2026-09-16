@@ -17,7 +17,6 @@ namespace toaster::render
 			gpu::frame::defferTextureDeletion(p_data->texture);
 
 			if (p_data->shaderReadHeapSlot != UINT32_MAX)
-				// gpu::freeTextureHeapSlot(ts->m_renderCtx->getResourceHeap(), p_data->shaderReadHeapSlot);
 				gpu::frame::defferTextureSlotFreeing(ts->m_renderCtx->getResourceHeap(), p_data->shaderReadHeapSlot);
 			if (p_data->storageHeapSlot != UINT32_MAX)
 				gpu::frame::defferTextureSlotFreeing(ts->m_renderCtx->getResourceHeap(), p_data->storageHeapSlot);
@@ -27,6 +26,8 @@ namespace toaster::render
 				if (slot != UINT32_MAX)
 					gpu::frame::defferTextureSlotFreeing(ts->m_renderCtx->getResourceHeap(), slot);
 			}
+
+			p_data->state.reset();
 		});
 	}
 
@@ -35,10 +36,23 @@ namespace toaster::render
 		m_textures.clear();
 	}
 
+	auto TextureManager::registerTexture() -> TextureHandle
+	{
+		std::scoped_lock<std::mutex> lock{m_mutex};
+
+		Texture proxy_texture{};
+		proxy_texture.state = makeUnique<std::atomic<ETextureState> >(ETextureState::eUnloaded);
+
+		return m_textures.emplace(std::move(proxy_texture));
+	}
+
 	auto TextureManager::createTexture(const gpu::TextureDesc &p_desc) -> TextureHandle
 	{
+		std::scoped_lock<std::mutex> lock{m_mutex};
+
 		Texture texture_data{};
 		texture_data.texture = gpu::createTexture(p_desc);
+		texture_data.state   = makeUnique<std::atomic<ETextureState> >(ETextureState::eUnloaded);
 
 		if (p_desc.usage & gpu::ETextureUsageFlagBits::eSampled)
 		{
@@ -46,25 +60,51 @@ namespace toaster::render
 			gpu::writeTextureDescriptor(m_renderCtx->getResourceHeap(), texture_data.shaderReadHeapSlot, texture_data.texture, false);
 		}
 
-		return m_textures.emplace(texture_data);
+		return m_textures.emplace(std::move(texture_data));
 	}
 
 	auto TextureManager::destroyTexture(TextureHandle p_handle) -> void
 	{
+		std::scoped_lock<std::mutex> lock{m_mutex};
+
+		if (m_pendingTextureUploads.contains(p_handle))
+			m_pendingTextureUploads.erase(p_handle);
+
 		m_textures.destroy(p_handle);
+	}
+
+	auto TextureManager::createIntoTexture(TextureHandle p_handle, const gpu::TextureDesc &p_desc) -> void
+	{
+		std::scoped_lock<std::mutex> lock{m_mutex};
+
+		Texture &texture{m_textures[p_handle]};
+
+		texture.texture = gpu::createTexture(p_desc);
+
+		if (p_desc.usage & gpu::ETextureUsageFlagBits::eSampled)
+		{
+			texture.shaderReadHeapSlot = gpu::allocTextureHeapSlot(m_renderCtx->getResourceHeap());
+			gpu::writeTextureDescriptor(m_renderCtx->getResourceHeap(), texture.shaderReadHeapSlot, texture.texture, false);
+		}
 	}
 
 	auto TextureManager::setData(TextureHandle p_handle, const void *p_data, uint64 p_size) -> void
 	{
-		const Texture &    texture_data{m_textures[p_handle]};
+		std::scoped_lock<std::mutex> lock{m_mutex};
+
+		Texture &              texture_data{m_textures[p_handle]};
 		const gpu::TextureDesc secret_desc{gpu::getTextureDesc(texture_data.texture)};
 
 		gpu::upload::TextureUploadDesc upload_desc{};
-		upload_desc.layerCount = secret_desc.layerCount;
-		upload_desc.baseLayer  = 0u;
-		upload_desc.extent     = {0u, 0u, 0u}; // Use the desc
-		upload_desc.mipLevel   = 0u;
-		gpu::upload::uploadDataToTexture(texture_data.texture, p_data, p_size, upload_desc);
+		upload_desc.layerCount          = secret_desc.layerCount;
+		upload_desc.baseLayer           = 0u;
+		upload_desc.extent              = {0u, 0u, 0u}; // Use the desc
+		upload_desc.mipLevel            = 0u;
+		texture_data.transferReadyToken = gpu::upload::uploadDataToTexture(texture_data.texture, p_data, p_size, upload_desc);
+
+		texture_data.state->store(ETextureState::eUploadingToGPU);
+
+		m_pendingTextureUploads.insert(p_handle);
 	}
 
 	auto TextureManager::getMipStorageHeapSlot(TextureHandle p_handle, uint32 p_mip) -> uint32
@@ -79,5 +119,24 @@ namespace toaster::render
 		gpu::writeTextureDescriptor(m_renderCtx->getResourceHeap(), slot, texture_data.texture, true, p_mip);
 
 		return slot;
+	}
+
+	auto TextureManager::pollTextureUploads() -> void
+	{
+		if (m_pendingTextureUploads.empty())
+			return;
+
+		uint64 transfer_value{gpu::getSemaphoreValue(gpu::frame::getTransferTimelineSemaphore())};
+		for (auto it{m_pendingTextureUploads.begin()}; it != m_pendingTextureUploads.end();)
+		{
+			Texture &texture{m_textures[*it]};
+			if (transfer_value >= texture.transferReadyToken)
+			{
+				texture.state->store(ETextureState::eReady);
+				it = m_pendingTextureUploads.erase(it);
+			}
+			else
+				++it;
+		}
 	}
 }

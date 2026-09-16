@@ -29,5 +29,5 @@ layout (push_constant) uniform PushData
 void main()
 {
     vec3 tex_colour = SAMPLE_TEXTURE(pcs.texture, pcs.textureSampler, v_TexCoord).rgb;
-    o_Colour = vec4(v_TexCoord,0.0f, 1.0f);
+    o_Colour = vec4(tex_colour, 1.0f);
 }

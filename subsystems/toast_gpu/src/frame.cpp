@@ -145,11 +145,11 @@ namespace toaster::gpu::frame
 		++g_impl->graphicsTimelineCounter;
 		g_impl->graphicsTimelineValues[g_impl->currentFrameIndex] = g_impl->graphicsTimelineCounter;
 
-		std::vector<SemaphoreSubmitInfo> waits;
-		if (g_impl->transferTimelineCounter > 0u)
-			waits.emplace_back(SemaphoreSubmitInfo{g_impl->transferTimelineSemaphore, g_impl->transferTimelineCounter}); // Wait on the transfer queue
+		// std::vector<SemaphoreSubmitInfo> waits;
+		// if (g_impl->transferTimelineCounter > 0u)
+			// waits.emplace_back(SemaphoreSubmitInfo{g_impl->transferTimelineSemaphore, g_impl->transferTimelineCounter}); // Wait on the transfer queue
 
-		const bool success{gpu::submitAndPresent(p_swapchain, p_command_list, {g_impl->graphicsTimelineSemaphore, g_impl->graphicsTimelineCounter}, waits)};
+		const bool success{gpu::submitAndPresent(p_swapchain, p_command_list, {g_impl->graphicsTimelineSemaphore, g_impl->graphicsTimelineCounter})};
 		return success;
 	}
 

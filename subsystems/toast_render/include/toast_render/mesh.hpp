@@ -6,6 +6,13 @@
 
 namespace toaster::render
 {
+	enum class EMeshState : uint8
+	{
+		eUnloaded,
+		eLoading,
+		eUploadingToGPU,
+		eReady
+	};
 
 	struct TST_RENDER_API StaticMeshVertex
 	{
@@ -31,6 +38,9 @@ namespace toaster::render
 
 		gpu::alloc::VirtualAllocationHandle vertexBufferAllocation{nullptr};
 		gpu::alloc::VirtualAllocationHandle indexBufferAllocation{nullptr};
+
+		UniquePtr<std::atomic<EMeshState> > state{nullptr};
+		uint64                              transferReadyToken{0u};
 	};
 
 	TST_DECLARE_HANDLE(StaticMesh);
@@ -40,6 +50,11 @@ namespace toaster::render
 	public:
 		MeshManager(uint64 p_max_static_mesh_vertices = 50u * 1028u * 1028u, uint64 p_max_static_mesh_indices = 30u * 1028u * 1028u);
 		~MeshManager();
+
+		// Register so you can upload the gpu data once it is loaded from disk
+		[[nodiscard]] auto registerStaticMesh() -> StaticMeshHandle;
+		auto               uploadStaticMeshData(StaticMeshHandle p_handle, const std::vector<StaticMeshVertex> &p_vertices, const std::vector<uint32> &p_indices,
+												const std::vector<Submesh> &   p_submeshes) -> void;
 
 		[[nodiscard]] auto createStaticMesh(const std::vector<StaticMeshVertex> &p_vertices, const std::vector<uint32> &p_indices,
 											const std::vector<Submesh> &         p_submeshes) -> StaticMeshHandle;
@@ -53,6 +68,8 @@ namespace toaster::render
 		auto getStaticMeshVertexBuffer() const -> gpu::BufferHandle { return m_staticMeshVertexBuffer; }
 		auto getStaticMeshIndexBuffer() const -> gpu::BufferHandle { return m_staticMeshIndexBuffer; }
 
+		auto pollMeshUploads() -> void;
+
 	private:
 		Pool<StaticMesh> m_staticMeshes;
 
@@ -64,6 +81,8 @@ namespace toaster::render
 
 		gpu::alloc::VirtualBlockHandle m_staticMeshVertexBufferBlock{nullptr};
 		gpu::alloc::VirtualBlockHandle m_staticMeshIndexBufferBlock{nullptr};
+
+		std::unordered_set<StaticMeshHandle> m_pendingMeshUploads;
 
 		std::mutex m_mutex;
 	};
