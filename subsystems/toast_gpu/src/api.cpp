@@ -2028,7 +2028,7 @@ namespace toaster::gpu
 		std::array<uint32, 2u> queue_family_indices{g_impl->queueFamilyIndices.graphics, g_impl->queueFamilyIndices.transfer};
 		if (queue_family_indices[0u] != queue_family_indices[1u])
 		{
-			buffer_create_info.sharingMode           = vk::SharingMode::eConcurrent; // I ain't doin allat
+			buffer_create_info.sharingMode           = vk::SharingMode::eConcurrent;
 			buffer_create_info.queueFamilyIndexCount = queue_family_indices.size();
 			buffer_create_info.pQueueFamilyIndices   = queue_family_indices.data();
 		}

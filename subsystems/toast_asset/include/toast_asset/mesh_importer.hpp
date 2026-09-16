@@ -17,6 +17,22 @@ namespace toaster::asset
 	class TST_ASSET_API MeshImporter
 	{
 	public:
-		static auto importStaticFromFile(const std::filesystem::path &p_path) -> MeshImportData;
+		MeshImporter() = default;
+		~MeshImporter();
+
+		static auto importStaticMeshDataFromFile(const std::filesystem::path &p_path) -> MeshImportData;
+
+		auto asyncLoadStaticMeshFromFile(render::MeshManager *p_mesh_manager, render::StaticMeshHandle p_dst_mesh, const std::filesystem::path &p_path) -> void;
+
+	private:
+		struct ImportTask
+		{
+			String                   path;
+			render::StaticMeshHandle dstMesh{nullptr};
+		};
+
+		std::atomic_bool m_terminationRequested{false};
+
+		std::vector<std::thread> m_pendingImports;
 	};
 }

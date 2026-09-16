@@ -12,7 +12,14 @@ static constexpr uint32 s_MeshImportFlags{
 
 namespace toaster::asset
 {
-	auto MeshImporter::importStaticFromFile(const std::filesystem::path &p_path) -> MeshImportData
+	MeshImporter::~MeshImporter()
+	{
+		m_terminationRequested.store(true);
+		for (auto &import: m_pendingImports)
+			import.join();
+	}
+
+	auto MeshImporter::importStaticMeshDataFromFile(const std::filesystem::path &p_path) -> MeshImportData
 	{
 		Assimp::Importer importer{};
 		const aiScene *  scene{importer.ReadFile(p_path.string(), s_MeshImportFlags)};
@@ -68,5 +75,24 @@ namespace toaster::asset
 		}
 
 		return std::move(out_data);
+	}
+
+	auto MeshImporter::asyncLoadStaticMeshFromFile(render::MeshManager *p_mesh_manager, render::StaticMeshHandle p_dst_mesh, const std::filesystem::path &p_path) -> void
+	{
+		m_pendingImports.emplace_back([this, p_mesh_manager, p_dst_mesh, p_path]()-> void
+		{
+			if (m_terminationRequested.load())
+				return;
+
+			auto &gpu_mesh{p_mesh_manager->getStaticMesh(p_dst_mesh)};
+			gpu_mesh.state->store(render::EMeshState::eLoading);
+
+			const auto cpu_mesh_data{importStaticMeshDataFromFile(p_path)};
+
+			if (m_terminationRequested.load())
+				return;
+
+			p_mesh_manager->uploadStaticMeshData(p_dst_mesh, cpu_mesh_data.vertices, cpu_mesh_data.indices, cpu_mesh_data.submeshes);
+		});
 	}
 }

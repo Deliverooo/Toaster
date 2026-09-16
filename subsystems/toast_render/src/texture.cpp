@@ -13,8 +13,11 @@ namespace toaster::render
 		{
 			TextureManager *ts{static_cast<TextureManager *>(p_user_data)};
 
-			gpu::upload::cancelTextureUpload(p_data->texture);
-			gpu::frame::defferTextureDeletion(p_data->texture);
+			if (p_data->texture)
+			{
+				gpu::upload::cancelTextureUpload(p_data->texture);
+				gpu::frame::defferTextureDeletion(p_data->texture);
+			}
 
 			if (p_data->shaderReadHeapSlot != UINT32_MAX)
 				gpu::frame::defferTextureSlotFreeing(ts->m_renderCtx->getResourceHeap(), p_data->shaderReadHeapSlot);
@@ -76,8 +79,7 @@ namespace toaster::render
 	auto TextureManager::createIntoTexture(TextureHandle p_handle, const gpu::TextureDesc &p_desc) -> void
 	{
 		std::scoped_lock<std::mutex> lock{m_mutex};
-
-		Texture &texture{m_textures[p_handle]};
+		Texture &                    texture{m_textures[p_handle]};
 
 		texture.texture = gpu::createTexture(p_desc);
 

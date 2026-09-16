@@ -49,24 +49,13 @@ public:
 		gpu::upload::flushUploadsAndWait();
 		m_textureManager->pollTextureUploads();
 
-		m_textureReal = m_textureManager->registerTexture();
-		std::thread([this]()-> void
-		{
-			asset::TextureImporter texture_importer{m_textureManager.get()};
-			texture_importer.importFromFile(m_textureReal, "resources/textures/brick_wall_001_diffuse_8k.png");
-		}).detach();
+		m_textureImporter = makeUnique<asset::TextureImporter>();
+		m_textureReal     = m_textureManager->registerTexture();
+		m_textureImporter->asyncLoadTextureFromFile(m_textureManager.get(), m_textureReal, "resources/textures/brick_wall_001_diffuse_8k.png");
 
-		m_mesh = m_meshManager->registerStaticMesh();
-
-		std::thread([this]()-> void
-		{
-			auto &gpu_mesh{m_meshManager->getStaticMesh(m_mesh)};
-			gpu_mesh.state->store(render::EMeshState::eLoading);
-
-			const auto cpu_mesh_data{asset::MeshImporter::importStaticFromFile("resources/meshes/Backrooms.fbx")};
-
-			m_meshManager->uploadStaticMeshData(m_mesh, cpu_mesh_data.vertices, cpu_mesh_data.indices, cpu_mesh_data.submeshes);
-		}).detach();
+		m_meshImporter = makeUnique<asset::MeshImporter>();
+		m_mesh         = m_meshManager->registerStaticMesh();
+		m_meshImporter->asyncLoadStaticMeshFromFile(m_meshManager.get(), m_mesh, "resources/meshes/Backrooms.fbx");
 
 		gpu::SamplerHandle sampler{gpu::createSampler(gpu::SamplerDesc{})};
 
@@ -125,7 +114,9 @@ public:
 			for (auto &cmd: cmd_vec)
 				gpu::freeCommandList(cmd);
 
+		m_meshImporter.reset();
 		m_meshManager.reset();
+		m_textureImporter.reset();
 		m_textureManager.reset();
 	}
 
@@ -301,8 +292,11 @@ private:
 
 	std::vector<std::vector<gpu::CommandListHandle> > m_secondaryBuffers;
 
-	UniquePtr<render::MeshManager>    m_meshManager{nullptr};
+	UniquePtr<render::MeshManager> m_meshManager{nullptr};
+	UniquePtr<asset::MeshImporter> m_meshImporter{nullptr};
+
 	UniquePtr<render::TextureManager> m_textureManager{nullptr};
+	UniquePtr<asset::TextureImporter> m_textureImporter{nullptr};
 };
 
 TST_WINMAIN()
