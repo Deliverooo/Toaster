@@ -12,7 +12,7 @@ namespace toaster
 	class Pool
 	{
 	public:
-		using DestructorFn = void(*)(TData *, void*);
+		using DestructorFn = void(*)(TData *, void *);
 		using HandleType   = Handle<TData>;
 
 		Pool() = default;

@@ -452,12 +452,31 @@ namespace toaster::gpu
 								   ECompareOp        p_compare_op                                            = ECompareOp::eLessOrEqual) -> void;
 	auto TST_GPU_API setStencilState(CommandListHandle p_command_list, bool p_test_enable) -> void;
 
+	struct TST_GPU_API DrawIndirectCommand
+	{
+		uint32 vertexCount{0u};
+		uint32 instanceCount{1u};
+		uint32 firstVertex{0u};
+		uint32 firstInstance{0u};
+	};
+
+	struct TST_GPU_API DrawIndexedIndirectCommand
+	{
+		uint32 indexCount{0u};
+		uint32 instanceCount{1u};
+		uint32 firstIndex{0u};
+		int32  vertexOffset{0};
+		uint32 firstInstance{0u};
+	};
+
 	auto TST_GPU_API draw(CommandListHandle p_command_list, uint32 p_vertex_count, uint32 p_instance_count, uint32 p_first_vertex = 0u,
 						  uint32            p_first_instance                                                                      = 0u) -> void;
 	auto TST_GPU_API drawIndexed(CommandListHandle p_command_list, uint32 p_index_count, uint32 p_instance_count, uint32 p_first_index = 0u, int32 p_vertex_offset = 0,
 								 uint32            p_first_instance                                                                    = 0u) -> void;
-	auto TST_GPU_API drawIndirect(CommandListHandle p_command_list, BufferHandle p_buffer, uint64 p_offset, uint32 p_draw_count, uint32 p_stride) -> void;
-	auto TST_GPU_API drawIndexedIndirect(CommandListHandle p_command_list, BufferHandle p_buffer, uint64 p_offset, uint32 p_draw_count, uint32 p_stride) -> void;
+	auto TST_GPU_API drawIndirect(CommandListHandle p_command_list, BufferHandle p_buffer, uint64 p_offset, uint32 p_draw_count,
+								  uint32            p_stride = sizeof(DrawIndirectCommand)) -> void;
+	auto TST_GPU_API drawIndexedIndirect(CommandListHandle p_command_list, BufferHandle p_buffer, uint64 p_offset, uint32 p_draw_count,
+										 uint32            p_stride = sizeof(DrawIndexedIndirectCommand)) -> void;
 
 	#pragma endregion
 
@@ -563,6 +582,4 @@ namespace toaster::gpu
 	auto TST_GPU_API               destroyShader(ShaderHandle p_shader) -> void;
 
 	#pragma endregion
-
-
 }

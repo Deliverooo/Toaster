@@ -16,9 +16,7 @@ layout (push_constant) uniform PushData
     uint64_t camera;
     uint64_t vertexBuffer;
     uint64_t indexBuffer;
-
-    uint vertexBufferOffset;
-    uint indexBufferOffset;
+    uint64_t objectBuffer;
 
     uint texture;
     uint textureSampler;

@@ -39,6 +39,8 @@ namespace toaster
 		float32 m_deltaTime{0.0f};
 		uint32  m_frameIndex{0u}; // TODO: Move to render ctx
 
+		bool m_running{true};
+
 		friend class IAppLayer;
 	};
 }

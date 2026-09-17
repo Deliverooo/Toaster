@@ -39,7 +39,8 @@ namespace toaster::render
 		gpu::alloc::VirtualAllocationHandle vertexBufferAllocation{nullptr};
 		gpu::alloc::VirtualAllocationHandle indexBufferAllocation{nullptr};
 
-		UniquePtr<std::atomic<EMeshState> > state{nullptr};
+		EMeshState state{EMeshState::eUnloaded};
+		// UniquePtr<std::atomic<EMeshState> > state{nullptr};
 		uint64                              transferReadyToken{0u};
 	};
 
@@ -62,8 +63,27 @@ namespace toaster::render
 
 		[[nodiscard]] auto getStaticMesh(StaticMeshHandle p_handle) -> StaticMesh & { return m_staticMeshes[p_handle]; }
 		[[nodiscard]] auto getStaticMesh(StaticMeshHandle p_handle) const -> const StaticMesh & { return m_staticMeshes[p_handle]; }
-		[[nodiscard]] auto tryStaticMesh(StaticMeshHandle p_handle) -> StaticMesh * { return m_staticMeshes.tryGet(p_handle); }
-		[[nodiscard]] auto tryStaticMesh(StaticMeshHandle p_handle) const -> const StaticMesh * { return m_staticMeshes.tryGet(p_handle); }
+		[[nodiscard]] auto tryGetStaticMesh(StaticMeshHandle p_handle) -> StaticMesh * { return m_staticMeshes.tryGet(p_handle); }
+		[[nodiscard]] auto tryGetStaticMesh(StaticMeshHandle p_handle) const -> const StaticMesh * { return m_staticMeshes.tryGet(p_handle); }
+
+		// Thread safe operations
+		auto getStaticMeshState(StaticMeshHandle p_handle) -> EMeshState;
+		auto setStaticMeshState(StaticMeshHandle p_handle, EMeshState p_state) -> void;
+
+		struct StaticMeshThreadData
+		{
+			std::vector<Submesh> submeshes;
+
+			gpu::alloc::VirtualAllocationHandle vertexBufferAllocation{nullptr};
+			gpu::alloc::VirtualAllocationHandle indexBufferAllocation{nullptr};
+
+			EMeshState state{EMeshState::eUnloaded};
+			uint64     transferReadyToken{0u};
+		};
+
+		// Returns a copy of the static mesh's data, so the operation can be done under the internal mutex's lock
+		auto getStaticMeshThreadData(StaticMeshHandle p_handle) -> StaticMeshThreadData;
+		auto tryGetStaticMeshThreadData(StaticMeshHandle p_handle) -> std::optional<StaticMeshThreadData>;
 
 		auto getStaticMeshVertexBuffer() const -> gpu::BufferHandle { return m_staticMeshVertexBuffer; }
 		auto getStaticMeshIndexBuffer() const -> gpu::BufferHandle { return m_staticMeshIndexBuffer; }

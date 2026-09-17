@@ -8,6 +8,7 @@ target_link_libraries(toaster_test PRIVATE
 		Toaster::ToastOS
 		Toaster::ToastKernel
 		Toaster::ToastAsset
+		Toaster::ToastScene
 )
 
 set(SHADER_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/shaders)

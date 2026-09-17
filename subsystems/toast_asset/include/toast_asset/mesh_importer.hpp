@@ -24,6 +24,8 @@ namespace toaster::asset
 
 		auto asyncLoadStaticMeshFromFile(render::MeshManager *p_mesh_manager, render::StaticMeshHandle p_dst_mesh, const std::filesystem::path &p_path) -> void;
 
+		auto waitImports() -> void;
+
 	private:
 		struct ImportTask
 		{

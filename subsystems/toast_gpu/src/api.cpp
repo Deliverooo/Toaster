@@ -846,9 +846,10 @@ namespace toaster::gpu
 
 		#pragma region logical device
 
-		vk::StructureChain<vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan12Features, vk::PhysicalDeviceVulkan13Features, vk::PhysicalDeviceVulkan14Features,
-			vk::PhysicalDeviceShaderObjectFeaturesEXT, vk::PhysicalDeviceDescriptorHeapFeaturesEXT, vk::PhysicalDeviceShaderUntypedPointersFeaturesKHR,
-			vk::PhysicalDeviceMaintenance9FeaturesKHR, vk::PhysicalDeviceUnifiedImageLayoutsFeaturesKHR> feature_chain{{}, {}, {}, {}, {}, {}, {}, {}, {}};
+		vk::StructureChain<vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan11Features, vk::PhysicalDeviceVulkan12Features, vk::PhysicalDeviceVulkan13Features,
+			vk::PhysicalDeviceVulkan14Features, vk::PhysicalDeviceShaderObjectFeaturesEXT, vk::PhysicalDeviceDescriptorHeapFeaturesEXT,
+			vk::PhysicalDeviceShaderUntypedPointersFeaturesKHR, vk::PhysicalDeviceMaintenance9FeaturesKHR, vk::PhysicalDeviceUnifiedImageLayoutsFeaturesKHR> feature_chain
+				{{}, {}, {}, {}, {}, {}, {}, {}, {}, {}};
 
 		feature_chain.get<vk::PhysicalDeviceFeatures2>().features.samplerAnisotropy                        = true;
 		feature_chain.get<vk::PhysicalDeviceFeatures2>().features.sampleRateShading                        = true;
@@ -858,6 +859,7 @@ namespace toaster::gpu
 		feature_chain.get<vk::PhysicalDeviceFeatures2>().features.shaderInt64                              = true;
 		feature_chain.get<vk::PhysicalDeviceFeatures2>().features.vertexPipelineStoresAndAtomics           = true;
 		feature_chain.get<vk::PhysicalDeviceFeatures2>().features.multiDrawIndirect                        = true;
+		feature_chain.get<vk::PhysicalDeviceVulkan11Features>().shaderDrawParameters                       = true;
 		feature_chain.get<vk::PhysicalDeviceVulkan12Features>().scalarBlockLayout                          = true;
 		feature_chain.get<vk::PhysicalDeviceVulkan12Features>().timelineSemaphore                          = true;
 		feature_chain.get<vk::PhysicalDeviceVulkan12Features>().bufferDeviceAddress                        = true;
@@ -2576,7 +2578,12 @@ namespace toaster::gpu
 		present_info.setSwapchains(swapchain.swapchain);
 		present_info.setImageIndices(swapchain.imageIndex);
 		present_info.setWaitSemaphores(swapchain.renderFinishedSemaphores[swapchain.imageIndex]);
-		vk::Result res{g_impl->queues[static_cast<uint32>(EQueueType::eGraphics)].presentKHR(present_info)};
+
+		// Avoids vulkan hpp exceptions
+		const vk::Result res{
+			FunctionDispatcher::get().vkQueuePresentKHR(g_impl->queues[static_cast<uint32>(EQueueType::eGraphics)],
+														reinterpret_cast<const VkPresentInfoKHR *>(&present_info))
+		};
 
 		if (res == vk::Result::eErrorOutOfDateKHR || res == vk::Result::eSuboptimalKHR)
 			return false;

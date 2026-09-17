@@ -15,11 +15,11 @@ namespace toaster::asset
 	{
 		m_pendingImports.emplace_back([this, p_texture_manager, p_dst_texture, p_path]()-> void
 		{
-			auto &gpu_texture{p_texture_manager->getTexture(p_dst_texture)};
-
 			if (m_terminationRequested.load())
 				return;
-			gpu_texture.state->store(render::ETextureState::eLoading);
+
+			p_texture_manager->setTextureState(p_dst_texture, render::ETextureState::eLoading);
+
 			int32  width, height, num_channels;
 			uint8 *data{stbi_load(p_path.string().c_str(), &width, &height, &num_channels, 4u)};
 			if (m_terminationRequested.load())
@@ -38,5 +38,12 @@ namespace toaster::asset
 
 			stbi_image_free(data);
 		});
+	}
+
+	auto TextureImporter::waitImports() -> void
+	{
+		for (auto &import: m_pendingImports)
+			import.join();
+		m_pendingImports.clear();
 	}
 }

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdbool.h>
+
 #include "input.hpp"
 #include "events/event.hpp"
 

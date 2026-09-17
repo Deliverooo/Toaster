@@ -79,13 +79,12 @@ namespace toaster::asset
 
 	auto MeshImporter::asyncLoadStaticMeshFromFile(render::MeshManager *p_mesh_manager, render::StaticMeshHandle p_dst_mesh, const std::filesystem::path &p_path) -> void
 	{
+		p_mesh_manager->setStaticMeshState(p_dst_mesh, render::EMeshState::eLoading);
+
 		m_pendingImports.emplace_back([this, p_mesh_manager, p_dst_mesh, p_path]()-> void
 		{
 			if (m_terminationRequested.load())
 				return;
-
-			auto &gpu_mesh{p_mesh_manager->getStaticMesh(p_dst_mesh)};
-			gpu_mesh.state->store(render::EMeshState::eLoading);
 
 			const auto cpu_mesh_data{importStaticMeshDataFromFile(p_path)};
 
@@ -94,5 +93,13 @@ namespace toaster::asset
 
 			p_mesh_manager->uploadStaticMeshData(p_dst_mesh, cpu_mesh_data.vertices, cpu_mesh_data.indices, cpu_mesh_data.submeshes);
 		});
+	}
+
+	auto MeshImporter::waitImports() -> void
+	{
+		for (auto &import: m_pendingImports)
+			import.join();
+
+		m_pendingImports.clear();
 	}
 }

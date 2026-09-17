@@ -1,5 +1,7 @@
 #include "toast_render/mesh.hpp"
 
+#include <shared_mutex>
+
 #include "toast_gpu/frame.hpp"
 #include "toast_gpu/upload.hpp"
 
@@ -52,9 +54,7 @@ namespace toaster::render
 
 	auto MeshManager::registerStaticMesh() -> StaticMeshHandle
 	{
-		StaticMesh proxy_mesh{};
-		proxy_mesh.state = makeUnique<std::atomic<EMeshState> >(EMeshState::eUnloaded);
-		return m_staticMeshes.emplace(std::move(proxy_mesh));
+		return m_staticMeshes.emplace();
 	}
 
 	auto MeshManager::uploadStaticMeshData(StaticMeshHandle            p_handle, const std::vector<StaticMeshVertex> &p_vertices, const std::vector<uint32> &p_indices,
@@ -84,12 +84,13 @@ namespace toaster::render
 									   const std::vector<Submesh> &         p_submeshes) -> StaticMeshHandle
 	{
 		std::scoped_lock<std::mutex> lock{m_mutex};
-		const uint64                 vertex_buffer_size{p_vertices.size() * sizeof(StaticMeshVertex)};
-		const uint64                 index_buffer_size{p_indices.size() * sizeof(uint32)};
+
+		const uint64 vertex_buffer_size{p_vertices.size() * sizeof(StaticMeshVertex)};
+		const uint64 index_buffer_size{p_indices.size() * sizeof(uint32)};
 
 		StaticMesh static_mesh{};
-		static_mesh.submeshes              = p_submeshes;
-		static_mesh.state                  = makeUnique<std::atomic<EMeshState> >(EMeshState::eUnloaded);
+		static_mesh.submeshes = p_submeshes;
+		// static_mesh.state                  = makeUnique<std::atomic<EMeshState> >(EMeshState::eUnloaded);
 		static_mesh.vertexBufferAllocation = gpu::alloc::virtualAllocate(m_staticMeshVertexBufferBlock, vertex_buffer_size, 16u);
 		static_mesh.indexBufferAllocation  = gpu::alloc::virtualAllocate(m_staticMeshIndexBufferBlock, index_buffer_size, 16u);
 
@@ -99,7 +100,7 @@ namespace toaster::render
 		gpu::upload::uploadDataToBuffer(m_staticMeshVertexBuffer, p_vertices.data(), vertex_buffer_size, vertex_offset);
 		gpu::upload::uploadDataToBuffer(m_staticMeshIndexBuffer, p_indices.data(), index_buffer_size, index_offset);
 
-		static_mesh.state->store(EMeshState::eUploadingToGPU);
+		static_mesh.state = EMeshState::eUploadingToGPU;
 
 		return m_staticMeshes.emplace(std::move(static_mesh));
 	}
@@ -114,8 +115,44 @@ namespace toaster::render
 		m_staticMeshes.destroy(p_handle);
 	}
 
+	auto MeshManager::getStaticMeshState(StaticMeshHandle p_handle) -> EMeshState
+	{
+		std::scoped_lock<std::mutex> lock{m_mutex};
+
+		StaticMesh &mesh{m_staticMeshes[p_handle]};
+		return mesh.state;
+	}
+
+	auto MeshManager::setStaticMeshState(StaticMeshHandle p_handle, EMeshState p_state) -> void
+	{
+		std::scoped_lock<std::mutex> lock{m_mutex};
+
+		StaticMesh &mesh{m_staticMeshes[p_handle]};
+		mesh.state = p_state;
+	}
+
+	auto MeshManager::getStaticMeshThreadData(StaticMeshHandle p_handle) -> StaticMeshThreadData
+	{
+		std::scoped_lock<std::mutex> lock{m_mutex};
+
+		StaticMesh &mesh{m_staticMeshes[p_handle]};
+		return StaticMeshThreadData{mesh.submeshes, mesh.vertexBufferAllocation, mesh.indexBufferAllocation, mesh.state, mesh.transferReadyToken};
+	}
+
+	auto MeshManager::tryGetStaticMeshThreadData(StaticMeshHandle p_handle) -> std::optional<StaticMeshThreadData>
+	{
+		std::scoped_lock<std::mutex> lock{m_mutex};
+
+		StaticMesh *mesh{m_staticMeshes.tryGet(p_handle)};
+		if (mesh)
+			return StaticMeshThreadData{mesh->submeshes, mesh->vertexBufferAllocation, mesh->indexBufferAllocation, mesh->state, mesh->transferReadyToken};
+		return std::nullopt;
+	}
+
 	auto MeshManager::pollMeshUploads() -> void
 	{
+		std::scoped_lock<std::mutex> lock{m_mutex};
+
 		if (m_pendingMeshUploads.empty())
 			return;
 
@@ -125,8 +162,8 @@ namespace toaster::render
 			StaticMesh &static_mesh{m_staticMeshes[*it]};
 			if (transfer_value >= static_mesh.transferReadyToken)
 			{
-				static_mesh.state->store(EMeshState::eReady);
-				it = m_pendingMeshUploads.erase(it);
+				static_mesh.state = EMeshState::eReady;
+				it                = m_pendingMeshUploads.erase(it);
 			}
 			else
 				++it;

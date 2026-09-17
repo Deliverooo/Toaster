@@ -8,7 +8,6 @@ find_dependency(Vulkan REQUIRED COMPONENTS glslangValidator shaderc_combined SPI
 
 find_dependency(assimp REQUIRED)
 
-
 include("${CMAKE_CURRENT_LIST_DIR}/ToasterTargets.cmake")
 
 check_required_components(Toaster)

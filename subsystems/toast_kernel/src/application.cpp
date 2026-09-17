@@ -53,7 +53,7 @@ namespace toaster
 			cmd = gpu::getOrCreateCommandList(gpu::EQueueType::eGraphics);
 
 		auto last_time{std::chrono::high_resolution_clock::now()};
-		while (true) // TODO: Events / ts
+		while (m_running) // TODO: Events / ts
 		{
 			if (!m_window->processMessages())
 				break;
@@ -99,6 +99,7 @@ namespace toaster
 
 	auto Application::close() -> void
 	{
+		m_running = false;
 		// TODO: Close stuff
 	}
 

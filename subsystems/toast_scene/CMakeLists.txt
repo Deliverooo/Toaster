@@ -8,7 +8,8 @@ target_include_directories(ToastScene PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_S
 		$<INSTALL_INTERFACE:include>)
 
 target_sources(ToastScene PRIVATE ${RENDER_SRC})
-target_link_libraries(ToastScene PUBLIC Toaster::ToastAsset Toaster::ToastRender)
+
+target_link_libraries(ToastScene PUBLIC Toaster::ToastAsset Toaster::ToastRender EnTT::EnTT)
 
 add_library(Toaster::ToastScene ALIAS ToastScene)
 

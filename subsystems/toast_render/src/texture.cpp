@@ -30,7 +30,7 @@ namespace toaster::render
 					gpu::frame::defferTextureSlotFreeing(ts->m_renderCtx->getResourceHeap(), slot);
 			}
 
-			p_data->state.reset();
+			p_data->state = ETextureState::eUnloaded;
 		});
 	}
 
@@ -41,12 +41,7 @@ namespace toaster::render
 
 	auto TextureManager::registerTexture() -> TextureHandle
 	{
-		std::scoped_lock<std::mutex> lock{m_mutex};
-
-		Texture proxy_texture{};
-		proxy_texture.state = makeUnique<std::atomic<ETextureState> >(ETextureState::eUnloaded);
-
-		return m_textures.emplace(std::move(proxy_texture));
+		return m_textures.emplace();
 	}
 
 	auto TextureManager::createTexture(const gpu::TextureDesc &p_desc) -> TextureHandle
@@ -55,8 +50,6 @@ namespace toaster::render
 
 		Texture texture_data{};
 		texture_data.texture = gpu::createTexture(p_desc);
-		texture_data.state   = makeUnique<std::atomic<ETextureState> >(ETextureState::eUnloaded);
-
 		if (p_desc.usage & gpu::ETextureUsageFlagBits::eSampled)
 		{
 			texture_data.shaderReadHeapSlot = gpu::allocTextureHeapSlot(m_renderCtx->getResourceHeap());
@@ -79,7 +72,8 @@ namespace toaster::render
 	auto TextureManager::createIntoTexture(TextureHandle p_handle, const gpu::TextureDesc &p_desc) -> void
 	{
 		std::scoped_lock<std::mutex> lock{m_mutex};
-		Texture &                    texture{m_textures[p_handle]};
+
+		Texture &texture{m_textures[p_handle]};
 
 		texture.texture = gpu::createTexture(p_desc);
 
@@ -104,13 +98,15 @@ namespace toaster::render
 		upload_desc.mipLevel            = 0u;
 		texture_data.transferReadyToken = gpu::upload::uploadDataToTexture(texture_data.texture, p_data, p_size, upload_desc);
 
-		texture_data.state->store(ETextureState::eUploadingToGPU);
+		texture_data.state = ETextureState::eUploadingToGPU;
 
 		m_pendingTextureUploads.insert(p_handle);
 	}
 
 	auto TextureManager::getMipStorageHeapSlot(TextureHandle p_handle, uint32 p_mip) -> uint32
 	{
+		std::scoped_lock<std::mutex> lock{m_mutex};
+
 		Texture &texture_data{m_textures[p_handle]};
 
 		if (texture_data.perMipStorageHeapSlots.contains(p_mip))
@@ -123,8 +119,58 @@ namespace toaster::render
 		return slot;
 	}
 
+	auto TextureManager::getTextureState(TextureHandle p_handle) -> ETextureState
+	{
+		std::scoped_lock<std::mutex> lock{m_mutex};
+
+		Texture &texture{m_textures[p_handle]};
+		return texture.state;
+	}
+
+	auto TextureManager::setTextureState(TextureHandle p_handle, ETextureState p_state) -> void
+	{
+		std::scoped_lock<std::mutex> lock{m_mutex};
+
+		Texture &texture{m_textures[p_handle]};
+		texture.state = p_state;
+	}
+
+	auto TextureManager::getTextureThreadData(TextureHandle p_handle) -> TextureThreadData
+	{
+		std::scoped_lock<std::mutex> lock{m_mutex};
+
+		Texture &texture{m_textures[p_handle]};
+		return TextureThreadData{
+			texture.texture,
+			texture.shaderReadHeapSlot,
+			texture.storageHeapSlot,
+			texture.perMipStorageHeapSlots,
+			texture.state,
+			texture.transferReadyToken
+		};
+	}
+
+	auto TextureManager::tryGetTextureThreadData(TextureHandle p_handle) -> std::optional<TextureThreadData>
+	{
+		std::scoped_lock<std::mutex> lock{m_mutex};
+
+		Texture *texture{m_textures.tryGet(p_handle)};
+		if (texture)
+			return TextureThreadData{
+				texture->texture,
+				texture->shaderReadHeapSlot,
+				texture->storageHeapSlot,
+				texture->perMipStorageHeapSlots,
+				texture->state,
+				texture->transferReadyToken
+			};
+		return std::nullopt;
+	}
+
 	auto TextureManager::pollTextureUploads() -> void
 	{
+		std::scoped_lock<std::mutex> lock{m_mutex};
+
 		if (m_pendingTextureUploads.empty())
 			return;
 
@@ -134,8 +180,8 @@ namespace toaster::render
 			Texture &texture{m_textures[*it]};
 			if (transfer_value >= texture.transferReadyToken)
 			{
-				texture.state->store(ETextureState::eReady);
-				it = m_pendingTextureUploads.erase(it);
+				texture.state = ETextureState::eReady;
+				it            = m_pendingTextureUploads.erase(it);
 			}
 			else
 				++it;

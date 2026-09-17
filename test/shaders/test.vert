@@ -26,15 +26,25 @@ layout (buffer_reference, std140) readonly buffer CameraBuffer
     mat4 proj;
 };
 
+
+struct ObjectData
+{
+    mat4 model;
+    uint64_t materialAddress;
+    uint vertexBufferOffset;
+    uint indexBufferOffset;
+};
+layout (buffer_reference, scalar) readonly buffer ObjectDataBuffer
+{
+    ObjectData data[];
+};
+
 layout (push_constant) uniform PushData
 {
     CameraBuffer camera;
-
     VertexBuffer vertexBuffer;
     IndexBuffer indexBuffer;
-
-    uint vertexBufferOffset;
-    uint indexBufferOffset;
+    ObjectDataBuffer objectBuffer;
 
     uint texture;
     uint textureSampler;
@@ -42,8 +52,10 @@ layout (push_constant) uniform PushData
 
 void main()
 {
-    uint32_t index = pcs.indexBuffer.indices[pcs.vertexBufferOffset + gl_VertexIndex];
-    Vertex vertex = pcs.vertexBuffer.vertices[pcs.indexBufferOffset + index];
+    ObjectData data = pcs.objectBuffer.data[gl_BaseInstance];
+
+    uint32_t index = pcs.indexBuffer.indices[data.indexBufferOffset + gl_VertexIndex];
+    Vertex vertex = pcs.vertexBuffer.vertices[data.vertexBufferOffset + index];
 
     vec4 world_pos = vec4(vertex.position.xyz, 1.0f);
 

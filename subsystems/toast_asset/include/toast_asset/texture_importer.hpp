@@ -16,8 +16,9 @@ namespace toaster::asset
 
 		auto asyncLoadTextureFromFile(render::TextureManager *p_texture_manager, render::TextureHandle p_dst_texture, const std::filesystem::path &p_path) -> void;
 
-	private:
+		auto waitImports() -> void;
 
+	private:
 		struct ImportTask
 		{
 			String                path;

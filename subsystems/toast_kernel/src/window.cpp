@@ -118,6 +118,8 @@ namespace toaster
 			maximiseWindow();
 
 		glfwShowWindow(m_window);
+
+		setFullscreen();
 	}
 
 	Window::~Window()
@@ -141,6 +143,11 @@ namespace toaster
 		if (!m_currentTexture)
 		{
 			gpu::resizeSwapchain(m_swapchain, getSize());
+
+			WindowResizeEvent event{getSize()};
+			if (m_cbData.eventCallback)
+				m_cbData.eventCallback(event);
+
 			return false;
 		}
 
@@ -166,7 +173,12 @@ namespace toaster
 			return false;
 
 		if (!gpu::resizeSwapchain(m_swapchain, getSize()))
+		{
+			WindowResizeEvent event{getSize()};
+			if (m_cbData.eventCallback)
+				m_cbData.eventCallback(event);
 			return false;
+		}
 
 		// Instead of dispatching the window resize from the GLFW callback, it is safer to do it here. As to not interfere with any Vulkan code.
 		WindowResizeEvent event{getSize()};
