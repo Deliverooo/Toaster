@@ -6,6 +6,7 @@
 #include <GLFW/glfw3native.h>
 
 #include "toast_gpu/frame.hpp"
+#include "toast_kernel/events/key_event.hpp"
 #include "toast_kernel/events/window_event.hpp"
 
 #ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
@@ -38,6 +39,10 @@ namespace toaster
 
 		glfwSetWindowUserPointer(m_window, &m_cbData);
 
+		#define TST_DISPATCH_EVENT(__eventClass, ...) __eventClass event{__VA_ARGS__};\
+				if(data->eventCallback)\
+				data->eventCallback(event, data->eventCallbackUserData)
+
 		glfwSetFramebufferSizeCallback(m_window, +[](GLFWwindow *p_window, int32 p_width, int32 p_height) -> void
 		{
 			auto data{static_cast<CallbackData *>(glfwGetWindowUserPointer(p_window))};
@@ -48,22 +53,36 @@ namespace toaster
 
 		glfwSetKeyCallback(m_window, +[](GLFWwindow *p_window, int32 p_key, int32 p_scancode, int32 p_action, int32 p_mods) -> void
 		{
-			auto data{static_cast<CallbackData *>(glfwGetWindowUserPointer(p_window))};
+			auto     data{static_cast<CallbackData *>(glfwGetWindowUserPointer(p_window))};
+			EKeyCode keycode{static_cast<EKeyCode>(p_key)};
 
 			if (p_action == GLFW_PRESS)
-				data->inputCtx.m_currentKeyStates[static_cast<EKeyCode>(p_key)] = true;
+			{
+				data->inputCtx.m_currentKeyStates[keycode] = true;
+				TST_DISPATCH_EVENT(KeyPressEvent, keycode);
+			}
 			else if (p_action == GLFW_RELEASE)
-				data->inputCtx.m_currentKeyStates[static_cast<EKeyCode>(p_key)] = false;
+			{
+				data->inputCtx.m_currentKeyStates[keycode] = false;
+				TST_DISPATCH_EVENT(KeyReleaseEvent, keycode);
+			}
 		});
 
 		glfwSetMouseButtonCallback(m_window, +[](GLFWwindow *p_window, int32 p_button, int32 p_action, int32 p_mods) -> void
 		{
-			auto data{static_cast<CallbackData *>(glfwGetWindowUserPointer(p_window))};
+			auto         data{static_cast<CallbackData *>(glfwGetWindowUserPointer(p_window))};
+			EMouseButton button{static_cast<EMouseButton>(p_button)};
 
 			if (p_action == GLFW_PRESS)
-				data->inputCtx.m_currentMouseStates[static_cast<EMouseButton>(p_button)] = true;
+			{
+				data->inputCtx.m_currentMouseStates[button] = true;
+				// TST_DISPATCH_EVENT(MouseButtonPressEvent, button);
+			}
 			else if (p_action == GLFW_RELEASE)
-				data->inputCtx.m_currentMouseStates[static_cast<EMouseButton>(p_button)] = false;
+			{
+				data->inputCtx.m_currentMouseStates[button] = false;
+				// TST_DISPATCH_EVENT(MouseButtonReleaseEvent, button);
+			}
 		});
 
 		glfwSetCursorPosCallback(m_window, +[](GLFWwindow *p_window, float64 p_xpos, float64 p_ypos) -> void
@@ -99,6 +118,8 @@ namespace toaster
 				data->inputCtx.m_firstMouse = true;
 		});
 
+		#undef TST_DISPATCH_EVENT
+
 		//TODO: Actually finish setting up the callbacks...
 
 		HWND hwnd{glfwGetWin32Window(m_window)};
@@ -119,7 +140,7 @@ namespace toaster
 
 		glfwShowWindow(m_window);
 
-		setFullscreen();
+		// setFullscreen();
 	}
 
 	Window::~Window()
@@ -146,7 +167,7 @@ namespace toaster
 
 			WindowResizeEvent event{getSize()};
 			if (m_cbData.eventCallback)
-				m_cbData.eventCallback(event);
+				m_cbData.eventCallback(event, m_cbData.eventCallbackUserData);
 
 			return false;
 		}
@@ -176,14 +197,14 @@ namespace toaster
 		{
 			WindowResizeEvent event{getSize()};
 			if (m_cbData.eventCallback)
-				m_cbData.eventCallback(event);
+				m_cbData.eventCallback(event, m_cbData.eventCallbackUserData);
 			return false;
 		}
 
 		// Instead of dispatching the window resize from the GLFW callback, it is safer to do it here. As to not interfere with any Vulkan code.
 		WindowResizeEvent event{getSize()};
 		if (m_cbData.eventCallback)
-			m_cbData.eventCallback(event);
+			m_cbData.eventCallback(event, m_cbData.eventCallbackUserData);
 
 		m_cbData.resized = false;
 		return true;

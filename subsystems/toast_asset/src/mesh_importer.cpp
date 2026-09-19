@@ -4,6 +4,8 @@
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
 
+#include "toast_gpu/upload.hpp"
+
 static constexpr uint32 s_MeshImportFlags{
 	aiProcess_CalcTangentSpace | aiProcess_Triangulate | aiProcess_SortByPType | aiProcess_GenNormals | aiProcess_GenUVCoords | aiProcess_OptimizeMeshes |
 	aiProcess_JoinIdenticalVertices | aiProcess_LimitBoneWeights | aiProcess_ValidateDataStructure | aiProcess_GlobalScale | aiProcess_ImproveCacheLocality |
@@ -12,6 +14,12 @@ static constexpr uint32 s_MeshImportFlags{
 
 namespace toaster::asset
 {
+	MeshImporter::MeshImporter(render::MeshManager *p_mesh_manager, render::MaterialManager *p_material_manager,
+							   TextureImporter *    p_texture_importer) : m_textureImporter(p_texture_importer), m_meshManager(p_mesh_manager),
+																		  m_materialManager(p_material_manager), m_textureManager(p_texture_importer->getTextureManager())
+	{
+	}
+
 	MeshImporter::~MeshImporter()
 	{
 		m_terminationRequested.store(true);
@@ -33,11 +41,70 @@ namespace toaster::asset
 		{
 			const aiMaterial *ai_mat{scene->mMaterials[i]};
 
-			materials.emplace_back(nullptr); // TODO:
+			aiColor3D ai_albedo_colour{};
+			ai_mat->Get(AI_MATKEY_COLOR_DIFFUSE, ai_albedo_colour);
+
+			auto &tst_mat{materials.emplace_back(m_materialManager->createMaterial())};
+			m_materialManager->setAlbedoColour(tst_mat, {ai_albedo_colour.r, ai_albedo_colour.g, ai_albedo_colour.b});
+
+			auto get_path_and_create_texture_if_exists{
+				[p_path](const aiString &p_ai_path) -> std::optional<std::filesystem::path>
+				{
+					const std::filesystem::path texture_path{p_ai_path.C_Str()};
+					std::filesystem::path       tex_map_path{std::filesystem::path{p_path}.parent_path() / texture_path};
+
+					if (!std::filesystem::exists(tex_map_path))
+					{
+						tex_map_path = std::filesystem::path{p_path}.parent_path() / texture_path.filename();
+						if (!std::filesystem::exists(tex_map_path))
+						{
+							return std::nullopt;
+						}
+					}
+					return tex_map_path;
+				}
+			};
+
+			aiString ai_albedo_map_path;
+			bool     has_albedo_map{ai_mat->GetTexture(AI_MATKEY_BASE_COLOR_TEXTURE, &ai_albedo_map_path) == AI_SUCCESS};
+			if (!has_albedo_map)
+				has_albedo_map = ai_mat->GetTexture(aiTextureType_DIFFUSE, 0, &ai_albedo_map_path) == AI_SUCCESS;
+
+			if (has_albedo_map)
+			{
+				auto albedo_map_path{get_path_and_create_texture_if_exists(ai_albedo_map_path)};
+				if (albedo_map_path.has_value())
+				{
+					render::TextureHandle tex{m_textureManager->registerTexture()};
+					m_textureImporter->asyncLoadTextureFromFile(tex, *albedo_map_path);
+
+					m_materialManager->setAlbedoMap(tst_mat, tex);
+				}
+				else
+					m_materialManager->setAlbedoColour(tst_mat, {1.0f, 0.0f, 1.0f}); // Error magenta
+			}
+
+			aiString ai_normal_map_path;
+			bool     has_normal_map{ai_mat->GetTexture(aiTextureType_NORMALS, 0, &ai_normal_map_path) == AI_SUCCESS};
+
+			if (has_normal_map)
+			{
+				auto normal_map_path{get_path_and_create_texture_if_exists(ai_normal_map_path)};
+				if (normal_map_path.has_value())
+				{
+					render::TextureHandle tex{m_textureManager->registerTexture()};
+					m_textureImporter->asyncLoadTextureFromFile(tex, *normal_map_path);
+
+					m_materialManager->setNormalMap(tst_mat, tex);
+				}
+			}
 		}
 
 		if (!scene->HasMaterials())
-			materials.emplace_back(nullptr);
+		{
+			auto &tst_mat{materials.emplace_back(m_materialManager->createMaterial())};
+			m_materialManager->setAlbedoColour(tst_mat, {1.0f, 0.0f, 1.0f});
+		}
 
 		for (uint32 m{0u}; m < scene->mNumMeshes; ++m)
 		{
@@ -73,25 +140,20 @@ namespace toaster::asset
 			out_data.vertices.insert(out_data.vertices.end(), mesh_vertices.begin(), mesh_vertices.end());
 			out_data.indices.insert(out_data.indices.end(), mesh_indices.begin(), mesh_indices.end());
 		}
-
 		return std::move(out_data);
 	}
 
-	auto MeshImporter::asyncLoadStaticMeshFromFile(render::MeshManager *p_mesh_manager, render::StaticMeshHandle p_dst_mesh, const std::filesystem::path &p_path) -> void
+	auto MeshImporter::asyncLoadStaticMeshFromFile(render::StaticMeshHandle p_dst_mesh, const std::filesystem::path &p_path) -> void
 	{
-		p_mesh_manager->setStaticMeshState(p_dst_mesh, render::EMeshState::eLoading);
-
-		m_pendingImports.emplace_back([this, p_mesh_manager, p_dst_mesh, p_path]()-> void
+		m_meshManager->setStaticMeshState(p_dst_mesh, render::EMeshState::eLoading);
+		m_pendingImports.emplace_back([this, p_dst_mesh, p_path]()-> void
 		{
-			if (m_terminationRequested.load())
-				return;
-
 			const auto cpu_mesh_data{importStaticMeshDataFromFile(p_path)};
 
 			if (m_terminationRequested.load())
 				return;
 
-			p_mesh_manager->uploadStaticMeshData(p_dst_mesh, cpu_mesh_data.vertices, cpu_mesh_data.indices, cpu_mesh_data.submeshes);
+			m_meshManager->uploadStaticMeshData(p_dst_mesh, cpu_mesh_data.vertices, cpu_mesh_data.indices, cpu_mesh_data.submeshes);
 		});
 	}
 

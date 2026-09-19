@@ -11,6 +11,7 @@
 #include "toast_asset/texture_importer.hpp"
 #include "toast_gpu/upload.hpp"
 #include "toast_kernel/camera.hpp"
+#include "toast_kernel/events/key_event.hpp"
 #include "toast_kernel/events/window_event.hpp"
 #include "toast_render/mesh.hpp"
 #include "toast_render/texture.hpp"
@@ -24,6 +25,7 @@ using namespace toaster;
 struct StaticMeshComponent
 {
 	render::StaticMeshHandle mesh{nullptr};
+	bool                     visible{true};
 };
 
 struct TransformComponent
@@ -56,57 +58,42 @@ class TestLayer : public IAppLayer
 public:
 	static constexpr uint32 maxDrawCalls{1028u * 1028u * 10u};
 
-	struct ObjectData
+	struct alignas(16u) ObjectData
 	{
-		XMFLOAT4X4 model;
-		uintptr    materialAddress;
-		uint32     vertexBufferOffset;
-		uint32     indexBufferOffset;
+		uint32 material;
+		uint32 vertexBufferOffset;
+		uint32 indexBufferOffset;
+		uint32 _padd;
 	};
 
 	auto onInit() -> void override
 	{
-		m_textureManager = makeUnique<render::TextureManager>(m_renderCtx);
-		m_meshManager    = makeUnique<render::MeshManager>();
+		m_textureManager  = makeUnique<render::TextureManager>(m_renderCtx);
+		m_materialManager = makeUnique<render::MaterialManager>(m_textureManager.get(), 1028u);
+		m_meshManager     = makeUnique<render::MeshManager>();
 
 		std::filesystem::current_path("../test");
-
-		m_whiteTexture = m_textureManager->createTexture(gpu::TextureDesc{
-															 tsm::uint3{1u, 1u, 1u},
-															 1u,
-															 1u,
-															 gpu::ETextureType::e2D,
-															 gpu::ESampleCount::e1,
-															 gpu::EFormat::eR8G8B8A8Srgb,
-															 gpu::ETextureUsageFlagBits::eSampled | gpu::ETextureUsageFlagBits::eTransferDst
-														 });
-
-		uint32 white_texture_data{0xFFFFFFFF};
-		m_textureManager->setData(m_whiteTexture, &white_texture_data, sizeof(uint32));
 
 		gpu::upload::flushUploadsAndWait();
 		m_textureManager->pollTextureUploads();
 
-		m_textureImporter = makeUnique<asset::TextureImporter>();
-		m_textureReal     = m_textureManager->registerTexture();
-		m_textureImporter->asyncLoadTextureFromFile(m_textureManager.get(), m_textureReal, "resources/textures/brick_wall_001_diffuse_8k.png");
-
-		m_meshImporter = makeUnique<asset::MeshImporter>();
-
-		{
-			render::StaticMeshHandle orbo_mesh{m_meshManager->registerStaticMesh()};
-			m_meshImporter->asyncLoadStaticMeshFromFile(m_meshManager.get(), orbo_mesh, "resources/meshes/Orbo_Geo.gltf");
-
-			m_orboEntity = m_scene.createEntity();
-			m_scene.addComponent<StaticMeshComponent>(m_orboEntity, orbo_mesh);
-		}
+		m_textureImporter = makeUnique<asset::TextureImporter>(m_textureManager.get());
+		m_meshImporter    = makeUnique<asset::MeshImporter>(m_meshManager.get(), m_materialManager.get(), m_textureImporter.get());
 
 		{
 			render::StaticMeshHandle level_mesh{m_meshManager->registerStaticMesh()};
-			m_meshImporter->asyncLoadStaticMeshFromFile(m_meshManager.get(), level_mesh, "resources/meshes/Backrooms.fbx");
+			m_meshImporter->asyncLoadStaticMeshFromFile(level_mesh, "resources/meshes/Backrooms.fbx");
 
 			m_levelEntity = m_scene.createEntity();
 			m_scene.addComponent<StaticMeshComponent>(m_levelEntity, level_mesh);
+		}
+
+		{
+			render::StaticMeshHandle orbo_mesh{m_meshManager->registerStaticMesh()};
+			m_meshImporter->asyncLoadStaticMeshFromFile(orbo_mesh, "resources/meshes/Orbo_Geo.gltf");
+
+			m_orboEntity = m_scene.createEntity();
+			m_scene.addComponent<StaticMeshComponent>(m_orboEntity, orbo_mesh);
 		}
 
 		gpu::SamplerHandle sampler{gpu::createSampler(gpu::SamplerDesc{})};
@@ -171,8 +158,7 @@ public:
 		m_depthAttachment = gpu::createTexture(depth_desc);
 	}
 
-	TestLayer() = default;
-
+	TestLayer()           = default;
 	~TestLayer() override = default;
 
 	auto onDestroy() -> void override
@@ -196,6 +182,7 @@ public:
 
 		m_meshImporter.reset();
 		m_meshManager.reset();
+		m_materialManager.reset();
 		m_textureImporter.reset();
 		m_textureManager.reset();
 	}
@@ -204,14 +191,6 @@ public:
 	{
 		if (m_inputCtx->isKeyDown(EKeyCode::eLeftControl) && m_inputCtx->isKeyPressed(EKeyCode::eE))
 			m_app->close();
-
-		if (m_inputCtx->isKeyPressed(EKeyCode::eF11))
-		{
-			if (m_app->getWindow().isFullscreen())
-				m_app->getWindow().setWindowed();
-			else
-				m_app->getWindow().setFullscreen();
-		}
 
 		if (m_inputCtx->isMouseButtonDown(EMouseButton::eRight))
 		{
@@ -233,6 +212,8 @@ public:
 	auto onRender(gpu::CommandListHandle p_cmd) -> void override
 	{
 		m_textureManager->pollTextureUploads();
+		m_materialManager->pollMaterialTextureUploads();
+		m_materialManager->updateDirtyMaterials(m_app->getFrameIndex());
 		m_meshManager->pollMeshUploads();
 
 		for (auto &list: m_secondaryBuffers[m_app->getFrameIndex()])
@@ -255,95 +236,84 @@ public:
 
 		gpu::beginRendering(p_cmd, rendering_info);
 
-		std::future<void> future{
-			std::async(std::launch::async, [this, secondary_cmd, render_tex_desc, rendering_info]() -> void
+		gpu::CommandListInheritanceInfo inheritance_info{};
+		inheritance_info.resourceHeap            = m_renderCtx->getResourceHeap();
+		inheritance_info.samplerHeap             = m_renderCtx->getSamplerHeap();
+		inheritance_info.colourAttachmentFormats = {render_tex_desc.format};
+		inheritance_info.depthAttachmentFormat   = gpu::EFormat::eD32Sfloat;
+		inheritance_info.samples                 = gpu::ESampleCount::e1;
+		gpu::openCommandList(secondary_cmd, &inheritance_info);
+
+		gpu::bindShaders(secondary_cmd, {m_vs, m_ps});
+
+		gpu::setPrimitiveTopology(secondary_cmd, gpu::EPrimitiveTopology::eTriangleList);
+		gpu::setPrimitiveRestart(secondary_cmd, false);
+
+		gpu::setViewport(secondary_cmd, tsm::Viewport{rendering_info.renderArea});
+		gpu::setScissor(secondary_cmd, rendering_info.renderArea);
+
+		gpu::setRasterizerDiscardEnable(secondary_cmd, false);
+		gpu::setPolygonMode(secondary_cmd, gpu::EPolygonMode::eFill);
+		gpu::setCullMode(secondary_cmd, gpu::ECullMode::eBack);
+		gpu::setFrontFace(secondary_cmd, gpu::EFrontFace::eCCW);
+		gpu::setDepthBias(secondary_cmd, false);
+		gpu::setLineWidth(secondary_cmd, 1.0f);
+
+		gpu::setRasterizationSamples(secondary_cmd, gpu::ESampleCount::e1);
+
+		gpu::setDepthState(secondary_cmd, true);
+		gpu::setStencilState(secondary_cmd, false);
+
+		uint32 draw_count{0u};
+
+		gpu::DrawIndirectCommand *mapped_cmd{static_cast<gpu::DrawIndirectCommand *>(gpu::getBufferMappedData(m_indirectBuffers[m_app->getFrameIndex()]))};
+		ObjectData *              mapped_object_data{static_cast<ObjectData *>(gpu::getBufferMappedData(m_objectDataBuffers[m_app->getFrameIndex()]))};
+
+		const auto view{m_scene.getRegistry().view<StaticMeshComponent>()};
+		view.each([this, &draw_count, mapped_cmd, mapped_object_data]([[maybe_unused]] entt::entity p_entity, const StaticMeshComponent &p_smc) -> void
+		{
+			const auto mesh_data{m_meshManager->tryGetStaticMeshThreadData(p_smc.mesh)};
+			if (mesh_data.has_value() && mesh_data->state == render::EMeshState::eReady && p_smc.visible)
 			{
-				gpu::CommandListInheritanceInfo inheritance_info{};
-				inheritance_info.resourceHeap            = m_renderCtx->getResourceHeap();
-				inheritance_info.samplerHeap             = m_renderCtx->getSamplerHeap();
-				inheritance_info.colourAttachmentFormats = {render_tex_desc.format};
-				inheritance_info.depthAttachmentFormat   = gpu::EFormat::eD32Sfloat;
-				inheritance_info.samples                 = gpu::ESampleCount::e1;
-				gpu::openCommandList(secondary_cmd, &inheritance_info);
-
-				gpu::bindShaders(secondary_cmd, {m_vs, m_ps});
-
-				gpu::setPrimitiveTopology(secondary_cmd, gpu::EPrimitiveTopology::eTriangleList);
-				gpu::setPrimitiveRestart(secondary_cmd, false);
-
-				gpu::setViewport(secondary_cmd, tsm::Viewport{rendering_info.renderArea});
-				gpu::setScissor(secondary_cmd, rendering_info.renderArea);
-
-				gpu::setRasterizerDiscardEnable(secondary_cmd, false);
-				gpu::setPolygonMode(secondary_cmd, gpu::EPolygonMode::eFill);
-				gpu::setCullMode(secondary_cmd, gpu::ECullMode::eBack);
-				gpu::setFrontFace(secondary_cmd, gpu::EFrontFace::eCCW);
-				gpu::setDepthBias(secondary_cmd, false);
-				gpu::setLineWidth(secondary_cmd, 1.0f);
-
-				gpu::setRasterizationSamples(secondary_cmd, gpu::ESampleCount::e1);
-
-				gpu::setDepthState(secondary_cmd, true);
-				gpu::setStencilState(secondary_cmd, false);
-
-				render::TextureHandle texture_to_render{m_textureReal};
-
-				if (m_textureManager->getTextureState(m_textureReal) != render::ETextureState::eReady)
-					texture_to_render = m_whiteTexture;
-
-				uint32 draw_count{0u};
-
-				gpu::DrawIndirectCommand *mapped_cmd{static_cast<gpu::DrawIndirectCommand *>(gpu::getBufferMappedData(m_indirectBuffers[m_app->getFrameIndex()]))};
-				ObjectData *              mapped_object_data{static_cast<ObjectData *>(gpu::getBufferMappedData(m_objectDataBuffers[m_app->getFrameIndex()]))};
-
-				const auto view{m_scene.getRegistry().view<StaticMeshComponent>()};
-				view.each([this, &draw_count, mapped_cmd, mapped_object_data]([[maybe_unused]] entt::entity p_entity, const StaticMeshComponent &p_smc) -> void
+				for (const auto &submesh: mesh_data->submeshes)
 				{
-					const auto mesh_data{m_meshManager->tryGetStaticMeshThreadData(p_smc.mesh)};
-					if (mesh_data.has_value() && mesh_data->state == render::EMeshState::eReady)
-					{
-						const uint32 vertex_buffer_offset{
-							static_cast<uint32>(gpu::alloc::getAllocationOffset(mesh_data->vertexBufferAllocation) / sizeof(render::StaticMeshVertex))
-						};
-						const uint32 index_buffer_offset{static_cast<uint32>(gpu::alloc::getAllocationOffset(mesh_data->indexBufferAllocation) / sizeof(uint32))};
+					mapped_object_data[draw_count].material           = submesh.material.getId();
+					mapped_object_data[draw_count].vertexBufferOffset = mesh_data->vertexBufferOffset;
+					mapped_object_data[draw_count].indexBufferOffset  = mesh_data->indexBufferOffset;
 
-						for (const auto &submesh: mesh_data->submeshes)
-						{
-							mapped_object_data[draw_count] = ObjectData{{}, 0u, vertex_buffer_offset, index_buffer_offset};
-							mapped_cmd[draw_count]         = gpu::DrawIndirectCommand{submesh.indexCount, 1u, submesh.indexOffset, draw_count};
-							++draw_count;
-						}
-					}
-				});
+					mapped_cmd[draw_count] = gpu::DrawIndirectCommand{submesh.indexCount, 1u, submesh.indexOffset, draw_count};
+					++draw_count;
+				}
+			}
+		});
 
-				struct PushData
-				{
-					uintptr cameraBuffer;
-					uintptr vertexBuffer;
-					uintptr indexBuffer;
-					uintptr objectDataBuffer;
+		struct PushData
+		{
+			uintptr cameraBuffer;
+			uintptr vertexBuffer;
+			uintptr indexBuffer;
+			uintptr objectDataBuffer;
+			uintptr materialBuffer;
 
-					uint32 texture;
-					uint32 sampler;
-				};
-				PushData push_data{};
-				push_data.cameraBuffer     = gpu::getBufferAddress(m_cameraBuffers[m_app->getFrameIndex()]);
-				push_data.vertexBuffer     = gpu::getBufferAddress(m_meshManager->getStaticMeshVertexBuffer());
-				push_data.indexBuffer      = gpu::getBufferAddress(m_meshManager->getStaticMeshIndexBuffer());
-				push_data.objectDataBuffer = gpu::getBufferAddress(m_objectDataBuffers[m_app->getFrameIndex()]);
-				push_data.sampler          = m_samplerHeapSlot;
-				push_data.texture          = m_textureManager->getTexture(texture_to_render).shaderReadHeapSlot;
-
-				gpu::pushData(secondary_cmd, push_data);
-				gpu::bindIndexBuffer(secondary_cmd, nullptr);
-
-				if (draw_count)
-					gpu::drawIndirect(secondary_cmd, m_indirectBuffers[m_app->getFrameIndex()], 0u, draw_count);
-
-				gpu::closeCommandList(secondary_cmd);
-			})
+			uint32 _padd[1];
+			uint32 samplerId;
 		};
-		future.wait();
+		PushData push_data{};
+		push_data.cameraBuffer     = gpu::getBufferAddress(m_cameraBuffers[m_app->getFrameIndex()]);
+		push_data.vertexBuffer     = gpu::getBufferAddress(m_meshManager->getStaticMeshVertexBuffer());
+		push_data.indexBuffer      = gpu::getBufferAddress(m_meshManager->getStaticMeshIndexBuffer());
+		push_data.objectDataBuffer = gpu::getBufferAddress(m_objectDataBuffers[m_app->getFrameIndex()]);
+		push_data.materialBuffer   = m_materialManager->getMaterialBufferAddress(m_app->getFrameIndex());
+		push_data.samplerId        = m_samplerHeapSlot;
+		// push_data.textureId        = m_textureManager->getTextureShaderReadHeapSlot(m_materialManager->getDefaultColourMap());
+
+		gpu::pushData(secondary_cmd, push_data);
+		gpu::bindIndexBuffer(secondary_cmd, nullptr);
+
+		if (draw_count)
+			gpu::drawIndirect(secondary_cmd, m_indirectBuffers[m_app->getFrameIndex()], 0u, draw_count);
+
+		gpu::closeCommandList(secondary_cmd);
 		gpu::executeCommandLists(p_cmd, secondary_cmd);
 
 		gpu::endRendering(p_cmd);
@@ -352,6 +322,24 @@ public:
 	auto onEvent(Event &p_event) -> void override
 	{
 		EventDispatcher ed{p_event};
+
+		// This has to happen here, so it gets called outside of the frame loop because the swapchain will experience issues
+		ed.dispatch<KeyPressEvent>([this](KeyPressEvent &p_e) -> bool
+		{
+			if (p_e.getKeyCode() == EKeyCode::eF11)
+			{
+				if (m_app->getWindow().isFullscreen())
+				{
+					m_app->getWindow().setWindowed();
+					m_app->getWindow().maximiseWindow();
+				}
+				else
+					m_app->getWindow().setFullscreen();
+			}
+
+			return false;
+		});
+
 		ed.dispatch<WindowResizeEvent>([this](WindowResizeEvent &p_e)-> bool
 		{
 			// Recreate the depth buffer
@@ -368,11 +356,8 @@ public:
 		});
 	}
 
-private:
+private :
 	gpu::TextureHandle m_depthAttachment{nullptr};
-
-	render::TextureHandle m_whiteTexture{nullptr};
-	render::TextureHandle m_textureReal{nullptr};
 
 	entt::entity m_levelEntity{entt::null};
 	entt::entity m_orboEntity{entt::null};
@@ -387,8 +372,9 @@ private:
 
 	std::vector<std::vector<gpu::CommandListHandle> > m_secondaryBuffers;
 
-	UniquePtr<render::MeshManager> m_meshManager{nullptr};
-	UniquePtr<asset::MeshImporter> m_meshImporter{nullptr};
+	UniquePtr<render::MaterialManager> m_materialManager{nullptr};
+	UniquePtr<render::MeshManager>     m_meshManager{nullptr};
+	UniquePtr<asset::MeshImporter>     m_meshImporter{nullptr};
 
 	UniquePtr<render::TextureManager> m_textureManager{nullptr};
 	UniquePtr<asset::TextureImporter> m_textureImporter{nullptr};

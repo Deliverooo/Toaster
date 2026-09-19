@@ -2293,8 +2293,8 @@ namespace toaster::gpu
 
 	auto destroyTexture(TextureHandle p_texture) -> void
 	{
-		std::scoped_lock<std::mutex> lock{g_impl->undefinedTexturesMutex};
 		g_impl->textures.destroy(p_texture);
+		std::scoped_lock<std::mutex> lock{g_impl->undefinedTexturesMutex};
 		g_impl->undefinedTextures.erase(p_texture);
 	}
 

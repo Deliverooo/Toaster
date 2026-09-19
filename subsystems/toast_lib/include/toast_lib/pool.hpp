@@ -34,17 +34,18 @@ namespace toaster
 			{
 				id = m_freeIndices.back();
 				m_freeIndices.pop_back();
-				magic = m_entries[id].magic + 1;
+				magic = m_entries[id]->magic + 1;
 			}
 			else
 			{
 				id = m_entries.size();
 				m_entries.resize(id + 1u);
+				m_entries[id] = new Entry{};
 			}
 
-			m_entries[id].data  = TData{std::forward<TArgs>(p_args)...};
-			m_entries[id].magic = magic;
-			m_entries[id].alive = true;
+			m_entries[id]->data  = TData{std::forward<TArgs>(p_args)...};
+			m_entries[id]->magic = magic;
+			m_entries[id]->alive = true;
 
 			return HandleType{id, magic};
 		}
@@ -56,12 +57,12 @@ namespace toaster
 			// return;
 
 			uint32 id{p_handle.getId()};
-			m_entries[id].alive = false;
-			++m_entries[id].magic;
+			m_entries[id]->alive = false;
+			++m_entries[id]->magic;
 			m_freeIndices.push_back(id);
 
 			if (m_destructorFn)
-				m_destructorFn(std::addressof(m_entries[id].data), m_destructorUserData);
+				m_destructorFn(std::addressof(m_entries[id]->data), m_destructorUserData);
 		}
 
 		auto clear() -> void
@@ -69,8 +70,12 @@ namespace toaster
 			if (m_destructorFn)
 			{
 				for (auto &entry: m_entries)
-					if (entry.alive)
-						m_destructorFn(&entry.data, m_destructorUserData);
+				{
+					if (entry->alive)
+						m_destructorFn(&entry->data, m_destructorUserData);
+
+					delete entry;
+				}
 			}
 			m_entries.clear();
 			m_freeIndices.clear();
@@ -80,18 +85,18 @@ namespace toaster
 		{
 			if (!isValid(p_handle))
 				return nullptr;
-			return std::addressof(m_entries[p_handle.getId()].data);
+			return std::addressof(m_entries[p_handle.getId()]->data);
 		}
 
 		auto tryGet(HandleType p_handle) const -> const TData *
 		{
 			if (!isValid(p_handle))
 				return nullptr;
-			return std::addressof(m_entries[p_handle.getId()].data);
+			return std::addressof(m_entries[p_handle.getId()]->data);
 		}
 
-		auto operator[](HandleType p_handle) -> TData & { return m_entries[p_handle.getId()].data; }
-		auto operator[](HandleType p_handle) const -> const TData & { return m_entries[p_handle.getId()].data; }
+		auto operator[](HandleType p_handle) -> TData & { return m_entries[p_handle.getId()]->data; }
+		auto operator[](HandleType p_handle) const -> const TData & { return m_entries[p_handle.getId()]->data; }
 
 		auto isValid(HandleType p_handle) const -> bool
 		{
@@ -100,7 +105,7 @@ namespace toaster
 			if (id >= m_entries.size())
 				return false;
 
-			return m_entries[id].alive && (m_entries[id].magic == p_handle.getMagic());
+			return m_entries[id]->alive && (m_entries[id]->magic == p_handle.getMagic());
 		}
 
 	private:
@@ -111,8 +116,8 @@ namespace toaster
 			bool   alive{false};
 		};
 
-		std::vector<Entry>  m_entries;
-		std::vector<uint32> m_freeIndices;
+		std::vector<Entry *> m_entries;
+		std::vector<uint32>  m_freeIndices;
 
 		DestructorFn m_destructorFn{nullptr};
 		void *       m_destructorUserData{nullptr};

@@ -147,6 +147,8 @@ namespace toaster::gpu::upload
 
 	auto uploadDataToBuffer(BufferHandle p_dst_buffer, const void *p_data, uint64 p_size, uint64 p_offset) -> uint64
 	{
+		std::scoped_lock<std::mutex> lock{g_impl->uploadMutex};
+
 		TST_ASSERT_MSG(p_data != nullptr && p_size > 0u, "Upload data must actually exist");
 		PendingUpload upload{};
 		upload.type              = PendingUpload::EType::eBuffer;
@@ -155,13 +157,14 @@ namespace toaster::gpu::upload
 		upload.data.resize(p_size);
 		std::memcpy(upload.data.data(), p_data, p_size);
 
-		std::scoped_lock<std::mutex> lock{g_impl->uploadMutex};
 		g_impl->pending.emplace_back(std::move(upload));
 		return frame::getTransferTimelineCounterValue() + 1u;
 	}
 
 	auto uploadDataToTexture(TextureHandle p_dst_texture, const void *p_data, uint64 p_size, const TextureUploadDesc &p_desc) -> uint64
 	{
+		std::scoped_lock<std::mutex> lock{g_impl->uploadMutex};
+
 		TST_ASSERT_MSG(p_data != nullptr && p_size > 0u, "Texture upload data must actually exist");
 		TST_ASSERT_MSG(p_desc.layerCount > 0u, "Texture upload layer count must be non-zero");
 
@@ -172,13 +175,14 @@ namespace toaster::gpu::upload
 		upload.data.resize(p_size);
 		std::memcpy(upload.data.data(), p_data, p_size);
 
-		std::scoped_lock<std::mutex> lock{g_impl->uploadMutex};
 		g_impl->pending.emplace_back(std::move(upload));
 		return frame::getTransferTimelineCounterValue() + 1u;
 	}
 
 	auto cancelBufferUpload(BufferHandle p_buffer) -> void
 	{
+		std::scoped_lock<std::mutex> lock{g_impl->uploadMutex};
+
 		for (auto it{g_impl->pending.begin()}; it != g_impl->pending.end();)
 		{
 			if (it->handle == static_cast<uint64>(p_buffer) && it->type == PendingUpload::EType::eBuffer)
@@ -190,6 +194,8 @@ namespace toaster::gpu::upload
 
 	auto cancelTextureUpload(TextureHandle p_texture) -> void
 	{
+		std::scoped_lock<std::mutex> lock{g_impl->uploadMutex};
+
 		for (auto it{g_impl->pending.begin()}; it != g_impl->pending.end();)
 		{
 			if (it->handle == static_cast<uint64>(p_texture) && it->type == PendingUpload::EType::eTexture)

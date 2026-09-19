@@ -9,46 +9,56 @@
 
 namespace toaster::render
 {
-	struct TST_RENDER_API MaterialParameter
+	// struct TST_RENDER_API MaterialParameter
+	// {
+	// 	String name;
+	// 	uint32 offset{0u};
+	// 	uint32 size{0u};
+	// };
+	//
+	// using MaterialTemplateHandle = RefPtr<struct MaterialTemplate>;
+	//
+	// struct TST_RENDER_API MaterialTemplate
+	// {
+	// 	std::vector<MaterialParameter> parameters;
+	// 	uint32                         totalSize{0u}; // Summed size of all the parameters
+	//
+	// 	static auto create(InitialiserList<const MaterialParameter> p_params) -> MaterialTemplateHandle
+	// 	{
+	// 		auto material_template{MaterialTemplateHandle{new MaterialTemplate{}}};
+	//
+	// 		material_template->parameters.resize(p_params.size());
+	//
+	// 		for (uint32 i{0u}; i < p_params.size(); ++i)
+	// 		{
+	// 			const auto &param{p_params[i]};
+	//
+	// 			material_template->parameters[i] = param;
+	// 			material_template->totalSize     += param.size;
+	// 		}
+	//
+	// 		return material_template;
+	// 	}
+	// };
+
+	struct TST_RENDER_API alignas(16u) MaterialParams
 	{
-		String name;
-		uint32 offset{0u};
-		uint32 size{0u};
-	};
-
-	// The material template does not need atomic reference counting. Uint32 is just fine
-	using MaterialTemplateHandle = RefPtr<struct MaterialTemplate, uint32>;
-
-	struct TST_RENDER_API MaterialTemplate
-	{
-		std::vector<MaterialParameter> parameters;
-		uint32                         totalSize{0u}; // Summed size of all the parameters
-
-		static auto create(InitialiserList<const MaterialParameter> p_params) -> MaterialTemplateHandle
-		{
-			auto material_template{MaterialTemplateHandle{new MaterialTemplate{}}};
-
-			material_template->parameters.resize(p_params.size());
-
-			for (uint32 i{0u}; i < p_params.size(); ++i)
-			{
-				const auto &param{p_params[i]};
-
-				material_template->parameters[i] = param;
-				material_template->totalSize     += param.size;
-			}
-
-			return material_template;
-		}
+		tsm::float3 albedoColour{1.0f};
+		uint32      _padd;
+		uint32      albedoMapHeapSlot{UINT32_MAX};
+		uint32      normalMapHeapSlot{UINT32_MAX};
+		uint32      _padd2[2];
 	};
 
 	struct TST_RENDER_API Material
 	{
-		std::vector<uint8> data; // Raw parameter data
+		MaterialParams params; // Raw parameter data
+		TextureHandle  albedoMap{nullptr};
+		TextureHandle  normalMap{nullptr};
 
-		MaterialTemplateHandle materialTemplate{nullptr}; // Maybe I shouldn't be using a RefPtr
-
-		gpu::alloc::VirtualAllocationHandle allocation{nullptr};
+		// gpu::alloc::VirtualAllocationHandle allocation{nullptr};
+		// uint64                              allocationOffset{0u};
+		// uint64                              allocationSize{0u};
 	};
 
 	TST_DECLARE_HANDLE(Material);
@@ -56,10 +66,10 @@ namespace toaster::render
 	class TST_RENDER_API MaterialManager
 	{
 	public:
-		MaterialManager(uint64 p_max_material_block_size = 10u * 1028u * 1028u /*10MB*/, uint32 p_max_frames_in_flight = 3u);
+		MaterialManager(TextureManager *p_texture_manager, uint32 p_max_materials, uint32 p_max_frames_in_flight = 3u);
 		~MaterialManager();
 
-		[[nodiscard]] auto createMaterial(const MaterialTemplateHandle &p_template) -> MaterialHandle;
+		[[nodiscard]] auto createMaterial() -> MaterialHandle;
 		auto               destroyMaterial(MaterialHandle p_handle) -> void;
 
 		[[nodiscard]] auto getMaterial(MaterialHandle p_handle) -> Material & { return m_materials[p_handle]; }
@@ -67,28 +77,42 @@ namespace toaster::render
 		[[nodiscard]] auto tryGetMaterial(MaterialHandle p_handle) -> Material * { return m_materials.tryGet(p_handle); }
 		[[nodiscard]] auto tryGetMaterial(MaterialHandle p_handle) const -> const Material * { return m_materials.tryGet(p_handle); }
 
-		auto setParameter(MaterialHandle p_handle, StringView p_name, const void *p_data) -> void;
+		auto setAlbedoColour(MaterialHandle p_handle, const tsm::float3 &p_colour) -> void;
+		auto setAlbedoMap(MaterialHandle p_handle, TextureHandle p_albedo_map) -> void;
+		auto setNormalMap(MaterialHandle p_handle, TextureHandle p_normal_map) -> void;
 
-		template<typename Type>
-		auto setParameter(MaterialHandle p_handle, StringView p_name, const Type &p_data) -> void
-		{
-			setParameter(p_handle, p_name, &p_data);
-		}
+		auto pollMaterialTextureUploads() -> void;
 
 		auto updateDirtyMaterials(uint32 p_frame_index) -> void;
 		auto markMaterialDirty(MaterialHandle p_handle) -> void;
 
-		auto getMaterialBufferAddress(MaterialHandle p_handle, uint32 p_frame_index) const -> gpu::DeviceAddress;
+		auto getMaterialBufferAddress(uint32 p_frame_index) const -> gpu::DeviceAddress { return m_bdas[p_frame_index]; }
+
+		auto getDefaultColourMap() const -> TextureHandle { return m_defaultColourMap; }
+		auto getDefaultNormalMap() const -> TextureHandle { return m_defaultNormalMap; }
 
 	private:
+		NonOwningPtr<TextureManager> m_textureManager{nullptr};
+
 		Pool<Material> m_materials;
 
-		uint64                         m_maxMaterialBlockSize{0u};
-		gpu::alloc::VirtualBlockHandle m_virtualBlock{nullptr};
-
-		std::vector<gpu::BufferHandle>                   m_materialSSBOs{nullptr};
+		std::vector<gpu::DeviceAddress>                  m_bdas;
+		std::vector<gpu::BufferHandle>                   m_materialSSBOs;
 		std::vector<std::unordered_set<MaterialHandle> > m_dirtyMaterials; // Per frame
 
+		enum class EPendingTextureType
+		{
+			eAlbedoMap, eNormalMap
+		};
+
+		std::unordered_map<MaterialHandle, std::unordered_set<EPendingTextureType> > m_pendingMaterialTextureUploads;
+		// List of materials which have textures that are not fully uploaded or created
+
 		uint32 m_maxFramesInFlight{3u};
+
+		TextureHandle m_defaultColourMap{nullptr};
+		TextureHandle m_defaultNormalMap{nullptr};
+
+		mutable std::mutex m_mutex;
 	};
 }

@@ -40,7 +40,8 @@ namespace toaster
 		auto beginFrame(gpu::CommandListHandle p_cmd) -> bool; // Skip a frame if this returns false.
 		auto submitAndPresent(gpu::CommandListHandle p_cmd) -> void;
 
-		auto setEventCallback(const EventCallbackFn &p_callback) -> void { m_cbData.eventCallback = p_callback; }
+		auto setEventCallback(EventCallbackFn p_callback) -> void { m_cbData.eventCallback = p_callback; }
+		auto setEventCallbackUserData(void *p_user_data) -> void { m_cbData.eventCallbackUserData = p_user_data; }
 
 		// Returns true if the window was either resized successfully or there was no resizing to do.
 		// If false, it means that the window is either an invalid size or the swapchain could not be correctly recreated. In this case use this to skip a frame.
@@ -86,8 +87,10 @@ namespace toaster
 			bool maximised{false};
 			bool resized{false};
 
-			InputContext    inputCtx;
+			InputContext inputCtx;
+
 			EventCallbackFn eventCallback{nullptr};
+			void *          eventCallbackUserData{nullptr};
 		};
 
 		CallbackData m_cbData{};

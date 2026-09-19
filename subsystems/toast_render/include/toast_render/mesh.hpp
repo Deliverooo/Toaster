@@ -6,6 +6,12 @@
 
 namespace toaster::render
 {
+	struct TST_RENDER_API alignas(16u) DefaultMaterial
+	{
+		XMFLOAT3 albedoColour{1.0f, 1.0f, 1.0f};
+		uint32   albedoMap{UINT32_MAX};
+	};
+
 	enum class EMeshState : uint8
 	{
 		eUnloaded,
@@ -25,11 +31,10 @@ namespace toaster::render
 
 	struct TST_RENDER_API Submesh
 	{
-		uint32 indexOffset{0u};
-		int32  vertexOffset{0u};
-		uint32 indexCount{0u};
-
 		MaterialHandle material{nullptr};
+		uint32         indexOffset{0u};
+		int32          vertexOffset{0u};
+		uint32         indexCount{0u};
 	};
 
 	struct TST_RENDER_API StaticMesh
@@ -40,8 +45,8 @@ namespace toaster::render
 		gpu::alloc::VirtualAllocationHandle indexBufferAllocation{nullptr};
 
 		EMeshState state{EMeshState::eUnloaded};
-		// UniquePtr<std::atomic<EMeshState> > state{nullptr};
-		uint64                              transferReadyToken{0u};
+		uint64     vertexReadyToken{0u};
+		uint64     indexReadyToken{0u};
 	};
 
 	TST_DECLARE_HANDLE(StaticMesh);
@@ -74,11 +79,13 @@ namespace toaster::render
 		{
 			std::vector<Submesh> submeshes;
 
-			gpu::alloc::VirtualAllocationHandle vertexBufferAllocation{nullptr};
-			gpu::alloc::VirtualAllocationHandle indexBufferAllocation{nullptr};
+			uint64 vertexBufferOffset{0u};
+			uint64 vertexBufferSize{0u};
+
+			uint64 indexBufferOffset{0u};
+			uint64 indexBufferSize{0u};
 
 			EMeshState state{EMeshState::eUnloaded};
-			uint64     transferReadyToken{0u};
 		};
 
 		// Returns a copy of the static mesh's data, so the operation can be done under the internal mutex's lock

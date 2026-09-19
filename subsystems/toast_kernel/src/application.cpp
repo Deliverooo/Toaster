@@ -18,9 +18,11 @@ namespace toaster
 		window_desc.title          = "Toaster-3.0";
 		m_window                   = makeUnique<Window>(window_desc);
 
-		m_window->setEventCallback([this](Event &p_event)
+		m_window->setEventCallbackUserData(this);
+		m_window->setEventCallback(+[](Event &p_event, void *p_user_data) -> void
 		{
-			for (auto layer: m_layers)
+			const auto ts{static_cast<Application *>(p_user_data)};
+			for (auto layer: ts->m_layers)
 			{
 				if (p_event.isHandled())
 					continue;
@@ -53,7 +55,7 @@ namespace toaster
 			cmd = gpu::getOrCreateCommandList(gpu::EQueueType::eGraphics);
 
 		auto last_time{std::chrono::high_resolution_clock::now()};
-		while (m_running) // TODO: Events / ts
+		while (m_running)
 		{
 			if (!m_window->processMessages())
 				break;

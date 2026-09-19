@@ -41,6 +41,8 @@ namespace toaster::render
 
 	auto TextureManager::registerTexture() -> TextureHandle
 	{
+		std::scoped_lock<std::mutex> lock{m_mutex};
+
 		return m_textures.emplace();
 	}
 
@@ -97,26 +99,9 @@ namespace toaster::render
 		upload_desc.extent              = {0u, 0u, 0u}; // Use the desc
 		upload_desc.mipLevel            = 0u;
 		texture_data.transferReadyToken = gpu::upload::uploadDataToTexture(texture_data.texture, p_data, p_size, upload_desc);
-
-		texture_data.state = ETextureState::eUploadingToGPU;
+		texture_data.state              = ETextureState::eUploadingToGPU;
 
 		m_pendingTextureUploads.insert(p_handle);
-	}
-
-	auto TextureManager::getMipStorageHeapSlot(TextureHandle p_handle, uint32 p_mip) -> uint32
-	{
-		std::scoped_lock<std::mutex> lock{m_mutex};
-
-		Texture &texture_data{m_textures[p_handle]};
-
-		if (texture_data.perMipStorageHeapSlots.contains(p_mip))
-			return texture_data.perMipStorageHeapSlots.at(p_mip);
-
-		uint32 &slot{texture_data.perMipStorageHeapSlots[p_mip]};
-		slot = gpu::allocTextureHeapSlot(m_renderCtx->getResourceHeap());
-		gpu::writeTextureDescriptor(m_renderCtx->getResourceHeap(), slot, texture_data.texture, true, p_mip);
-
-		return slot;
 	}
 
 	auto TextureManager::getTextureState(TextureHandle p_handle) -> ETextureState
@@ -165,6 +150,38 @@ namespace toaster::render
 				texture->transferReadyToken
 			};
 		return std::nullopt;
+	}
+
+	auto TextureManager::getTextureShaderReadHeapSlot(TextureHandle p_handle) -> uint32
+	{
+		std::scoped_lock<std::mutex> lock{m_mutex};
+
+		Texture &texture_data{m_textures[p_handle]};
+		return texture_data.shaderReadHeapSlot;
+	}
+
+	auto TextureManager::getTextureStorageHeapSlot(TextureHandle p_handle) -> uint32
+	{
+		std::scoped_lock<std::mutex> lock{m_mutex};
+
+		Texture &texture_data{m_textures[p_handle]};
+		return texture_data.storageHeapSlot;
+	}
+
+	auto TextureManager::getMipStorageHeapSlot(TextureHandle p_handle, uint32 p_mip) -> uint32
+	{
+		std::scoped_lock<std::mutex> lock{m_mutex};
+
+		Texture &texture_data{m_textures[p_handle]};
+
+		if (texture_data.perMipStorageHeapSlots.contains(p_mip))
+			return texture_data.perMipStorageHeapSlots.at(p_mip);
+
+		uint32 &slot{texture_data.perMipStorageHeapSlots[p_mip]};
+		slot = gpu::allocTextureHeapSlot(m_renderCtx->getResourceHeap());
+		gpu::writeTextureDescriptor(m_renderCtx->getResourceHeap(), slot, texture_data.texture, true, p_mip);
+
+		return slot;
 	}
 
 	auto TextureManager::pollTextureUploads() -> void

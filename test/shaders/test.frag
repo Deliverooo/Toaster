@@ -6,10 +6,25 @@
 #extension GL_EXT_shader_explicit_arithmetic_types_int64: enable
 
 layout (location = 0) in vec2 v_TexCoord;
+layout (location = 1) flat in uint v_Material;
+
 layout (location = 0) out vec4 o_Colour;
 
 layout (descriptor_heap) uniform texture2D texture2DHeap[];
 layout (descriptor_heap) uniform sampler samplerHeap[];
+
+struct Material
+{
+    vec3 albedoColour;
+    uint _padd;
+    uint albedoMapHeapSlot;
+    uint normalMapHeapSlot;
+    uint _padd2[2];
+};
+layout (buffer_reference, scalar) readonly buffer MaterialBuffer
+{
+    Material materials[];
+};
 
 layout (push_constant) uniform PushData
 {
@@ -17,15 +32,21 @@ layout (push_constant) uniform PushData
     uint64_t vertexBuffer;
     uint64_t indexBuffer;
     uint64_t objectBuffer;
+    MaterialBuffer materialBuffer;
 
-    uint texture;
-    uint textureSampler;
+    uint _padd[1];
+    uint samplerId;
 } pcs;
 
 #define SAMPLE_TEXTURE(__textureId, __samplerId, __texCoord) texture(sampler2D(texture2DHeap[__textureId], samplerHeap[__samplerId]), __texCoord)
 
 void main()
 {
-    vec3 tex_colour = SAMPLE_TEXTURE(pcs.texture, pcs.textureSampler, v_TexCoord).rgb;
-    o_Colour = vec4(tex_colour, 1.0f);
+    Material material = pcs.materialBuffer.materials[v_Material];
+
+    vec3 tex_colour = SAMPLE_TEXTURE(material.albedoMapHeapSlot, pcs.samplerId, v_TexCoord).rgb;
+
+    vec3 final_colour = tex_colour * material.albedoColour;
+
+    o_Colour = vec4(final_colour, 1.0f);
 }

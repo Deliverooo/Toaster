@@ -2,6 +2,7 @@
 
 #include <filesystem>
 
+#include "texture_importer.hpp"
 #include "toast_render/mesh.hpp"
 #include "toast_asset.hpp"
 
@@ -17,16 +18,21 @@ namespace toaster::asset
 	class TST_ASSET_API MeshImporter
 	{
 	public:
-		MeshImporter() = default;
+		MeshImporter(render::MeshManager* p_mesh_manager,render::MaterialManager* p_material_manager,TextureImporter *p_texture_importer );
 		~MeshImporter();
 
-		static auto importStaticMeshDataFromFile(const std::filesystem::path &p_path) -> MeshImportData;
+		auto importStaticMeshDataFromFile(const std::filesystem::path &p_path) -> MeshImportData;
 
-		auto asyncLoadStaticMeshFromFile(render::MeshManager *p_mesh_manager, render::StaticMeshHandle p_dst_mesh, const std::filesystem::path &p_path) -> void;
+		auto asyncLoadStaticMeshFromFile(render::StaticMeshHandle p_dst_mesh, const std::filesystem::path &p_path) -> void;
 
 		auto waitImports() -> void;
 
 	private:
+		NonOwningPtr<TextureImporter>         m_textureImporter{nullptr};
+		NonOwningPtr<render::MeshManager>     m_meshManager{nullptr};
+		NonOwningPtr<render::MaterialManager> m_materialManager{nullptr};
+		NonOwningPtr<render::TextureManager>  m_textureManager{nullptr};
+
 		struct ImportTask
 		{
 			String                   path;

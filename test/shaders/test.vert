@@ -7,6 +7,7 @@
 #extension GL_EXT_shader_explicit_arithmetic_types_int32: enable
 
 layout (location = 0) out vec2 o_TexCoord;
+layout (location = 1) flat out uint o_Material;
 
 struct Vertex
 {
@@ -26,13 +27,12 @@ layout (buffer_reference, std140) readonly buffer CameraBuffer
     mat4 proj;
 };
 
-
 struct ObjectData
 {
-    mat4 model;
-    uint64_t materialAddress;
+    uint material;
     uint vertexBufferOffset;
     uint indexBufferOffset;
+    uint _padd;
 };
 layout (buffer_reference, scalar) readonly buffer ObjectDataBuffer
 {
@@ -45,9 +45,10 @@ layout (push_constant) uniform PushData
     VertexBuffer vertexBuffer;
     IndexBuffer indexBuffer;
     ObjectDataBuffer objectBuffer;
+    uint64_t materialBuffer;
 
-    uint texture;
-    uint textureSampler;
+    uint _padd[1];
+    uint samplerId;
 } pcs;
 
 void main()
@@ -63,4 +64,5 @@ void main()
     gl_Position = pcs.camera.proj * view_pos;
 
     o_TexCoord = vertex.texCoord;
+    o_Material = data.material;
 }
