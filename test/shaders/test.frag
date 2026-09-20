@@ -5,8 +5,10 @@
 #extension GL_EXT_scalar_block_layout: enable
 #extension GL_EXT_shader_explicit_arithmetic_types_int64: enable
 
-layout (location = 0) in vec2 v_TexCoord;
-layout (location = 1) flat in uint v_Material;
+layout (location = 0) in vec3 v_Position;
+layout (location = 1) in vec3 v_WorldPos;
+layout (location = 2) in vec2 v_TexCoord;
+layout (location = 3) flat in uint v_Material;
 
 layout (location = 0) out vec4 o_Colour;
 
@@ -26,9 +28,16 @@ layout (buffer_reference, scalar) readonly buffer MaterialBuffer
     Material materials[];
 };
 
+layout (buffer_reference, std140) readonly buffer CameraBuffer
+{
+    mat4 view;
+    mat4 proj;
+    vec4 position;
+};
+
 layout (push_constant) uniform PushData
 {
-    uint64_t camera;
+    CameraBuffer camera;
     uint64_t vertexBuffer;
     uint64_t indexBuffer;
     uint64_t objectBuffer;
@@ -48,5 +57,5 @@ void main()
 
     vec3 final_colour = tex_colour * material.albedoColour;
 
-    o_Colour = vec4(final_colour, 1.0f);
+    o_Colour = vec4(tex_colour, 1.0f);
 }

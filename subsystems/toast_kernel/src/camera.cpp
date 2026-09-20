@@ -63,9 +63,11 @@ namespace toaster
 	{
 		XMMATRIX view{getViewMatrix()};
 		XMMATRIX proj{getProjectionMatrix()};
+		XMVECTOR position{getPosition()};
 
 		XMStoreFloat4x4(&p_out_cb.view, view);
 		XMStoreFloat4x4(&p_out_cb.proj, proj);
+		XMStoreFloat4(&p_out_cb.position, position);
 	}
 
 	auto Camera::_calcProjection() -> void

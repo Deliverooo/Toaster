@@ -93,7 +93,8 @@ public:
 			m_scene.addComponent<StaticMeshComponent>(m_levelEntity, level_mesh);
 		}
 
-		gpu::SamplerHandle sampler{gpu::createSampler(gpu::SamplerDesc{})};
+		gpu::SamplerDesc sampler_desc{};
+		gpu::SamplerHandle sampler{gpu::createSampler(sampler_desc)};
 
 		m_samplerHeapSlot = gpu::allocSamplerHeapSlot(m_renderCtx->getSamplerHeap());
 		gpu::writeSamplerDescriptor(m_renderCtx->getSamplerHeap(), m_samplerHeapSlot, sampler);
@@ -230,7 +231,7 @@ public:
 
 	auto onRender(gpu::CommandListHandle p_cmd) -> void override
 	{
-		m_textureManager->pollTextureUploads();
+		m_textureManager->pollTextureUploads(p_cmd);
 		m_materialManager->pollMaterialTextureUploads();
 		m_materialManager->updateDirtyMaterials(m_app->getFrameIndex());
 		m_meshManager->pollMeshUploads();

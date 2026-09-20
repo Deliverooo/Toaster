@@ -120,7 +120,7 @@ namespace toaster::render
 		return slot;
 	}
 
-	auto TextureManager::pollTextureUploads() -> void
+	auto TextureManager::pollTextureUploads(gpu::CommandListHandle p_cmd) -> void
 	{
 		std::scoped_lock<std::mutex> lock{m_textureStateMutex};
 
@@ -133,8 +133,12 @@ namespace toaster::render
 			Texture &texture{m_textures[*it]};
 			if (transfer_value >= texture.transferReadyToken)
 			{
+				if (gpu::getTextureDesc(texture.texture).mipCount > 1u)
+					gpu::generateMipmaps(p_cmd, texture.texture);
+
 				texture.state->store(ETextureState::eReady);
-				it            = m_pendingTextureUploads.erase(it);
+
+				it = m_pendingTextureUploads.erase(it);
 			}
 			else
 				++it;

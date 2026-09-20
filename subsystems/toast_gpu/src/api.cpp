@@ -1055,9 +1055,9 @@ namespace toaster::gpu
 			image_memory_barriers[i].subresourceRange    = vk::ImageSubresourceRange{
 				getImageAspectMask(texture.desc.format),
 				0u,
-				vk::RemainingMipLevels,
+				texture.desc.mipCount,
 				0u,
-				vk::RemainingArrayLayers
+				texture.desc.layerCount
 			};
 			++i;
 		}
@@ -1354,6 +1354,111 @@ namespace toaster::gpu
 		copy_buffer_to_image_info.dstImageLayout = vk::ImageLayout::eGeneral; // Thank you VK_KHR_unified_image_layouts :)
 
 		cmd.cmd.copyBufferToImage2(copy_buffer_to_image_info);
+	}
+
+	auto generateMipmaps(CommandListHandle p_command_list, TextureHandle p_texture) -> void
+	{
+		CommandList &cmd{g_impl->commandLists[p_command_list]};
+		TST_ASSERT(cmd.open);
+
+		Texture *dst_texture{g_impl->textures.tryGet(p_texture)};
+		TST_PERMA_ASSERT(dst_texture);
+		TST_ASSERT_MSG(dst_texture->desc.mipCount > 1u, "Texture does not contain mip levels to generate");
+		TST_ASSERT_MSG(dst_texture->desc.usage & ETextureUsageFlagBits::eTransferSrc, "Texture was not created with the usage of transfer src");
+		TST_ASSERT_MSG(dst_texture->desc.usage & ETextureUsageFlagBits::eTransferDst, "Texture was not created with the usage of transfer dst");
+
+		vk::ImageMemoryBarrier2 memory_barrier{};
+		memory_barrier.image                           = dst_texture->image;
+		memory_barrier.oldLayout                       = vk::ImageLayout::eGeneral;
+		memory_barrier.newLayout                       = vk::ImageLayout::eGeneral;
+		memory_barrier.srcAccessMask                   = vk::AccessFlagBits2::eTransferWrite;
+		memory_barrier.dstAccessMask                   = vk::AccessFlagBits2::eTransferRead;
+		memory_barrier.srcQueueFamilyIndex             = vk::QueueFamilyIgnored;
+		memory_barrier.dstQueueFamilyIndex             = vk::QueueFamilyIgnored;
+		memory_barrier.subresourceRange.aspectMask     = vk::ImageAspectFlagBits::eColor;
+		memory_barrier.subresourceRange.baseArrayLayer = 0u;
+		memory_barrier.subresourceRange.baseMipLevel   = 0u;
+		memory_barrier.subresourceRange.layerCount     = 1u;
+		memory_barrier.subresourceRange.levelCount     = 1u;
+
+		int32 mip_width{static_cast<int32>(dst_texture->desc.extent.x)};
+		int32 mip_height{static_cast<int32>(dst_texture->desc.extent.y)};
+
+		vk::ImageAspectFlags image_aspect{getImageAspectMask(dst_texture->desc.format)};
+
+		for (uint32 i{1u}; i < dst_texture->desc.mipCount; ++i)
+		{
+			memory_barrier.subresourceRange.baseMipLevel = i - 1;
+			memory_barrier.srcAccessMask                 = vk::AccessFlagBits2::eTransferWrite;
+			memory_barrier.dstAccessMask                 = vk::AccessFlagBits2::eTransferRead;
+
+			{
+				memory_barrier.srcStageMask = vk::PipelineStageFlagBits2::eTransfer;
+				memory_barrier.dstStageMask = vk::PipelineStageFlagBits2::eTransfer;
+
+				vk::DependencyInfo dependency_info{};
+				dependency_info.imageMemoryBarrierCount = 1;
+				dependency_info.pImageMemoryBarriers    = &memory_barrier;
+				cmd.cmd.pipelineBarrier2(dependency_info);
+			}
+
+			std::array<vk::Offset3D, 2> src_offsets;
+			std::array<vk::Offset3D, 2> dst_offsets;
+
+			src_offsets[0] = vk::Offset3D{0, 0, 0};
+			src_offsets[1] = vk::Offset3D{mip_width, mip_height, 1};
+
+			dst_offsets[0] = vk::Offset3D{0, 0, 0};
+			dst_offsets[1] = vk::Offset3D{mip_width > 1 ? mip_width / 2 : 1, mip_height > 1 ? mip_height / 2 : 1, 1};
+
+			vk::ImageBlit2 image_blit{};
+			image_blit.srcOffsets     = src_offsets;
+			image_blit.dstOffsets     = dst_offsets;
+			image_blit.srcSubresource = vk::ImageSubresourceLayers{image_aspect, i - 1, 0, 1};
+			image_blit.dstSubresource = vk::ImageSubresourceLayers{image_aspect, i, 0, 1};
+
+			vk::BlitImageInfo2 blit_info{};
+			blit_info.srcImage       = dst_texture->image;
+			blit_info.dstImage       = dst_texture->image;
+			blit_info.srcImageLayout = vk::ImageLayout::eGeneral;
+			blit_info.dstImageLayout = vk::ImageLayout::eGeneral;
+			blit_info.regionCount    = 1u;
+			blit_info.pRegions       = &image_blit;
+			blit_info.filter         = vk::Filter::eLinear;
+			cmd.cmd.blitImage2(blit_info);
+
+			memory_barrier.srcAccessMask = vk::AccessFlagBits2::eTransferRead;
+			memory_barrier.dstAccessMask = vk::AccessFlagBits2::eShaderRead;
+
+			while (mip_width > 1)
+				mip_width /= 2;
+			while (mip_height > 1)
+				mip_height /= 2;
+
+			{
+				memory_barrier.srcStageMask = vk::PipelineStageFlagBits2::eTransfer;
+				memory_barrier.dstStageMask = vk::PipelineStageFlagBits2::eFragmentShader;
+
+				vk::DependencyInfo dependency_info{};
+				dependency_info.imageMemoryBarrierCount = 1;
+				dependency_info.pImageMemoryBarriers    = &memory_barrier;
+				cmd.cmd.pipelineBarrier2(dependency_info);
+			}
+		}
+
+		memory_barrier.subresourceRange.baseMipLevel = dst_texture->desc.mipCount - 1u;
+		memory_barrier.srcAccessMask                 = vk::AccessFlagBits2::eTransferWrite;
+		memory_barrier.dstAccessMask                 = vk::AccessFlagBits2::eShaderRead;
+
+		{
+			memory_barrier.srcStageMask = vk::PipelineStageFlagBits2::eTransfer;
+			memory_barrier.dstStageMask = vk::PipelineStageFlagBits2::eFragmentShader;
+
+			vk::DependencyInfo dependency_info{};
+			dependency_info.imageMemoryBarrierCount = 1;
+			dependency_info.pImageMemoryBarriers    = &memory_barrier;
+			cmd.cmd.pipelineBarrier2(dependency_info);
+		}
 	}
 
 	auto beginRendering(CommandListHandle p_command_list, const RenderingInfo &p_rendering_info) -> void
@@ -1995,20 +2100,21 @@ namespace toaster::gpu
 		};
 
 		vk::SamplerCreateInfo sampler_create_info{};
-		sampler_create_info.minFilter = sampler.desc.minFilter == EFilter::eLinear ? vk::Filter::eLinear : vk::Filter::eNearest;
-		sampler_create_info.magFilter = sampler.desc.magFilter == EFilter::eLinear ? vk::Filter::eLinear : vk::Filter::eNearest;
-		sampler_create_info.mipmapMode = sampler.desc.mipmapMode == ESamplerMipmapMode::eLinear ? vk::SamplerMipmapMode::eLinear : vk::SamplerMipmapMode::eNearest;
+		sampler_create_info.minFilter    = sampler.desc.minFilter == EFilter::eLinear ? vk::Filter::eLinear : vk::Filter::eNearest;
+		sampler_create_info.magFilter    = sampler.desc.magFilter == EFilter::eLinear ? vk::Filter::eLinear : vk::Filter::eNearest;
+		sampler_create_info.mipmapMode   = sampler.desc.mipmapMode == ESamplerMipmapMode::eLinear ? vk::SamplerMipmapMode::eLinear : vk::SamplerMipmapMode::eNearest;
 		sampler_create_info.addressModeU = getAddressMode(sampler.desc.addressModeU);
 		sampler_create_info.addressModeV = getAddressMode(sampler.desc.addressModeV);
 		sampler_create_info.addressModeW = getAddressMode(sampler.desc.addressModeW);
-		sampler_create_info.mipLodBias = 0.0f;
-		sampler_create_info.anisotropyEnable = true;
-		sampler_create_info.maxAnisotropy = g_impl->physicalDevice.getProperties2().properties.limits.maxSamplerAnisotropy;
-		sampler_create_info.compareEnable = false;
-		sampler_create_info.compareOp = vk::CompareOp::eAlways;
-		sampler_create_info.minLod = 0.0f;
-		sampler_create_info.maxLod = vk::LodClampNone;
-		sampler_create_info.borderColor = vk::BorderColor::eFloatOpaqueWhite;
+
+		sampler_create_info.mipLodBias              = 0.0f;
+		sampler_create_info.anisotropyEnable        = true;
+		sampler_create_info.maxAnisotropy           = g_impl->physicalDevice.getProperties2().properties.limits.maxSamplerAnisotropy;
+		sampler_create_info.compareEnable           = false;
+		sampler_create_info.compareOp               = vk::CompareOp::eNever;
+		sampler_create_info.minLod                  = 0.0f;
+		sampler_create_info.maxLod                  = vk::LodClampNone;
+		sampler_create_info.borderColor             = vk::BorderColor::eFloatOpaqueWhite;
 		sampler_create_info.unnormalizedCoordinates = false;
 
 		vk::HostAddressRangeEXT host_range{};

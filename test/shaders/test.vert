@@ -6,8 +6,10 @@
 #extension GL_EXT_shader_explicit_arithmetic_types_int64: enable
 #extension GL_EXT_shader_explicit_arithmetic_types_int32: enable
 
-layout (location = 0) out vec2 o_TexCoord;
-layout (location = 1) flat out uint o_Material;
+layout (location = 0) out vec3 o_Position;
+layout (location = 1) out vec3 o_WorldPos;
+layout (location = 2) out vec2 o_TexCoord;
+layout (location = 3) flat out uint o_Material;
 
 struct Vertex
 {
@@ -25,6 +27,7 @@ layout (buffer_reference, std140) readonly buffer CameraBuffer
 {
     mat4 view;
     mat4 proj;
+    vec4 position;
 };
 
 struct ObjectData
@@ -59,6 +62,8 @@ void main()
     Vertex vertex = pcs.vertexBuffer.vertices[data.vertexBufferOffset + index];
 
     vec4 world_pos = vec4(vertex.position.xyz, 1.0f);
+    o_Position = vertex.position.xyz;
+    o_WorldPos = world_pos.xyz;
 
     vec4 view_pos = pcs.camera.view * world_pos;
     gl_Position = pcs.camera.proj * view_pos;

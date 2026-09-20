@@ -54,7 +54,7 @@ namespace toaster::render
 		// Gets the mip storage heap slot if present, else, it will create one.
 		[[nodiscard]] auto getMipStorageHeapSlot(TextureHandle p_handle, uint32 p_mip) -> uint32;
 
-		auto pollTextureUploads() -> void;
+		auto pollTextureUploads(gpu::CommandListHandle p_cmd) -> void; // Generates texture mipmaps with the command buffer
 
 	private:
 		NonOwningPtr<RenderContext> m_renderCtx{nullptr};

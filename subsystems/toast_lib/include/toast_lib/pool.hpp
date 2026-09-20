@@ -30,10 +30,10 @@ namespace toaster
 		template<typename... TArgs>
 		auto emplace(TArgs &&... p_args) -> HandleType
 		{
-			uint32 id{0u};
-			uint32 magic{1u};
-
 			std::scoped_lock<std::mutex> lock{m_mutex};
+
+			uint32                       id{0u};
+			uint32                       magic{1u};
 
 			if (!m_freeIndices.empty())
 			{

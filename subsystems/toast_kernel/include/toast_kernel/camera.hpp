@@ -2,7 +2,6 @@
 
 #include "input.hpp"
 
-
 #include "toast_math/math_matrix.hpp"
 using namespace DirectX;
 
@@ -16,6 +15,7 @@ namespace toaster
 	{
 		XMFLOAT4X4 view;
 		XMFLOAT4X4 proj;
+		XMFLOAT4   position;
 	};
 
 	class TST_KERNEL_API Camera

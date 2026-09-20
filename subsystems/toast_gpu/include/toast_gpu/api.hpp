@@ -414,6 +414,8 @@ namespace toaster::gpu
 	auto TST_GPU_API copyBufferToTexture(CommandListHandle p_command_list, BufferHandle p_src_buffer, TextureHandle p_dst_texture, uint64 p_src_offset = 0u,
 										 uint32            p_mip_level = 0u, uint32 p_base_layer = 0u, uint32 p_layer_count = 1u, tsm::uint3 p_extent = {}) -> void;
 
+	auto TST_GPU_API generateMipmaps(CommandListHandle p_command_list, TextureHandle p_texture) -> void;
+
 	auto TST_GPU_API beginRendering(CommandListHandle p_command_list, const RenderingInfo &p_rendering_info) -> void;
 	auto TST_GPU_API endRendering(CommandListHandle p_command_list) -> void;
 

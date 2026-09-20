@@ -1,4 +1,6 @@
 #include "toast_asset/texture_importer.hpp"
+#include <algorithm>
+#include <cmath>
 #include <stb/stb_image.h>
 
 #include "toast_gpu/upload.hpp"
@@ -20,7 +22,7 @@ namespace toaster::asset
 	{
 		std::scoped_lock<std::mutex> lock{m_mutex};
 
-		render::Texture& texture{m_textureManager->getTexture(p_dst_texture)};
+		render::Texture &texture{m_textureManager->getTexture(p_dst_texture)};
 		texture.state->store(render::ETextureState::eLoading);
 
 		m_pendingImports.emplace_back([this, p_dst_texture, p_path]()-> void
@@ -34,9 +36,10 @@ namespace toaster::asset
 			}
 
 			gpu::TextureDesc texture_desc{};
-			texture_desc.usage  = gpu::ETextureUsageFlagBits::eTransferDst | gpu::ETextureUsageFlagBits::eSampled;
-			texture_desc.format = gpu::EFormat::eR8G8B8A8Srgb;
-			texture_desc.extent = {static_cast<uint32>(width), static_cast<uint32>(height), 1u};
+			texture_desc.usage    = gpu::ETextureUsageFlagBits::eTransferSrc | gpu::ETextureUsageFlagBits::eTransferDst | gpu::ETextureUsageFlagBits::eSampled;
+			texture_desc.format   = gpu::EFormat::eR8G8B8A8Srgb;
+			texture_desc.extent   = {static_cast<uint32>(width), static_cast<uint32>(height), 1u};
+			// texture_desc.mipCount = static_cast<uint32>(std::floor(std::log2(std::max(static_cast<uint32>(width), static_cast<uint32>(height))))) + 1u;
 
 			m_textureManager->createIntoTexture(p_dst_texture, texture_desc);
 			m_textureManager->setData(p_dst_texture, data, width * height * sizeof(uint32));

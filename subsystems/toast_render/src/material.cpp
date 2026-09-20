@@ -60,7 +60,6 @@ namespace toaster::render
 		}
 
 		gpu::upload::flushUploadsAndWait();
-		m_textureManager->pollTextureUploads();
 	}
 
 	MaterialManager::~MaterialManager()
