@@ -74,19 +74,8 @@ public:
 
 		std::filesystem::current_path("../test");
 
-		gpu::upload::flushUploadsAndWait();
-		m_textureManager->pollTextureUploads();
-
 		m_textureImporter = makeUnique<asset::TextureImporter>(m_textureManager.get());
 		m_meshImporter    = makeUnique<asset::MeshImporter>(m_meshManager.get(), m_materialManager.get(), m_textureImporter.get());
-
-		{
-			render::StaticMeshHandle level_mesh{m_meshManager->registerStaticMesh()};
-			m_meshImporter->asyncLoadStaticMeshFromFile(level_mesh, "resources/meshes/Backrooms.fbx");
-
-			m_levelEntity = m_scene.createEntity();
-			m_scene.addComponent<StaticMeshComponent>(m_levelEntity, level_mesh);
-		}
 
 		{
 			render::StaticMeshHandle orbo_mesh{m_meshManager->registerStaticMesh()};
@@ -94,6 +83,14 @@ public:
 
 			m_orboEntity = m_scene.createEntity();
 			m_scene.addComponent<StaticMeshComponent>(m_orboEntity, orbo_mesh);
+		}
+
+		{
+			render::StaticMeshHandle level_mesh{m_meshManager->registerStaticMesh()};
+			m_meshImporter->asyncLoadStaticMeshFromFile(level_mesh, "resources/meshes/Backrooms.fbx");
+
+			m_levelEntity = m_scene.createEntity();
+			m_scene.addComponent<StaticMeshComponent>(m_levelEntity, level_mesh);
 		}
 
 		gpu::SamplerHandle sampler{gpu::createSampler(gpu::SamplerDesc{})};
@@ -272,14 +269,14 @@ public:
 		const auto view{m_scene.getRegistry().view<StaticMeshComponent>()};
 		view.each([this, &draw_count, mapped_cmd, mapped_object_data]([[maybe_unused]] entt::entity p_entity, const StaticMeshComponent &p_smc) -> void
 		{
-			const auto mesh_data{m_meshManager->tryGetStaticMeshThreadData(p_smc.mesh)};
-			if (mesh_data.has_value() && mesh_data->state == render::EMeshState::eReady && p_smc.visible)
+			const render::StaticMesh *mesh{m_meshManager->tryGetStaticMesh(p_smc.mesh)};
+			if (mesh && p_smc.visible && mesh->state->load() == render::EMeshState::eReady)
 			{
-				for (const auto &submesh: mesh_data->submeshes)
+				for (const auto &submesh: mesh->submeshes)
 				{
 					mapped_object_data[draw_count].material           = submesh.material.getId();
-					mapped_object_data[draw_count].vertexBufferOffset = mesh_data->vertexBufferOffset;
-					mapped_object_data[draw_count].indexBufferOffset  = mesh_data->indexBufferOffset;
+					mapped_object_data[draw_count].vertexBufferOffset = mesh->vertexBufferOffset;
+					mapped_object_data[draw_count].indexBufferOffset  = mesh->indexBufferOffset;
 
 					mapped_cmd[draw_count] = gpu::DrawIndirectCommand{submesh.indexCount, 1u, submesh.indexOffset, draw_count};
 					++draw_count;

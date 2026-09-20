@@ -27,7 +27,7 @@ namespace toaster::asset
 			import.join();
 	}
 
-	auto MeshImporter::importStaticMeshDataFromFile(const std::filesystem::path &p_path) -> MeshImportData
+	auto MeshImporter::importStaticMeshDataFromFile(const std::filesystem::path &p_path) const -> MeshImportData
 	{
 		Assimp::Importer importer{};
 		const aiScene *  scene{importer.ReadFile(p_path.string(), s_MeshImportFlags)};
@@ -145,8 +145,10 @@ namespace toaster::asset
 
 	auto MeshImporter::asyncLoadStaticMeshFromFile(render::StaticMeshHandle p_dst_mesh, const std::filesystem::path &p_path) -> void
 	{
-		m_meshManager->setStaticMeshState(p_dst_mesh, render::EMeshState::eLoading);
-		m_pendingImports.emplace_back([this, p_dst_mesh, p_path]()-> void
+		render::StaticMesh &static_mesh{m_meshManager->getStaticMesh(p_dst_mesh)};
+		static_mesh.state->store(render::EMeshState::eLoading);
+
+		m_pendingImports.emplace_back([this, p_dst_mesh, p_path]() -> void
 		{
 			const auto cpu_mesh_data{importStaticMeshDataFromFile(p_path)};
 

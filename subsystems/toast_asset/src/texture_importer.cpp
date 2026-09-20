@@ -20,7 +20,9 @@ namespace toaster::asset
 	{
 		std::scoped_lock<std::mutex> lock{m_mutex};
 
-		m_textureManager->setTextureState(p_dst_texture, render::ETextureState::eLoading);
+		render::Texture& texture{m_textureManager->getTexture(p_dst_texture)};
+		texture.state->store(render::ETextureState::eLoading);
+
 		m_pendingImports.emplace_back([this, p_dst_texture, p_path]()-> void
 		{
 			int32  width, height, num_channels;

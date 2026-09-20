@@ -23,12 +23,6 @@ namespace toaster::asset
 	private:
 		NonOwningPtr<render::TextureManager> m_textureManager{nullptr};
 
-		struct ImportTask
-		{
-			String                path;
-			render::TextureHandle dstTexture{nullptr};
-		};
-
 		std::atomic_bool m_terminationRequested{false};
 
 		std::vector<std::thread> m_pendingImports;

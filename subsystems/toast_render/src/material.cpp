@@ -73,80 +73,77 @@ namespace toaster::render
 
 	auto MaterialManager::createMaterial() -> MaterialHandle
 	{
-		std::scoped_lock<std::mutex> lock{m_mutex};
-
 		Material material{};
 		material.albedoMap                = m_defaultColourMap;
 		material.normalMap                = m_defaultNormalMap;
-		material.params.albedoMapHeapSlot = m_textureManager->getTextureShaderReadHeapSlot(m_defaultColourMap);
-		material.params.normalMapHeapSlot = m_textureManager->getTextureShaderReadHeapSlot(m_defaultNormalMap);
+		material.params.albedoMapHeapSlot = m_textureManager->getTexture(m_defaultColourMap).shaderReadHeapSlot;
+		material.params.normalMapHeapSlot = m_textureManager->getTexture(m_defaultNormalMap).shaderReadHeapSlot;
 
 		MaterialHandle out_handle{m_materials.emplace(material)};
 
-		for (uint32 i{0u}; i < m_maxFramesInFlight; ++i)
-			m_dirtyMaterials[i].insert(out_handle); // Inserts if it is not already present
+		markMaterialDirty(out_handle);
+
 		return out_handle;
 	}
 
 	auto MaterialManager::destroyMaterial(MaterialHandle p_handle) -> void
 	{
-		std::scoped_lock<std::mutex> lock{m_mutex};
-
 		m_materials.destroy(p_handle);
 	}
 
 	auto MaterialManager::setAlbedoColour(MaterialHandle p_handle, const tsm::float3 &p_colour) -> void
 	{
-		std::scoped_lock<std::mutex> lock{m_mutex};
-		Material &                   material{m_materials[p_handle]};
-
+		Material &material{m_materials[p_handle]};
 		material.params.albedoColour = p_colour;
 
-		for (uint32 i{0u}; i < m_maxFramesInFlight; ++i)
-			m_dirtyMaterials[i].insert(p_handle); // Inserts if it is not already present
+		markMaterialDirty(p_handle);
 	}
 
 	auto MaterialManager::setAlbedoMap(MaterialHandle p_handle, TextureHandle p_albedo_map) -> void
 	{
-		std::scoped_lock<std::mutex> lock{m_mutex};
-		Material &                   material{m_materials[p_handle]};
+		Material &material{m_materials[p_handle]};
 
 		material.albedoMap = p_albedo_map;
 
-		if (m_textureManager->getTextureState(p_albedo_map) != ETextureState::eReady)
+		if (m_textureManager->getTexture(p_albedo_map).state->load() != ETextureState::eReady)
 		{
-			m_pendingMaterialTextureUploads[p_handle].insert(EPendingTextureType::eAlbedoMap);
-			material.params.albedoMapHeapSlot = m_textureManager->getTextureShaderReadHeapSlot(m_defaultColourMap);
+			{
+				std::scoped_lock<std::mutex> lock{m_textureUploadMutex};
+				m_pendingMaterialTextureUploads[p_handle].insert(EPendingTextureType::eAlbedoMap);
+			}
+
+			material.params.albedoMapHeapSlot = m_textureManager->getTexture(m_defaultColourMap).shaderReadHeapSlot;
 		}
 		else
-			material.params.albedoMapHeapSlot = m_textureManager->getTextureShaderReadHeapSlot(p_albedo_map);
+			material.params.albedoMapHeapSlot = m_textureManager->getTexture(p_albedo_map).shaderReadHeapSlot;
 
-		for (uint32 i{0u}; i < m_maxFramesInFlight; ++i)
-			m_dirtyMaterials[i].insert(p_handle); // Inserts if it is not already present
+		markMaterialDirty(p_handle);
 	}
 
 	auto MaterialManager::setNormalMap(MaterialHandle p_handle, TextureHandle p_normal_map) -> void
 	{
-		std::scoped_lock<std::mutex> lock{m_mutex};
-		Material &                   material{m_materials[p_handle]};
+		Material &material{m_materials[p_handle]};
 
 		material.normalMap = p_normal_map;
 
-		if (m_textureManager->getTextureState(p_normal_map) != ETextureState::eReady)
+		if (m_textureManager->getTexture(p_normal_map).state->load() != ETextureState::eReady)
 		{
-			m_pendingMaterialTextureUploads[p_handle].insert(EPendingTextureType::eNormalMap);
-			material.params.normalMapHeapSlot = m_textureManager->getTextureShaderReadHeapSlot(m_defaultNormalMap);
+			{
+				std::scoped_lock<std::mutex> lock{m_textureUploadMutex};
+				m_pendingMaterialTextureUploads[p_handle].insert(EPendingTextureType::eNormalMap);
+			}
+
+			material.params.normalMapHeapSlot = m_textureManager->getTexture(m_defaultNormalMap).shaderReadHeapSlot;
 		}
 		else
-			material.params.normalMapHeapSlot = m_textureManager->getTextureShaderReadHeapSlot(p_normal_map);
+			material.params.normalMapHeapSlot = m_textureManager->getTexture(p_normal_map).shaderReadHeapSlot;
 
-		for (uint32 i{0u}; i < m_maxFramesInFlight; ++i)
-			m_dirtyMaterials[i].insert(p_handle); // Inserts if it is not already present
+		markMaterialDirty(p_handle);
 	}
 
 	auto MaterialManager::pollMaterialTextureUploads() -> void
 	{
-		std::scoped_lock<std::mutex> lock{m_mutex};
+		std::scoped_lock<std::mutex> lock{m_textureUploadMutex};
 
 		if (m_pendingMaterialTextureUploads.empty())
 			return;
@@ -160,9 +157,9 @@ namespace toaster::render
 			{
 				if (*type_it == EPendingTextureType::eAlbedoMap)
 				{
-					if (m_textureManager->getTextureState(mat.albedoMap) == ETextureState::eReady)
+					if (m_textureManager->getTexture(mat.albedoMap).state->load() == ETextureState::eReady)
 					{
-						mat.params.albedoMapHeapSlot = m_textureManager->getTextureShaderReadHeapSlot(mat.albedoMap);
+						mat.params.albedoMapHeapSlot = m_textureManager->getTexture(mat.albedoMap).shaderReadHeapSlot;
 						need_update                  = true;
 						type_it                      = types.erase(type_it);
 						continue;
@@ -170,9 +167,9 @@ namespace toaster::render
 				}
 				else if (*type_it == EPendingTextureType::eNormalMap)
 				{
-					if (m_textureManager->getTextureState(mat.normalMap) == ETextureState::eReady)
+					if (m_textureManager->getTexture(mat.normalMap).state->load() == ETextureState::eReady)
 					{
-						mat.params.normalMapHeapSlot = m_textureManager->getTextureShaderReadHeapSlot(mat.normalMap);
+						mat.params.normalMapHeapSlot = m_textureManager->getTexture(mat.normalMap).shaderReadHeapSlot;
 						need_update                  = true;
 						type_it                      = types.erase(type_it);
 						continue;
@@ -182,21 +179,16 @@ namespace toaster::render
 			}
 
 			if (need_update)
-			{
-				for (uint32 i{0u}; i < m_maxFramesInFlight; ++i)
-					m_dirtyMaterials[i].insert(handle); // Inserts if it is not already present
-			}
+				markMaterialDirty(handle);
 		}
 
-		std::erase_if(m_pendingMaterialTextureUploads, [](const auto &pair) -> bool
-		{
-			return pair.second.empty();
-		});
+		// Erase all the uploads that are ready
+		std::erase_if(m_pendingMaterialTextureUploads, [](const auto &pair) -> bool { return pair.second.empty(); });
 	}
 
 	auto MaterialManager::updateDirtyMaterials(uint32 p_frame_index) -> void
 	{
-		std::scoped_lock<std::mutex> lock{m_mutex};
+		std::scoped_lock<std::mutex> lock{m_dirtyMaterialMutex};
 
 		auto &dirty_list{m_dirtyMaterials[p_frame_index]};
 		if (dirty_list.empty())
@@ -215,7 +207,7 @@ namespace toaster::render
 
 	auto MaterialManager::markMaterialDirty(MaterialHandle p_handle) -> void
 	{
-		std::scoped_lock<std::mutex> lock{m_mutex};
+		std::scoped_lock<std::mutex> lock{m_dirtyMaterialMutex};
 
 		for (uint32 i{0u}; i < m_maxFramesInFlight; ++i)
 			m_dirtyMaterials[i].insert(p_handle); // Inserts if it is not already present

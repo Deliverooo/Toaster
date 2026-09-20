@@ -1,5 +1,7 @@
 #include "toast_gpu/frame.hpp"
 
+#include <mutex>
+
 namespace toaster::gpu::frame
 {
 	struct DeferredDeletion
@@ -35,11 +37,13 @@ namespace toaster::gpu::frame
 		uint64          transferTimelineCounter{0u};
 
 		std::vector<DeferredDeletion> deferredDeletions;
+
+		std::mutex deferredDeletionMutex;
 	};
 
 	static FrameContextImpl *g_impl{nullptr};
 
-	auto deleteDeferredDeletion(DeferredDeletion &p_dd) -> void
+	static auto deleteDeferredDeletion(DeferredDeletion &p_dd) -> void
 	{
 		switch (p_dd.type)
 		{
@@ -115,6 +119,8 @@ namespace toaster::gpu::frame
 
 	auto processDeferredDeletions(uint32 p_frame_index) -> void
 	{
+		std::scoped_lock<std::mutex> lock{g_impl->deferredDeletionMutex};
+
 		const uint64 completedTransferValue{getSemaphoreValue(g_impl->transferTimelineSemaphore)};
 		for (auto it{g_impl->deferredDeletions.begin()}; it != g_impl->deferredDeletions.end();)
 		{
@@ -145,10 +151,6 @@ namespace toaster::gpu::frame
 		++g_impl->graphicsTimelineCounter;
 		g_impl->graphicsTimelineValues[g_impl->currentFrameIndex] = g_impl->graphicsTimelineCounter;
 
-		// std::vector<SemaphoreSubmitInfo> waits;
-		// if (g_impl->transferTimelineCounter > 0u)
-		// waits.emplace_back(SemaphoreSubmitInfo{g_impl->transferTimelineSemaphore, g_impl->transferTimelineCounter}); // Wait on the transfer queue
-
 		const bool success{gpu::submitAndPresent(p_swapchain, p_command_list, {g_impl->graphicsTimelineSemaphore, g_impl->graphicsTimelineCounter})};
 		return success;
 	}
@@ -170,6 +172,7 @@ namespace toaster::gpu::frame
 
 	auto defferBufferDeletion(BufferHandle p_buffer) -> void
 	{
+		std::scoped_lock<std::mutex> lock{g_impl->deferredDeletionMutex};
 		g_impl->deferredDeletions.emplace_back(DeferredDeletion{
 												   static_cast<uint64>(p_buffer),
 												   g_impl->graphicsTimelineCounter,
@@ -180,6 +183,7 @@ namespace toaster::gpu::frame
 
 	auto defferTextureDeletion(TextureHandle p_texture) -> void
 	{
+		std::scoped_lock<std::mutex> lock{g_impl->deferredDeletionMutex};
 		g_impl->deferredDeletions.emplace_back(DeferredDeletion{
 												   static_cast<uint64>(p_texture),
 												   g_impl->graphicsTimelineCounter,
@@ -190,6 +194,7 @@ namespace toaster::gpu::frame
 
 	auto defferBufferSlotFreeing(ResourceDescriptorHeapHandle p_resource_heap, uint32 p_slot) -> void
 	{
+		std::scoped_lock<std::mutex> lock{g_impl->deferredDeletionMutex};
 		g_impl->deferredDeletions.emplace_back(DeferredDeletion{
 												   0u,
 												   g_impl->graphicsTimelineCounter,
@@ -202,6 +207,7 @@ namespace toaster::gpu::frame
 
 	auto defferTextureSlotFreeing(ResourceDescriptorHeapHandle p_resource_heap, uint32 p_slot) -> void
 	{
+		std::scoped_lock<std::mutex> lock{g_impl->deferredDeletionMutex};
 		g_impl->deferredDeletions.emplace_back(DeferredDeletion{
 												   0u,
 												   g_impl->graphicsTimelineCounter,

@@ -44,9 +44,14 @@ namespace toaster::render
 		gpu::alloc::VirtualAllocationHandle vertexBufferAllocation{nullptr};
 		gpu::alloc::VirtualAllocationHandle indexBufferAllocation{nullptr};
 
-		EMeshState state{EMeshState::eUnloaded};
-		uint64     vertexReadyToken{0u};
-		uint64     indexReadyToken{0u};
+		// Useful to cache in the data struct
+		uint64 vertexBufferOffset{0u};
+		uint64 indexBufferOffset{0u};
+
+		UniquePtr<std::atomic<EMeshState> > state{nullptr};
+
+		uint64 vertexReadyToken{0u};
+		uint64 indexReadyToken{0u};
 	};
 
 	TST_DECLARE_HANDLE(StaticMesh);
@@ -71,29 +76,8 @@ namespace toaster::render
 		[[nodiscard]] auto tryGetStaticMesh(StaticMeshHandle p_handle) -> StaticMesh * { return m_staticMeshes.tryGet(p_handle); }
 		[[nodiscard]] auto tryGetStaticMesh(StaticMeshHandle p_handle) const -> const StaticMesh * { return m_staticMeshes.tryGet(p_handle); }
 
-		// Thread safe operations
-		auto getStaticMeshState(StaticMeshHandle p_handle) -> EMeshState;
-		auto setStaticMeshState(StaticMeshHandle p_handle, EMeshState p_state) -> void;
-
-		struct StaticMeshThreadData
-		{
-			std::vector<Submesh> submeshes;
-
-			uint64 vertexBufferOffset{0u};
-			uint64 vertexBufferSize{0u};
-
-			uint64 indexBufferOffset{0u};
-			uint64 indexBufferSize{0u};
-
-			EMeshState state{EMeshState::eUnloaded};
-		};
-
-		// Returns a copy of the static mesh's data, so the operation can be done under the internal mutex's lock
-		auto getStaticMeshThreadData(StaticMeshHandle p_handle) -> StaticMeshThreadData;
-		auto tryGetStaticMeshThreadData(StaticMeshHandle p_handle) -> std::optional<StaticMeshThreadData>;
-
-		auto getStaticMeshVertexBuffer() const -> gpu::BufferHandle { return m_staticMeshVertexBuffer; }
-		auto getStaticMeshIndexBuffer() const -> gpu::BufferHandle { return m_staticMeshIndexBuffer; }
+		[[nodiscard]] auto getStaticMeshVertexBuffer() const -> gpu::BufferHandle { return m_staticMeshVertexBuffer; }
+		[[nodiscard]] auto getStaticMeshIndexBuffer() const -> gpu::BufferHandle { return m_staticMeshIndexBuffer; }
 
 		auto pollMeshUploads() -> void;
 
@@ -110,7 +94,6 @@ namespace toaster::render
 		gpu::alloc::VirtualBlockHandle m_staticMeshIndexBufferBlock{nullptr};
 
 		std::unordered_set<StaticMeshHandle> m_pendingMeshUploads;
-
-		std::mutex m_mutex;
+		std::mutex                           m_meshStateMutex;
 	};
 }

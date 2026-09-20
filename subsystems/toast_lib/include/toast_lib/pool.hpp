@@ -1,5 +1,6 @@
 #pragma once
 
+#include <mutex>
 #include <ranges>
 #include <vector>
 
@@ -21,6 +22,8 @@ namespace toaster
 		{
 		}
 
+		~Pool() { clear(); }
+
 		auto setDestructorFn(DestructorFn p_destructor_fn) { m_destructorFn = p_destructor_fn; }
 		auto setDestructorUserData(void *p_user_data) { m_destructorUserData = p_user_data; }
 
@@ -29,6 +32,8 @@ namespace toaster
 		{
 			uint32 id{0u};
 			uint32 magic{1u};
+
+			std::scoped_lock<std::mutex> lock{m_mutex};
 
 			if (!m_freeIndices.empty())
 			{
@@ -52,11 +57,13 @@ namespace toaster
 
 		auto destroy(HandleType p_handle) -> void
 		{
+			std::scoped_lock<std::mutex> lock{m_mutex};
+
 			if (!isValid(p_handle))
 				TST_PERMA_ASSERT(false);
-			// return;
 
 			uint32 id{p_handle.getId()};
+
 			m_entries[id]->alive = false;
 			++m_entries[id]->magic;
 			m_freeIndices.push_back(id);
@@ -67,15 +74,11 @@ namespace toaster
 
 		auto clear() -> void
 		{
-			if (m_destructorFn)
+			for (auto &entry: m_entries)
 			{
-				for (auto &entry: m_entries)
-				{
-					if (entry->alive)
-						m_destructorFn(&entry->data, m_destructorUserData);
-
-					delete entry;
-				}
+				if (m_destructorFn && entry->alive)
+					m_destructorFn(&entry->data, m_destructorUserData);
+				delete entry;
 			}
 			m_entries.clear();
 			m_freeIndices.clear();
@@ -115,6 +118,8 @@ namespace toaster
 			uint32 magic{0u};
 			bool   alive{false};
 		};
+
+		std::mutex m_mutex;
 
 		std::vector<Entry *> m_entries;
 		std::vector<uint32>  m_freeIndices;

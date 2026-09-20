@@ -7,7 +7,6 @@
 #include <algorithm>
 
 #define VK_USE_PLATFORM_WIN32_KHR
-#include <mutex>
 #include <vulkan/vulkan.hpp>
 
 #include <vma/vk_mem_alloc.h>
@@ -66,17 +65,10 @@ namespace toaster::gpu
 
 	struct ResourceDescriptorHeap
 	{
-		vk::BindHeapInfoEXT bindInfo{};
+		UniquePtr<std::mutex> bufferSlotMutex{nullptr};
+		UniquePtr<std::mutex> imageSlotMutex{nullptr};
 
-		// // The pending queue of resources to set. Will be cleared when writeDescriptors() is called.
-		// std::vector<vk::HostAddressRangeEXT>       bufferHostAddressRanges;
-		// std::vector<vk::DeviceAddressRangeKHR>     bufferDeviceAddressRanges;
-		// std::vector<vk::ResourceDescriptorInfoEXT> bufferResourceInfos;
-		//
-		// std::vector<vk::HostAddressRangeEXT>       imageHostAddressRanges;
-		// std::vector<vk::ImageViewCreateInfo>       imageViewCreateInfos;
-		// std::vector<vk::ImageDescriptorInfoEXT>    imageDescriptorInfos;
-		// std::vector<vk::ResourceDescriptorInfoEXT> imageResourceInfos;
+		vk::BindHeapInfoEXT bindInfo{};
 
 		vk::Buffer    heapBuffer{nullptr};
 		VmaAllocation heapAllocation{nullptr};
@@ -96,6 +88,8 @@ namespace toaster::gpu
 
 	struct SamplerDescriptorHeap
 	{
+		UniquePtr<std::mutex> samplerSlotMutex{nullptr};
+
 		vk::BindHeapInfoEXT bindInfo{};
 
 		vk::Buffer    heapBuffer{nullptr};
@@ -184,17 +178,15 @@ namespace toaster::gpu
 		vk::ShaderStageFlags    nextStage{0u};
 	};
 
+	#define TST_REGISTER_RESOURCE_POOL(__resourceType, __name) struct  Pool<__resourceType>  __name
+
 	struct APIImpl
 	{
 		bool usingSwapchain{false}; // From the desc
 
 		uint32 maxConcurrentSwapchainWorkloads{3u};
 
-		#pragma region instance
-
 		vk::Instance vulkanInstance{nullptr};
-
-		#pragma endregion
 
 		#pragma region physical device
 
@@ -238,26 +230,12 @@ namespace toaster::gpu
 
 		#pragma endregion
 
-		#pragma region synchronisation
+		TST_REGISTER_RESOURCE_POOL(Semaphore, semaphores);
+		TST_REGISTER_RESOURCE_POOL(Buffer, buffers);
+		TST_REGISTER_RESOURCE_POOL(Texture, textures);
 
-		Pool<Semaphore> semaphores;
-
-		#pragma endregion
-
-		#pragma region buffers
-
-		Pool<Buffer> buffers;
-
-		#pragma endregion
-
-		#pragma region textures
-
-		Pool<Texture>                     textures;
 		std::unordered_set<TextureHandle> undefinedTextures; // All the textures that are in the undefined format and are awaiting a layout transition
-
-		std::mutex undefinedTexturesMutex;
-
-		#pragma endregion
+		std::mutex                        undefinedTexturesMutex;
 
 		#pragma region samplers
 
@@ -267,17 +245,12 @@ namespace toaster::gpu
 
 		#pragma region swapchain
 
-		Pool<Surface> surfaces;
-
+		Pool<Surface>   surfaces;
 		Pool<Swapchain> swapchains;
 
 		#pragma endregion
 
-		#pragma region shaders
-
-		Pool<Shader> shaders;
-
-		#pragma endregion
+		TST_REGISTER_RESOURCE_POOL(Shader, shaders);
 	};
 
 	static APIImpl *g_impl{nullptr};
@@ -1068,7 +1041,6 @@ namespace toaster::gpu
 		for (auto undef_tex: g_impl->undefinedTextures)
 		{
 			const Texture &texture{g_impl->textures[undef_tex]};
-
 			TST_PERMA_ASSERT(g_impl->textures.isValid(undef_tex));
 
 			image_memory_barriers[i].srcStageMask        = vk::PipelineStageFlagBits2::eTopOfPipe;
@@ -1320,7 +1292,6 @@ namespace toaster::gpu
 		CommandList &cmd{g_impl->commandLists[p_command_list]};
 		TST_ASSERT(cmd.open);
 
-		Buffer & src_buffer{g_impl->buffers[p_src_buffer]};
 		Texture *dst_texture{g_impl->textures.tryGet(p_dst_texture)};
 		TST_PERMA_ASSERT(dst_texture);
 
@@ -1335,35 +1306,35 @@ namespace toaster::gpu
 		if (p_extent.z == 0u)
 			p_extent.z = (dst_texture->desc.extent.z >> p_mip_level) ? (dst_texture->desc.extent.z >> p_mip_level) : 1u;
 
-		std::scoped_lock<std::mutex> lock{g_impl->undefinedTexturesMutex};
-
-		auto undefined_it{std::ranges::find(g_impl->undefinedTextures, p_dst_texture)};
-		if (undefined_it != g_impl->undefinedTextures.end())
 		{
-			vk::ImageMemoryBarrier2 barrier{};
-			barrier.srcStageMask        = vk::PipelineStageFlagBits2::eTopOfPipe;
-			barrier.dstStageMask        = vk::PipelineStageFlagBits2::eTransfer;
-			barrier.srcAccessMask       = vk::AccessFlagBits2::eNone;
-			barrier.dstAccessMask       = vk::AccessFlagBits2::eTransferWrite;
-			barrier.oldLayout           = vk::ImageLayout::eUndefined;
-			barrier.newLayout           = vk::ImageLayout::eGeneral;
-			barrier.srcQueueFamilyIndex = vk::QueueFamilyIgnored;
-			barrier.dstQueueFamilyIndex = vk::QueueFamilyIgnored;
-			barrier.image               = dst_texture->image;
-			barrier.subresourceRange    = vk::ImageSubresourceRange{
-				getImageAspectMask(dst_texture->desc.format),
-				0u,
-				dst_texture->desc.mipCount,
-				0u,
-				dst_texture->desc.layerCount
-			};
+			std::scoped_lock<std::mutex> lock{g_impl->undefinedTexturesMutex};
+			auto                         undefined_it{std::ranges::find(g_impl->undefinedTextures, p_dst_texture)};
+			if (undefined_it != g_impl->undefinedTextures.end())
+			{
+				vk::ImageMemoryBarrier2 barrier{};
+				barrier.srcStageMask        = vk::PipelineStageFlagBits2::eTopOfPipe;
+				barrier.dstStageMask        = vk::PipelineStageFlagBits2::eTransfer;
+				barrier.srcAccessMask       = vk::AccessFlagBits2::eNone;
+				barrier.dstAccessMask       = vk::AccessFlagBits2::eTransferWrite;
+				barrier.oldLayout           = vk::ImageLayout::eUndefined;
+				barrier.newLayout           = vk::ImageLayout::eGeneral;
+				barrier.srcQueueFamilyIndex = vk::QueueFamilyIgnored;
+				barrier.dstQueueFamilyIndex = vk::QueueFamilyIgnored;
+				barrier.image               = dst_texture->image;
+				barrier.subresourceRange    = vk::ImageSubresourceRange{
+					getImageAspectMask(dst_texture->desc.format),
+					0u,
+					dst_texture->desc.mipCount,
+					0u,
+					dst_texture->desc.layerCount
+				};
 
-			vk::DependencyInfo dependency_info{};
-			dependency_info.setImageMemoryBarriers(barrier);
-			cmd.cmd.pipelineBarrier2(dependency_info);
-			undefined_it = g_impl->undefinedTextures.erase(undefined_it);
+				vk::DependencyInfo dependency_info{};
+				dependency_info.setImageMemoryBarriers(barrier);
+				cmd.cmd.pipelineBarrier2(dependency_info);
+				undefined_it = g_impl->undefinedTextures.erase(undefined_it);
+			}
 		}
-		TST_PERMA_ASSERT(!g_impl->undefinedTextures.contains(p_dst_texture));
 
 		vk::BufferImageCopy2 copy_region{};
 		copy_region.bufferOffset      = p_src_offset;
@@ -1375,6 +1346,9 @@ namespace toaster::gpu
 
 		vk::CopyBufferToImageInfo2 copy_buffer_to_image_info{};
 		copy_buffer_to_image_info.setRegions(copy_region);
+
+		Buffer &src_buffer{g_impl->buffers[p_src_buffer]};
+
 		copy_buffer_to_image_info.srcBuffer      = src_buffer.buffer;
 		copy_buffer_to_image_info.dstImage       = dst_texture->image;
 		copy_buffer_to_image_info.dstImageLayout = vk::ImageLayout::eGeneral; // Thank you VK_KHR_unified_image_layouts :)
@@ -1748,6 +1722,9 @@ namespace toaster::gpu
 
 		ResourceDescriptorHeap resource_heap{};
 
+		resource_heap.bufferSlotMutex = makeUnique<std::mutex>();
+		resource_heap.imageSlotMutex  = makeUnique<std::mutex>();
+
 		resource_heap.bufferSlotAllocator = {p_desc.maxBufferDescriptors};
 		resource_heap.imageSlotAllocator  = {p_desc.maxImageDescriptors};
 
@@ -1792,6 +1769,8 @@ namespace toaster::gpu
 		const auto &heap_props{g_impl->descriptorHeapProperties};
 
 		SamplerDescriptorHeap sampler_heap{};
+
+		sampler_heap.samplerSlotMutex = makeUnique<std::mutex>();
 
 		sampler_heap.samplerSlotAllocator = {p_desc.maxSamplerDescriptors};
 
@@ -1838,25 +1817,50 @@ namespace toaster::gpu
 	auto allocBufferHeapSlot(ResourceDescriptorHeapHandle p_resource_heap) -> uint32
 	{
 		ResourceDescriptorHeap &resource_heap{g_impl->resourceHeaps[p_resource_heap]};
-		return resource_heap.bufferSlotAllocator.allocSlot();
+
+		uint32 slot;
+		{
+			std::scoped_lock<std::mutex> lock{*resource_heap.bufferSlotMutex};
+			slot = resource_heap.bufferSlotAllocator.allocSlot();
+		}
+
+		return slot;
 	}
 
 	auto allocTextureHeapSlot(ResourceDescriptorHeapHandle p_resource_heap) -> uint32
 	{
 		ResourceDescriptorHeap &resource_heap{g_impl->resourceHeaps[p_resource_heap]};
-		return getTextureBaseHeapSlot(p_resource_heap, resource_heap.imageSlotAllocator.allocSlot());
+
+		uint32 slot;
+		{
+			std::scoped_lock<std::mutex> lock{*resource_heap.imageSlotMutex};
+			slot = resource_heap.imageSlotAllocator.allocSlot();
+		}
+
+		return getTextureBaseHeapSlot(p_resource_heap, slot);
 	}
 
 	auto allocSamplerHeapSlot(SamplerDescriptorHeapHandle p_sampler_heap) -> uint32
 	{
 		SamplerDescriptorHeap &sampler_heap{g_impl->samplerHeaps[p_sampler_heap]};
-		return sampler_heap.samplerSlotAllocator.allocSlot();
+
+		uint32 slot;
+		{
+			std::scoped_lock<std::mutex> lock{*sampler_heap.samplerSlotMutex};
+			slot = sampler_heap.samplerSlotAllocator.allocSlot();
+		}
+
+		return slot;
 	}
 
 	auto freeBufferHeapSlot(ResourceDescriptorHeapHandle p_resource_heap, uint32 p_heap_slot) -> void
 	{
 		ResourceDescriptorHeap &resource_heap{g_impl->resourceHeaps[p_resource_heap]};
-		resource_heap.bufferSlotAllocator.freeSlot(p_heap_slot);
+
+		{
+			std::scoped_lock<std::mutex> lock{*resource_heap.bufferSlotMutex};
+			resource_heap.bufferSlotAllocator.freeSlot(p_heap_slot);
+		}
 	}
 
 	auto freeTextureHeapSlot(ResourceDescriptorHeapHandle p_resource_heap, uint32 p_heap_slot) -> void
@@ -1864,13 +1868,21 @@ namespace toaster::gpu
 		ResourceDescriptorHeap &resource_heap{g_impl->resourceHeaps[p_resource_heap]};
 
 		uint32 real_heap_slot{getSegmentRelativeTextureHeapSlot(p_resource_heap, p_heap_slot)};
-		resource_heap.imageSlotAllocator.freeSlot(real_heap_slot);
+
+		{
+			std::scoped_lock<std::mutex> lock{*resource_heap.imageSlotMutex};
+			resource_heap.imageSlotAllocator.freeSlot(real_heap_slot);
+		}
 	}
 
 	auto freeSamplerHeapSlot(SamplerDescriptorHeapHandle p_sampler_heap, uint32 p_heap_slot) -> void
 	{
 		SamplerDescriptorHeap &sampler_heap{g_impl->samplerHeaps[p_sampler_heap]};
-		sampler_heap.samplerSlotAllocator.freeSlot(p_heap_slot);
+
+		{
+			std::scoped_lock<std::mutex> lock{*sampler_heap.samplerSlotMutex};
+			sampler_heap.samplerSlotAllocator.freeSlot(p_heap_slot);
+		}
 	}
 
 	auto writeBufferDescriptor(ResourceDescriptorHeapHandle p_resource_heap, uint32 p_heap_slot, BufferHandle p_buffer) -> void

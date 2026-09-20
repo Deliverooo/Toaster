@@ -86,10 +86,10 @@ namespace toaster::render
 		auto updateDirtyMaterials(uint32 p_frame_index) -> void;
 		auto markMaterialDirty(MaterialHandle p_handle) -> void;
 
-		auto getMaterialBufferAddress(uint32 p_frame_index) const -> gpu::DeviceAddress { return m_bdas[p_frame_index]; }
+		[[nodiscard]] auto getMaterialBufferAddress(uint32 p_frame_index) const -> gpu::DeviceAddress { return m_bdas[p_frame_index]; }
 
-		auto getDefaultColourMap() const -> TextureHandle { return m_defaultColourMap; }
-		auto getDefaultNormalMap() const -> TextureHandle { return m_defaultNormalMap; }
+		[[nodiscard]] auto getDefaultColourMap() const -> TextureHandle { return m_defaultColourMap; }
+		[[nodiscard]] auto getDefaultNormalMap() const -> TextureHandle { return m_defaultNormalMap; }
 
 	private:
 		NonOwningPtr<TextureManager> m_textureManager{nullptr};
@@ -113,6 +113,7 @@ namespace toaster::render
 		TextureHandle m_defaultColourMap{nullptr};
 		TextureHandle m_defaultNormalMap{nullptr};
 
-		mutable std::mutex m_mutex;
+		std::mutex m_dirtyMaterialMutex;
+		std::mutex m_textureUploadMutex;
 	};
 }

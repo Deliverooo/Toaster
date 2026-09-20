@@ -35,6 +35,11 @@ namespace toaster::render
 				gpu::alloc::virtualFree(p_data->indexBufferAllocation);
 			if (p_data->vertexBufferAllocation)
 				gpu::alloc::virtualFree(p_data->vertexBufferAllocation);
+
+			p_data->vertexBufferOffset = 0u;
+			p_data->indexBufferOffset  = 0u;
+
+			p_data->state->store(EMeshState::eUnloaded); // The mesh no longer exists, so it is 'unloaded'
 		});
 	}
 
@@ -54,122 +59,84 @@ namespace toaster::render
 
 	auto MeshManager::registerStaticMesh() -> StaticMeshHandle
 	{
-		std::scoped_lock<std::mutex> lock{m_mutex};
+		StaticMesh temp_mesh{};
+		temp_mesh.state = makeUnique<std::atomic<EMeshState> >(EMeshState::eUnloaded);
 
-		return m_staticMeshes.emplace();
+		return m_staticMeshes.emplace(std::move(temp_mesh));
 	}
 
 	auto MeshManager::uploadStaticMeshData(StaticMeshHandle            p_handle, const std::vector<StaticMeshVertex> &p_vertices, const std::vector<uint32> &p_indices,
 										   const std::vector<Submesh> &p_submeshes) -> void
 	{
-		std::scoped_lock<std::mutex> lock{m_mutex};
-
-		StaticMesh &static_mesh{m_staticMeshes[p_handle]};
-
 		const uint64 vertex_buffer_size{p_vertices.size() * sizeof(StaticMeshVertex)};
 		const uint64 index_buffer_size{p_indices.size() * sizeof(uint32)};
 
-		static_mesh.submeshes              = p_submeshes;
+		StaticMesh &static_mesh{m_staticMeshes[p_handle]};
+
+		static_mesh.submeshes = p_submeshes;
+
 		static_mesh.vertexBufferAllocation = gpu::alloc::virtualAllocate(m_staticMeshVertexBufferBlock, vertex_buffer_size, alignof(StaticMeshVertex));
 		static_mesh.indexBufferAllocation  = gpu::alloc::virtualAllocate(m_staticMeshIndexBufferBlock, index_buffer_size, alignof(uint32));
 
-		const uint64 vertex_offset{gpu::alloc::getAllocationOffset(static_mesh.vertexBufferAllocation)};
-		const uint64 index_offset{gpu::alloc::getAllocationOffset(static_mesh.indexBufferAllocation)};
+		const uint64 vertex_allocation_offset{gpu::alloc::getAllocationOffset(static_mesh.vertexBufferAllocation)};
+		const uint64 index_allocation_offset{gpu::alloc::getAllocationOffset(static_mesh.indexBufferAllocation)};
 
-		static_mesh.vertexReadyToken = gpu::upload::uploadDataToBuffer(m_staticMeshVertexBuffer, p_vertices.data(), vertex_buffer_size, vertex_offset);
-		static_mesh.indexReadyToken  = gpu::upload::uploadDataToBuffer(m_staticMeshIndexBuffer, p_indices.data(), index_buffer_size, index_offset);
+		static_mesh.vertexBufferOffset = vertex_allocation_offset / sizeof(StaticMeshVertex);
+		static_mesh.indexBufferOffset  = index_allocation_offset / sizeof(uint32);
 
-		m_pendingMeshUploads.insert(p_handle);
+		static_mesh.vertexReadyToken = gpu::upload::uploadDataToBuffer(m_staticMeshVertexBuffer, p_vertices.data(), vertex_buffer_size, vertex_allocation_offset);
+		static_mesh.indexReadyToken  = gpu::upload::uploadDataToBuffer(m_staticMeshIndexBuffer, p_indices.data(), index_buffer_size, index_allocation_offset);
+
+		static_mesh.state->store(EMeshState::eUploadingToGPU);
+
+		{
+			std::scoped_lock<std::mutex> lock{m_meshStateMutex};
+			m_pendingMeshUploads.insert(p_handle);
+		}
 	}
 
 	auto MeshManager::createStaticMesh(const std::vector<StaticMeshVertex> &p_vertices, const std::vector<uint32> &p_indices,
 									   const std::vector<Submesh> &         p_submeshes) -> StaticMeshHandle
 	{
-		std::scoped_lock<std::mutex> lock{m_mutex};
-
 		const uint64 vertex_buffer_size{p_vertices.size() * sizeof(StaticMeshVertex)};
 		const uint64 index_buffer_size{p_indices.size() * sizeof(uint32)};
 
-		StaticMesh static_mesh{};
-		static_mesh.submeshes              = p_submeshes;
-		static_mesh.vertexBufferAllocation = gpu::alloc::virtualAllocate(m_staticMeshVertexBufferBlock, vertex_buffer_size, 16u);
-		static_mesh.indexBufferAllocation  = gpu::alloc::virtualAllocate(m_staticMeshIndexBufferBlock, index_buffer_size, 16u);
+		StaticMesh temp_mesh{};
 
-		const uint64 vertex_offset{gpu::alloc::getAllocationOffset(static_mesh.vertexBufferAllocation)};
-		const uint64 index_offset{gpu::alloc::getAllocationOffset(static_mesh.indexBufferAllocation)};
+		temp_mesh.submeshes = p_submeshes;
 
-		gpu::upload::uploadDataToBuffer(m_staticMeshVertexBuffer, p_vertices.data(), vertex_buffer_size, vertex_offset);
-		gpu::upload::uploadDataToBuffer(m_staticMeshIndexBuffer, p_indices.data(), index_buffer_size, index_offset);
+		temp_mesh.vertexBufferAllocation = gpu::alloc::virtualAllocate(m_staticMeshVertexBufferBlock, vertex_buffer_size, alignof(StaticMeshVertex));
+		temp_mesh.indexBufferAllocation  = gpu::alloc::virtualAllocate(m_staticMeshIndexBufferBlock, index_buffer_size, alignof(uint32));
 
-		static_mesh.state = EMeshState::eUploadingToGPU;
+		const uint64 vertex_allocation_offset{gpu::alloc::getAllocationOffset(temp_mesh.vertexBufferAllocation)};
+		const uint64 index_allocation_offset{gpu::alloc::getAllocationOffset(temp_mesh.indexBufferAllocation)};
 
-		return m_staticMeshes.emplace(std::move(static_mesh));
+		temp_mesh.vertexBufferOffset = vertex_allocation_offset / sizeof(StaticMeshVertex);
+		temp_mesh.indexBufferOffset  = index_allocation_offset / sizeof(uint32);
+
+		temp_mesh.vertexReadyToken = gpu::upload::uploadDataToBuffer(m_staticMeshVertexBuffer, p_vertices.data(), vertex_buffer_size, vertex_allocation_offset);
+		temp_mesh.indexReadyToken  = gpu::upload::uploadDataToBuffer(m_staticMeshIndexBuffer, p_indices.data(), index_buffer_size, index_allocation_offset);
+
+		temp_mesh.state = makeUnique<std::atomic<EMeshState> >(EMeshState::eUploadingToGPU);
+
+		return m_staticMeshes.emplace(std::move(temp_mesh));
 	}
 
 	auto MeshManager::destroyStaticMesh(StaticMeshHandle p_handle) -> void
 	{
-		std::scoped_lock<std::mutex> lock{m_mutex};
+		{
+			std::scoped_lock<std::mutex> lock{m_meshStateMutex};
 
-		if (m_pendingMeshUploads.contains(p_handle))
-			m_pendingMeshUploads.erase(p_handle);
+			if (m_pendingMeshUploads.contains(p_handle))
+				m_pendingMeshUploads.erase(p_handle);
+		}
 
 		m_staticMeshes.destroy(p_handle);
 	}
 
-	auto MeshManager::getStaticMeshState(StaticMeshHandle p_handle) -> EMeshState
-	{
-		std::scoped_lock<std::mutex> lock{m_mutex};
-
-		StaticMesh &mesh{m_staticMeshes[p_handle]};
-		return mesh.state;
-	}
-
-	auto MeshManager::setStaticMeshState(StaticMeshHandle p_handle, EMeshState p_state) -> void
-	{
-		std::scoped_lock<std::mutex> lock{m_mutex};
-
-		StaticMesh &mesh{m_staticMeshes[p_handle]};
-		mesh.state = p_state;
-	}
-
-	auto MeshManager::getStaticMeshThreadData(StaticMeshHandle p_handle) -> StaticMeshThreadData
-	{
-		std::scoped_lock<std::mutex> lock{m_mutex};
-
-		StaticMesh &mesh{m_staticMeshes[p_handle]};
-
-		StaticMeshThreadData thread_data{};
-		thread_data.submeshes          = mesh.submeshes;
-		thread_data.vertexBufferOffset = gpu::alloc::getAllocationOffset(mesh.vertexBufferAllocation) / sizeof(StaticMeshVertex);
-		thread_data.vertexBufferSize   = gpu::alloc::getAllocationOffset(mesh.vertexBufferAllocation);
-		thread_data.indexBufferOffset  = gpu::alloc::getAllocationOffset(mesh.indexBufferAllocation) / sizeof(uint32);
-		thread_data.indexBufferSize    = gpu::alloc::getAllocationOffset(mesh.indexBufferAllocation);
-		thread_data.state              = mesh.state;
-		return thread_data;
-	}
-
-	auto MeshManager::tryGetStaticMeshThreadData(StaticMeshHandle p_handle) -> std::optional<StaticMeshThreadData>
-	{
-		std::scoped_lock<std::mutex> lock{m_mutex};
-
-		StaticMesh *mesh{m_staticMeshes.tryGet(p_handle)};
-		if (mesh)
-		{
-			StaticMeshThreadData thread_data{};
-			thread_data.submeshes          = mesh->submeshes;
-			thread_data.vertexBufferOffset = gpu::alloc::getAllocationOffset(mesh->vertexBufferAllocation) / sizeof(StaticMeshVertex);
-			thread_data.vertexBufferSize   = gpu::alloc::getAllocationOffset(mesh->vertexBufferAllocation);
-			thread_data.indexBufferOffset  = gpu::alloc::getAllocationOffset(mesh->indexBufferAllocation) / sizeof(uint32);
-			thread_data.indexBufferSize    = gpu::alloc::getAllocationOffset(mesh->indexBufferAllocation);
-			thread_data.state              = mesh->state;
-			return thread_data;
-		}
-		return std::nullopt;
-	}
-
 	auto MeshManager::pollMeshUploads() -> void
 	{
-		std::scoped_lock<std::mutex> lock{m_mutex};
+		std::scoped_lock<std::mutex> lock{m_meshStateMutex};
 
 		if (m_pendingMeshUploads.empty())
 			return;
@@ -180,8 +147,8 @@ namespace toaster::render
 			StaticMesh &static_mesh{m_staticMeshes[*it]};
 			if (transfer_value >= static_mesh.vertexReadyToken && transfer_value >= static_mesh.indexReadyToken)
 			{
-				static_mesh.state = EMeshState::eReady;
-				it                = m_pendingMeshUploads.erase(it);
+				static_mesh.state->store(EMeshState::eReady);
+				it = m_pendingMeshUploads.erase(it);
 			}
 			else
 				++it;
