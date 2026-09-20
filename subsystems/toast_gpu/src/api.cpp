@@ -2221,6 +2221,7 @@ namespace toaster::gpu
 		image_usage_flags |= (p_desc.usage & ETextureUsageFlagBits::eDepthStencilAttachment)
 								 ? vk::ImageUsageFlagBits::eDepthStencilAttachment
 								 : vk::ImageUsageFlagBits{0u};
+		image_usage_flags |= (p_desc.usage & ETextureUsageFlagBits::eTransient) ? vk::ImageUsageFlagBits::eTransientAttachment : vk::ImageUsageFlagBits{0u};
 
 		vk::SampleCountFlagBits sample_count{vk::SampleCountFlagBits::e1};
 		switch (p_desc.sampleCount)

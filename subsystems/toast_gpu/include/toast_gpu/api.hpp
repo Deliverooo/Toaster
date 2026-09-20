@@ -109,7 +109,8 @@ namespace toaster::gpu
 		eSampled                = TST_BIT(2u),
 		eStorage                = TST_BIT(3u),
 		eColourAttachment       = TST_BIT(4u),
-		eDepthStencilAttachment = TST_BIT(5u)
+		eDepthStencilAttachment = TST_BIT(5u),
+		eTransient              = TST_BIT(6u)
 	};
 
 	TST_SPECIALISE_FLAGS(ETextureUsageFlagBits, ETextureUsageFlags);

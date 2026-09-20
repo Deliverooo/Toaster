@@ -148,11 +148,31 @@ public:
 			m_objectDataBuffers[i] = gpu::createBuffer(object_buffer_desc);
 		}
 
-		gpu::TextureDesc depth_desc{};
-		depth_desc.extent = {m_app->getWindow().getSize(), 1u};
-		depth_desc.format = gpu::EFormat::eD32Sfloat;
-		depth_desc.usage  = gpu::ETextureUsageFlagBits::eDepthStencilAttachment;
-		m_depthAttachment = gpu::createTexture(depth_desc);
+		{
+			gpu::TextureDesc depth_desc{};
+			depth_desc.extent = {m_app->getWindow().getSize(), 1u};
+			depth_desc.format = gpu::EFormat::eD32Sfloat;
+			depth_desc.usage  = gpu::ETextureUsageFlagBits::eDepthStencilAttachment;
+			m_depthAttachment = gpu::createTexture(depth_desc);
+		}
+
+		{
+			gpu::TextureDesc msaa_depth_desc{};
+			msaa_depth_desc.extent      = {m_app->getWindow().getSize(), 1u};
+			msaa_depth_desc.format      = gpu::EFormat::eD32Sfloat;
+			msaa_depth_desc.usage       = gpu::ETextureUsageFlagBits::eDepthStencilAttachment | gpu::ETextureUsageFlagBits::eTransient;
+			msaa_depth_desc.sampleCount = gpu::ESampleCount::e4;
+			m_msaaDepthAttachment       = gpu::createTexture(msaa_depth_desc);
+		}
+
+		{
+			gpu::TextureDesc msaa_colour_desc{};
+			msaa_colour_desc.extent      = {m_app->getWindow().getSize(), 1u};
+			msaa_colour_desc.format      = gpu::EFormat::eR8G8B8A8Srgb;
+			msaa_colour_desc.usage       = gpu::ETextureUsageFlagBits::eColourAttachment | gpu::ETextureUsageFlagBits::eTransient;
+			msaa_colour_desc.sampleCount = gpu::ESampleCount::e4;
+			m_msaaColourAttachment       = gpu::createTexture(msaa_colour_desc);
+		}
 	}
 
 	TestLayer()           = default;
@@ -161,6 +181,8 @@ public:
 	auto onDestroy() -> void override
 	{
 		gpu::destroyTexture(m_depthAttachment);
+		gpu::destroyTexture(m_msaaDepthAttachment);
+		gpu::destroyTexture(m_msaaColourAttachment);
 
 		gpu::destroyShader(m_ps);
 		gpu::destroyShader(m_vs);
@@ -223,10 +245,22 @@ public:
 
 		gpu::RenderingInfo rendering_info{};
 		rendering_info.colourAttachments = {
-			gpu::RenderingAttachmentInfo{gpu::ClearColourValue{1.0f, 0.0f, 1.0f, 1.0f}, render_tex, nullptr, gpu::EAttachmentUsageOP::eClearStore}
+			gpu::RenderingAttachmentInfo{
+				gpu::ClearColourValue{1.0f, 0.0f, 1.0f, 1.0f},
+				m_msaaColourAttachment,
+				render_tex,
+				gpu::EAttachmentUsageOP::eClearStore,
+				gpu::EAttachmentResolveMode::eAverage
+			}
 		};
-		rendering_info.depthAttachment = gpu::RenderingAttachmentInfo{gpu::ClearDepthStencilValue{}, m_depthAttachment};
-		rendering_info.renderArea      = tsm::Rect{m_app->getWindow().getSize()};
+		rendering_info.depthAttachment = gpu::RenderingAttachmentInfo{
+			gpu::ClearDepthStencilValue{},
+			m_msaaDepthAttachment,
+			m_depthAttachment,
+			gpu::EAttachmentUsageOP::eClearStore,
+			gpu::EAttachmentResolveMode::eMin
+		};
+		rendering_info.renderArea = tsm::Rect{m_app->getWindow().getSize()};
 
 		gpu::bindResourceHeap(p_cmd, m_renderCtx->getResourceHeap());
 		gpu::bindSamplerHeap(p_cmd, m_renderCtx->getSamplerHeap());
@@ -238,7 +272,7 @@ public:
 		inheritance_info.samplerHeap             = m_renderCtx->getSamplerHeap();
 		inheritance_info.colourAttachmentFormats = {render_tex_desc.format};
 		inheritance_info.depthAttachmentFormat   = gpu::EFormat::eD32Sfloat;
-		inheritance_info.samples                 = gpu::ESampleCount::e1;
+		inheritance_info.samples                 = gpu::ESampleCount::e4;
 		gpu::openCommandList(secondary_cmd, &inheritance_info);
 
 		gpu::bindShaders(secondary_cmd, {m_vs, m_ps});
@@ -256,7 +290,7 @@ public:
 		gpu::setDepthBias(secondary_cmd, false);
 		gpu::setLineWidth(secondary_cmd, 1.0f);
 
-		gpu::setRasterizationSamples(secondary_cmd, gpu::ESampleCount::e1);
+		gpu::setRasterizationSamples(secondary_cmd, gpu::ESampleCount::e4);
 
 		gpu::setDepthState(secondary_cmd, true);
 		gpu::setStencilState(secondary_cmd, false);
@@ -302,7 +336,6 @@ public:
 		push_data.objectDataBuffer = gpu::getBufferAddress(m_objectDataBuffers[m_app->getFrameIndex()]);
 		push_data.materialBuffer   = m_materialManager->getMaterialBufferAddress(m_app->getFrameIndex());
 		push_data.samplerId        = m_samplerHeapSlot;
-		// push_data.textureId        = m_textureManager->getTextureShaderReadHeapSlot(m_materialManager->getDefaultColourMap());
 
 		gpu::pushData(secondary_cmd, push_data);
 		gpu::bindIndexBuffer(secondary_cmd, nullptr);
@@ -339,13 +372,36 @@ public:
 
 		ed.dispatch<WindowResizeEvent>([this](WindowResizeEvent &p_e)-> bool
 		{
-			// Recreate the depth buffer
-			gpu::destroyTexture(m_depthAttachment);
-			gpu::TextureDesc depth_desc{};
-			depth_desc.extent = {p_e.getSize(), 1u};
-			depth_desc.format = gpu::EFormat::eD32Sfloat;
-			depth_desc.usage  = gpu::ETextureUsageFlagBits::eDepthStencilAttachment;
-			m_depthAttachment = gpu::createTexture(depth_desc);
+			// Recreate the depth buffers
+			{
+				gpu::destroyTexture(m_depthAttachment);
+				gpu::TextureDesc depth_desc{};
+				depth_desc.extent = {p_e.getSize(), 1u};
+				depth_desc.format = gpu::EFormat::eD32Sfloat;
+				depth_desc.usage  = gpu::ETextureUsageFlagBits::eDepthStencilAttachment;
+				m_depthAttachment = gpu::createTexture(depth_desc);
+			}
+
+			{
+				gpu::destroyTexture(m_msaaDepthAttachment);
+				gpu::TextureDesc msaa_depth_desc{};
+				msaa_depth_desc.extent      = {p_e.getSize(), 1u};
+				msaa_depth_desc.format      = gpu::EFormat::eD32Sfloat;
+				msaa_depth_desc.usage       = gpu::ETextureUsageFlagBits::eDepthStencilAttachment | gpu::ETextureUsageFlagBits::eTransient;
+				msaa_depth_desc.sampleCount = gpu::ESampleCount::e4;
+				m_msaaDepthAttachment       = gpu::createTexture(msaa_depth_desc);
+			}
+
+			// Recreate the MSAA colour
+			{
+				gpu::destroyTexture(m_msaaColourAttachment);
+				gpu::TextureDesc colour_desc{};
+				colour_desc.extent      = {p_e.getSize(), 1u};
+				colour_desc.format      = gpu::EFormat::eR8G8B8A8Srgb;
+				colour_desc.usage       = gpu::ETextureUsageFlagBits::eColourAttachment | gpu::ETextureUsageFlagBits::eTransient;
+				colour_desc.sampleCount = gpu::ESampleCount::e4;
+				m_msaaColourAttachment  = gpu::createTexture(colour_desc);
+			}
 
 			m_camera.onResize(p_e.getAspectRatio());
 
@@ -355,6 +411,8 @@ public:
 
 private :
 	gpu::TextureHandle m_depthAttachment{nullptr};
+	gpu::TextureHandle m_msaaDepthAttachment{nullptr};
+	gpu::TextureHandle m_msaaColourAttachment{nullptr};
 
 	entt::entity m_levelEntity{entt::null};
 	entt::entity m_orboEntity{entt::null};
