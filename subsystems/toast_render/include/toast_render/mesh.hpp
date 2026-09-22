@@ -3,6 +3,7 @@
 #include <mutex>
 
 #include "material.hpp"
+#include "toast_gpu/upload.hpp"
 
 namespace toaster::render
 {
@@ -59,7 +60,7 @@ namespace toaster::render
 	class TST_RENDER_API MeshManager
 	{
 	public:
-		MeshManager(uint64 p_max_static_mesh_vertices = 50u * 1028u * 1028u, uint64 p_max_static_mesh_indices = 30u * 1028u * 1028u);
+		MeshManager(uint64 p_max_static_mesh_vertices = 20u * 1000u * 1000u, uint64 p_max_static_mesh_indices = 30u * 1000u * 1000u);
 		~MeshManager();
 
 		// Register so you can upload the gpu data once it is loaded from disk
@@ -70,6 +71,8 @@ namespace toaster::render
 		[[nodiscard]] auto createStaticMesh(const std::vector<StaticMeshVertex> &p_vertices, const std::vector<uint32> &p_indices,
 											const std::vector<Submesh> &         p_submeshes) -> StaticMeshHandle;
 		auto destroyStaticMesh(StaticMeshHandle p_handle) -> void;
+
+		auto isStaticMeshReady(StaticMeshHandle p_handle) -> bool;
 
 		[[nodiscard]] auto getStaticMesh(StaticMeshHandle p_handle) -> StaticMesh & { return m_staticMeshes[p_handle]; }
 		[[nodiscard]] auto getStaticMesh(StaticMeshHandle p_handle) const -> const StaticMesh & { return m_staticMeshes[p_handle]; }
@@ -93,7 +96,7 @@ namespace toaster::render
 		gpu::alloc::VirtualBlockHandle m_staticMeshVertexBufferBlock{nullptr};
 		gpu::alloc::VirtualBlockHandle m_staticMeshIndexBufferBlock{nullptr};
 
-		std::unordered_set<StaticMeshHandle> m_pendingMeshUploads;
-		std::mutex                           m_meshStateMutex;
+		std::unordered_map<StaticMeshHandle, RefPtr<gpu::upload::StateTracker> > m_pendingMeshUploads;
+		std::mutex                                                               m_meshStateMutex;
 	};
 }

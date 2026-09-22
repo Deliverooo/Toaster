@@ -114,12 +114,18 @@ namespace toaster::render
 		temp_mesh.vertexBufferOffset = vertex_allocation_offset / sizeof(StaticMeshVertex);
 		temp_mesh.indexBufferOffset  = index_allocation_offset / sizeof(uint32);
 
-		temp_mesh.vertexReadyToken = gpu::upload::uploadDataToBuffer(m_staticMeshVertexBuffer, p_vertices.data(), vertex_buffer_size, vertex_allocation_offset);
-		temp_mesh.indexReadyToken  = gpu::upload::uploadDataToBuffer(m_staticMeshIndexBuffer, p_indices.data(), index_buffer_size, index_allocation_offset);
+		RefPtr state_tracker{makeReference<gpu::upload::StateTracker>()};
 
-		temp_mesh.state = makeUnique<std::atomic<EMeshState> >(EMeshState::eUploadingToGPU);
+		gpu::upload::uploadDataToBuffer(gpu::upload::BufferUploadDesc{m_staticMeshVertexBuffer, p_vertices.data(), vertex_buffer_size, vertex_allocation_offset},
+										state_tracker);
+		gpu::upload::uploadDataToBuffer(gpu::upload::BufferUploadDesc{m_staticMeshIndexBuffer, p_indices.data(), index_buffer_size, index_allocation_offset},
+										state_tracker);
 
-		return m_staticMeshes.emplace(std::move(temp_mesh));
+		StaticMeshHandle out_handle{m_staticMeshes.emplace(std::move(temp_mesh))};
+
+		m_pendingMeshUploads[out_handle] = state_tracker;
+
+		return out_handle;
 	}
 
 	auto MeshManager::destroyStaticMesh(StaticMeshHandle p_handle) -> void
@@ -134,6 +140,15 @@ namespace toaster::render
 		m_staticMeshes.destroy(p_handle);
 	}
 
+	auto MeshManager::isStaticMeshReady(StaticMeshHandle p_handle) -> bool
+	{
+		const auto it{m_pendingMeshUploads.find(p_handle)};
+		if (it == m_pendingMeshUploads.end())
+			return true;
+
+		return false;
+	}
+
 	auto MeshManager::pollMeshUploads() -> void
 	{
 		std::scoped_lock<std::mutex> lock{m_meshStateMutex};
@@ -141,15 +156,10 @@ namespace toaster::render
 		if (m_pendingMeshUploads.empty())
 			return;
 
-		uint64 transfer_value{gpu::getSemaphoreValue(gpu::frame::getTransferTimelineSemaphore())};
 		for (auto it{m_pendingMeshUploads.begin()}; it != m_pendingMeshUploads.end();)
 		{
-			StaticMesh &static_mesh{m_staticMeshes[*it]};
-			if (transfer_value >= static_mesh.vertexReadyToken && transfer_value >= static_mesh.indexReadyToken)
-			{
-				static_mesh.state->store(EMeshState::eReady);
+			if (it->second->ready.load())
 				it = m_pendingMeshUploads.erase(it);
-			}
 			else
 				++it;
 		}
