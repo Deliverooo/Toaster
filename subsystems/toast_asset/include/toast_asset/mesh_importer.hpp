@@ -23,6 +23,7 @@ namespace toaster::asset
 
 		auto importStaticMeshDataFromFile(const std::filesystem::path &p_path) const -> MeshImportData;
 
+		auto loadStaticMeshFromFile(render::StaticMeshHandle p_dst_mesh, const std::filesystem::path &p_path) const -> void;
 		auto asyncLoadStaticMeshFromFile(render::StaticMeshHandle p_dst_mesh, const std::filesystem::path &p_path) -> void;
 
 		auto waitImports() -> void;

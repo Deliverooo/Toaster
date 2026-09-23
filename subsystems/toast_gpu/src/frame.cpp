@@ -33,8 +33,8 @@ namespace toaster::gpu::frame
 		uint64              graphicsTimelineCounter{0u};
 		std::vector<uint64> graphicsTimelineValues;
 
-		SemaphoreHandle transferTimelineSemaphore{nullptr};
-		uint64          transferTimelineCounter{0u};
+		SemaphoreHandle     transferTimelineSemaphore{nullptr};
+		std::atomic<uint64> transferTimelineCounter{0u};
 
 		std::vector<DeferredDeletion> deferredDeletions;
 
@@ -146,6 +146,14 @@ namespace toaster::gpu::frame
 		processDeferredDeletions(p_frame_index);
 	}
 
+	auto submit(CommandListHandle p_command_list) -> void
+	{
+		++g_impl->graphicsTimelineCounter;
+		g_impl->graphicsTimelineValues[g_impl->currentFrameIndex] = g_impl->graphicsTimelineCounter;
+
+		gpu::submit(EQueueType::eGraphics, p_command_list, {}, SemaphoreSubmitInfo{g_impl->graphicsTimelineSemaphore, g_impl->graphicsTimelineCounter});
+	}
+
 	auto submitAndPresent(SwapchainHandle p_swapchain, CommandListHandle p_command_list) -> bool
 	{
 		++g_impl->graphicsTimelineCounter;
@@ -167,7 +175,7 @@ namespace toaster::gpu::frame
 
 	auto getTransferTimelineCounterValue() -> uint64
 	{
-		return g_impl->transferTimelineCounter;
+		return g_impl->transferTimelineCounter.load();
 	}
 
 	auto defferBufferDeletion(BufferHandle p_buffer) -> void
@@ -176,7 +184,7 @@ namespace toaster::gpu::frame
 		g_impl->deferredDeletions.emplace_back(DeferredDeletion{
 												   static_cast<uint64>(p_buffer),
 												   g_impl->graphicsTimelineCounter,
-												   g_impl->transferTimelineCounter,
+												   g_impl->transferTimelineCounter.load(),
 												   DeferredDeletion::EDeferredDeletionType::eBuffer
 											   });
 	}
@@ -187,7 +195,7 @@ namespace toaster::gpu::frame
 		g_impl->deferredDeletions.emplace_back(DeferredDeletion{
 												   static_cast<uint64>(p_texture),
 												   g_impl->graphicsTimelineCounter,
-												   g_impl->transferTimelineCounter,
+												   g_impl->transferTimelineCounter.load(),
 												   DeferredDeletion::EDeferredDeletionType::eTexture
 											   });
 	}
@@ -198,7 +206,7 @@ namespace toaster::gpu::frame
 		g_impl->deferredDeletions.emplace_back(DeferredDeletion{
 												   0u,
 												   g_impl->graphicsTimelineCounter,
-												   g_impl->transferTimelineCounter,
+												   g_impl->transferTimelineCounter.load(),
 												   DeferredDeletion::EDeferredDeletionType::eBufferHeapSlot,
 												   p_resource_heap,
 												   p_slot
@@ -211,7 +219,7 @@ namespace toaster::gpu::frame
 		g_impl->deferredDeletions.emplace_back(DeferredDeletion{
 												   0u,
 												   g_impl->graphicsTimelineCounter,
-												   g_impl->transferTimelineCounter,
+												   g_impl->transferTimelineCounter.load(),
 												   DeferredDeletion::EDeferredDeletionType::eTextureHeapSlot,
 												   p_resource_heap,
 												   p_slot

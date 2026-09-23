@@ -68,7 +68,7 @@ namespace toaster
 			m_deltaTime = elapsed.count();
 			last_time   = current_time;
 
-			gpu::upload::flushUploads();
+			gpu::upload::pollUploads();
 			gpu::frame::beginFrame(m_frameIndex);
 
 			gpu::CommandListHandle &cmd{command_lists[m_frameIndex]};
@@ -89,6 +89,7 @@ namespace toaster
 					layer->onRender(cmd);
 				}
 			}
+
 			m_window->submitAndPresent(cmd);
 
 			m_frameIndex = (m_frameIndex + 1u) % maxFramesInFlight;

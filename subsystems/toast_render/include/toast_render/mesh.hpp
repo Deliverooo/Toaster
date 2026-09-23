@@ -1,6 +1,7 @@
 #pragma once
 
 #include <mutex>
+#include <shared_mutex>
 
 #include "material.hpp"
 #include "toast_gpu/upload.hpp"
@@ -49,10 +50,7 @@ namespace toaster::render
 		uint64 vertexBufferOffset{0u};
 		uint64 indexBufferOffset{0u};
 
-		UniquePtr<std::atomic<EMeshState> > state{nullptr};
-
-		uint64 vertexReadyToken{0u};
-		uint64 indexReadyToken{0u};
+		gpu::upload::StateTrackerHandle stateTracker{nullptr};
 	};
 
 	TST_DECLARE_HANDLE(StaticMesh);
@@ -82,8 +80,6 @@ namespace toaster::render
 		[[nodiscard]] auto getStaticMeshVertexBuffer() const -> gpu::BufferHandle { return m_staticMeshVertexBuffer; }
 		[[nodiscard]] auto getStaticMeshIndexBuffer() const -> gpu::BufferHandle { return m_staticMeshIndexBuffer; }
 
-		auto pollMeshUploads() -> void;
-
 	private:
 		Pool<StaticMesh> m_staticMeshes;
 
@@ -95,8 +91,5 @@ namespace toaster::render
 
 		gpu::alloc::VirtualBlockHandle m_staticMeshVertexBufferBlock{nullptr};
 		gpu::alloc::VirtualBlockHandle m_staticMeshIndexBufferBlock{nullptr};
-
-		std::unordered_map<StaticMeshHandle, RefPtr<gpu::upload::StateTracker> > m_pendingMeshUploads;
-		std::mutex                                                               m_meshStateMutex;
 	};
 }

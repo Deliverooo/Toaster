@@ -39,7 +39,7 @@ namespace toaster::render
 			p_data->vertexBufferOffset = 0u;
 			p_data->indexBufferOffset  = 0u;
 
-			p_data->state->store(EMeshState::eUnloaded); // The mesh no longer exists, so it is 'unloaded'
+			gpu::upload::destroyStateTracker(p_data->stateTracker);
 		});
 	}
 
@@ -47,8 +47,8 @@ namespace toaster::render
 	{
 		m_staticMeshes.clear();
 
-		gpu::upload::cancelBufferUpload(m_staticMeshIndexBuffer);
-		gpu::upload::cancelBufferUpload(m_staticMeshVertexBuffer);
+		// gpu::upload::cancelBufferUpload(m_staticMeshIndexBuffer);
+		// gpu::upload::cancelBufferUpload(m_staticMeshVertexBuffer);
 
 		gpu::frame::defferBufferDeletion(m_staticMeshIndexBuffer);
 		gpu::frame::defferBufferDeletion(m_staticMeshVertexBuffer);
@@ -60,7 +60,9 @@ namespace toaster::render
 	auto MeshManager::registerStaticMesh() -> StaticMeshHandle
 	{
 		StaticMesh temp_mesh{};
-		temp_mesh.state = makeUnique<std::atomic<EMeshState> >(EMeshState::eUnloaded);
+
+		// No. Materials do not count as 'subresources'
+		temp_mesh.stateTracker = gpu::upload::createStateTracker(2u); // Vertex and index buffer.
 
 		return m_staticMeshes.emplace(std::move(temp_mesh));
 	}
@@ -84,15 +86,10 @@ namespace toaster::render
 		static_mesh.vertexBufferOffset = vertex_allocation_offset / sizeof(StaticMeshVertex);
 		static_mesh.indexBufferOffset  = index_allocation_offset / sizeof(uint32);
 
-		static_mesh.vertexReadyToken = gpu::upload::uploadDataToBuffer(m_staticMeshVertexBuffer, p_vertices.data(), vertex_buffer_size, vertex_allocation_offset);
-		static_mesh.indexReadyToken  = gpu::upload::uploadDataToBuffer(m_staticMeshIndexBuffer, p_indices.data(), index_buffer_size, index_allocation_offset);
-
-		static_mesh.state->store(EMeshState::eUploadingToGPU);
-
-		{
-			std::scoped_lock<std::mutex> lock{m_meshStateMutex};
-			m_pendingMeshUploads.insert(p_handle);
-		}
+		gpu::upload::uploadDataToBuffer(gpu::upload::BufferUploadDesc{m_staticMeshVertexBuffer, p_vertices.data(), vertex_buffer_size, vertex_allocation_offset},
+										static_mesh.stateTracker);
+		gpu::upload::uploadDataToBuffer(gpu::upload::BufferUploadDesc{m_staticMeshIndexBuffer, p_indices.data(), index_buffer_size, index_allocation_offset},
+										static_mesh.stateTracker);
 	}
 
 	auto MeshManager::createStaticMesh(const std::vector<StaticMeshVertex> &p_vertices, const std::vector<uint32> &p_indices,
@@ -114,54 +111,26 @@ namespace toaster::render
 		temp_mesh.vertexBufferOffset = vertex_allocation_offset / sizeof(StaticMeshVertex);
 		temp_mesh.indexBufferOffset  = index_allocation_offset / sizeof(uint32);
 
-		RefPtr state_tracker{makeReference<gpu::upload::StateTracker>()};
+		// No. Materials do not count as 'subresources'
+		temp_mesh.stateTracker = gpu::upload::createStateTracker(2u); // Vertex and index buffer.
 
 		gpu::upload::uploadDataToBuffer(gpu::upload::BufferUploadDesc{m_staticMeshVertexBuffer, p_vertices.data(), vertex_buffer_size, vertex_allocation_offset},
-										state_tracker);
+										temp_mesh.stateTracker);
 		gpu::upload::uploadDataToBuffer(gpu::upload::BufferUploadDesc{m_staticMeshIndexBuffer, p_indices.data(), index_buffer_size, index_allocation_offset},
-										state_tracker);
+										temp_mesh.stateTracker);
 
-		StaticMeshHandle out_handle{m_staticMeshes.emplace(std::move(temp_mesh))};
-
-		m_pendingMeshUploads[out_handle] = state_tracker;
-
-		return out_handle;
+		return m_staticMeshes.emplace(std::move(temp_mesh));
 	}
 
 	auto MeshManager::destroyStaticMesh(StaticMeshHandle p_handle) -> void
 	{
-		{
-			std::scoped_lock<std::mutex> lock{m_meshStateMutex};
-
-			if (m_pendingMeshUploads.contains(p_handle))
-				m_pendingMeshUploads.erase(p_handle);
-		}
-
 		m_staticMeshes.destroy(p_handle);
 	}
 
 	auto MeshManager::isStaticMeshReady(StaticMeshHandle p_handle) -> bool
 	{
-		const auto it{m_pendingMeshUploads.find(p_handle)};
-		if (it == m_pendingMeshUploads.end())
-			return true;
+		StaticMesh &mesh{m_staticMeshes[p_handle]};
 
-		return false;
-	}
-
-	auto MeshManager::pollMeshUploads() -> void
-	{
-		std::scoped_lock<std::mutex> lock{m_meshStateMutex};
-
-		if (m_pendingMeshUploads.empty())
-			return;
-
-		for (auto it{m_pendingMeshUploads.begin()}; it != m_pendingMeshUploads.end();)
-		{
-			if (it->second->ready.load())
-				it = m_pendingMeshUploads.erase(it);
-			else
-				++it;
-		}
+		return gpu::upload::isStateTrackerReady(mesh.stateTracker);
 	}
 }

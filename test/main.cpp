@@ -93,7 +93,7 @@ public:
 			m_scene.addComponent<StaticMeshComponent>(m_levelEntity, level_mesh);
 		}
 
-		gpu::SamplerDesc sampler_desc{};
+		gpu::SamplerDesc   sampler_desc{};
 		gpu::SamplerHandle sampler{gpu::createSampler(sampler_desc)};
 
 		m_samplerHeapSlot = gpu::allocSamplerHeapSlot(m_renderCtx->getSamplerHeap());
@@ -231,10 +231,10 @@ public:
 
 	auto onRender(gpu::CommandListHandle p_cmd) -> void override
 	{
-		m_textureManager->pollTextureUploads(p_cmd);
+		// m_textureManager->pollTextureUploads(p_cmd);
 		m_materialManager->pollMaterialTextureUploads();
 		m_materialManager->updateDirtyMaterials(m_app->getFrameIndex());
-		m_meshManager->pollMeshUploads();
+		// m_meshManager->pollMeshUploads();
 
 		for (auto &list: m_secondaryBuffers[m_app->getFrameIndex()])
 			gpu::resetCommandList(list);
@@ -305,7 +305,8 @@ public:
 		view.each([this, &draw_count, mapped_cmd, mapped_object_data]([[maybe_unused]] entt::entity p_entity, const StaticMeshComponent &p_smc) -> void
 		{
 			const render::StaticMesh *mesh{m_meshManager->tryGetStaticMesh(p_smc.mesh)};
-			if (mesh && p_smc.visible && mesh->state->load() == render::EMeshState::eReady)
+
+			if (mesh && p_smc.visible && gpu::upload::isStateTrackerReady(mesh->stateTracker))
 			{
 				for (const auto &submesh: mesh->submeshes)
 				{

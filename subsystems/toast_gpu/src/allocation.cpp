@@ -74,7 +74,13 @@ namespace toaster::gpu::alloc
 		VmaVirtualBlockCreateInfo virtual_block_create_info{};
 		virtual_block_create_info.size = p_size;
 
-		vmaCreateVirtualBlock(&virtual_block_create_info, &block);
+		VkResult result{vmaCreateVirtualBlock(&virtual_block_create_info, &block)};
+		if (result != VK_SUCCESS)
+		{
+			TST_ASSERT(false);
+			return nullptr;
+		}
+
 		return g_impl->virtualBlocks.emplace(VirtualBlock{block});
 	}
 
@@ -94,7 +100,13 @@ namespace toaster::gpu::alloc
 		VmaVirtualAllocationCreateInfo virtual_allocation_create_info{};
 		virtual_allocation_create_info.size      = p_size;
 		virtual_allocation_create_info.alignment = p_alignment;
-		vmaVirtualAllocate(block.block, &virtual_allocation_create_info, &allocation, &allocation_offset);
+
+		VkResult result{vmaVirtualAllocate(block.block, &virtual_allocation_create_info, &allocation, &allocation_offset)};
+		if (result != VK_SUCCESS)
+		{
+			TST_ASSERT(false);
+			return nullptr;
+		}
 
 		return g_impl->virtualAllocations.emplace(VirtualAllocation{allocation, p_virtual_block, allocation_offset});
 	}

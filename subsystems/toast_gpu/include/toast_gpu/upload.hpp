@@ -9,9 +9,9 @@ namespace toaster::gpu::upload
 	struct TST_GPU_API UploadContextDesc
 	{
 		// TODO: Replace maybe with a multi-paged allocator, with per-allocation tracking. IYKYK
-		uint64 maxStagingSize{1024u * 1024u * 10u}; // 10 Mib
+		uint64 maxStagingSize{1024u * 1024u * 500u}; // 500 Mib
 
-		uint32 maxAllocationCommandLists{3u}; // Basically frames in flight, but for the transfer queue
+		uint32 maxAllocationCommandLists{2u}; // Basically frames in flight, but for the transfer queue
 	};
 
 	// Must be called after initFrameContext(...)
@@ -19,13 +19,21 @@ namespace toaster::gpu::upload
 	// Must be called before shutdownFrameContext()
 	auto TST_GPU_API shutdownUploadContext() -> void;
 
-	struct StateTracker
-	{
-		std::mutex           ticketMutex;
-		std::vector<uint64>  timelineTickets;
-		std::atomic_uint32_t pendingSubresources{0u};
-		std::atomic_bool     ready{false};
-	};
+	#pragma region state tracker
+
+	TST_DECLARE_GPU_HANDLE(StateTracker);
+
+	using StateTrackerReadyFn = void(*)(void *); // Standard user data callback thing
+
+	auto TST_GPU_API createStateTracker(uint32 p_expected_subresources) -> StateTrackerHandle;
+
+	// Invokes when the state tracker has finished processing all the associated subresources
+	auto TST_GPU_API registerStateTrackerReadyCallback(StateTrackerHandle p_state_tracker, StateTrackerReadyFn p_ready_callback, void *p_callback_user_data) -> void;
+	auto TST_GPU_API destroyStateTracker(StateTrackerHandle p_state_tracker) -> void;
+	auto TST_GPU_API resetStateTracker(StateTrackerHandle p_state_tracker, uint32 p_pending_subresources) -> void;
+	auto TST_GPU_API isStateTrackerReady(StateTrackerHandle p_state_tracker) -> bool;
+
+	#pragma endregion
 
 	auto TST_GPU_API pollUploads() -> void;
 
@@ -37,7 +45,7 @@ namespace toaster::gpu::upload
 		uint64       dstOffset{0u};
 	};
 
-	auto TST_GPU_API uploadDataToBuffer(const BufferUploadDesc &p_upload_desc, RefPtr<StateTracker> &p_state_tracker) -> void;
+	auto TST_GPU_API uploadDataToBuffer(const BufferUploadDesc &p_upload_desc, StateTrackerHandle p_state_tracker) -> void;
 
 	struct TST_GPU_API TextureUploadDesc
 	{
@@ -50,18 +58,5 @@ namespace toaster::gpu::upload
 		uint32        layerCount{1u};
 	};
 
-	// Returns the value to 'wait' on
-	auto TST_GPU_API uploadDataToTexture(const TextureUploadDesc &p_upload_desc, RefPtr<StateTracker> &p_state_tracker) -> void;
-
-	// auto TST_GPU_API cancelBufferUpload(BufferHandle p_buffer) -> void;    // Only works if called before flushUploads!
-	// auto TST_GPU_API cancelTextureUpload(TextureHandle p_texture) -> void; // Only works if called before flushUploads!
-};
-
-// class TST_GPU_API UploadManager
-// {
-// public:
-// 	UploadContextDesc
-//
-// private:
-//
-// };
+	auto TST_GPU_API uploadDataToTexture(const TextureUploadDesc &p_upload_desc, StateTrackerHandle p_state_tracker) -> void;
+}

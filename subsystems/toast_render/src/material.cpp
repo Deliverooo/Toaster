@@ -58,8 +58,7 @@ namespace toaster::render
 			uint32 normal_data{0xFFFFFFFF};
 			m_textureManager->setData(m_defaultNormalMap, &normal_data, sizeof(uint32));
 		}
-
-		gpu::upload::flushUploadsAndWait();
+		// gpu::upload::pollUploads();
 	}
 
 	MaterialManager::~MaterialManager()
@@ -104,7 +103,7 @@ namespace toaster::render
 
 		material.albedoMap = p_albedo_map;
 
-		if (m_textureManager->getTexture(p_albedo_map).state->load() != ETextureState::eReady)
+		if (!gpu::upload::isStateTrackerReady(m_textureManager->getTexture(p_albedo_map).stateTracker))
 		{
 			{
 				std::scoped_lock<std::mutex> lock{m_textureUploadMutex};
@@ -125,7 +124,7 @@ namespace toaster::render
 
 		material.normalMap = p_normal_map;
 
-		if (m_textureManager->getTexture(p_normal_map).state->load() != ETextureState::eReady)
+		if (!gpu::upload::isStateTrackerReady(m_textureManager->getTexture(p_normal_map).stateTracker))
 		{
 			{
 				std::scoped_lock<std::mutex> lock{m_textureUploadMutex};
@@ -156,7 +155,7 @@ namespace toaster::render
 			{
 				if (*type_it == EPendingTextureType::eAlbedoMap)
 				{
-					if (m_textureManager->getTexture(mat.albedoMap).state->load() == ETextureState::eReady)
+					if (gpu::upload::isStateTrackerReady(m_textureManager->getTexture(mat.albedoMap).stateTracker))
 					{
 						mat.params.albedoMapHeapSlot = m_textureManager->getTexture(mat.albedoMap).shaderReadHeapSlot;
 						need_update                  = true;
@@ -166,7 +165,7 @@ namespace toaster::render
 				}
 				else if (*type_it == EPendingTextureType::eNormalMap)
 				{
-					if (m_textureManager->getTexture(mat.normalMap).state->load() == ETextureState::eReady)
+					if (gpu::upload::isStateTrackerReady(m_textureManager->getTexture(mat.normalMap).stateTracker))
 					{
 						mat.params.normalMapHeapSlot = m_textureManager->getTexture(mat.normalMap).shaderReadHeapSlot;
 						need_update                  = true;

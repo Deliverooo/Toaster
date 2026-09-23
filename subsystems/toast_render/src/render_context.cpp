@@ -15,8 +15,8 @@ namespace toaster::render
 		gpu::initGPUContext(gpu_context_desc);
 
 		gpu::frame::initFrameContext({3u});
-		gpu::upload::initUploadContext({});
 		gpu::alloc::initAllocationContext();
+		gpu::upload::initUploadContext({});
 
 		m_resourceHeap = gpu::createResourceDescriptorHeap({8u, 128u});
 		m_samplerHeap  = gpu::createSamplerDescriptorHeap({16u});
@@ -24,8 +24,8 @@ namespace toaster::render
 
 	RenderContext::~RenderContext()
 	{
-		gpu::alloc::shutdownAllocationContext();
 		gpu::upload::shutdownUploadContext();
+		gpu::alloc::shutdownAllocationContext();
 		gpu::frame::shutdownFrameContext();
 
 		// Must happen after shutting down the frame context because some deferred deletions may depend on the descriptor heaps

@@ -70,15 +70,17 @@ namespace toaster::asset
 			if (!has_albedo_map)
 				has_albedo_map = ai_mat->GetTexture(aiTextureType_DIFFUSE, 0, &ai_albedo_map_path) == AI_SUCCESS;
 
+			#define LOAD_TEXTURES 1
 			if (has_albedo_map)
 			{
 				auto albedo_map_path{get_path_and_create_texture_if_exists(ai_albedo_map_path)};
 				if (albedo_map_path.has_value())
 				{
+					#if LOAD_TEXTURES
 					render::TextureHandle tex{m_textureManager->registerTexture()};
 					m_textureImporter->asyncLoadTextureFromFile(tex, *albedo_map_path);
-
 					m_materialManager->setAlbedoMap(tst_mat, tex);
+					#endif
 				}
 				else
 					m_materialManager->setAlbedoColour(tst_mat, {1.0f, 0.0f, 1.0f}); // Error magenta
@@ -92,10 +94,11 @@ namespace toaster::asset
 				auto normal_map_path{get_path_and_create_texture_if_exists(ai_normal_map_path)};
 				if (normal_map_path.has_value())
 				{
+					#if LOAD_TEXTURES
 					render::TextureHandle tex{m_textureManager->registerTexture()};
 					m_textureImporter->asyncLoadTextureFromFile(tex, *normal_map_path);
-
 					m_materialManager->setNormalMap(tst_mat, tex);
+					#endif
 				}
 			}
 		}
@@ -143,10 +146,16 @@ namespace toaster::asset
 		return std::move(out_data);
 	}
 
+	auto MeshImporter::loadStaticMeshFromFile(render::StaticMeshHandle p_dst_mesh, const std::filesystem::path &p_path) const -> void
+	{
+		const auto cpu_mesh_data{importStaticMeshDataFromFile(p_path)};
+		m_meshManager->uploadStaticMeshData(p_dst_mesh, cpu_mesh_data.vertices, cpu_mesh_data.indices, cpu_mesh_data.submeshes);
+	}
+
 	auto MeshImporter::asyncLoadStaticMeshFromFile(render::StaticMeshHandle p_dst_mesh, const std::filesystem::path &p_path) -> void
 	{
-		render::StaticMesh &static_mesh{m_meshManager->getStaticMesh(p_dst_mesh)};
-		static_mesh.state->store(render::EMeshState::eLoading);
+		// render::StaticMesh &static_mesh{m_meshManager->getStaticMesh(p_dst_mesh)};
+		// static_mesh.state->store(render::EMeshState::eLoading);
 
 		m_pendingImports.emplace_back([this, p_dst_mesh, p_path]() -> void
 		{

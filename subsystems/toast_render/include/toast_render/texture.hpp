@@ -5,6 +5,7 @@
 #include <unordered_set>
 
 #include "render_context.hpp"
+#include "toast_gpu/upload.hpp"
 #include "toast_lib/pool.hpp"
 
 namespace toaster::render
@@ -24,10 +25,9 @@ namespace toaster::render
 		uint32 shaderReadHeapSlot{UINT32_MAX};
 		uint32 storageHeapSlot{UINT32_MAX};
 
-		std::unordered_map<uint32, uint32>     perMipStorageHeapSlots;
-		UniquePtr<std::atomic<ETextureState> > state{nullptr};
+		std::unordered_map<uint32, uint32> perMipStorageHeapSlots;
 
-		uint64 transferReadyToken{0u};
+		gpu::upload::StateTrackerHandle stateTracker{nullptr};
 	};
 
 	TST_DECLARE_HANDLE(Texture);
@@ -59,9 +59,8 @@ namespace toaster::render
 	private:
 		NonOwningPtr<RenderContext> m_renderCtx{nullptr};
 
-		std::unordered_set<TextureHandle> m_pendingTextureUploads;
-
 		Pool<Texture> m_textures;
-		std::mutex    m_textureStateMutex;
+
+		// std::vector<TextureHandle> m_pendingMipmapGenerations;
 	};
 }

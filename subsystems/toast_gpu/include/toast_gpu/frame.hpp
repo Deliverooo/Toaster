@@ -26,6 +26,8 @@ namespace toaster::gpu::frame
 	// Prefer over the standard on from <api.hpp> because this has automatic timeline semaphore tracking
 	auto TST_GPU_API submitAndPresent(SwapchainHandle p_swapchain, CommandListHandle p_command_list) -> bool;
 
+	auto TST_GPU_API submit(CommandListHandle p_command_list) -> void;
+
 	// Uploads signal this timeline; graphics submissions wait on its latest value.
 	[[nodiscard]] auto TST_GPU_API getTransferTimelineSemaphore() -> SemaphoreHandle;
 	[[nodiscard]] auto TST_GPU_API acquireTransferTimelineCounterValue() -> uint64; // returns the current value, then increments the counter

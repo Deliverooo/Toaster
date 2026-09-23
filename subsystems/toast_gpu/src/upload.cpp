@@ -3,16 +3,29 @@
 #include <cstring>
 #include <mutex>
 #include <queue>
+#include <unordered_set>
 
 #include "toast_gpu/allocation.hpp"
+#include "toast_lib/pool.hpp"
 
 namespace toaster::gpu::upload
 {
 	struct StagingAllocation
 	{
 		BufferHandle                   buffer{nullptr};
+		uint64                         bufferOffset{0u};
 		alloc::VirtualAllocationHandle virtualAllocation{nullptr};
 		void *                         mappedData{nullptr};
+	};
+
+	struct StateTracker
+	{
+		UniquePtr<std::mutex>           ticketMutex{nullptr};
+		std::vector<uint64>             timelineTickets;
+		UniquePtr<std::atomic_uint32_t> pendingSubresources{nullptr};
+
+		StateTrackerReadyFn readyCb{nullptr};
+		void *              readyUserData{nullptr};
 	};
 
 	struct UploadTask
@@ -22,11 +35,16 @@ namespace toaster::gpu::upload
 			eBuffer, eTexture
 		};
 
-		StagingAllocation    stagingAllocation{};
-		RefPtr<StateTracker> stateTracker{nullptr};
-		uint64               size{0u};
-		uint64               handle{0u};
-		EType                type{EType::eBuffer};
+		StagingAllocation  stagingAllocation{};
+		StateTrackerHandle stateTracker{nullptr};
+		uint64             size{0u};
+		uint64             dstOffset{0u};
+
+		uint64 handle{0u};
+
+		EType type{EType::eBuffer};
+
+		std::array<char, 4u> magic{'O', 'R', 'B', 'O'};
 	};
 
 	struct LiveUploadBatch
@@ -42,8 +60,10 @@ namespace toaster::gpu::upload
 		alloc::VirtualBlockHandle stagingBlock{nullptr};
 
 		void * mappedStart{nullptr};
-		uint64 maxStagingSize{1024u * 1024u * 10u};
+		uint64 maxStagingSize{1024u * 1024u * 250u};
 		uint64 lastAllocatedOffset{0u};
+
+		Pool<StateTracker> stateTrackers;
 
 		uint32                         maxAllocationCommandLists{3u};
 		std::vector<CommandListHandle> commandLists;
@@ -56,9 +76,11 @@ namespace toaster::gpu::upload
 		std::mutex stagingMutex;
 		std::mutex uploadMutex;
 		std::mutex batchMutex;
+		std::mutex activeStateTrackerMutex;
 
-		std::queue<UploadTask>       taskQueue;
-		std::vector<LiveUploadBatch> liveBatches;
+		std::queue<UploadTask>                 taskQueue;
+		std::vector<LiveUploadBatch>           liveBatches;
+		std::unordered_set<StateTrackerHandle> activeStateTrackers; // State trackers that are not finished
 	};
 
 	static UploadContextImpl *g_impl{nullptr};
@@ -72,8 +94,10 @@ namespace toaster::gpu::upload
 		if (current_value < g_impl->uploadTimeline[p_cmd_index])
 		{
 			waitSemaphores(frame::getTransferTimelineSemaphore(), g_impl->uploadTimeline[p_cmd_index]);
-			resetCommandList(cmd);
 		}
+
+		// if (g_impl->uploadTimeline[p_cmd_ndex] != 0u)
+		resetCommandList(cmd);
 
 		openCommandList(cmd);
 
@@ -87,13 +111,17 @@ namespace toaster::gpu::upload
 			{
 				case UploadTask::EType::eBuffer:
 				{
-					copyBuffer(cmd, task.stagingAllocation.buffer, static_cast<BufferHandle>(task.handle), task.size);
+					BufferHandle handle{static_cast<BufferHandle>(task.handle)};
+					TST_ASSERT(handle.valid());
+					copyBuffer(cmd, task.stagingAllocation.buffer, handle, task.size, task.stagingAllocation.bufferOffset, task.dstOffset);
 					break;
 				}
 
 				case UploadTask::EType::eTexture:
 				{
-					copyBufferToTexture(cmd, task.stagingAllocation.buffer, static_cast<TextureHandle>(task.handle)); // TODO: Information
+					TextureHandle handle{static_cast<TextureHandle>(task.handle)};
+					TST_ASSERT(handle.valid());
+					copyBufferToTexture(cmd, task.stagingAllocation.buffer, handle, task.stagingAllocation.bufferOffset); // TODO: Information
 					break;
 				}
 			}
@@ -109,12 +137,13 @@ namespace toaster::gpu::upload
 
 		for (const auto &task: p_tasks)
 		{
+			StateTracker &tracker{g_impl->stateTrackers[task.stateTracker]};
 			{
-				std::scoped_lock<std::mutex> ticket_lock{task.stateTracker->ticketMutex};
-				task.stateTracker->timelineTickets.push_back(target_signal_value);
+				std::scoped_lock<std::mutex> ticket_lock{*tracker.ticketMutex};
+				tracker.timelineTickets.push_back(target_signal_value);
 			}
 
-			--task.stateTracker->pendingSubresources;
+			--(*tracker.pendingSubresources);
 		}
 
 		{
@@ -134,7 +163,7 @@ namespace toaster::gpu::upload
 			{
 				std::unique_lock<std::mutex> lock{g_impl->uploadMutex};
 				g_impl->cv.wait(lock, +[]() -> bool { return !g_impl->taskQueue.empty() || !g_impl->threadRunning.load(); });
-				if (!g_impl->taskQueue.empty() && !g_impl->threadRunning.load())
+				if (g_impl->taskQueue.empty() && !g_impl->threadRunning.load())
 					break;
 
 				while (!g_impl->taskQueue.empty())
@@ -182,6 +211,15 @@ namespace toaster::gpu::upload
 			g_impl->commandLists[i]   = getOrCreateCommandList(EQueueType::eTransfer);
 		}
 
+		g_impl->stateTrackers.setDestructorFn(+[](StateTracker *p_data, void *) -> void
+		{
+			p_data->timelineTickets.clear();
+			p_data->pendingSubresources->store(0u);
+
+			p_data->readyCb       = nullptr;
+			p_data->readyUserData = nullptr;
+		});
+
 		g_impl->uploadThread = std::thread(&transferMain);
 	}
 
@@ -194,6 +232,7 @@ namespace toaster::gpu::upload
 
 		StagingAllocation allocation{};
 		allocation.buffer            = g_impl->stagingBuffer;
+		allocation.bufferOffset      = allocation_offset;
 		allocation.virtualAllocation = virtual_allocation;
 		allocation.mappedData        = static_cast<uint8 *>(g_impl->mappedStart) + allocation_offset;
 
@@ -210,6 +249,13 @@ namespace toaster::gpu::upload
 			return;
 		}
 
+		g_impl->threadRunning.store(false);
+		g_impl->cv.notify_one();
+		if (g_impl->uploadThread.joinable())
+			g_impl->uploadThread.join();
+
+		g_impl->stateTrackers.clear();
+
 		alloc::destroyVirtualBlock(g_impl->stagingBlock);
 		destroyBuffer(g_impl->stagingBuffer);
 
@@ -217,7 +263,51 @@ namespace toaster::gpu::upload
 		g_impl = nullptr;
 	}
 
-	auto pollUploads(const std::vector<RefPtr<StateTracker> > &p_active_state_trackers) -> void
+	auto createStateTracker(uint32 p_expected_subresources) -> StateTrackerHandle
+	{
+		StateTracker state_tracker{};
+		state_tracker.ticketMutex         = makeUnique<std::mutex>();
+		state_tracker.pendingSubresources = makeUnique<std::atomic_uint32_t>(p_expected_subresources);
+		return g_impl->stateTrackers.emplace(std::move(state_tracker));
+	}
+
+	auto registerStateTrackerReadyCallback(StateTrackerHandle p_state_tracker, StateTrackerReadyFn p_ready_callback, void *p_callback_user_data) -> void
+	{
+		TST_ASSERT_MSG(!g_impl->activeStateTrackers.contains(p_state_tracker), "State tracker is in use");
+
+		StateTracker &tracker{g_impl->stateTrackers[p_state_tracker]};
+		tracker.readyCb       = p_ready_callback;
+		tracker.readyUserData = p_callback_user_data;
+	}
+
+	auto destroyStateTracker(StateTrackerHandle p_state_tracker) -> void
+	{
+		TST_ASSERT_MSG(!g_impl->activeStateTrackers.contains(p_state_tracker), "State tracker is in use");
+		g_impl->stateTrackers.destroy(p_state_tracker);
+	}
+
+	auto resetStateTracker(StateTrackerHandle p_state_tracker, uint32 p_pending_subresources) -> void
+	{
+		TST_ASSERT_MSG(!g_impl->activeStateTrackers.contains(p_state_tracker), "State tracker is in use");
+
+		StateTracker &tracker{g_impl->stateTrackers[p_state_tracker]};
+
+		tracker.timelineTickets.clear();
+		tracker.pendingSubresources->store(p_pending_subresources);
+	}
+
+	auto isStateTrackerReady(StateTrackerHandle p_state_tracker) -> bool
+	{
+		StateTracker &tracker{g_impl->stateTrackers[p_state_tracker]};
+
+		std::scoped_lock<std::mutex> lock{g_impl->activeStateTrackerMutex};
+
+		const bool ready{!g_impl->activeStateTrackers.contains(p_state_tracker) && (tracker.pendingSubresources->load() == 0u)};
+
+		return ready;
+	}
+
+	auto pollUploads() -> void
 	{
 		uint64 current_value{getSemaphoreValue(frame::getTransferTimelineSemaphore())};
 
@@ -238,33 +328,76 @@ namespace toaster::gpu::upload
 			}
 		}
 
-		for (auto &tracker: p_active_state_trackers)
 		{
-			if (tracker->ready.load())
-				continue;
+			std::scoped_lock<std::mutex> lock{g_impl->activeStateTrackerMutex};
 
-			bool all_finished{true};
+			for (auto it{g_impl->activeStateTrackers.begin()}; it != g_impl->activeStateTrackers.end();)
 			{
-				std::scoped_lock<std::mutex> lock{tracker->ticketMutex};
-				if (tracker->timelineTickets.empty()) // If the tracker has no timeline tickets, it indicates that worker threads have not yet begun an upload on it
-					all_finished = false;
+				StateTracker &tracker{g_impl->stateTrackers[*it]};
 
-				for (const uint64 ticket: tracker->timelineTickets)
+				bool all_finished{true};
 				{
-					if (current_value < ticket)
-					{
+					std::scoped_lock<std::mutex> ticket_lock{*tracker.ticketMutex};
+					if (tracker.timelineTickets.empty()) // If the tracker has no timeline tickets, it indicates that worker threads have not yet begun an upload on it
 						all_finished = false;
-						break;
+
+					for (const uint64 ticket: tracker.timelineTickets)
+					{
+						if (current_value < ticket)
+						{
+							all_finished = false;
+							break;
+						}
 					}
 				}
+
+				if (all_finished && tracker.pendingSubresources->load() == 0u)
+				{
+					if (tracker.readyCb)
+						tracker.readyCb(tracker.readyUserData);
+
+					it = g_impl->activeStateTrackers.erase(it);
+				}
+				else
+					++it;
 			}
-
-			if (all_finished && tracker->pendingSubresources.load() == 0u)
-				tracker->ready.store(true);
 		}
 	}
 
-	auto uploadDataToBuffer(const BufferUploadDesc &p_upload_desc, RefPtr<StateTracker> &p_state_tracker) -> void
+	auto uploadDataToBuffer(const BufferUploadDesc &p_upload_desc, StateTrackerHandle p_state_tracker) -> void
+	{
+		StagingAllocation staging_allocation{allocateStagingMemory(p_upload_desc.size)};
+
+		std::memcpy(staging_allocation.mappedData, p_upload_desc.data, p_upload_desc.size);
+
+		UploadTask upload_task{};
+
+		upload_task.stagingAllocation = staging_allocation;
+
+		{
+			std::scoped_lock<std::mutex> lock{g_impl->activeStateTrackerMutex};
+
+			StateTracker &tracker{g_impl->stateTrackers[p_state_tracker]};
+			TST_ASSERT(tracker.pendingSubresources->load() != 0u);
+			g_impl->activeStateTrackers.insert(p_state_tracker);
+		}
+
+		upload_task.dstOffset    = p_upload_desc.dstOffset;
+		upload_task.stateTracker = p_state_tracker;
+		upload_task.size         = p_upload_desc.size;
+		upload_task.handle       = static_cast<uint64>(p_upload_desc.dstBuffer);
+		upload_task.type         = UploadTask::EType::eBuffer;
+
+		upload_task.magic = {'P', 'E', 'E', 'B'};
+
+		{
+			std::unique_lock<std::mutex> lock{g_impl->uploadMutex};
+			g_impl->taskQueue.push(upload_task);
+			g_impl->cv.notify_one();
+		}
+	}
+
+	auto uploadDataToTexture(const TextureUploadDesc &p_upload_desc, StateTrackerHandle p_state_tracker) -> void
 	{
 		StagingAllocation staging_allocation{allocateStagingMemory(p_upload_desc.size)};
 
@@ -272,158 +405,26 @@ namespace toaster::gpu::upload
 
 		UploadTask upload_task{};
 		upload_task.stagingAllocation = staging_allocation;
-		upload_task.stateTracker      = p_state_tracker;
-		upload_task.size              = p_upload_desc.size;
-		upload_task.handle            = p_upload_desc.dstBuffer;
-		upload_task.type              = UploadTask::EType::eBuffer;
 
 		{
-			std::scoped_lock<std::mutex> lock{g_impl->uploadMutex};
-			g_impl->taskQueue.push(upload_task);
+			std::scoped_lock<std::mutex> lock{g_impl->activeStateTrackerMutex};
+
+			StateTracker &tracker{g_impl->stateTrackers[p_state_tracker]};
+			TST_ASSERT(tracker.pendingSubresources->load() != 0u);
+			g_impl->activeStateTrackers.insert(p_state_tracker);
 		}
-		g_impl->cv.notify_one();
-	}
 
-	auto uploadDataToTexture(const TextureUploadDesc &p_upload_desc, RefPtr<StateTracker> &p_state_tracker) -> void
-	{
-		StagingAllocation staging_allocation{allocateStagingMemory(p_upload_desc.size)};
+		upload_task.stateTracker = p_state_tracker;
+		upload_task.size         = p_upload_desc.size;
+		upload_task.handle       = static_cast<uint64>(p_upload_desc.dstTexture);
+		upload_task.type         = UploadTask::EType::eTexture;
 
-		std::memcpy(staging_allocation.mappedData, p_upload_desc.data, p_upload_desc.size);
-
-		UploadTask upload_task{};
-		upload_task.stagingAllocation = staging_allocation;
-		upload_task.stateTracker      = p_state_tracker;
-		upload_task.size              = p_upload_desc.size;
-		upload_task.handle            = p_upload_desc.dstTexture;
-		upload_task.type              = UploadTask::EType::eTexture;
+		upload_task.magic = {'P', 'E', 'E', 'B'};
 
 		{
-			std::scoped_lock<std::mutex> lock{g_impl->uploadMutex};
+			std::unique_lock<std::mutex> lock{g_impl->uploadMutex};
 			g_impl->taskQueue.push(upload_task);
+			g_impl->cv.notify_one();
 		}
-		g_impl->cv.notify_one();
 	}
-
-	// auto flushUploads() -> void
-	// {
-	// std::scoped_lock<std::mutex> lock{g_impl->uploadMutex};
-	//
-	// collectCompletedUploads();
-	// if (g_impl->pending.empty())
-	// 	return;
-	//
-	// uint64 stagingSize{0u};
-	// for (const PendingUpload &upload: g_impl->pending)
-	// 	stagingSize = TST_ALIGN(stagingSize, stagingAlignment) + upload.data.size();
-	//
-	// BufferDesc staging_desc{};
-	// staging_desc.size       = stagingSize;
-	// staging_desc.usage      = EBufferUsageFlagBits::eTransferSrc;
-	// staging_desc.memoryType = EMemoryType::eHostVisibleCoherent;
-	// BufferHandle staging{createBuffer(staging_desc)};
-	//
-	// CommandListHandle command_list{getOrCreateCommandList(EQueueType::eTransfer)};
-	// openCommandList(command_list);
-	//
-	// uint64 staging_offset{0u};
-	// for (const auto &upload: g_impl->pending)
-	// {
-	// 	staging_offset = TST_ALIGN(staging_offset, stagingAlignment);
-	// 	writeBufferData(staging, upload.data.data(), upload.data.size(), staging_offset);
-	//
-	// 	switch (upload.type)
-	// 	{
-	// 		case PendingUpload::EType::eBuffer:
-	// 		{
-	// 			copyBuffer(command_list, staging, static_cast<BufferHandle>(upload.handle), upload.data.size(), staging_offset, upload.destinationOffset);
-	//
-	// 			break;
-	// 		}
-	// 		case PendingUpload::EType::eTexture:
-	// 		{
-	// 			copyBufferToTexture(command_list, staging, static_cast<TextureHandle>(upload.handle), staging_offset, upload.textureUploadDesc.mipLevel,
-	// 								upload.textureUploadDesc.baseLayer, upload.textureUploadDesc.layerCount, upload.textureUploadDesc.extent);
-	// 			break;
-	// 		}
-	// 	}
-	//
-	// 	staging_offset += upload.data.size();
-	// }
-	// closeCommandList(command_list);
-	//
-	// const uint64 timeline_value{frame::acquireTransferTimelineCounterValue()};
-	//
-	// submit(EQueueType::eTransfer, command_list, {}, {{frame::getTransferTimelineSemaphore(), timeline_value}});
-	// g_impl->submitted.emplace_back(SubmittedUpload{staging, command_list, timeline_value});
-	// g_impl->pending.clear();
-	// }
-
-	// auto flushUploadsAndWait() -> void
-	// {
-	// 	flushUploads();
-	// 	waitSemaphores(frame::getTransferTimelineSemaphore(), frame::getTransferTimelineCounterValue());
-	// 	collectCompletedUploads();
-	// }
-	//
-	// auto uploadDataToBuffer(BufferHandle p_dst_buffer, const void *p_data, uint64 p_size, uint64 p_offset) -> uint64
-	// {
-	// 	TST_ASSERT_MSG(p_data != nullptr && p_size > 0u, "Upload data must actually exist");
-	// 	PendingUpload upload{};
-	// 	upload.type              = PendingUpload::EType::eBuffer;
-	// 	upload.handle            = static_cast<uint64>(p_dst_buffer);
-	// 	upload.destinationOffset = p_offset;
-	// 	upload.data.resize(p_size);
-	// 	std::memcpy(upload.data.data(), p_data, p_size);
-	//
-	// 	// Only lock on the critical sections
-	// 	std::scoped_lock<std::mutex> lock{g_impl->uploadMutex};
-	//
-	// 	g_impl->pending.emplace_back(std::move(upload));
-	// 	return frame::getTransferTimelineCounterValue() + 1u;
-	// }
-	//
-	// auto uploadDataToTexture(TextureHandle p_dst_texture, const void *p_data, uint64 p_size, const TextureUploadDesc &p_desc) -> uint64
-	// {
-	// 	TST_ASSERT_MSG(p_data != nullptr && p_size > 0u, "Texture upload data must actually exist");
-	// 	TST_ASSERT_MSG(p_desc.layerCount > 0u, "Texture upload layer count must be non-zero");
-	//
-	// 	PendingUpload upload{};
-	// 	upload.type              = PendingUpload::EType::eTexture;
-	// 	upload.handle            = static_cast<uint64>(p_dst_texture);
-	// 	upload.textureUploadDesc = p_desc;
-	// 	upload.data.resize(p_size);
-	// 	std::memcpy(upload.data.data(), p_data, p_size);
-	//
-	// 	// Only lock on the critical sections
-	// 	std::scoped_lock<std::mutex> lock{g_impl->uploadMutex};
-	//
-	// 	g_impl->pending.emplace_back(std::move(upload));
-	// 	return frame::getTransferTimelineCounterValue() + 1u;
-	// }
-	//
-	// auto cancelBufferUpload(BufferHandle p_buffer) -> void
-	// {
-	// 	std::scoped_lock<std::mutex> lock{g_impl->uploadMutex};
-	//
-	// 	for (auto it{g_impl->pending.begin()}; it != g_impl->pending.end();)
-	// 	{
-	// 		if (it->handle == static_cast<uint64>(p_buffer) && it->type == PendingUpload::EType::eBuffer)
-	// 			it = g_impl->pending.erase(it);
-	// 		else
-	// 			++it;
-	// 	}
-	// }
-	//
-	// auto cancelTextureUpload(TextureHandle p_texture) -> void
-	// {
-	// 	std::scoped_lock<std::mutex> lock{g_impl->uploadMutex};
-	//
-	// 	for (auto it{g_impl->pending.begin()}; it != g_impl->pending.end();)
-	// 	{
-	// 		if (it->handle == static_cast<uint64>(p_texture) && it->type == PendingUpload::EType::eTexture)
-	// 			it = g_impl->pending.erase(it);
-	// 		else
-	// 			++it;
-	// 	}
-	// }
 }
