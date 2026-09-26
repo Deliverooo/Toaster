@@ -56,21 +56,26 @@ struct TransformComponent
 class TestLayer : public IAppLayer
 {
 public:
-	static constexpr uint32 maxDrawCalls{1028u * 1028u * 10u};
+	static constexpr uint32            maxDrawCalls{1028u * 1028u * 10u};
+	static constexpr gpu::ESampleCount msaaSamples{gpu::ESampleCount::e4};
 
 	struct alignas(16u) ObjectData
 	{
 		uint32 material;
 		uint32 vertexBufferOffset;
 		uint32 indexBufferOffset;
-		uint32 _padd;
+
+		uint8 vertexPageId;
+		uint8 indexPageId;
+
+		uint16 _padd;
 	};
 
 	auto onInit() -> void override
 	{
 		m_textureManager  = makeUnique<render::TextureManager>(m_renderCtx);
 		m_materialManager = makeUnique<render::MaterialManager>(m_textureManager.get(), 1028u);
-		m_meshManager     = makeUnique<render::MeshManager>();
+		m_meshManager     = makeUnique<render::MeshManager>(m_renderCtx);
 
 		std::filesystem::current_path("../test");
 
@@ -84,7 +89,6 @@ public:
 			m_orboEntity = m_scene.createEntity();
 			m_scene.addComponent<StaticMeshComponent>(m_orboEntity, orbo_mesh);
 		}
-
 		{
 			render::StaticMeshHandle level_mesh{m_meshManager->registerStaticMesh()};
 			m_meshImporter->asyncLoadStaticMeshFromFile(level_mesh, "resources/meshes/Backrooms.fbx");
@@ -162,7 +166,7 @@ public:
 			msaa_depth_desc.extent      = {m_app->getWindow().getSize(), 1u};
 			msaa_depth_desc.format      = gpu::EFormat::eD32Sfloat;
 			msaa_depth_desc.usage       = gpu::ETextureUsageFlagBits::eDepthStencilAttachment | gpu::ETextureUsageFlagBits::eTransient;
-			msaa_depth_desc.sampleCount = gpu::ESampleCount::e4;
+			msaa_depth_desc.sampleCount = msaaSamples;
 			m_msaaDepthAttachment       = gpu::createTexture(msaa_depth_desc);
 		}
 
@@ -171,7 +175,7 @@ public:
 			msaa_colour_desc.extent      = {m_app->getWindow().getSize(), 1u};
 			msaa_colour_desc.format      = gpu::EFormat::eR8G8B8A8Srgb;
 			msaa_colour_desc.usage       = gpu::ETextureUsageFlagBits::eColourAttachment | gpu::ETextureUsageFlagBits::eTransient;
-			msaa_colour_desc.sampleCount = gpu::ESampleCount::e4;
+			msaa_colour_desc.sampleCount = msaaSamples;
 			m_msaaColourAttachment       = gpu::createTexture(msaa_colour_desc);
 		}
 	}
@@ -231,10 +235,8 @@ public:
 
 	auto onRender(gpu::CommandListHandle p_cmd) -> void override
 	{
-		// m_textureManager->pollTextureUploads(p_cmd);
 		m_materialManager->pollMaterialTextureUploads();
 		m_materialManager->updateDirtyMaterials(m_app->getFrameIndex());
-		// m_meshManager->pollMeshUploads();
 
 		for (auto &list: m_secondaryBuffers[m_app->getFrameIndex()])
 			gpu::resetCommandList(list);
@@ -273,7 +275,7 @@ public:
 		inheritance_info.samplerHeap             = m_renderCtx->getSamplerHeap();
 		inheritance_info.colourAttachmentFormats = {render_tex_desc.format};
 		inheritance_info.depthAttachmentFormat   = gpu::EFormat::eD32Sfloat;
-		inheritance_info.samples                 = gpu::ESampleCount::e4;
+		inheritance_info.samples                 = msaaSamples;
 		gpu::openCommandList(secondary_cmd, &inheritance_info);
 
 		gpu::bindShaders(secondary_cmd, {m_vs, m_ps});
@@ -291,7 +293,7 @@ public:
 		gpu::setDepthBias(secondary_cmd, false);
 		gpu::setLineWidth(secondary_cmd, 1.0f);
 
-		gpu::setRasterizationSamples(secondary_cmd, gpu::ESampleCount::e4);
+		gpu::setRasterizationSamples(secondary_cmd, msaaSamples);
 
 		gpu::setDepthState(secondary_cmd, true);
 		gpu::setStencilState(secondary_cmd, false);
@@ -311,8 +313,10 @@ public:
 				for (const auto &submesh: mesh->submeshes)
 				{
 					mapped_object_data[draw_count].material           = submesh.material.getId();
-					mapped_object_data[draw_count].vertexBufferOffset = mesh->vertexBufferOffset;
-					mapped_object_data[draw_count].indexBufferOffset  = mesh->indexBufferOffset;
+					mapped_object_data[draw_count].vertexBufferOffset = mesh->vertexBufferOffset();
+					mapped_object_data[draw_count].indexBufferOffset  = mesh->indexBufferOffset();
+					mapped_object_data[draw_count].vertexPageId       = mesh->vertexBufferAllocation.heapSlot;
+					mapped_object_data[draw_count].indexPageId        = mesh->indexBufferAllocation.heapSlot;
 
 					mapped_cmd[draw_count] = gpu::DrawIndirectCommand{submesh.indexCount, 1u, submesh.indexOffset, draw_count};
 					++draw_count;
@@ -323,8 +327,6 @@ public:
 		struct PushData
 		{
 			uintptr cameraBuffer;
-			uintptr vertexBuffer;
-			uintptr indexBuffer;
 			uintptr objectDataBuffer;
 			uintptr materialBuffer;
 
@@ -333,8 +335,6 @@ public:
 		};
 		PushData push_data{};
 		push_data.cameraBuffer     = gpu::getBufferAddress(m_cameraBuffers[m_app->getFrameIndex()]);
-		push_data.vertexBuffer     = gpu::getBufferAddress(m_meshManager->getStaticMeshVertexBuffer());
-		push_data.indexBuffer      = gpu::getBufferAddress(m_meshManager->getStaticMeshIndexBuffer());
 		push_data.objectDataBuffer = gpu::getBufferAddress(m_objectDataBuffers[m_app->getFrameIndex()]);
 		push_data.materialBuffer   = m_materialManager->getMaterialBufferAddress(m_app->getFrameIndex());
 		push_data.samplerId        = m_samplerHeapSlot;
@@ -390,7 +390,7 @@ public:
 				msaa_depth_desc.extent      = {p_e.getSize(), 1u};
 				msaa_depth_desc.format      = gpu::EFormat::eD32Sfloat;
 				msaa_depth_desc.usage       = gpu::ETextureUsageFlagBits::eDepthStencilAttachment | gpu::ETextureUsageFlagBits::eTransient;
-				msaa_depth_desc.sampleCount = gpu::ESampleCount::e4;
+				msaa_depth_desc.sampleCount = msaaSamples;
 				m_msaaDepthAttachment       = gpu::createTexture(msaa_depth_desc);
 			}
 
@@ -401,7 +401,7 @@ public:
 				colour_desc.extent      = {p_e.getSize(), 1u};
 				colour_desc.format      = gpu::EFormat::eR8G8B8A8Srgb;
 				colour_desc.usage       = gpu::ETextureUsageFlagBits::eColourAttachment | gpu::ETextureUsageFlagBits::eTransient;
-				colour_desc.sampleCount = gpu::ESampleCount::e4;
+				colour_desc.sampleCount = msaaSamples;
 				m_msaaColourAttachment  = gpu::createTexture(colour_desc);
 			}
 

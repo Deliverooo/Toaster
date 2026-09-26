@@ -60,7 +60,5 @@ namespace toaster::render
 		NonOwningPtr<RenderContext> m_renderCtx{nullptr};
 
 		Pool<Texture> m_textures;
-
-		// std::vector<TextureHandle> m_pendingMipmapGenerations;
 	};
 }

@@ -5,6 +5,8 @@
 #extension GL_EXT_scalar_block_layout: enable
 #extension GL_EXT_shader_explicit_arithmetic_types_int64: enable
 #extension GL_EXT_shader_explicit_arithmetic_types_int32: enable
+#extension GL_EXT_shader_explicit_arithmetic_types_int16: enable
+#extension GL_EXT_shader_explicit_arithmetic_types_int8: enable
 
 layout (location = 0) out vec3 o_Position;
 layout (location = 1) out vec3 o_WorldPos;
@@ -15,13 +17,13 @@ struct Vertex
 {
     vec3 position;
     vec3 normal;
-    vec3 tangent;
-    vec3 bitangent;
+//    vec3 tangent;
+//    vec3 bitangent;
     vec2 texCoord;
 };
 
-layout (buffer_reference, scalar) readonly buffer VertexBuffer { Vertex vertices[]; };
-layout (buffer_reference, scalar) readonly buffer IndexBuffer { uint32_t indices[]; };
+layout (descriptor_heap, scalar) readonly buffer VertexBuffer { Vertex vertices[]; } vertexPages[];
+layout (descriptor_heap, scalar) readonly buffer IndexBuffer { uint32_t indices[]; } indexPages[];
 
 layout (buffer_reference, std140) readonly buffer CameraBuffer
 {
@@ -35,7 +37,11 @@ struct ObjectData
     uint material;
     uint vertexBufferOffset;
     uint indexBufferOffset;
-    uint _padd;
+
+    uint8_t vertexPageId;
+    uint8_t indexPageId;
+
+    uint16_t _padd;
 };
 layout (buffer_reference, scalar) readonly buffer ObjectDataBuffer
 {
@@ -45,8 +51,6 @@ layout (buffer_reference, scalar) readonly buffer ObjectDataBuffer
 layout (push_constant) uniform PushData
 {
     CameraBuffer camera;
-    VertexBuffer vertexBuffer;
-    IndexBuffer indexBuffer;
     ObjectDataBuffer objectBuffer;
     uint64_t materialBuffer;
 
@@ -58,8 +62,8 @@ void main()
 {
     ObjectData data = pcs.objectBuffer.data[gl_BaseInstance];
 
-    uint32_t index = pcs.indexBuffer.indices[data.indexBufferOffset + gl_VertexIndex];
-    Vertex vertex = pcs.vertexBuffer.vertices[data.vertexBufferOffset + index];
+    uint32_t index = indexPages[data.indexPageId].indices[data.indexBufferOffset + gl_VertexIndex];
+    Vertex vertex = vertexPages[data.vertexPageId].vertices[data.vertexBufferOffset + index];
 
     vec4 world_pos = vec4(vertex.position.xyz, 1.0f);
     o_Position = vertex.position.xyz;

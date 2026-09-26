@@ -117,17 +117,29 @@ namespace toaster::gpu
 		vk::Semaphore semaphore{nullptr};
 	};
 
+	struct MemoryBlock
+	{
+		vk::Buffer           buffer{nullptr};
+		VmaAllocation        allocation{nullptr};
+		VmaVirtualBlock      virtualBlock{nullptr};
+		VmaVirtualAllocation virtualAllocation{nullptr};
+
+		uint64        size{0u};
+		DeviceAddress address{0u};
+		void *        mapped{nullptr};
+	};
+
 	struct Buffer
 	{
 		vk::Buffer    buffer{nullptr};
 		VmaAllocation allocation{nullptr};
 		uint64        size{0u};
 
-		DeviceAddress address{0u};
-
-		void *mapped{nullptr};
-
+		DeviceAddress     address{0u};
+		void *            mapped{nullptr};
 		EBufferUsageFlags usageFlags{0u};
+
+		alignas(std::atomic_ref<EUploadState>::required_alignment) EUploadState uploadState{EUploadState::eUnloaded}; // Accessed through an atomic ref
 	};
 
 	struct Texture
@@ -139,6 +151,8 @@ namespace toaster::gpu
 		TextureDesc desc; // Useful
 
 		bool isSwapchainImage{false}; // Used to know whether the texture owns it's image and should create/destroy it
+
+		alignas(std::atomic_ref<EUploadState>::required_alignment) EUploadState uploadState{EUploadState::eUnloaded}; // Accessed through an atomic ref
 	};
 
 	struct Sampler
@@ -251,6 +265,9 @@ namespace toaster::gpu
 		#pragma endregion
 
 		TST_REGISTER_RESOURCE_POOL(Shader, shaders);
+
+		std::vector<MemoryBlock> pages;
+		std::vector<MemoryBlock> dedicatedPages;
 	};
 
 	static APIImpl *g_impl{nullptr};
@@ -1356,6 +1373,21 @@ namespace toaster::gpu
 		cmd.cmd.copyBufferToImage2(copy_buffer_to_image_info);
 	}
 
+	// auto pipelineBarrier(CommandListHandle                           p_command_list, InitialiserList<const BufferMemoryBarrier> p_buffer_memory_barriers,
+	// 					 InitialiserList<const TextureMemoryBarrier> p_texture_memory_barriers) -> void
+	// {
+	// 	CommandList &cmd{g_impl->commandLists[p_command_list]};
+	// 	TST_ASSERT(cmd.open);
+	//
+	// 	std::vector<vk::BufferMemoryBarrier2> buffer_barriers(p_buffer_memory_barriers.size());
+	// 	for (uint32 i{0u}; i < buffer_barriers.size(); ++i)
+	// 	{
+	// 		auto &barrier{buffer_barriers[i]};
+	// 		barrier.buffer = g_impl->buffers[p_buffer_memory_barriers[i].buffer].buffer;
+	// 		barrier.
+	// 	}
+	// }
+
 	auto generateMipmaps(CommandListHandle p_command_list, TextureHandle p_texture) -> void
 	{
 		CommandList &cmd{g_impl->commandLists[p_command_list]};
@@ -1469,8 +1501,8 @@ namespace toaster::gpu
 			auto &src_attachment{p_rendering_info.colourAttachments[i]};
 			auto &dst_attachment{colour_attachments[i]};
 
-			const Texture &render_target{g_impl->textures[src_attachment.renderTarget]};
-			dst_attachment.imageView   = render_target.imageView;
+			const Texture *render_target{g_impl->textures.tryGet(src_attachment.renderTarget)};
+			dst_attachment.imageView   = render_target->imageView;
 			dst_attachment.imageLayout = vk::ImageLayout::eGeneral;
 
 			dst_attachment.loadOp     = getLoadOp(src_attachment.usageOp);
@@ -1479,8 +1511,8 @@ namespace toaster::gpu
 
 			if (g_impl->textures.isValid(src_attachment.resolveTarget))
 			{
-				const Texture &resolve_render_target{g_impl->textures[src_attachment.resolveTarget]};
-				dst_attachment.resolveImageView   = resolve_render_target.imageView;
+				const Texture *resolve_render_target{g_impl->textures.tryGet(src_attachment.resolveTarget)};
+				dst_attachment.resolveImageView   = resolve_render_target->imageView;
 				dst_attachment.resolveImageLayout = vk::ImageLayout::eGeneral;
 				dst_attachment.resolveMode        = getResolveMode(src_attachment.resolveMode);
 			}
@@ -1491,8 +1523,8 @@ namespace toaster::gpu
 		{
 			auto &src_attachment{p_rendering_info.depthAttachment.value()};
 
-			const Texture &render_target{g_impl->textures[src_attachment.renderTarget]};
-			depth_attachment.imageView   = render_target.imageView;
+			const Texture *render_target{g_impl->textures.tryGet(src_attachment.renderTarget)};
+			depth_attachment.imageView   = render_target->imageView;
 			depth_attachment.imageLayout = vk::ImageLayout::eGeneral;
 
 			depth_attachment.loadOp     = getLoadOp(src_attachment.usageOp);
@@ -1501,8 +1533,8 @@ namespace toaster::gpu
 
 			if (g_impl->textures.isValid(src_attachment.resolveTarget))
 			{
-				const Texture &resolve_render_target{g_impl->textures[src_attachment.resolveTarget]};
-				depth_attachment.resolveImageView   = resolve_render_target.imageView;
+				const Texture *resolve_render_target{g_impl->textures.tryGet(src_attachment.resolveTarget)};
+				depth_attachment.resolveImageView   = resolve_render_target->imageView;
 				depth_attachment.resolveImageLayout = vk::ImageLayout::eGeneral;
 				depth_attachment.resolveMode        = getResolveMode(src_attachment.resolveMode);
 			}
@@ -1511,9 +1543,10 @@ namespace toaster::gpu
 		vk::RenderingAttachmentInfo stencil_attachment{};
 		if (p_rendering_info.stencilAttachment.has_value())
 		{
-			auto &         src_attachment{p_rendering_info.stencilAttachment.value()};
-			const Texture &render_target{g_impl->textures[src_attachment.renderTarget]};
-			stencil_attachment.imageView   = render_target.imageView;
+			auto &src_attachment{p_rendering_info.stencilAttachment.value()};
+
+			const Texture *render_target{g_impl->textures.tryGet(src_attachment.renderTarget)};
+			stencil_attachment.imageView   = render_target->imageView;
 			stencil_attachment.imageLayout = vk::ImageLayout::eGeneral;
 
 			stencil_attachment.loadOp     = getLoadOp(src_attachment.usageOp);
@@ -1522,8 +1555,8 @@ namespace toaster::gpu
 
 			if (g_impl->textures.isValid(src_attachment.resolveTarget))
 			{
-				const Texture &resolve_render_target{g_impl->textures[src_attachment.resolveTarget]};
-				stencil_attachment.resolveImageView   = resolve_render_target.imageView;
+				const Texture *resolve_render_target{g_impl->textures.tryGet(src_attachment.resolveTarget)};
+				stencil_attachment.resolveImageView   = resolve_render_target->imageView;
 				stencil_attachment.resolveImageLayout = vk::ImageLayout::eGeneral;
 				stencil_attachment.resolveMode        = getResolveMode(src_attachment.resolveMode);
 			}
@@ -2022,11 +2055,13 @@ namespace toaster::gpu
 	auto writeTextureDescriptor(ResourceDescriptorHeapHandle p_resource_heap, uint32 p_heap_slot, TextureHandle p_texture, bool p_storage, uint32 p_mip) -> void
 	{
 		ResourceDescriptorHeap &resource_heap{g_impl->resourceHeaps[p_resource_heap]};
-		Texture &               texture{g_impl->textures[p_texture]};
+
+		Texture *texture{g_impl->textures.tryGet(p_texture)};
+		TST_ASSERT(texture);
 
 		vk::ImageViewType image_view_type{vk::ImageViewType::e2D};
 
-		switch (texture.desc.type)
+		switch (texture->desc.type)
 		{
 			case ETextureType::e1D:
 				image_view_type = vk::ImageViewType::e1D;
@@ -2042,10 +2077,10 @@ namespace toaster::gpu
 				break;
 		}
 
-		vk::Format image_format{getVulkanFormat(texture.desc.format)};
+		vk::Format image_format{getVulkanFormat(texture->desc.format)};
 
 		vk::ImageViewCreateInfo image_view_create_info{};
-		image_view_create_info.image      = texture.image;
+		image_view_create_info.image      = texture->image;
 		image_view_create_info.viewType   = image_view_type;
 		image_view_create_info.format     = image_format;
 		image_view_create_info.components = vk::ComponentMapping{
@@ -2055,11 +2090,11 @@ namespace toaster::gpu
 			vk::ComponentSwizzle::eIdentity
 		};
 		image_view_create_info.subresourceRange = vk::ImageSubresourceRange{
-			getImageAspectMask(texture.desc.format),
+			getImageAspectMask(texture->desc.format),
 			(p_mip == UINT32_MAX) ? 0u : p_mip,
-			(p_mip == UINT32_MAX) ? texture.desc.mipCount : 1u,
+			(p_mip == UINT32_MAX) ? texture->desc.mipCount : 1u,
 			0u,
-			texture.desc.layerCount
+			texture->desc.layerCount
 		};
 
 		uint32 real_heap_slot{getSegmentRelativeTextureHeapSlot(p_resource_heap, p_heap_slot)};
@@ -2233,6 +2268,38 @@ namespace toaster::gpu
 	auto destroySurface(SurfaceHandle p_surface) -> void
 	{
 		g_impl->surfaces.destroy(p_surface);
+	}
+
+	auto getBufferUploadState(BufferHandle p_buffer) -> EUploadState
+	{
+		Buffer &buffer{g_impl->buffers[p_buffer]};
+
+		std::atomic_ref<EUploadState> state_ref{buffer.uploadState};
+		return state_ref.load(std::memory_order::relaxed);
+	}
+
+	auto getTextureUploadState(TextureHandle p_texture) -> EUploadState
+	{
+		Texture &texture{g_impl->textures[p_texture]};
+
+		std::atomic_ref<EUploadState> state_ref{texture.uploadState};
+		return state_ref.load(std::memory_order::relaxed);
+	}
+
+	auto setBufferUploadState(BufferHandle p_buffer, EUploadState p_upload_state) -> void
+	{
+		Buffer &buffer{g_impl->buffers[p_buffer]};
+
+		std::atomic_ref<EUploadState> state_ref{buffer.uploadState};
+		state_ref.store(p_upload_state);
+	}
+
+	auto setTextureUploadState(TextureHandle p_texture, EUploadState p_upload_state) -> void
+	{
+		Texture &texture{g_impl->textures[p_texture]};
+
+		std::atomic_ref<EUploadState> state_ref{texture.uploadState};
+		state_ref.store(p_upload_state);
 	}
 
 	auto createSemaphore(uint64 p_initial_value) -> SemaphoreHandle

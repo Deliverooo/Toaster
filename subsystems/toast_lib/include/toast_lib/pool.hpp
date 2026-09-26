@@ -2,6 +2,7 @@
 
 #include <mutex>
 #include <ranges>
+#include <shared_mutex>
 #include <vector>
 
 #include "handle.hpp"
@@ -30,10 +31,10 @@ namespace toaster
 		template<typename... TArgs>
 		auto emplace(TArgs &&... p_args) -> HandleType
 		{
-			std::scoped_lock<std::mutex> lock{m_mutex};
+			std::unique_lock<std::shared_mutex> lock{m_mutex};
 
-			uint32                       id{0u};
-			uint32                       magic{1u};
+			uint32 id{0u};
+			uint32 magic{1u};
 
 			if (!m_freeIndices.empty())
 			{
@@ -57,9 +58,9 @@ namespace toaster
 
 		auto destroy(HandleType p_handle) -> void
 		{
-			std::scoped_lock<std::mutex> lock{m_mutex};
+			std::unique_lock<std::shared_mutex> lock{m_mutex};
 
-			if (!isValid(p_handle))
+			if (!_isValid(p_handle))
 				TST_PERMA_ASSERT(false);
 
 			uint32 id{p_handle.getId()};
@@ -86,22 +87,42 @@ namespace toaster
 
 		auto tryGet(HandleType p_handle) -> TData *
 		{
-			if (!isValid(p_handle))
+			std::shared_lock<std::shared_mutex> lock{m_mutex};
+			if (!_isValid(p_handle))
 				return nullptr;
 			return std::addressof(m_entries[p_handle.getId()]->data);
 		}
 
 		auto tryGet(HandleType p_handle) const -> const TData *
 		{
-			if (!isValid(p_handle))
+			std::shared_lock<std::shared_mutex> lock{m_mutex};
+			if (!_isValid(p_handle))
 				return nullptr;
 			return std::addressof(m_entries[p_handle.getId()]->data);
 		}
 
-		auto operator[](HandleType p_handle) -> TData & { return m_entries[p_handle.getId()]->data; }
-		auto operator[](HandleType p_handle) const -> const TData & { return m_entries[p_handle.getId()]->data; }
+		auto operator[](HandleType p_handle) -> TData &
+		{
+			std::shared_lock<std::shared_mutex> lock{m_mutex};
+			TData &                             data{m_entries[p_handle.getId()]->data};
+			return data;
+		}
+
+		auto operator[](HandleType p_handle) const -> const TData &
+		{
+			std::shared_lock<std::shared_mutex> lock{m_mutex};
+			TData &                             data{m_entries[p_handle.getId()]->data};
+			return data;
+		}
 
 		auto isValid(HandleType p_handle) const -> bool
+		{
+			std::shared_lock<std::shared_mutex> lock{m_mutex};
+			return _isValid(p_handle);
+		}
+
+	private:
+		auto _isValid(HandleType p_handle) const -> bool
 		{
 			uint32 id{p_handle.getId()};
 
@@ -111,7 +132,6 @@ namespace toaster
 			return m_entries[id]->alive && (m_entries[id]->magic == p_handle.getMagic());
 		}
 
-	private:
 		struct Entry
 		{
 			TData  data;
@@ -119,7 +139,7 @@ namespace toaster
 			bool   alive{false};
 		};
 
-		std::mutex m_mutex;
+		mutable std::shared_mutex m_mutex;
 
 		std::vector<Entry *> m_entries;
 		std::vector<uint32>  m_freeIndices;

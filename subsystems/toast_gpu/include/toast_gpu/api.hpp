@@ -21,6 +21,7 @@ namespace toaster::gpu
 	TST_DECLARE_GPU_HANDLE(Shader);
 
 	using DeviceAddress = uintptr;
+	constexpr DeviceAddress nullGpuPtr{0u};
 
 	#pragma region descriptor heap
 
@@ -414,6 +415,23 @@ namespace toaster::gpu
 	auto TST_GPU_API copyBufferToTexture(CommandListHandle p_command_list, BufferHandle p_src_buffer, TextureHandle p_dst_texture, uint64 p_src_offset = 0u,
 										 uint32            p_mip_level = 0u, uint32 p_base_layer = 0u, uint32 p_layer_count = 1u, tsm::uint3 p_extent = {}) -> void;
 
+	struct TST_GPU_API BufferMemoryBarrier
+	{
+		EQueueType   srcQueueType{0u};
+		EQueueType   dstQueueType{0u};
+		BufferHandle buffer{nullptr};
+	};
+
+	struct TST_GPU_API TextureMemoryBarrier
+	{
+		EQueueType    srcQueueType{0u};
+		EQueueType    dstQueueType{0u};
+		TextureHandle texture{nullptr};
+	};
+
+	auto TST_GPU_API pipelineBarrier(CommandListHandle                           p_command_list, InitialiserList<const BufferMemoryBarrier> p_buffer_memory_barriers,
+									 InitialiserList<const TextureMemoryBarrier> p_texture_memory_barriers) -> void; // TODO
+
 	auto TST_GPU_API generateMipmaps(CommandListHandle p_command_list, TextureHandle p_texture) -> void;
 
 	auto TST_GPU_API beginRendering(CommandListHandle p_command_list, const RenderingInfo &p_rendering_info) -> void;
@@ -530,6 +548,22 @@ namespace toaster::gpu
 	// the monitor supports would obviously change. This means that caching them is out of the question... :(
 	[[nodiscard]] auto TST_GPU_API createSurface(void *p_hwnd) -> SurfaceHandle;
 	auto TST_GPU_API               destroySurface(SurfaceHandle p_surface) -> void;
+
+	#pragma region upload state management
+
+	// All of this is thread-safe due to atomic refs internally
+	enum class EUploadState : uint8
+	{
+		eUnloaded, eUploadingToGPU, eResident
+	};
+
+	auto TST_GPU_API getBufferUploadState(BufferHandle p_buffer) -> EUploadState;
+	auto TST_GPU_API getTextureUploadState(TextureHandle p_texture) -> EUploadState;
+
+	auto TST_GPU_API setBufferUploadState(BufferHandle p_buffer, EUploadState p_upload_state) -> void;
+	auto TST_GPU_API setTextureUploadState(TextureHandle p_texture, EUploadState p_upload_state) -> void;
+
+	#pragma endregion
 
 	#pragma region synchronisation
 

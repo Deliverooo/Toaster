@@ -5,6 +5,7 @@
 
 #include "material.hpp"
 #include "toast_gpu/upload.hpp"
+#include "toast_lib/atomic.hpp"
 
 namespace toaster::render
 {
@@ -26,8 +27,8 @@ namespace toaster::render
 	{
 		XMFLOAT3 position;
 		XMFLOAT3 normal;
-		XMFLOAT3 tangent;
-		XMFLOAT3 bitangent;
+		// XMFLOAT3 tangent;
+		// XMFLOAT3 bitangent;
 		XMFLOAT2 texCoord;
 	};
 
@@ -43,14 +44,13 @@ namespace toaster::render
 	{
 		std::vector<Submesh> submeshes;
 
-		gpu::alloc::VirtualAllocationHandle vertexBufferAllocation{nullptr};
-		gpu::alloc::VirtualAllocationHandle indexBufferAllocation{nullptr};
-
-		// Useful to cache in the data struct
-		uint64 vertexBufferOffset{0u};
-		uint64 indexBufferOffset{0u};
+		gpu::alloc::PageAllocation vertexBufferAllocation{};
+		gpu::alloc::PageAllocation indexBufferAllocation{};
 
 		gpu::upload::StateTrackerHandle stateTracker{nullptr};
+
+		[[nodiscard]] auto vertexBufferOffset() const -> uint64 { return vertexBufferAllocation.offset / sizeof(StaticMeshVertex); }
+		[[nodiscard]] auto indexBufferOffset() const -> uint64 { return indexBufferAllocation.offset / sizeof(uint32); }
 	};
 
 	TST_DECLARE_HANDLE(StaticMesh);
@@ -58,7 +58,7 @@ namespace toaster::render
 	class TST_RENDER_API MeshManager
 	{
 	public:
-		MeshManager(uint64 p_max_static_mesh_vertices = 20u * 1000u * 1000u, uint64 p_max_static_mesh_indices = 30u * 1000u * 1000u);
+		MeshManager(RenderContext *p_render_ctx);
 		~MeshManager();
 
 		// Register so you can upload the gpu data once it is loaded from disk
@@ -77,19 +77,17 @@ namespace toaster::render
 		[[nodiscard]] auto tryGetStaticMesh(StaticMeshHandle p_handle) -> StaticMesh * { return m_staticMeshes.tryGet(p_handle); }
 		[[nodiscard]] auto tryGetStaticMesh(StaticMeshHandle p_handle) const -> const StaticMesh * { return m_staticMeshes.tryGet(p_handle); }
 
-		[[nodiscard]] auto getStaticMeshVertexBuffer() const -> gpu::BufferHandle { return m_staticMeshVertexBuffer; }
-		[[nodiscard]] auto getStaticMeshIndexBuffer() const -> gpu::BufferHandle { return m_staticMeshIndexBuffer; }
+		// [[nodiscard]] auto getStaticMeshVertexBuffer() const -> gpu::BufferHandle { return m_staticMeshVertexBuffer; }
+		// [[nodiscard]] auto getStaticMeshIndexBuffer() const -> gpu::BufferHandle { return m_staticMeshIndexBuffer; }
 
 	private:
+		static constexpr uint64 pageSize{256u * 1024u * 1024u}; // 256 Mib
+
+		NonOwningPtr<RenderContext> m_renderCtx{nullptr};
+
+		UniquePtr<gpu::alloc::GPUPageAllocator> m_vertexPager{nullptr};
+		UniquePtr<gpu::alloc::GPUPageAllocator> m_indexPager{nullptr};
+
 		Pool<StaticMesh> m_staticMeshes;
-
-		uint64 m_maxStaticMeshVertices{0u};
-		uint64 m_maxStaticMeshIndices{0u};
-
-		gpu::BufferHandle m_staticMeshVertexBuffer{nullptr};
-		gpu::BufferHandle m_staticMeshIndexBuffer{nullptr};
-
-		gpu::alloc::VirtualBlockHandle m_staticMeshVertexBufferBlock{nullptr};
-		gpu::alloc::VirtualBlockHandle m_staticMeshIndexBufferBlock{nullptr};
 	};
 }

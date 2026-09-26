@@ -23,10 +23,7 @@ struct Material
     uint normalMapHeapSlot;
     uint _padd2[2];
 };
-layout (buffer_reference, scalar) readonly buffer MaterialBuffer
-{
-    Material materials[];
-};
+layout (buffer_reference, scalar) readonly buffer MaterialBuffer { Material materials[]; };
 
 layout (buffer_reference, std140) readonly buffer CameraBuffer
 {
@@ -38,8 +35,6 @@ layout (buffer_reference, std140) readonly buffer CameraBuffer
 layout (push_constant) uniform PushData
 {
     CameraBuffer camera;
-    uint64_t vertexBuffer;
-    uint64_t indexBuffer;
     uint64_t objectBuffer;
     MaterialBuffer materialBuffer;
 

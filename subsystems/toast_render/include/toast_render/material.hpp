@@ -55,10 +55,6 @@ namespace toaster::render
 		MaterialParams params; // Raw parameter data
 		TextureHandle  albedoMap{nullptr};
 		TextureHandle  normalMap{nullptr};
-
-		// gpu::alloc::VirtualAllocationHandle allocation{nullptr};
-		// uint64                              allocationOffset{0u};
-		// uint64                              allocationSize{0u};
 	};
 
 	TST_DECLARE_HANDLE(Material);

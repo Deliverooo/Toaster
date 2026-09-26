@@ -3,29 +3,52 @@
 #include <cstring>
 #include <mutex>
 #include <queue>
+#include <unordered_map>
 #include <unordered_set>
 
 #include "toast_gpu/allocation.hpp"
+#include "toast_lib/atomic.hpp"
 #include "toast_lib/pool.hpp"
 
 namespace toaster::gpu::upload
 {
-	struct StagingAllocation
-	{
-		BufferHandle                   buffer{nullptr};
-		uint64                         bufferOffset{0u};
-		alloc::VirtualAllocationHandle virtualAllocation{nullptr};
-		void *                         mappedData{nullptr};
-	};
+	// struct StagingAllocation
+	// {
+	// 	BufferHandle                   buffer{nullptr};
+	// 	uint64                         bufferOffset{0u};
+	// 	alloc::VirtualAllocationHandle virtualAllocation{nullptr};
+	// 	void *                         mappedData{nullptr};
+	// };
 
 	struct StateTracker
 	{
-		UniquePtr<std::mutex>           ticketMutex{nullptr};
-		std::vector<uint64>             timelineTickets;
-		UniquePtr<std::atomic_uint32_t> pendingSubresources{nullptr};
+		UniquePtr<std::mutex>    ticketMutex{nullptr};
+		std::vector<uint64>      timelineTickets;
+		StateTrackerReadyFn      readyCb{nullptr};
+		void *                   readyUserData{nullptr};
+		TST_ALIGN_ATOMIC(uint32) pendingSubresources{0u};
+	};
 
-		StateTrackerReadyFn readyCb{nullptr};
-		void *              readyUserData{nullptr};
+	static constexpr uint64 page_size{64u * 1024u * 1024u};
+
+	struct StagingPage
+	{
+		BufferHandle              buffer{nullptr};
+		alloc::VirtualBlockHandle block{nullptr};
+		void *                    mappedStart{nullptr};
+		uint64                    size{0u};
+		uint32                    id{0u};
+
+		TST_ALIGN_ATOMIC(uint32) activeAllocations{0u};
+	};
+
+	struct PageAllocation
+	{
+		BufferHandle                   buffer{nullptr};
+		void *                         mapped{nullptr};
+		alloc::VirtualAllocationHandle allocation{nullptr};
+		uint64                         offset{0u};
+		uint32                         pageId{0u};
 	};
 
 	struct UploadTask
@@ -35,33 +58,26 @@ namespace toaster::gpu::upload
 			eBuffer, eTexture
 		};
 
-		StagingAllocation  stagingAllocation{};
+		PageAllocation     stagingAllocation{};
 		StateTrackerHandle stateTracker{nullptr};
 		uint64             size{0u};
 		uint64             dstOffset{0u};
-
-		uint64 handle{0u};
-
-		EType type{EType::eBuffer};
-
-		std::array<char, 4u> magic{'O', 'R', 'B', 'O'};
+		uint64             handle{0u};
+		EType              type{EType::eBuffer};
 	};
 
 	struct LiveUploadBatch
 	{
-		std::vector<alloc::VirtualAllocationHandle> allocationsToFree;
-		uint64                                      timelineValue{0u};
+		std::vector<PageAllocation> allocations;
+		uint64                      timelineValue{0u};
 		// TODO: With dynamic paged allocation, I would like to have it so if an upload is too big, it will create a dedicated staging buffer and then free that here as well
 	};
 
 	struct UploadContextImpl
 	{
-		BufferHandle              stagingBuffer{nullptr};
-		alloc::VirtualBlockHandle stagingBlock{nullptr};
-
-		void * mappedStart{nullptr};
-		uint64 maxStagingSize{1024u * 1024u * 250u};
-		uint64 lastAllocatedOffset{0u};
+		uint32                                  nextPageId{0u};
+		uint32                                  activePageId{0u};
+		std::unordered_map<uint32, StagingPage> stagingPages;
 
 		Pool<StateTracker> stateTrackers;
 
@@ -73,7 +89,7 @@ namespace toaster::gpu::upload
 		std::atomic_bool        threadRunning{true};
 		std::condition_variable cv;
 
-		std::mutex stagingMutex;
+		std::mutex pageMutex;
 		std::mutex uploadMutex;
 		std::mutex batchMutex;
 		std::mutex activeStateTrackerMutex;
@@ -85,6 +101,88 @@ namespace toaster::gpu::upload
 
 	static UploadContextImpl *g_impl{nullptr};
 
+	static auto createPage(uint64 p_size, uint32 p_id) -> StagingPage
+	{
+		StagingPage page{};
+		page.size = p_size;
+		page.id   = p_id;
+
+		BufferDesc page_desc{};
+		page_desc.size       = p_size;
+		page_desc.memoryType = EMemoryType::eHostVisibleCoherent;
+		page_desc.usage      = EBufferUsageFlagBits::eTransferSrc;
+		page.buffer          = createBuffer(page_desc);
+		page.mappedStart     = getBufferMappedData(page.buffer);
+
+		page.block = alloc::createVirtualBlock(p_size);
+
+		return page;
+	}
+
+	static auto destroyPage(StagingPage &p_page) -> void
+	{
+		alloc::destroyVirtualBlock(p_page.block);
+		destroyBuffer(p_page.buffer);
+	}
+
+	static auto tryAllocate(StagingPage &p_page, uint64 p_size, uint64 p_alignment, PageAllocation &p_out_allocation) -> bool
+	{
+		p_out_allocation.allocation = alloc::virtualAllocate(p_page.block, p_size, p_alignment);
+		if (p_out_allocation.allocation)
+		{
+			p_out_allocation.buffer = p_page.buffer;
+			p_out_allocation.offset = alloc::getAllocationOffset(p_out_allocation.allocation);
+			p_out_allocation.mapped = static_cast<uint8 *>(p_page.mappedStart) + p_out_allocation.offset;
+			p_out_allocation.pageId = p_page.id;
+
+			TST_SCOPED_ATOMIC(p_page.activeAllocations, active_allocations);
+			++active_allocations;
+
+			return true;
+		}
+		return false;
+	}
+
+	static auto freePageAllocation(StagingPage &p_page, const PageAllocation &p_allocation) -> void
+	{
+		alloc::virtualFree(p_allocation.allocation);
+		TST_SCOPED_ATOMIC(p_page.activeAllocations, active_allocations);
+		--active_allocations;
+	}
+
+	static auto insertPage() -> void
+	{
+		uint32 page_id{++g_impl->nextPageId};
+		g_impl->stagingPages[page_id] = createPage(page_size, page_id);
+		g_impl->activePageId          = page_id;
+	}
+
+	static auto allocateAcrossPages(uint64 p_size, PageAllocation &p_out_allocation) -> void
+	{
+		std::scoped_lock<std::mutex> page_lock{g_impl->pageMutex};
+
+		if (tryAllocate(g_impl->stagingPages[g_impl->activePageId], p_size, 16u, p_out_allocation))
+			return;
+
+		for (auto &[page_id,page]: g_impl->stagingPages)
+		{
+			if (tryAllocate(page, p_size, 16u, p_out_allocation))
+				return;
+		}
+
+		if (p_size > page_size)
+		{
+			uint32 page_id{++g_impl->nextPageId};
+			g_impl->stagingPages[page_id] = createPage(p_size, page_id);
+		}
+
+		insertPage();
+		if (!tryAllocate(g_impl->stagingPages[g_impl->activePageId], p_size, 16u, p_out_allocation))
+		{
+			TST_PERMA_ASSERT(false);
+		}
+	}
+
 	static auto executeBatchSubmission(const std::vector<UploadTask> &p_tasks, uint32 p_cmd_index) -> void
 	{
 		uint64 current_value{getSemaphoreValue(frame::getTransferTimelineSemaphore())};
@@ -92,20 +190,19 @@ namespace toaster::gpu::upload
 		CommandListHandle cmd{g_impl->commandLists[p_cmd_index]};
 
 		if (current_value < g_impl->uploadTimeline[p_cmd_index])
-		{
 			waitSemaphores(frame::getTransferTimelineSemaphore(), g_impl->uploadTimeline[p_cmd_index]);
-		}
 
-		// if (g_impl->uploadTimeline[p_cmd_ndex] != 0u)
 		resetCommandList(cmd);
-
 		openCommandList(cmd);
 
 		LiveUploadBatch live_batch{};
 
+		// std::vector<ImageMemoryBarrier>  image_barriers;
+		// std::vector<BufferMemoryBarrier> buffer_barriers;
+
 		for (const auto &task: p_tasks)
 		{
-			live_batch.allocationsToFree.push_back(task.stagingAllocation.virtualAllocation);
+			live_batch.allocations.push_back(task.stagingAllocation);
 
 			switch (task.type)
 			{
@@ -113,7 +210,11 @@ namespace toaster::gpu::upload
 				{
 					BufferHandle handle{static_cast<BufferHandle>(task.handle)};
 					TST_ASSERT(handle.valid());
-					copyBuffer(cmd, task.stagingAllocation.buffer, handle, task.size, task.stagingAllocation.bufferOffset, task.dstOffset);
+
+					copyBuffer(cmd, task.stagingAllocation.buffer, handle, task.size, task.stagingAllocation.offset, task.dstOffset);
+
+					// auto &release_barrier{buffer_barriers.emplace_back()};
+
 					break;
 				}
 
@@ -121,7 +222,11 @@ namespace toaster::gpu::upload
 				{
 					TextureHandle handle{static_cast<TextureHandle>(task.handle)};
 					TST_ASSERT(handle.valid());
-					copyBufferToTexture(cmd, task.stagingAllocation.buffer, handle, task.stagingAllocation.bufferOffset); // TODO: Information
+
+					copyBufferToTexture(cmd, task.stagingAllocation.buffer, handle, task.stagingAllocation.offset); // TODO: Information
+
+					// auto &release_barrier{image_barriers.emplace_back()};
+
 					break;
 				}
 			}
@@ -142,8 +247,8 @@ namespace toaster::gpu::upload
 				std::scoped_lock<std::mutex> ticket_lock{*tracker.ticketMutex};
 				tracker.timelineTickets.push_back(target_signal_value);
 			}
-
-			--(*tracker.pendingSubresources);
+			TST_SCOPED_ATOMIC(tracker.pendingSubresources, pending_subresources);
+			(void) --pending_subresources;
 		}
 
 		{
@@ -191,17 +296,9 @@ namespace toaster::gpu::upload
 
 		g_impl = new UploadContextImpl{};
 
-		g_impl->maxStagingSize            = p_desc.maxStagingSize;
 		g_impl->maxAllocationCommandLists = p_desc.maxAllocationCommandLists;
 
-		BufferDesc staging_buffer_desc{};
-		staging_buffer_desc.size       = g_impl->maxStagingSize;
-		staging_buffer_desc.usage      = EBufferUsageFlagBits::eTransferSrc;
-		staging_buffer_desc.memoryType = EMemoryType::eHostVisibleCoherent;
-		g_impl->stagingBuffer          = createBuffer(staging_buffer_desc);
-
-		g_impl->mappedStart  = getBufferMappedData(g_impl->stagingBuffer);
-		g_impl->stagingBlock = alloc::createVirtualBlock(g_impl->maxStagingSize);
+		insertPage(); // Default page
 
 		g_impl->commandLists.resize(g_impl->maxAllocationCommandLists);
 		g_impl->uploadTimeline.resize(g_impl->maxAllocationCommandLists);
@@ -214,31 +311,13 @@ namespace toaster::gpu::upload
 		g_impl->stateTrackers.setDestructorFn(+[](StateTracker *p_data, void *) -> void
 		{
 			p_data->timelineTickets.clear();
-			p_data->pendingSubresources->store(0u);
+			p_data->pendingSubresources = 0u;
 
 			p_data->readyCb       = nullptr;
 			p_data->readyUserData = nullptr;
 		});
 
 		g_impl->uploadThread = std::thread(&transferMain);
-	}
-
-	static auto allocateStagingMemory(uint64 p_size, uint64 p_alignment = 16u) -> StagingAllocation
-	{
-		std::scoped_lock<std::mutex> lock{g_impl->stagingMutex};
-
-		const alloc::VirtualAllocationHandle virtual_allocation{alloc::virtualAllocate(g_impl->stagingBlock, p_size, p_alignment)};
-		const uint64                         allocation_offset{alloc::getAllocationOffset(virtual_allocation)};
-
-		StagingAllocation allocation{};
-		allocation.buffer            = g_impl->stagingBuffer;
-		allocation.bufferOffset      = allocation_offset;
-		allocation.virtualAllocation = virtual_allocation;
-		allocation.mappedData        = static_cast<uint8 *>(g_impl->mappedStart) + allocation_offset;
-
-		g_impl->lastAllocatedOffset = allocation_offset + p_size;
-
-		return allocation;
 	}
 
 	auto shutdownUploadContext() -> void
@@ -256,8 +335,8 @@ namespace toaster::gpu::upload
 
 		g_impl->stateTrackers.clear();
 
-		alloc::destroyVirtualBlock(g_impl->stagingBlock);
-		destroyBuffer(g_impl->stagingBuffer);
+		for (auto &[id, page]: g_impl->stagingPages)
+			destroyPage(page);
 
 		delete g_impl;
 		g_impl = nullptr;
@@ -267,7 +346,7 @@ namespace toaster::gpu::upload
 	{
 		StateTracker state_tracker{};
 		state_tracker.ticketMutex         = makeUnique<std::mutex>();
-		state_tracker.pendingSubresources = makeUnique<std::atomic_uint32_t>(p_expected_subresources);
+		state_tracker.pendingSubresources = p_expected_subresources;
 		return g_impl->stateTrackers.emplace(std::move(state_tracker));
 	}
 
@@ -293,7 +372,7 @@ namespace toaster::gpu::upload
 		StateTracker &tracker{g_impl->stateTrackers[p_state_tracker]};
 
 		tracker.timelineTickets.clear();
-		tracker.pendingSubresources->store(p_pending_subresources);
+		tracker.pendingSubresources = p_pending_subresources;
 	}
 
 	auto isStateTrackerReady(StateTrackerHandle p_state_tracker) -> bool
@@ -302,9 +381,8 @@ namespace toaster::gpu::upload
 
 		std::scoped_lock<std::mutex> lock{g_impl->activeStateTrackerMutex};
 
-		const bool ready{!g_impl->activeStateTrackers.contains(p_state_tracker) && (tracker.pendingSubresources->load() == 0u)};
-
-		return ready;
+		TST_SCOPED_ATOMIC(tracker.pendingSubresources, pending_subresources);
+		return !g_impl->activeStateTrackers.contains(p_state_tracker) && (pending_subresources.load() == 0u);
 	}
 
 	auto pollUploads() -> void
@@ -312,14 +390,28 @@ namespace toaster::gpu::upload
 		uint64 current_value{getSemaphoreValue(frame::getTransferTimelineSemaphore())};
 
 		{
-			std::scoped_lock<std::mutex> lock{g_impl->batchMutex}; // Locks so multiple threads cannot call ts at once
+			std::scoped_lock<std::mutex> batch_lock{g_impl->batchMutex}; // Locks so multiple threads cannot call ts at once
+			std::scoped_lock<std::mutex> page_lock{g_impl->pageMutex};
 
 			for (auto it{g_impl->liveBatches.begin()}; it != g_impl->liveBatches.end();)
 			{
 				if (current_value >= it->timelineValue)
 				{
-					for (auto virtual_alloc: it->allocationsToFree)
-						alloc::virtualFree(virtual_alloc);
+					for (const auto &alloc: it->allocations)
+					{
+						auto page_it{g_impl->stagingPages.find(alloc.pageId)};
+						if (page_it != g_impl->stagingPages.end())
+						{
+							freePageAllocation(page_it->second, alloc);
+							TST_SCOPED_ATOMIC(page_it->second.activeAllocations, active_allocations);
+
+							if (active_allocations.load() == 0u && page_it->first != g_impl->activePageId)
+							{
+								destroyPage(page_it->second);
+								g_impl->stagingPages.erase(page_it);
+							}
+						}
+					}
 
 					it = g_impl->liveBatches.erase(it);
 				}
@@ -351,7 +443,8 @@ namespace toaster::gpu::upload
 					}
 				}
 
-				if (all_finished && tracker.pendingSubresources->load() == 0u)
+				TST_SCOPED_ATOMIC(tracker.pendingSubresources, pending_subresources);
+				if (all_finished && pending_subresources.load() == 0u)
 				{
 					if (tracker.readyCb)
 						tracker.readyCb(tracker.readyUserData);
@@ -366,19 +459,19 @@ namespace toaster::gpu::upload
 
 	auto uploadDataToBuffer(const BufferUploadDesc &p_upload_desc, StateTrackerHandle p_state_tracker) -> void
 	{
-		StagingAllocation staging_allocation{allocateStagingMemory(p_upload_desc.size)};
-
-		std::memcpy(staging_allocation.mappedData, p_upload_desc.data, p_upload_desc.size);
-
 		UploadTask upload_task{};
+		allocateAcrossPages(p_upload_desc.size, upload_task.stagingAllocation);
 
-		upload_task.stagingAllocation = staging_allocation;
+		std::memcpy(upload_task.stagingAllocation.mapped, p_upload_desc.data, p_upload_desc.size);
 
 		{
 			std::scoped_lock<std::mutex> lock{g_impl->activeStateTrackerMutex};
 
 			StateTracker &tracker{g_impl->stateTrackers[p_state_tracker]};
-			TST_ASSERT(tracker.pendingSubresources->load() != 0u);
+
+			TST_SCOPED_ATOMIC(tracker.pendingSubresources, pending_subresources);
+			TST_ASSERT(pending_subresources.load() != 0u);
+
 			g_impl->activeStateTrackers.insert(p_state_tracker);
 		}
 
@@ -387,8 +480,6 @@ namespace toaster::gpu::upload
 		upload_task.size         = p_upload_desc.size;
 		upload_task.handle       = static_cast<uint64>(p_upload_desc.dstBuffer);
 		upload_task.type         = UploadTask::EType::eBuffer;
-
-		upload_task.magic = {'P', 'E', 'E', 'B'};
 
 		{
 			std::unique_lock<std::mutex> lock{g_impl->uploadMutex};
@@ -399,18 +490,19 @@ namespace toaster::gpu::upload
 
 	auto uploadDataToTexture(const TextureUploadDesc &p_upload_desc, StateTrackerHandle p_state_tracker) -> void
 	{
-		StagingAllocation staging_allocation{allocateStagingMemory(p_upload_desc.size)};
-
-		std::memcpy(staging_allocation.mappedData, p_upload_desc.data, p_upload_desc.size);
-
 		UploadTask upload_task{};
-		upload_task.stagingAllocation = staging_allocation;
+		allocateAcrossPages(p_upload_desc.size, upload_task.stagingAllocation);
+
+		std::memcpy(upload_task.stagingAllocation.mapped, p_upload_desc.data, p_upload_desc.size);
 
 		{
 			std::scoped_lock<std::mutex> lock{g_impl->activeStateTrackerMutex};
 
 			StateTracker &tracker{g_impl->stateTrackers[p_state_tracker]};
-			TST_ASSERT(tracker.pendingSubresources->load() != 0u);
+
+			TST_SCOPED_ATOMIC(tracker.pendingSubresources, pending_subresources);
+			TST_ASSERT(pending_subresources.load() != 0u);
+
 			g_impl->activeStateTrackers.insert(p_state_tracker);
 		}
 
@@ -418,8 +510,6 @@ namespace toaster::gpu::upload
 		upload_task.size         = p_upload_desc.size;
 		upload_task.handle       = static_cast<uint64>(p_upload_desc.dstTexture);
 		upload_task.type         = UploadTask::EType::eTexture;
-
-		upload_task.magic = {'P', 'E', 'E', 'B'};
 
 		{
 			std::unique_lock<std::mutex> lock{g_impl->uploadMutex};
