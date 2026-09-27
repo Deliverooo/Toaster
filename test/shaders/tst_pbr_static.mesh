@@ -1,0 +1,124 @@
+#version 460
+
+#extension GL_EXT_nonuniform_qualifier: require
+#extension GL_EXT_buffer_reference2: require
+#extension GL_EXT_descriptor_heap: enable
+#extension GL_EXT_scalar_block_layout: enable
+#extension GL_EXT_mesh_shader: require
+#extension GL_EXT_shader_explicit_arithmetic_types_int64: enable
+#extension GL_EXT_shader_explicit_arithmetic_types_int32: enable
+#extension GL_EXT_shader_explicit_arithmetic_types_int16: enable
+#extension GL_EXT_shader_explicit_arithmetic_types_int8: enable
+
+struct Vertex
+{
+    vec3 position;
+    vec3 normal;
+    vec2 texCoord;
+};
+
+struct Meshlet
+{
+    uint32_t materialIndex;
+
+    uint32_t vertexOffset;
+    uint32_t triangleOffset;
+    uint32_t vertexCount;
+    uint32_t triangleCount;
+
+    vec4 boundingSphere;
+};
+
+layout (descriptor_heap, scalar) readonly buffer VertexBuffer { Vertex vertices[]; } vertexPages[];
+layout (descriptor_heap, scalar) readonly buffer MeshletBuffer { Meshlet meshlets[]; } meshletPages[];
+layout (descriptor_heap, scalar) readonly buffer MeshletVertexBuffer { uint32_t vertices[]; } meshletVertexPages[];
+layout (descriptor_heap, scalar) readonly buffer MeshletTriangleBuffer { uint8_t indices[]; } meshletTrianglePages[];
+
+layout (buffer_reference, std140) readonly buffer CameraBuffer
+{
+    mat4 view;
+    mat4 proj;
+    vec4 position;
+};
+
+struct ObjectData
+{
+    uint32_t transformId;
+
+    uint32_t vertexBufferOffset;
+    uint32_t meshletBufferOffset;
+    uint32_t meshletVertexBufferOffset;
+    uint32_t meshletTriangleBufferOffset;
+
+    uint8_t vertexBufferPageId;
+    uint8_t meshletBufferPageId;
+    uint8_t meshletVertexBufferPageId;
+    uint8_t meshletTriangleBufferPageId;
+};
+
+layout (buffer_reference, scalar) readonly buffer ObjectDataBuffer { ObjectData data[]; };
+layout (buffer_reference, scalar) readonly buffer TransformDataBuffer { mat4 data[]; };
+
+layout (push_constant) uniform PushData
+{
+    CameraBuffer camera;
+    ObjectDataBuffer objectBuffer;
+    uint64_t materialBuffer;
+    TransformDataBuffer transformBuffer;
+
+    uint samplerId;
+    uint _padd[1];
+} pcs;
+
+layout (local_size_x = 64u) in;
+layout (triangles, max_vertices = 64u, max_primitives = 128u) out;
+
+layout (location = 0) out vec3 o_Position[];
+layout (location = 1) out vec3 o_WorldPos[];
+layout (location = 2) out vec2 o_TexCoord[];
+layout (location = 3) flat out uint o_Material[];
+
+void main()
+{
+    uint instance_id = gl_DrawID;
+    ObjectData obj_data = pcs.objectBuffer.data[instance_id];
+
+    Meshlet meshlet = meshletPages[obj_data.meshletBufferPageId].meshlets[obj_data.meshletBufferOffset + gl_WorkGroupID.x];
+
+    SetMeshOutputsEXT(meshlet.vertexCount, meshlet.triangleCount);
+
+    uint thread_id = gl_LocalInvocationID.x;
+
+    if (thread_id < meshlet.vertexCount)
+    {
+        uint8_t index = meshletTrianglePages[obj_data.meshletTriangleBufferPageId].indices[uint(meshlet.triangleOffset) + thread_id];
+
+        uint32_t vertex_index = meshletVertexPages[obj_data.meshletVertexBufferPageId].vertices[uint(meshlet.vertexOffset) + uint(index)];
+
+        Vertex vertex = vertexPages[obj_data.vertexBufferPageId].vertices[vertex_index];
+
+        mat4 transform = pcs.transformBuffer.data[obj_data.transformId];
+
+        vec4 world_pos = transform * vec4(vertex.position.xyz, 1.0f);
+        o_Position[thread_id] = vertex.position.xyz;
+        o_WorldPos[thread_id] = world_pos.xyz;
+
+        vec4 view_pos = pcs.camera.view * world_pos;
+
+        o_TexCoord[thread_id] = vertex.texCoord;
+        o_Material[thread_id] = 0; // TODO: Material mapping indirection table
+
+        gl_MeshVerticesEXT[thread_id].gl_Position = pcs.camera.proj * view_pos;
+    }
+
+    if (thread_id < meshlet.triangleCount)
+    {
+        uint triangle_index = uint(meshlet.triangleOffset) + thread_id;
+
+        gl_PrimitiveTriangleIndicesEXT[thread_id] = uvec3(
+        meshletTrianglePages[obj_data.meshletTriangleBufferPageId].indices[triangle_index * 3u + 0u],
+        meshletTrianglePages[obj_data.meshletTriangleBufferPageId].indices[triangle_index * 3u + 1u],
+        meshletTrianglePages[obj_data.meshletTriangleBufferPageId].indices[triangle_index * 3u + 2u]
+        );
+    }
+}

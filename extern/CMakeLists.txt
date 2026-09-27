@@ -2,6 +2,26 @@ add_subdirectory(stb)
 
 include(FetchContent)
 
+#Assimp ---
+set(ASSIMP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+FetchContent_Declare(
+		assimp
+		GIT_REPOSITORY https://github.com/assimp/assimp.git
+		GIT_TAG master
+)
+FetchContent_MakeAvailable(assimp)
+#Assimp ---
+
+#Meshoptimizer ---
+set(MESHOPT_INSTALL ON CACHE BOOL "" FORCE)
+FetchContent_Declare(
+		meshopt
+		GIT_REPOSITORY https://github.com/zeux/meshoptimizer.git
+		GIT_TAG master
+)
+FetchContent_MakeAvailable(meshopt)
+#Meshoptimizer ---
+
 #GLFW ---
 FetchContent_Declare(
 		glfw

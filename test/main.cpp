@@ -20,8 +20,8 @@
 
 using namespace toaster;
 
-#include <test.vert.h>
-#include <test.frag.h>
+#include <tst_pbr_static.mesh.h>
+#include <tst_pbr_static.frag.h>
 
 struct StaticMeshComponent
 {
@@ -65,20 +65,19 @@ public:
 	static constexpr uint32            maxDrawCalls{1028u * 1028u * 10u};
 	static constexpr gpu::ESampleCount msaaSamples{gpu::ESampleCount::e4};
 
-	struct alignas(16u) ObjectData
+	struct ObjectData
 	{
-		uint32 material;
-		uint32 vertexBufferOffset;
-		uint32 indexBufferOffset;
 		uint32 transformId;
 
-		tsm::float3 aabbMin;
-		tsm::float3 aabbMax;
+		uint32 vertexBufferOffset;
+		uint32 meshletBufferOffset;
+		uint32 meshletVertexBufferOffset;
+		uint32 meshletTriangleBufferOffset;
 
-		uint8 vertexPageId;
-		uint8 indexPageId;
-
-		uint8 _padd[6u];
+		uint8 vertexBufferPageId;
+		uint8 meshletBufferPageId;
+		uint8 meshletVertexBufferPageId;
+		uint8 meshletTriangleBufferPageId;
 	};
 
 	auto onInit() -> void override
@@ -117,18 +116,18 @@ public:
 		m_samplerHeapSlot = gpu::allocSamplerHeapSlot(m_renderCtx->getSamplerHeap());
 		gpu::writeSamplerDescriptor(m_renderCtx->getSamplerHeap(), m_samplerHeapSlot, sampler);
 
-		m_vs = gpu::createShader(gpu::ShaderDesc{
+		m_ms = gpu::createShader(gpu::ShaderDesc{
 									 "main",
-									 c_test_vert_bytecode,
-									 sizeof(c_test_vert_bytecode) / sizeof(uint32),
-									 gpu::EShaderStageFlagBits::eVertex,
+									 c_tst_pbr_static_mesh_bytecode,
+									 sizeof(c_tst_pbr_static_mesh_bytecode) / sizeof(uint32),
+									 gpu::EShaderStageFlagBits::eMesh,
 									 gpu::EShaderStageFlagBits::ePixel
 								 });
 
 		m_ps = gpu::createShader(gpu::ShaderDesc{
 									 "main",
-									 c_test_frag_bytecode,
-									 sizeof(c_test_frag_bytecode) / sizeof(uint32),
+									 c_tst_pbr_static_frag_bytecode,
+									 sizeof(c_tst_pbr_static_frag_bytecode) / sizeof(uint32),
 									 gpu::EShaderStageFlagBits::ePixel,
 									 gpu::EShaderStageFlagBits::eNone
 								 });
@@ -150,7 +149,7 @@ public:
 			cmd.emplace_back(gpu::getOrCreateCommandList(gpu::EQueueType::eGraphics, true));
 
 		gpu::BufferDesc indirect_buffer_desc{};
-		indirect_buffer_desc.size       = sizeof(gpu::DrawIndirectCommand) * maxDrawCalls;
+		indirect_buffer_desc.size       = sizeof(gpu::DrawMeshTasksIndirectCommand) * maxDrawCalls;
 		indirect_buffer_desc.usage      = gpu::EBufferUsageFlagBits::eIndirectBuffer;
 		indirect_buffer_desc.memoryType = gpu::EMemoryType::eHostVisibleCoherent;
 
@@ -204,7 +203,7 @@ public:
 		gpu::destroyTexture(m_msaaColourAttachment);
 
 		gpu::destroyShader(m_ps);
-		gpu::destroyShader(m_vs);
+		gpu::destroyShader(m_ms);
 
 		gpu::freeSamplerHeapSlot(m_renderCtx->getSamplerHeap(), m_samplerHeapSlot);
 
@@ -299,7 +298,7 @@ public:
 		inheritance_info.samples                 = msaaSamples;
 		gpu::openCommandList(secondary_cmd, &inheritance_info);
 
-		gpu::bindShaders(secondary_cmd, {m_vs, m_ps});
+		gpu::bindShaders(secondary_cmd, {m_ms, m_ps});
 
 		gpu::setPrimitiveTopology(secondary_cmd, gpu::EPrimitiveTopology::eTriangleList);
 		gpu::setPrimitiveRestart(secondary_cmd, false);
@@ -321,8 +320,10 @@ public:
 
 		uint32 draw_count{0u};
 
-		gpu::DrawIndirectCommand *mapped_cmd{static_cast<gpu::DrawIndirectCommand *>(gpu::getBufferMappedData(m_indirectBuffers[m_app->getFrameIndex()]))};
-		ObjectData *              mapped_object_data{static_cast<ObjectData *>(gpu::getBufferMappedData(m_objectDataBuffers[m_app->getFrameIndex()]))};
+		gpu::DrawMeshTasksIndirectCommand *mapped_cmd{
+			static_cast<gpu::DrawMeshTasksIndirectCommand *>(gpu::getBufferMappedData(m_indirectBuffers[m_app->getFrameIndex()]))
+		};
+		ObjectData *mapped_object_data{static_cast<ObjectData *>(gpu::getBufferMappedData(m_objectDataBuffers[m_app->getFrameIndex()]))};
 
 		const auto view{m_scene.getRegistry().view<StaticMeshComponent, GPUTransformComponent>()};
 		view.each([this, &draw_count, mapped_cmd, mapped_object_data]([[maybe_unused]] entt::entity p_entity, const StaticMeshComponent &p_smc,
@@ -333,20 +334,24 @@ public:
 
 			if (mesh && p_smc.visible && gpu::upload::isStateTrackerReady(mesh->stateTracker))
 			{
-				for (const auto &submesh: mesh->submeshes)
-				{
-					mapped_object_data[draw_count].material           = submesh.material.getId();
-					mapped_object_data[draw_count].vertexBufferOffset = mesh->vertexBufferOffset();
-					mapped_object_data[draw_count].indexBufferOffset  = mesh->indexBufferOffset();
-					mapped_object_data[draw_count].vertexPageId       = mesh->vertexBufferAllocation.heapSlot;
-					mapped_object_data[draw_count].indexPageId        = mesh->indexBufferAllocation.heapSlot;
-					mapped_object_data[draw_count].transformId        = p_gpu_tc.transformId;
-					mapped_object_data[draw_count].aabbMin            = submesh.aabbMin;
-					mapped_object_data[draw_count].aabbMax            = submesh.aabbMax;
+				auto &obj_data{mapped_object_data[draw_count]};
 
-					mapped_cmd[draw_count] = gpu::DrawIndirectCommand{submesh.indexCount, 1u, submesh.indexOffset, draw_count};
-					++draw_count;
-				}
+				obj_data.transformId = p_gpu_tc.transformId;
+
+				obj_data.vertexBufferOffset          = mesh->vertexBufferOffset();
+				obj_data.meshletBufferOffset         = mesh->meshletBufferOffset();
+				obj_data.meshletVertexBufferOffset   = mesh->meshletVertexBufferOffset();
+				obj_data.meshletTriangleBufferOffset = mesh->meshletTriangleBufferOffset();
+
+				obj_data.vertexBufferPageId          = mesh->vertexBufferAllocation.heapSlot;
+				obj_data.meshletBufferPageId         = mesh->meshletBufferAllocation.heapSlot;
+				obj_data.meshletVertexBufferPageId   = mesh->meshletVertexBufferAllocation.heapSlot;
+				obj_data.meshletTriangleBufferPageId = mesh->meshletTriangleBufferAllocation.heapSlot;
+
+				uint32 task_work_groups_x{static_cast<uint32>(mesh->meshlets.size())};
+				mapped_cmd[draw_count] = {task_work_groups_x, 1u, 1u};
+
+				++draw_count;
 			}
 		});
 
@@ -371,7 +376,7 @@ public:
 		gpu::bindIndexBuffer(secondary_cmd, nullptr);
 
 		if (draw_count)
-			gpu::drawIndirect(secondary_cmd, m_indirectBuffers[m_app->getFrameIndex()], 0u, draw_count);
+			gpu::drawMeshTasksIndirect(secondary_cmd, m_indirectBuffers[m_app->getFrameIndex()], 0u, draw_count);
 
 		gpu::closeCommandList(secondary_cmd);
 		gpu::executeCommandLists(p_cmd, secondary_cmd);
@@ -449,7 +454,7 @@ private :
 
 	uint32 m_samplerHeapSlot{UINT32_MAX};
 
-	gpu::ShaderHandle m_vs{nullptr};
+	gpu::ShaderHandle m_ms{nullptr};
 	gpu::ShaderHandle m_ps{nullptr};
 
 	Camera                         m_camera;

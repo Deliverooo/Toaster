@@ -84,20 +84,6 @@ option(TOASTER_INSTALL "Generate install targets for toaster" ON)
 option(TOASTER_BUILD_SHARED_LIBS "Generate install targets for toaster" ON)
 
 add_subdirectory(extern)
-
-include(FetchContent)
-
-#Assimp ---
-set(ASSIMP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-FetchContent_Declare(
-		assimp
-		GIT_REPOSITORY https://github.com/assimp/assimp.git
-		GIT_TAG master
-)
-FetchContent_MakeAvailable(assimp)
-#Assimp ---
-
-
 add_subdirectory(subsystems)
 
 if (TOASTER_INSTALL)

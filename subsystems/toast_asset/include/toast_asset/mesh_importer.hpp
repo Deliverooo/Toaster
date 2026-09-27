@@ -11,8 +11,10 @@ namespace toaster::asset
 	struct TST_ASSET_API MeshImportData
 	{
 		std::vector<render::StaticMeshVertex> vertices;
-		std::vector<uint32>                   indices;
-		std::vector<render::Submesh>          submeshes;
+		std::vector<render::Meshlet>          meshlets;
+		std::vector<uint32>                   meshletVertices;
+		std::vector<uint8>                    meshletTriangles;
+		std::vector<render::MaterialHandle>   materials;
 	};
 
 	class TST_ASSET_API MeshImporter

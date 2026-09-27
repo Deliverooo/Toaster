@@ -49,17 +49,16 @@ namespace toaster::gpu::alloc
 		GPUPageAllocator(uint64 p_page_size, ResourceDescriptorHeapHandle p_resource_heap);
 		~GPUPageAllocator();
 
-		auto insertPage() -> void;
 		auto freePageAllocation(const PageAllocation &p_allocation) -> void;
 		auto allocateAcrossPages(uint64 p_size, uint64 p_alignment, PageAllocation &p_out_allocation) -> void;
 
 	private:
+		auto        insertPage() -> void;
 		static auto tryAllocate(Page &p_page, uint64 p_size, uint64 p_alignment, PageAllocation &p_out_allocation) -> bool;
-		auto createPage(uint64 p_size, uint32 p_id) -> Page;
-		auto destroyPage(Page &p_page) -> void;
+		auto        createPage(uint64 p_size, uint32 p_id) -> Page;
+		auto        destroyPage(Page &p_page) -> void;
 
 		std::unordered_map<uint32, Page> pages;
-		std::mutex                       pageMutex;
 
 		ResourceDescriptorHeapHandle m_resourceHeap{nullptr};
 

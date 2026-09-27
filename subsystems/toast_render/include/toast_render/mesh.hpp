@@ -5,56 +5,44 @@
 
 #include "material.hpp"
 #include "toast_gpu/upload.hpp"
-#include "toast_lib/atomic.hpp"
 
 namespace toaster::render
 {
-	struct TST_RENDER_API alignas(16u) DefaultMaterial
-	{
-		XMFLOAT3 albedoColour{1.0f, 1.0f, 1.0f};
-		uint32   albedoMap{UINT32_MAX};
-	};
-
-	enum class EMeshState : uint8
-	{
-		eUnloaded,
-		eLoading,
-		eUploadingToGPU,
-		eReady
-	};
-
 	struct TST_RENDER_API StaticMeshVertex
 	{
 		XMFLOAT3 position;
 		XMFLOAT3 normal;
-		// XMFLOAT3 tangent;
-		// XMFLOAT3 bitangent;
 		XMFLOAT2 texCoord;
 	};
 
-	struct TST_RENDER_API Submesh
+	struct TST_RENDER_API Meshlet
 	{
-		MaterialHandle material{nullptr};
+		uint32 materialIndex{0u}; // Index into the per-mesh material array
 
-		tsm::float3 aabbMin{};
-		tsm::float3 aabbMax{};
+		uint32 vertexOffset{0u};
+		uint32 triangleOffset{0u};
+		uint32 vertexCount{0u};
+		uint32 triangleCount{0u};
 
-		uint32 indexOffset{0u};
-		int32  vertexOffset{0u};
-		uint32 indexCount{0u};
+		tsm::float4 boundingSphere{0.0f};
 	};
 
 	struct TST_RENDER_API StaticMesh
 	{
-		std::vector<Submesh> submeshes;
+		std::vector<Meshlet>        meshlets;
+		std::vector<MaterialHandle> materials; // The actual materials the meshlets hold indices to
 
 		gpu::alloc::PageAllocation vertexBufferAllocation{};
-		gpu::alloc::PageAllocation indexBufferAllocation{};
+		gpu::alloc::PageAllocation meshletBufferAllocation{};
+		gpu::alloc::PageAllocation meshletVertexBufferAllocation{};
+		gpu::alloc::PageAllocation meshletTriangleBufferAllocation{};
 
 		gpu::upload::StateTrackerHandle stateTracker{nullptr};
 
 		[[nodiscard]] auto vertexBufferOffset() const -> uint64 { return vertexBufferAllocation.offset / sizeof(StaticMeshVertex); }
-		[[nodiscard]] auto indexBufferOffset() const -> uint64 { return indexBufferAllocation.offset / sizeof(uint32); }
+		[[nodiscard]] auto meshletBufferOffset() const -> uint64 { return meshletBufferAllocation.offset / sizeof(Meshlet); }
+		[[nodiscard]] auto meshletVertexBufferOffset() const -> uint64 { return meshletVertexBufferAllocation.offset / sizeof(uint32); }
+		[[nodiscard]] auto meshletTriangleBufferOffset() const -> uint64 { return meshletTriangleBufferAllocation.offset / sizeof(uint8); }
 	};
 
 	TST_DECLARE_HANDLE(StaticMesh);
@@ -67,11 +55,13 @@ namespace toaster::render
 
 		// Register so you can upload the gpu data once it is loaded from disk
 		[[nodiscard]] auto registerStaticMesh() -> StaticMeshHandle;
-		auto               uploadStaticMeshData(StaticMeshHandle p_handle, const std::vector<StaticMeshVertex> &p_vertices, const std::vector<uint32> &p_indices,
-												const std::vector<Submesh> &   p_submeshes) -> void;
+		auto               uploadStaticMeshData(StaticMeshHandle     p_handle, const std::vector<StaticMeshVertex> &p_vertices, const std::vector<Meshlet> &p_meshlets,
+												const std::vector<uint32> &        p_meshlet_vertices, const std::vector<uint8> & p_meshlet_triangles,
+												const std::vector<MaterialHandle> &p_materials) -> void;
 
-		[[nodiscard]] auto createStaticMesh(const std::vector<StaticMeshVertex> &p_vertices, const std::vector<uint32> &p_indices,
-											const std::vector<Submesh> &         p_submeshes) -> StaticMeshHandle;
+		[[nodiscard]] auto createStaticMesh(const std::vector<StaticMeshVertex> &p_vertices, const std::vector<Meshlet> &      p_meshlets,
+											const std::vector<uint32> &          p_meshlet_vertices, const std::vector<uint8> &p_meshlet_triangles,
+											const std::vector<MaterialHandle> &  p_materials) -> StaticMeshHandle;
 		auto destroyStaticMesh(StaticMeshHandle p_handle) -> void;
 
 		auto isStaticMeshReady(StaticMeshHandle p_handle) -> bool;
@@ -81,16 +71,19 @@ namespace toaster::render
 		[[nodiscard]] auto tryGetStaticMesh(StaticMeshHandle p_handle) -> StaticMesh * { return m_staticMeshes.tryGet(p_handle); }
 		[[nodiscard]] auto tryGetStaticMesh(StaticMeshHandle p_handle) const -> const StaticMesh * { return m_staticMeshes.tryGet(p_handle); }
 
-		// [[nodiscard]] auto getStaticMeshVertexBuffer() const -> gpu::BufferHandle { return m_staticMeshVertexBuffer; }
-		// [[nodiscard]] auto getStaticMeshIndexBuffer() const -> gpu::BufferHandle { return m_staticMeshIndexBuffer; }
-
 	private:
-		static constexpr uint64 pageSize{256u * 1024u * 1024u}; // 256 Mib
+		static constexpr uint64 vertexPageSize{256u * 1024u * 1024u};         // 256 Mib
+		static constexpr uint64 meshletPageSize{128u * 1024u * 1024u};        // 128 Mib
+		static constexpr uint64 meshletVertexPageSize{128u * 1024u * 1024u};  // 128 Mib
+		static constexpr uint64 meshletTrianglePageSize{64u * 1024u * 1024u}; // 64 Mib
 
 		NonOwningPtr<RenderContext> m_renderCtx{nullptr};
 
+		std::mutex                              m_pageMutex; // Because all of these operations are called at the same time, I only need one mutex.
 		UniquePtr<gpu::alloc::GPUPageAllocator> m_vertexPager{nullptr};
-		UniquePtr<gpu::alloc::GPUPageAllocator> m_indexPager{nullptr};
+		UniquePtr<gpu::alloc::GPUPageAllocator> m_meshletPager{nullptr};
+		UniquePtr<gpu::alloc::GPUPageAllocator> m_meshletVertexPager{nullptr};
+		UniquePtr<gpu::alloc::GPUPageAllocator> m_meshletTrianglePager{nullptr};
 
 		Pool<StaticMesh> m_staticMeshes;
 	};

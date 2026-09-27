@@ -9,7 +9,7 @@ target_include_directories(ToastAsset PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_S
 		$<INSTALL_INTERFACE:include>)
 
 target_sources(ToastAsset PRIVATE ${RENDER_SRC})
-target_link_libraries(ToastAsset PUBLIC Toaster::ToastScene assimp::assimp stb)
+target_link_libraries(ToastAsset PUBLIC Toaster::ToastScene assimp::assimp meshoptimizer stb)
 
 add_library(Toaster::ToastAsset ALIAS ToastAsset)
 

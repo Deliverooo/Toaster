@@ -20,7 +20,23 @@ struct Vertex
     vec2 texCoord;
 };
 
+struct Meshlet
+{
+    uint64_t material;
+
+    uint32_t vertexOffset;
+    uint32_t triangleOffset;
+    uint32_t vertexCount;
+    uint32_t triangleCount;
+
+    vec4 boundingSphere;
+};
+
 layout (descriptor_heap, scalar) readonly buffer VertexBuffer { Vertex vertices[]; } vertexPages[];
+layout (descriptor_heap, scalar) readonly buffer MeshletBuffer { Meshlet meshlets[]; } meshletPages[];
+layout (descriptor_heap, scalar) readonly buffer MeshletVertexBuffer { uint32_t vertices[]; } meshletVertexPages[];
+layout (descriptor_heap, scalar) readonly buffer MeshletTriangleBuffer { uint8_t indices[]; } meshletTrianglePages[];
+
 layout (descriptor_heap, scalar) readonly buffer IndexBuffer { uint32_t indices[]; } indexPages[];
 
 layout (buffer_reference, std140) readonly buffer CameraBuffer

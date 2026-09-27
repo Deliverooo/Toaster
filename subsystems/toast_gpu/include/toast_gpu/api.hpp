@@ -490,6 +490,13 @@ namespace toaster::gpu
 		uint32 firstInstance{0u};
 	};
 
+	struct TST_GPU_API DrawMeshTasksIndirectCommand
+	{
+		uint32 groupCountX{0u};
+		uint32 groupCountY{0u};
+		uint32 groupCountZ{0u};
+	};
+
 	auto TST_GPU_API draw(CommandListHandle p_command_list, uint32 p_vertex_count, uint32 p_instance_count, uint32 p_first_vertex = 0u,
 						  uint32            p_first_instance                                                                      = 0u) -> void;
 	auto TST_GPU_API drawIndexed(CommandListHandle p_command_list, uint32 p_index_count, uint32 p_instance_count, uint32 p_first_index = 0u, int32 p_vertex_offset = 0,
@@ -498,6 +505,10 @@ namespace toaster::gpu
 								  uint32            p_stride = sizeof(DrawIndirectCommand)) -> void;
 	auto TST_GPU_API drawIndexedIndirect(CommandListHandle p_command_list, BufferHandle p_buffer, uint64 p_offset, uint32 p_draw_count,
 										 uint32            p_stride = sizeof(DrawIndexedIndirectCommand)) -> void;
+
+	auto TST_GPU_API drawMeshTasks(CommandListHandle p_command_list, uint32 p_group_count_x, uint32 p_group_count_y, uint32 p_group_count_z) -> void;
+	auto TST_GPU_API drawMeshTasksIndirect(CommandListHandle p_command_list, BufferHandle p_buffer, uint64 p_offset, uint32 p_draw_count,
+										   uint32            p_stride = sizeof(DrawMeshTasksIndirectCommand)) -> void;
 
 	#pragma endregion
 

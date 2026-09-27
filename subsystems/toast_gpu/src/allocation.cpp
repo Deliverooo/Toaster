@@ -133,13 +133,6 @@ namespace toaster::gpu::alloc
 			destroyPage(page);
 	}
 
-	auto GPUPageAllocator::insertPage() -> void
-	{
-		uint32 page_id{++nextPageId};
-		pages[page_id] = createPage(pageSize, page_id);
-		activePageId   = page_id;
-	}
-
 	auto GPUPageAllocator::freePageAllocation(const PageAllocation &p_allocation) -> void
 	{
 		auto page_it{pages.find(p_allocation.pageId)};
@@ -159,8 +152,6 @@ namespace toaster::gpu::alloc
 
 	auto GPUPageAllocator::allocateAcrossPages(uint64 p_size, uint64 p_alignment, PageAllocation &p_out_allocation) -> void
 	{
-		std::scoped_lock<std::mutex> page_lock{pageMutex};
-
 		if (tryAllocate(pages[activePageId], p_size, p_alignment, p_out_allocation))
 			return;
 
@@ -170,7 +161,7 @@ namespace toaster::gpu::alloc
 				return;
 		}
 
-		if (p_size > pageSize)
+		if (p_size > pageSize) // Create a dedicated allocation
 		{
 			uint32 page_id{++nextPageId};
 			pages[page_id] = createPage(p_size, page_id);
@@ -181,6 +172,13 @@ namespace toaster::gpu::alloc
 		{
 			TST_PERMA_ASSERT(false);
 		}
+	}
+
+	auto GPUPageAllocator::insertPage() -> void
+	{
+		uint32 page_id{++nextPageId};
+		pages[page_id] = createPage(pageSize, page_id);
+		activePageId   = page_id;
 	}
 
 	auto GPUPageAllocator::tryAllocate(Page &p_page, uint64 p_size, uint64 p_alignment, PageAllocation &p_out_allocation) -> bool

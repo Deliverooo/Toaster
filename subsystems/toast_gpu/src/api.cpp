@@ -7,6 +7,7 @@
 #include <algorithm>
 
 #define VK_USE_PLATFORM_WIN32_KHR
+#include <unordered_map>
 #include <vulkan/vulkan.hpp>
 
 #include <vma/vk_mem_alloc.h>
@@ -775,6 +776,7 @@ namespace toaster::gpu
 		ExtensionSet required_device_extensions{
 			vk::EXTDescriptorHeapExtensionName,
 			vk::EXTShaderObjectExtensionName,
+			vk::EXTMeshShaderExtensionName,
 			vk::KHRMaintenance1ExtensionName,
 			vk::KHRShaderUntypedPointersExtensionName,
 			vk::KHRMaintenance9ExtensionName,
@@ -798,7 +800,7 @@ namespace toaster::gpu
 					auto features{
 						p_physical_device.getFeatures2<vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan12Features, vk::PhysicalDeviceVulkan13Features,
 							vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT, vk::PhysicalDeviceUnifiedImageLayoutsFeaturesKHR,
-							vk::PhysicalDeviceDescriptorHeapFeaturesEXT>()
+							vk::PhysicalDeviceDescriptorHeapFeaturesEXT, vk::PhysicalDeviceMeshShaderFeaturesEXT>()
 					};
 
 					const bool supports_required_features{
@@ -807,7 +809,7 @@ namespace toaster::gpu
 						&& features.get<vk::PhysicalDeviceVulkan13Features>().dynamicRendering && features.get<vk::PhysicalDeviceVulkan13Features>().synchronization2 &&
 						features.get<vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>().extendedDynamicState && features.get<
 							vk::PhysicalDeviceUnifiedImageLayoutsFeaturesKHR>().unifiedImageLayouts && features.get<vk::PhysicalDeviceDescriptorHeapFeaturesEXT>().
-						descriptorHeap
+						descriptorHeap && features.get<vk::PhysicalDeviceMeshShaderFeaturesEXT>().meshShader
 					};
 
 					return supports_required_features;
@@ -838,8 +840,8 @@ namespace toaster::gpu
 
 		vk::StructureChain<vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan11Features, vk::PhysicalDeviceVulkan12Features, vk::PhysicalDeviceVulkan13Features,
 			vk::PhysicalDeviceVulkan14Features, vk::PhysicalDeviceShaderObjectFeaturesEXT, vk::PhysicalDeviceDescriptorHeapFeaturesEXT,
-			vk::PhysicalDeviceShaderUntypedPointersFeaturesKHR, vk::PhysicalDeviceMaintenance9FeaturesKHR, vk::PhysicalDeviceUnifiedImageLayoutsFeaturesKHR> feature_chain
-				{{}, {}, {}, {}, {}, {}, {}, {}, {}, {}};
+			vk::PhysicalDeviceShaderUntypedPointersFeaturesKHR, vk::PhysicalDeviceMaintenance9FeaturesKHR, vk::PhysicalDeviceUnifiedImageLayoutsFeaturesKHR,
+			vk::PhysicalDeviceMeshShaderFeaturesEXT> feature_chain{{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}};
 
 		feature_chain.get<vk::PhysicalDeviceFeatures2>().features.samplerAnisotropy                        = true;
 		feature_chain.get<vk::PhysicalDeviceFeatures2>().features.sampleRateShading                        = true;
@@ -873,6 +875,8 @@ namespace toaster::gpu
 		feature_chain.get<vk::PhysicalDeviceShaderUntypedPointersFeaturesKHR>().shaderUntypedPointers      = true;
 		feature_chain.get<vk::PhysicalDeviceMaintenance9FeaturesKHR>().maintenance9                        = true;
 		feature_chain.get<vk::PhysicalDeviceUnifiedImageLayoutsFeaturesKHR>().unifiedImageLayouts          = true;
+		feature_chain.get<vk::PhysicalDeviceMeshShaderFeaturesEXT>().meshShader                            = true;
+		feature_chain.get<vk::PhysicalDeviceMeshShaderFeaturesEXT>().taskShader                            = true;
 
 		g_impl->queueFamilyIndices = selectQueueFamilyIndices(g_impl->physicalDevice, p_desc.usingSwapchain);
 
@@ -1600,16 +1604,22 @@ namespace toaster::gpu
 	{
 		CommandList &cmd{g_impl->commandLists[p_command_list]};
 
-		std::vector<vk::ShaderStageFlagBits> stages(p_shaders.size());
-		std::vector<vk::ShaderEXT>           shaders(p_shaders.size());
+		std::unordered_map<vk::ShaderStageFlagBits, vk::ShaderEXT> shader_stage_map{
+			{vk::ShaderStageFlagBits::eVertex, nullptr},
+			{vk::ShaderStageFlagBits::eGeometry, nullptr},
+			{vk::ShaderStageFlagBits::eFragment, nullptr},
+			{vk::ShaderStageFlagBits::eCompute, nullptr},
+			{vk::ShaderStageFlagBits::eMeshEXT, nullptr},
+			{vk::ShaderStageFlagBits::eTaskEXT, nullptr}
+		};
 		for (uint32 i{0u}; i < p_shaders.size(); ++i)
 		{
 			const Shader &shader{g_impl->shaders[p_shaders[i]]};
-
-			stages[i]  = shader.stage;
-			shaders[i] = shader.shader;
+			shader_stage_map[shader.stage] = shader.shader;
 		}
 
+		std::vector<vk::ShaderStageFlagBits> stages{shader_stage_map | std::views::keys | std::ranges::to<std::vector>()};
+		std::vector<vk::ShaderEXT>           shaders{shader_stage_map | std::views::values | std::ranges::to<std::vector>()};
 		cmd.cmd.bindShadersEXT(stages, shaders, FunctionDispatcher::get());
 	}
 
@@ -1840,6 +1850,19 @@ namespace toaster::gpu
 		CommandList &cmd{g_impl->commandLists[p_command_list]};
 		Buffer &     buffer{g_impl->buffers[p_buffer]};
 		cmd.cmd.drawIndexedIndirect(buffer.buffer, p_offset, p_draw_count, p_stride, FunctionDispatcher::get());
+	}
+
+	auto drawMeshTasks(CommandListHandle p_command_list, uint32 p_group_count_x, uint32 p_group_count_y, uint32 p_group_count_z) -> void
+	{
+		CommandList &cmd{g_impl->commandLists[p_command_list]};
+		cmd.cmd.drawMeshTasksEXT(p_group_count_x, p_group_count_y, p_group_count_z, FunctionDispatcher::get());
+	}
+
+	auto drawMeshTasksIndirect(CommandListHandle p_command_list, BufferHandle p_buffer, uint64 p_offset, uint32 p_draw_count, uint32 p_stride) -> void
+	{
+		CommandList &cmd{g_impl->commandLists[p_command_list]};
+		Buffer &     buffer{g_impl->buffers[p_buffer]};
+		cmd.cmd.drawMeshTasksIndirectEXT(buffer.buffer, p_offset, p_draw_count, p_stride, FunctionDispatcher::get());
 	}
 
 	static auto getTextureBaseHeapSlot(ResourceDescriptorHeapHandle p_resource_heap, uint32 p_heap_slot) -> uint32
@@ -2785,7 +2808,7 @@ namespace toaster::gpu
 		vk::ShaderStageFlags    next_stage{getVulkanShaderStages(p_desc.nextStage)};
 
 		vk::ShaderCreateInfoEXT shader_create_info{};
-		shader_create_info.flags     = vk::ShaderCreateFlagBitsEXT::eDescriptorHeap;
+		shader_create_info.flags     = vk::ShaderCreateFlagBitsEXT::eDescriptorHeap | vk::ShaderCreateFlagBitsEXT::eNoTaskShader;
 		shader_create_info.stage     = shader_stage;
 		shader_create_info.nextStage = next_stage;
 		shader_create_info.codeType  = vk::ShaderCodeTypeEXT::eSpirv;

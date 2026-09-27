@@ -1,29 +1,35 @@
 #include "toast_render/mesh.hpp"
-
-#include <shared_mutex>
-
-#include "toast_gpu/frame.hpp"
 #include "toast_gpu/upload.hpp"
 
 namespace toaster::render
 {
 	MeshManager::MeshManager(RenderContext *p_render_ctx) : m_renderCtx(p_render_ctx)
 	{
-		m_vertexPager = makeUnique<gpu::alloc::GPUPageAllocator>(pageSize, m_renderCtx->getResourceHeap());
-		m_indexPager  = makeUnique<gpu::alloc::GPUPageAllocator>(pageSize, m_renderCtx->getResourceHeap());
+		m_vertexPager          = makeUnique<gpu::alloc::GPUPageAllocator>(vertexPageSize, m_renderCtx->getResourceHeap());
+		m_meshletPager         = makeUnique<gpu::alloc::GPUPageAllocator>(meshletPageSize, m_renderCtx->getResourceHeap());
+		m_meshletVertexPager   = makeUnique<gpu::alloc::GPUPageAllocator>(meshletVertexPageSize, m_renderCtx->getResourceHeap());
+		m_meshletTrianglePager = makeUnique<gpu::alloc::GPUPageAllocator>(meshletTrianglePageSize, m_renderCtx->getResourceHeap());
 
 		m_staticMeshes.setDestructorUserData(this);
 		m_staticMeshes.setDestructorFn(+[](StaticMesh *p_data, void *p_user_data) -> void
 		{
 			auto ts{static_cast<MeshManager *>(p_user_data)};
 
-			p_data->submeshes.clear();
+			p_data->meshlets.clear();
 
-			ts->m_vertexPager->freePageAllocation(p_data->vertexBufferAllocation);
-			ts->m_vertexPager->freePageAllocation(p_data->indexBufferAllocation);
+			{
+				std::scoped_lock<std::mutex> lock{ts->m_pageMutex};
 
-			p_data->vertexBufferAllocation = {};
-			p_data->indexBufferAllocation  = {};
+				ts->m_vertexPager->freePageAllocation(p_data->vertexBufferAllocation);
+				ts->m_meshletPager->freePageAllocation(p_data->meshletBufferAllocation);
+				ts->m_meshletVertexPager->freePageAllocation(p_data->meshletVertexBufferAllocation);
+				ts->m_meshletTrianglePager->freePageAllocation(p_data->meshletTriangleBufferAllocation);
+			}
+
+			p_data->vertexBufferAllocation          = {};
+			p_data->meshletBufferAllocation         = {};
+			p_data->meshletVertexBufferAllocation   = {};
+			p_data->meshletTriangleBufferAllocation = {};
 
 			gpu::upload::destroyStateTracker(p_data->stateTracker);
 		});
@@ -36,30 +42,43 @@ namespace toaster::render
 
 		m_staticMeshes.clear();
 		m_vertexPager.reset();
-		m_indexPager.reset();
+		m_meshletPager.reset();
+		m_meshletVertexPager.reset();
+		m_meshletTrianglePager.reset();
 	}
 
 	auto MeshManager::registerStaticMesh() -> StaticMeshHandle
 	{
 		StaticMesh temp_mesh{};
 
-		// No. Materials do not count as 'subresources'
-		temp_mesh.stateTracker = gpu::upload::createStateTracker(2u); // Vertex and index buffer.
+		// Vertex buffer, meshlet buffer, meshlet vertex buffer and meshlet triangle buffer
+		temp_mesh.stateTracker = gpu::upload::createStateTracker(4u);
 
 		return m_staticMeshes.emplace(std::move(temp_mesh));
 	}
 
-	auto MeshManager::uploadStaticMeshData(StaticMeshHandle            p_handle, const std::vector<StaticMeshVertex> &p_vertices, const std::vector<uint32> &p_indices,
-										   const std::vector<Submesh> &p_submeshes) -> void
+	auto MeshManager::uploadStaticMeshData(StaticMeshHandle p_handle, const std::vector<StaticMeshVertex> &p_vertices, const std::vector<Meshlet> &p_meshlets,
+										   const std::vector<uint32> &p_meshlet_vertices, const std::vector<uint8> &p_meshlet_triangles,
+										   const std::vector<MaterialHandle> &p_materials) -> void
 	{
 		StaticMesh &static_mesh{m_staticMeshes[p_handle]};
-		static_mesh.submeshes = p_submeshes;
+
+		static_mesh.meshlets  = p_meshlets;
+		static_mesh.materials = p_materials;
 
 		const uint64 vertex_buffer_size{p_vertices.size() * sizeof(StaticMeshVertex)};
-		const uint64 index_buffer_size{p_indices.size() * sizeof(uint32)};
+		const uint64 meshlet_buffer_size{p_meshlets.size() * sizeof(Meshlet)};
+		const uint64 meshlet_vertex_buffer_size{p_meshlet_vertices.size() * sizeof(uint32)};
+		const uint64 meshlet_triangle_buffer_size{p_meshlet_triangles.size() * sizeof(uint8)};
 
-		m_vertexPager->allocateAcrossPages(vertex_buffer_size, alignof(StaticMeshVertex), static_mesh.vertexBufferAllocation);
-		m_indexPager->allocateAcrossPages(index_buffer_size, alignof(uint32), static_mesh.indexBufferAllocation);
+		{
+			std::scoped_lock<std::mutex> lock{m_pageMutex};
+
+			m_vertexPager->allocateAcrossPages(vertex_buffer_size, alignof(StaticMeshVertex), static_mesh.vertexBufferAllocation);
+			m_meshletPager->allocateAcrossPages(meshlet_buffer_size, alignof(Meshlet), static_mesh.meshletBufferAllocation);
+			m_meshletVertexPager->allocateAcrossPages(meshlet_vertex_buffer_size, alignof(uint32), static_mesh.meshletVertexBufferAllocation);
+			m_meshletTrianglePager->allocateAcrossPages(meshlet_triangle_buffer_size, alignof(uint8), static_mesh.meshletTriangleBufferAllocation);
+		}
 
 		gpu::upload::uploadDataToBuffer(gpu::upload::BufferUploadDesc{
 											static_mesh.vertexBufferAllocation.buffer,
@@ -68,42 +87,32 @@ namespace toaster::render
 											static_mesh.vertexBufferAllocation.offset
 										}, static_mesh.stateTracker);
 		gpu::upload::uploadDataToBuffer(gpu::upload::BufferUploadDesc{
-											static_mesh.indexBufferAllocation.buffer,
-											p_indices.data(),
-											index_buffer_size,
-											static_mesh.indexBufferAllocation.offset
+											static_mesh.meshletBufferAllocation.buffer,
+											p_meshlets.data(),
+											meshlet_buffer_size,
+											static_mesh.meshletBufferAllocation.offset
+										}, static_mesh.stateTracker);
+		gpu::upload::uploadDataToBuffer(gpu::upload::BufferUploadDesc{
+											static_mesh.meshletVertexBufferAllocation.buffer,
+											p_meshlet_vertices.data(),
+											meshlet_vertex_buffer_size,
+											static_mesh.meshletVertexBufferAllocation.offset
+										}, static_mesh.stateTracker);
+		gpu::upload::uploadDataToBuffer(gpu::upload::BufferUploadDesc{
+											static_mesh.meshletTriangleBufferAllocation.buffer,
+											p_meshlet_triangles.data(),
+											meshlet_triangle_buffer_size,
+											static_mesh.meshletTriangleBufferAllocation.offset
 										}, static_mesh.stateTracker);
 	}
 
-	auto MeshManager::createStaticMesh(const std::vector<StaticMeshVertex> &p_vertices, const std::vector<uint32> &p_indices,
-									   const std::vector<Submesh> &         p_submeshes) -> StaticMeshHandle
+	auto MeshManager::createStaticMesh(const std::vector<StaticMeshVertex> &p_vertices, const std::vector<Meshlet> &      p_meshlets,
+									   const std::vector<uint32> &          p_meshlet_vertices, const std::vector<uint8> &p_meshlet_triangles,
+									   const std::vector<MaterialHandle> &  p_materials) -> StaticMeshHandle
 	{
-		StaticMesh temp_mesh{};
-		temp_mesh.submeshes = p_submeshes;
-
-		const uint64 vertex_buffer_size{p_vertices.size() * sizeof(StaticMeshVertex)};
-		const uint64 index_buffer_size{p_indices.size() * sizeof(uint32)};
-
-		m_vertexPager->allocateAcrossPages(vertex_buffer_size, alignof(StaticMeshVertex), temp_mesh.vertexBufferAllocation);
-		m_indexPager->allocateAcrossPages(index_buffer_size, alignof(uint32), temp_mesh.indexBufferAllocation);
-
-		// No. Materials do not count as 'subresources'
-		temp_mesh.stateTracker = gpu::upload::createStateTracker(2u); // Vertex and index buffer.
-
-		gpu::upload::uploadDataToBuffer(gpu::upload::BufferUploadDesc{
-											temp_mesh.vertexBufferAllocation.buffer,
-											p_vertices.data(),
-											vertex_buffer_size,
-											temp_mesh.vertexBufferAllocation.offset
-										}, temp_mesh.stateTracker);
-		gpu::upload::uploadDataToBuffer(gpu::upload::BufferUploadDesc{
-											temp_mesh.indexBufferAllocation.buffer,
-											p_indices.data(),
-											index_buffer_size,
-											temp_mesh.indexBufferAllocation.offset
-										}, temp_mesh.stateTracker);
-
-		return m_staticMeshes.emplace(std::move(temp_mesh));
+		const StaticMeshHandle out_handle{registerStaticMesh()};
+		uploadStaticMeshData(out_handle, p_vertices, p_meshlets, p_meshlet_vertices, p_meshlet_triangles, p_materials);
+		return out_handle;
 	}
 
 	auto MeshManager::destroyStaticMesh(StaticMeshHandle p_handle) -> void
@@ -114,7 +123,6 @@ namespace toaster::render
 	auto MeshManager::isStaticMeshReady(StaticMeshHandle p_handle) -> bool
 	{
 		StaticMesh &mesh{m_staticMeshes[p_handle]};
-
 		return gpu::upload::isStateTrackerReady(mesh.stateTracker);
 	}
 }
