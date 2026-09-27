@@ -22,10 +22,10 @@ namespace toaster::gpu::upload
 
 	struct StateTracker
 	{
-		UniquePtr<std::mutex>    ticketMutex{nullptr};
-		std::vector<uint64>      timelineTickets;
-		StateTrackerReadyFn      readyCb{nullptr};
-		void *                   readyUserData{nullptr};
+		UniquePtr<std::mutex> ticketMutex{nullptr};
+		std::vector<uint64>   timelineTickets;
+		StateTrackerReadyFn   readyCb{nullptr};
+		// void *                   readyUserData{nullptr};
 		TST_ALIGN_ATOMIC(uint32) pendingSubresources{0u};
 	};
 
@@ -312,9 +312,7 @@ namespace toaster::gpu::upload
 		{
 			p_data->timelineTickets.clear();
 			p_data->pendingSubresources = 0u;
-
-			p_data->readyCb       = nullptr;
-			p_data->readyUserData = nullptr;
+			p_data->readyCb             = nullptr;
 		});
 
 		g_impl->uploadThread = std::thread(&transferMain);
@@ -350,13 +348,12 @@ namespace toaster::gpu::upload
 		return g_impl->stateTrackers.emplace(std::move(state_tracker));
 	}
 
-	auto registerStateTrackerReadyCallback(StateTrackerHandle p_state_tracker, StateTrackerReadyFn p_ready_callback, void *p_callback_user_data) -> void
+	auto registerStateTrackerReadyCallback(StateTrackerHandle p_state_tracker, StateTrackerReadyFn p_ready_callback) -> void
 	{
 		TST_ASSERT_MSG(!g_impl->activeStateTrackers.contains(p_state_tracker), "State tracker is in use");
 
 		StateTracker &tracker{g_impl->stateTrackers[p_state_tracker]};
-		tracker.readyCb       = p_ready_callback;
-		tracker.readyUserData = p_callback_user_data;
+		tracker.readyCb = p_ready_callback;
 	}
 
 	auto destroyStateTracker(StateTrackerHandle p_state_tracker) -> void
@@ -373,6 +370,7 @@ namespace toaster::gpu::upload
 
 		tracker.timelineTickets.clear();
 		tracker.pendingSubresources = p_pending_subresources;
+		tracker.readyCb             = nullptr;
 	}
 
 	auto isStateTrackerReady(StateTrackerHandle p_state_tracker) -> bool
@@ -447,7 +445,7 @@ namespace toaster::gpu::upload
 				if (all_finished && pending_subresources.load() == 0u)
 				{
 					if (tracker.readyCb)
-						tracker.readyCb(tracker.readyUserData);
+						tracker.readyCb();
 
 					it = g_impl->activeStateTrackers.erase(it);
 				}

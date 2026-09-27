@@ -237,6 +237,7 @@ public:
 	{
 		m_materialManager->pollMaterialTextureUploads();
 		m_materialManager->updateDirtyMaterials(m_app->getFrameIndex());
+		m_textureManager->pollTextureUploads(p_cmd);
 
 		for (auto &list: m_secondaryBuffers[m_app->getFrameIndex()])
 			gpu::resetCommandList(list);

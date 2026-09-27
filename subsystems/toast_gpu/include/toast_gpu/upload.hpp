@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <mutex>
 
 #include "frame.hpp"
@@ -23,12 +24,12 @@ namespace toaster::gpu::upload
 
 	TST_DECLARE_GPU_HANDLE(StateTracker);
 
-	using StateTrackerReadyFn = void(*)(void *); // Standard user data callback thing
+	using StateTrackerReadyFn = std::function<void()>; // Std function is okay to use because it will only be invoked once
 
 	auto TST_GPU_API createStateTracker(uint32 p_expected_subresources) -> StateTrackerHandle;
 
 	// Invokes when the state tracker has finished processing all the associated subresources
-	auto TST_GPU_API registerStateTrackerReadyCallback(StateTrackerHandle p_state_tracker, StateTrackerReadyFn p_ready_callback, void *p_callback_user_data) -> void;
+	auto TST_GPU_API registerStateTrackerReadyCallback(StateTrackerHandle p_state_tracker, StateTrackerReadyFn p_ready_callback) -> void;
 	auto TST_GPU_API destroyStateTracker(StateTrackerHandle p_state_tracker) -> void;
 	auto TST_GPU_API resetStateTracker(StateTrackerHandle p_state_tracker, uint32 p_pending_subresources) -> void;
 	auto TST_GPU_API isStateTrackerReady(StateTrackerHandle p_state_tracker) -> bool;

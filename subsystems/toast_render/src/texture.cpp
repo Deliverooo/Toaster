@@ -1,5 +1,4 @@
 #include "toast_render/texture.hpp"
-
 #include "toast_gpu/upload.hpp"
 
 namespace toaster::render
@@ -40,7 +39,16 @@ namespace toaster::render
 	{
 		Texture temp_texture{};
 		temp_texture.stateTracker = gpu::upload::createStateTracker(1u); // Just the texture
-		return m_textures.emplace(std::move(temp_texture));
+
+		TextureHandle out_handle{m_textures.emplace(temp_texture)};
+
+		gpu::upload::registerStateTrackerReadyCallback(temp_texture.stateTracker, [this, out_handle]() -> void
+		{
+			if (getTextureDesc(m_textures[out_handle].texture).mipCount > 1u)
+				m_pendingMipmapGenerations.push_back(out_handle);
+		});
+
+		return out_handle;
 	}
 
 	auto TextureManager::createTexture(const gpu::TextureDesc &p_desc) -> TextureHandle
@@ -111,26 +119,14 @@ namespace toaster::render
 
 	auto TextureManager::pollTextureUploads(gpu::CommandListHandle p_cmd) -> void
 	{
-		// std::scoped_lock<std::mutex> lock{m_textureStateMutex};
-		//
-		// if (m_pendingTextureUploads.empty())
-		// 	return;
-		//
-		// uint64 transfer_value{gpu::getSemaphoreValue(gpu::frame::getTransferTimelineSemaphore())};
-		// for (auto it{m_pendingTextureUploads.begin()}; it != m_pendingTextureUploads.end();)
-		// {
-		// 	Texture &texture{m_textures[*it]};
-		// 	if (transfer_value >= texture.transferReadyToken)
-		// 	{
-		// 		if (gpu::getTextureDesc(texture.texture).mipCount > 1u)
-		// 			gpu::generateMipmaps(p_cmd, texture.texture);
-		//
-		// 		texture.state->store(ETextureState::eReady);
-		//
-		// 		it = m_pendingTextureUploads.erase(it);
-		// 	}
-		// 	else
-		// 		++it;
-		// }
+		if (m_pendingMipmapGenerations.empty())
+			return;
+
+		for (auto handle: m_pendingMipmapGenerations)
+		{
+			Texture &texture{m_textures[handle]};
+			gpu::generateMipmaps(p_cmd, texture.texture);
+		}
+		m_pendingMipmapGenerations.clear();
 	}
 }
