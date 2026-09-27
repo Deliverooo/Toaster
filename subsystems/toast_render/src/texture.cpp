@@ -32,6 +32,9 @@ namespace toaster::render
 
 	TextureManager::~TextureManager()
 	{
+		gpu::waitQueueIdle(gpu::EQueueType::eTransfer); // Make sure all the state trackers are ready to be destroyed
+		gpu::upload::pollUploads();
+
 		m_textures.clear();
 	}
 

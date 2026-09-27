@@ -122,6 +122,9 @@ namespace toaster::asset
 			submesh.indexCount   = mesh->mNumFaces * 3u;
 			submesh.material     = materials[mesh->mMaterialIndex]; // This is why I am loading the materials first
 
+			submesh.aabbMin = {mesh->mAABB.mMin.x, mesh->mAABB.mMin.y, mesh->mAABB.mMin.z};
+			submesh.aabbMax = {mesh->mAABB.mMax.x, mesh->mAABB.mMax.y, mesh->mAABB.mMax.z};
+
 			for (int32 i{0u}; i < mesh->mNumVertices; ++i)
 			{
 				mesh_vertices[i].position = {mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z};

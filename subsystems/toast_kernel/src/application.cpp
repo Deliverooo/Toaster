@@ -34,6 +34,7 @@ namespace toaster
 	Application::~Application()
 	{
 		gpu::waitIdle();
+		gpu::upload::pollUploads();
 
 		for (auto layer: m_layers)
 		{

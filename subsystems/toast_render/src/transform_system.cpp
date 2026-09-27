@@ -25,7 +25,12 @@ namespace toaster::rd
 
 	auto TransformSystem::createTransform() -> uint32
 	{
-		return m_freeTransformList.allocSlot();
+		uint32 slot{m_freeTransformList.allocSlot()};
+
+		for (uint32 i{0u}; i < 3u; ++i)
+			updateTransform(slot, i, XMMatrixIdentity());
+
+		return slot;
 	}
 
 	auto TransformSystem::destroyTransform(uint32 p_transform_id) -> void

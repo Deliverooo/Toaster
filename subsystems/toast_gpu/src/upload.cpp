@@ -358,6 +358,7 @@ namespace toaster::gpu::upload
 
 	auto destroyStateTracker(StateTrackerHandle p_state_tracker) -> void
 	{
+		uint64 size{g_impl->activeStateTrackers.size()};
 		TST_ASSERT_MSG(!g_impl->activeStateTrackers.contains(p_state_tracker), "State tracker is in use");
 		g_impl->stateTrackers.destroy(p_state_tracker);
 	}

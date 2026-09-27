@@ -15,6 +15,7 @@
 #include "toast_kernel/events/window_event.hpp"
 #include "toast_render/mesh.hpp"
 #include "toast_render/texture.hpp"
+#include "toast_render/transform_system.hpp"
 #include "toast_scene/scene.hpp"
 
 using namespace toaster;
@@ -31,13 +32,13 @@ struct StaticMeshComponent
 struct TransformComponent
 {
 	XMFLOAT3 translation{0.0f, 0.0f, 0.0f};
-	XMFLOAT4 orientation{1.0f, 0.0f, 0.0f, 0.0f};
-	XMFLOAT3 scale{0.0f, 0.0f, 0.0f};
+	XMFLOAT4 orientation{g_XMIdentityR3.f};
+	XMFLOAT3 scale{1.0f, 1.0f, 1.0f};
 
 	[[nodiscard]] auto XM_CALLCONV getTransform() const -> XMMATRIX
 	{
-		XMVECTOR simd_orientation{XMLoadFloat4(&orientation)};
 		XMVECTOR simd_translation{XMLoadFloat3(&translation)};
+		XMVECTOR simd_orientation{XMLoadFloat4(&orientation)};
 		XMVECTOR simd_scale{XMLoadFloat3(&scale)};
 
 		XMMATRIX transformation{XMMatrixTransformation(XMVectorZero(), XMVectorZero(), simd_scale, XMVectorZero(), simd_orientation, simd_translation)};
@@ -53,6 +54,11 @@ struct TransformComponent
 	auto XM_CALLCONV setScale(FXMVECTOR p_scale) -> void { XMStoreFloat3(&scale, p_scale); }
 };
 
+struct GPUTransformComponent
+{
+	uint32 transformId{UINT32_MAX};
+};
+
 class TestLayer : public IAppLayer
 {
 public:
@@ -64,11 +70,15 @@ public:
 		uint32 material;
 		uint32 vertexBufferOffset;
 		uint32 indexBufferOffset;
+		uint32 transformId;
+
+		tsm::float3 aabbMin;
+		tsm::float3 aabbMax;
 
 		uint8 vertexPageId;
 		uint8 indexPageId;
 
-		uint16 _padd;
+		uint8 _padd[6u];
 	};
 
 	auto onInit() -> void override
@@ -76,6 +86,7 @@ public:
 		m_textureManager  = makeUnique<render::TextureManager>(m_renderCtx);
 		m_materialManager = makeUnique<render::MaterialManager>(m_textureManager.get(), 1028u);
 		m_meshManager     = makeUnique<render::MeshManager>(m_renderCtx);
+		m_transformSystem = makeUnique<rd::TransformSystem>();
 
 		std::filesystem::current_path("../test");
 
@@ -88,6 +99,8 @@ public:
 
 			m_orboEntity = m_scene.createEntity();
 			m_scene.addComponent<StaticMeshComponent>(m_orboEntity, orbo_mesh);
+			m_scene.addComponent<GPUTransformComponent>(m_orboEntity, m_transformSystem->createTransform());
+			m_scene.addComponent<TransformComponent>(m_orboEntity);
 		}
 		{
 			render::StaticMeshHandle level_mesh{m_meshManager->registerStaticMesh()};
@@ -95,6 +108,7 @@ public:
 
 			m_levelEntity = m_scene.createEntity();
 			m_scene.addComponent<StaticMeshComponent>(m_levelEntity, level_mesh);
+			m_scene.addComponent<GPUTransformComponent>(m_levelEntity, m_transformSystem->createTransform());
 		}
 
 		gpu::SamplerDesc   sampler_desc{};
@@ -204,6 +218,7 @@ public:
 			gpu::destroyBuffer(m_indirectBuffers[i]);
 		}
 
+		m_transformSystem.reset();
 		m_meshImporter.reset();
 		m_meshManager.reset();
 		m_materialManager.reset();
@@ -231,6 +246,11 @@ public:
 		CameraCB camera_cb{};
 		m_camera.populateConstantBuffer(camera_cb);
 		gpu::writeBufferData(m_cameraBuffers[m_app->getFrameIndex()], &camera_cb, sizeof(CameraCB));
+
+		// auto &tc{m_scene.getRegistry().get<TransformComponent>(m_orboEntity)};
+		//
+		// auto &gpu_tc{m_scene.getRegistry().get<GPUTransformComponent>(m_orboEntity)};
+		// m_transformSystem->updateTransform(gpu_tc.transformId, m_app->getFrameIndex(), tc.getTransform());
 	}
 
 	auto onRender(gpu::CommandListHandle p_cmd) -> void override
@@ -304,10 +324,12 @@ public:
 		gpu::DrawIndirectCommand *mapped_cmd{static_cast<gpu::DrawIndirectCommand *>(gpu::getBufferMappedData(m_indirectBuffers[m_app->getFrameIndex()]))};
 		ObjectData *              mapped_object_data{static_cast<ObjectData *>(gpu::getBufferMappedData(m_objectDataBuffers[m_app->getFrameIndex()]))};
 
-		const auto view{m_scene.getRegistry().view<StaticMeshComponent>()};
-		view.each([this, &draw_count, mapped_cmd, mapped_object_data]([[maybe_unused]] entt::entity p_entity, const StaticMeshComponent &p_smc) -> void
+		const auto view{m_scene.getRegistry().view<StaticMeshComponent, GPUTransformComponent>()};
+		view.each([this, &draw_count, mapped_cmd, mapped_object_data]([[maybe_unused]] entt::entity p_entity, const StaticMeshComponent &p_smc,
+																	  const GPUTransformComponent & p_gpu_tc) -> void
 		{
 			const render::StaticMesh *mesh{m_meshManager->tryGetStaticMesh(p_smc.mesh)};
+			TST_ASSERT(p_gpu_tc.transformId != UINT32_MAX);
 
 			if (mesh && p_smc.visible && gpu::upload::isStateTrackerReady(mesh->stateTracker))
 			{
@@ -318,6 +340,9 @@ public:
 					mapped_object_data[draw_count].indexBufferOffset  = mesh->indexBufferOffset();
 					mapped_object_data[draw_count].vertexPageId       = mesh->vertexBufferAllocation.heapSlot;
 					mapped_object_data[draw_count].indexPageId        = mesh->indexBufferAllocation.heapSlot;
+					mapped_object_data[draw_count].transformId        = p_gpu_tc.transformId;
+					mapped_object_data[draw_count].aabbMin            = submesh.aabbMin;
+					mapped_object_data[draw_count].aabbMax            = submesh.aabbMax;
 
 					mapped_cmd[draw_count] = gpu::DrawIndirectCommand{submesh.indexCount, 1u, submesh.indexOffset, draw_count};
 					++draw_count;
@@ -330,14 +355,16 @@ public:
 			uintptr cameraBuffer;
 			uintptr objectDataBuffer;
 			uintptr materialBuffer;
+			uintptr transformBuffer;
 
-			uint32 _padd[1];
 			uint32 samplerId;
+			uint32 _padd[1];
 		};
 		PushData push_data{};
 		push_data.cameraBuffer     = gpu::getBufferAddress(m_cameraBuffers[m_app->getFrameIndex()]);
 		push_data.objectDataBuffer = gpu::getBufferAddress(m_objectDataBuffers[m_app->getFrameIndex()]);
 		push_data.materialBuffer   = m_materialManager->getMaterialBufferAddress(m_app->getFrameIndex());
+		push_data.transformBuffer  = gpu::getBufferAddress(m_transformSystem->getTransformBuffer(m_app->getFrameIndex()));
 		push_data.samplerId        = m_samplerHeapSlot;
 
 		gpu::pushData(secondary_cmd, push_data);
@@ -432,8 +459,9 @@ private :
 
 	UniquePtr<render::MaterialManager> m_materialManager{nullptr};
 	UniquePtr<render::MeshManager>     m_meshManager{nullptr};
-	UniquePtr<asset::MeshImporter>     m_meshImporter{nullptr};
+	UniquePtr<asset::MeshImporter>     m_meshImporter{nullptr};;
 
+	UniquePtr<rd::TransformSystem>    m_transformSystem{nullptr};
 	UniquePtr<render::TextureManager> m_textureManager{nullptr};
 	UniquePtr<asset::TextureImporter> m_textureImporter{nullptr};
 

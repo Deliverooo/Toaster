@@ -35,9 +35,13 @@ namespace toaster::render
 	struct TST_RENDER_API Submesh
 	{
 		MaterialHandle material{nullptr};
-		uint32         indexOffset{0u};
-		int32          vertexOffset{0u};
-		uint32         indexCount{0u};
+
+		tsm::float3 aabbMin{};
+		tsm::float3 aabbMax{};
+
+		uint32 indexOffset{0u};
+		int32  vertexOffset{0u};
+		uint32 indexCount{0u};
 	};
 
 	struct TST_RENDER_API StaticMesh

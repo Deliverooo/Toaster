@@ -17,8 +17,6 @@ struct Vertex
 {
     vec3 position;
     vec3 normal;
-//    vec3 tangent;
-//    vec3 bitangent;
     vec2 texCoord;
 };
 
@@ -34,28 +32,32 @@ layout (buffer_reference, std140) readonly buffer CameraBuffer
 
 struct ObjectData
 {
-    uint material;
-    uint vertexBufferOffset;
-    uint indexBufferOffset;
+    uint32_t material;
+    uint32_t vertexBufferOffset;
+    uint32_t indexBufferOffset;
+    uint32_t transformId;
+
+    vec3 aabbMin;
+    vec3 aabbMax;
 
     uint8_t vertexPageId;
     uint8_t indexPageId;
 
-    uint16_t _padd;
+    uint8_t _padd[6u];
 };
-layout (buffer_reference, scalar) readonly buffer ObjectDataBuffer
-{
-    ObjectData data[];
-};
+
+layout (buffer_reference, scalar) readonly buffer ObjectDataBuffer { ObjectData data[]; };
+layout (buffer_reference, scalar) readonly buffer TransformDataBuffer { mat4 data[]; };
 
 layout (push_constant) uniform PushData
 {
     CameraBuffer camera;
     ObjectDataBuffer objectBuffer;
     uint64_t materialBuffer;
+    TransformDataBuffer transformBuffer;
 
-    uint _padd[1];
     uint samplerId;
+    uint _padd[1];
 } pcs;
 
 void main()
@@ -65,7 +67,9 @@ void main()
     uint32_t index = indexPages[data.indexPageId].indices[data.indexBufferOffset + gl_VertexIndex];
     Vertex vertex = vertexPages[data.vertexPageId].vertices[data.vertexBufferOffset + index];
 
-    vec4 world_pos = vec4(vertex.position.xyz, 1.0f);
+    mat4 transform = pcs.transformBuffer.data[data.transformId];
+
+    vec4 world_pos = transform * vec4(vertex.position.xyz, 1.0f);
     o_Position = vertex.position.xyz;
     o_WorldPos = world_pos.xyz;
 

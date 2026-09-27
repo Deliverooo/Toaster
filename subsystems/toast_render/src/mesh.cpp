@@ -31,8 +31,10 @@ namespace toaster::render
 
 	MeshManager::~MeshManager()
 	{
-		m_staticMeshes.clear();
+		gpu::waitQueueIdle(gpu::EQueueType::eTransfer); // Make sure all the state trackers are ready to be destroyed
+		gpu::upload::pollUploads();
 
+		m_staticMeshes.clear();
 		m_vertexPager.reset();
 		m_indexPager.reset();
 	}
