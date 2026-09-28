@@ -55,10 +55,9 @@ namespace toaster::render
 			normal_texture_desc.usage       = gpu::ETextureUsageFlagBits::eTransferDst | gpu::ETextureUsageFlagBits::eSampled;
 			m_defaultNormalMap              = m_textureManager->createTexture(normal_texture_desc);
 
-			uint32 normal_data{0xFFFFFFFF};
+			uint32 normal_data{0xFFFF0000};
 			m_textureManager->setData(m_defaultNormalMap, &normal_data, sizeof(uint32));
 		}
-		// gpu::upload::pollUploads();
 	}
 
 	MaterialManager::~MaterialManager()

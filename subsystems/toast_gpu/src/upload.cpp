@@ -1,7 +1,5 @@
 #include "toast_gpu/upload.hpp"
 
-#include <cstring>
-#include <mutex>
 #include <queue>
 #include <unordered_map>
 #include <unordered_set>
@@ -12,24 +10,15 @@
 
 namespace toaster::gpu::upload
 {
-	// struct StagingAllocation
-	// {
-	// 	BufferHandle                   buffer{nullptr};
-	// 	uint64                         bufferOffset{0u};
-	// 	alloc::VirtualAllocationHandle virtualAllocation{nullptr};
-	// 	void *                         mappedData{nullptr};
-	// };
-
 	struct StateTracker
 	{
-		UniquePtr<std::mutex> ticketMutex{nullptr};
-		std::vector<uint64>   timelineTickets;
-		StateTrackerReadyFn   readyCb{nullptr};
-		// void *                   readyUserData{nullptr};
+		UniquePtr<std::mutex>    ticketMutex{nullptr};
+		std::vector<uint64>      timelineTickets;
+		StateTrackerReadyFn      readyCb{nullptr};
 		TST_ALIGN_ATOMIC(uint32) pendingSubresources{0u};
 	};
 
-	static constexpr uint64 page_size{64u * 1024u * 1024u};
+	static constexpr uint64 page_size{72u * 1024u * 1024u};
 
 	struct StagingPage
 	{
@@ -174,6 +163,10 @@ namespace toaster::gpu::upload
 		{
 			uint32 page_id{++g_impl->nextPageId};
 			g_impl->stagingPages[page_id] = createPage(p_size, page_id);
+
+			if (!tryAllocate(g_impl->stagingPages[page_id], p_size, 16u, p_out_allocation))
+				TST_PERMA_ASSERT(false);
+			return;
 		}
 
 		insertPage();

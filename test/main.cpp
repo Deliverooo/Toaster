@@ -73,11 +73,15 @@ public:
 		uint32 meshletBufferOffset;
 		uint32 meshletVertexBufferOffset;
 		uint32 meshletTriangleBufferOffset;
+		uint32 materialIndirectionBufferOffset;
 
 		uint8 vertexBufferPageId;
 		uint8 meshletBufferPageId;
 		uint8 meshletVertexBufferPageId;
 		uint8 meshletTriangleBufferPageId;
+		uint8 materialIndirectionBufferPageId;
+
+		uint8 _padd[3u]; // I need to find something to put here because this is essentially free space
 	};
 
 	auto onInit() -> void override
@@ -103,6 +107,7 @@ public:
 		}
 		{
 			render::StaticMeshHandle level_mesh{m_meshManager->registerStaticMesh()};
+			// m_meshImporter->asyncLoadStaticMeshFromFile(level_mesh, R"(C:\Users\Oliver\Downloads\main_sponza\main_sponza\NewSponza_Main_glTF_003.gltf)");
 			m_meshImporter->asyncLoadStaticMeshFromFile(level_mesh, "resources/meshes/Backrooms.fbx");
 
 			m_levelEntity = m_scene.createEntity();
@@ -110,7 +115,14 @@ public:
 			m_scene.addComponent<GPUTransformComponent>(m_levelEntity, m_transformSystem->createTransform());
 		}
 
-		gpu::SamplerDesc   sampler_desc{};
+		gpu::SamplerDesc sampler_desc{};
+		sampler_desc.minFilter    = gpu::EFilter::eLinear;
+		sampler_desc.magFilter    = gpu::EFilter::eLinear;
+		sampler_desc.mipmapMode   = gpu::ESamplerMipmapMode::eLinear;
+		sampler_desc.addressModeU = gpu::ESamplerAddressMode::eRepeat;
+		sampler_desc.addressModeV = gpu::ESamplerAddressMode::eRepeat;
+		sampler_desc.addressModeW = gpu::ESamplerAddressMode::eRepeat;
+
 		gpu::SamplerHandle sampler{gpu::createSampler(sampler_desc)};
 
 		m_samplerHeapSlot = gpu::allocSamplerHeapSlot(m_renderCtx->getSamplerHeap());
@@ -338,15 +350,17 @@ public:
 
 				obj_data.transformId = p_gpu_tc.transformId;
 
-				obj_data.vertexBufferOffset          = mesh->vertexBufferOffset();
-				obj_data.meshletBufferOffset         = mesh->meshletBufferOffset();
-				obj_data.meshletVertexBufferOffset   = mesh->meshletVertexBufferOffset();
-				obj_data.meshletTriangleBufferOffset = mesh->meshletTriangleBufferOffset();
+				obj_data.vertexBufferOffset              = mesh->vertexBufferOffset();
+				obj_data.meshletBufferOffset             = mesh->meshletBufferOffset();
+				obj_data.meshletVertexBufferOffset       = mesh->meshletVertexBufferOffset();
+				obj_data.meshletTriangleBufferOffset     = mesh->meshletTriangleBufferOffset();
+				obj_data.materialIndirectionBufferOffset = mesh->materialIndirectionBufferOffset();
 
-				obj_data.vertexBufferPageId          = mesh->vertexBufferAllocation.heapSlot;
-				obj_data.meshletBufferPageId         = mesh->meshletBufferAllocation.heapSlot;
-				obj_data.meshletVertexBufferPageId   = mesh->meshletVertexBufferAllocation.heapSlot;
-				obj_data.meshletTriangleBufferPageId = mesh->meshletTriangleBufferAllocation.heapSlot;
+				obj_data.vertexBufferPageId              = mesh->vertexBufferAllocation.heapSlot;
+				obj_data.meshletBufferPageId             = mesh->meshletBufferAllocation.heapSlot;
+				obj_data.meshletVertexBufferPageId       = mesh->meshletVertexBufferAllocation.heapSlot;
+				obj_data.meshletTriangleBufferPageId     = mesh->meshletTriangleBufferAllocation.heapSlot;
+				obj_data.materialIndirectionBufferPageId = mesh->materialIndirectionBufferAllocation.heapSlot;
 
 				uint32 task_work_groups_x{static_cast<uint32>(mesh->meshlets.size())};
 				mapped_cmd[draw_count] = {task_work_groups_x, 1u, 1u};

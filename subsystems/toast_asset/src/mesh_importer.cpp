@@ -4,6 +4,7 @@
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
 
+#include <algorithm>
 #include <meshoptimizer.h>
 
 #include "toast_gpu/upload.hpp"
@@ -67,6 +68,7 @@ namespace toaster::asset
 					vertex.texCoord = {0.0f, 0.0f};
 			}
 
+			uint32 base_index_offset{static_cast<uint32>(data.indices.size())};
 			data.indices.resize(data.indices.size() + mesh->mNumFaces * 3u);
 			for (uint32 f{0u}; f < mesh->mNumFaces; ++f)
 			{
@@ -75,7 +77,7 @@ namespace toaster::asset
 				if (face.mNumIndices == 3u)
 				{
 					for (uint32 i{0u}; i < face.mNumIndices; ++i)
-						data.indices[(f * face.mNumIndices) + i] = face.mIndices[i];
+						data.indices[base_index_offset + (f * face.mNumIndices) + i] = base_vertex_offset + face.mIndices[i];
 				}
 				else
 				{
@@ -121,10 +123,17 @@ namespace toaster::asset
 									  maxVertices, maxTriangles, coneWeight)
 			};
 
-			// Shrink the meshlet data to fit the final count
+			// Shrink the meshlet data to the actual packed counts.
 			local_meshlets.resize(meshlet_count);
-			local_meshlet_vertices.resize(meshlet_count * maxVertices);
-			local_meshlet_triangles.resize(meshlet_count * maxTriangles * 3u);
+			uint64 meshlet_vertex_count{0u};
+			uint64 meshlet_triangle_count{0u};
+			for (const meshopt_Meshlet &meshlet: local_meshlets)
+			{
+				meshlet_vertex_count   = std::max(meshlet_vertex_count, uint64{meshlet.vertex_offset} + meshlet.vertex_count);
+				meshlet_triangle_count = std::max(meshlet_triangle_count, uint64{meshlet.triangle_offset} + meshlet.triangle_count * 3u);
+			}
+			local_meshlet_vertices.resize(meshlet_vertex_count);
+			local_meshlet_triangles.resize(meshlet_triangle_count);
 
 			uint32 global_vertex_offset{static_cast<uint32>(out_data.vertices.size())};
 			out_data.vertices.insert(out_data.vertices.end(), optimised_vertices.begin(), optimised_vertices.end());
@@ -141,7 +150,7 @@ namespace toaster::asset
 
 				meshopt_Bounds meshlet_bounds{
 					meshopt_computeMeshletBounds(&local_meshlet_vertices[local_meshlet.vertex_offset], &local_meshlet_triangles[local_meshlet.triangle_offset],
-												 local_meshlet.triangle_count, &out_data.vertices[global_vertex_offset].position.x, out_data.vertices.size(),
+												 local_meshlet.triangle_count, &out_data.vertices[global_vertex_offset].position.x, optimised_vertices.size(),
 												 sizeof(render::StaticMeshVertex))
 				};
 
@@ -154,10 +163,14 @@ namespace toaster::asset
 				meshlet.boundingSphere = {meshlet_bounds.center[0u], meshlet_bounds.center[1u], meshlet_bounds.center[2u], meshlet_bounds.radius};
 			}
 
+			for (uint32 &vertex_index: local_meshlet_vertices)
+				vertex_index += global_vertex_offset;
+
 			out_data.meshletVertices.insert(out_data.meshletVertices.end(), local_meshlet_vertices.begin(), local_meshlet_vertices.end());
 			out_data.meshletTriangles.insert(out_data.meshletTriangles.end(), local_meshlet_triangles.begin(), local_meshlet_triangles.end());
 		}
 
+		std::println("Material count: {}", scene->mNumMaterials);
 		for (uint32 i{0u}; i < scene->mNumMaterials; ++i)
 		{
 			const aiMaterial *ai_mat{scene->mMaterials[i]};

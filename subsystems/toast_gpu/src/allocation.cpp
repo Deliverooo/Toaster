@@ -165,6 +165,9 @@ namespace toaster::gpu::alloc
 		{
 			uint32 page_id{++nextPageId};
 			pages[page_id] = createPage(p_size, page_id);
+			if (!tryAllocate(pages[page_id], p_size, p_alignment, p_out_allocation))
+				TST_PERMA_ASSERT(false);
+			return;
 		}
 
 		insertPage();

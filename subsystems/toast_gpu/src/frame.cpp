@@ -146,21 +146,12 @@ namespace toaster::gpu::frame
 		processDeferredDeletions(p_frame_index);
 	}
 
-	auto submit(CommandListHandle p_command_list) -> void
-	{
-		++g_impl->graphicsTimelineCounter;
-		g_impl->graphicsTimelineValues[g_impl->currentFrameIndex] = g_impl->graphicsTimelineCounter;
-
-		gpu::submit(EQueueType::eGraphics, p_command_list, {}, SemaphoreSubmitInfo{g_impl->graphicsTimelineSemaphore, g_impl->graphicsTimelineCounter});
-	}
-
 	auto submitAndPresent(SwapchainHandle p_swapchain, CommandListHandle p_command_list) -> bool
 	{
 		++g_impl->graphicsTimelineCounter;
 		g_impl->graphicsTimelineValues[g_impl->currentFrameIndex] = g_impl->graphicsTimelineCounter;
 
-		const bool success{gpu::submitAndPresent(p_swapchain, p_command_list, {g_impl->graphicsTimelineSemaphore, g_impl->graphicsTimelineCounter})};
-		return success;
+		return gpu::submitAndPresent(p_swapchain, p_command_list, {g_impl->graphicsTimelineSemaphore, g_impl->graphicsTimelineCounter});
 	}
 
 	auto getTransferTimelineSemaphore() -> SemaphoreHandle
@@ -176,6 +167,11 @@ namespace toaster::gpu::frame
 	auto getTransferTimelineCounterValue() -> uint64
 	{
 		return g_impl->transferTimelineCounter.load();
+	}
+
+	auto getGraphicsTimelineSemaphoreCurrentValue() -> uint64
+	{
+		return getSemaphoreValue(g_impl->graphicsTimelineSemaphore);
 	}
 
 	auto defferBufferDeletion(BufferHandle p_buffer) -> void

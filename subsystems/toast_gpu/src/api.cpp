@@ -118,18 +118,6 @@ namespace toaster::gpu
 		vk::Semaphore semaphore{nullptr};
 	};
 
-	struct MemoryBlock
-	{
-		vk::Buffer           buffer{nullptr};
-		VmaAllocation        allocation{nullptr};
-		VmaVirtualBlock      virtualBlock{nullptr};
-		VmaVirtualAllocation virtualAllocation{nullptr};
-
-		uint64        size{0u};
-		DeviceAddress address{0u};
-		void *        mapped{nullptr};
-	};
-
 	struct Buffer
 	{
 		vk::Buffer    buffer{nullptr};
@@ -215,60 +203,32 @@ namespace toaster::gpu
 
 		vk::Device logicalDevice{nullptr};
 
-		QueueFamilyIndices queueFamilyIndices{};
-
-		std::array<vk::Queue, 3u> queues;
+		QueueFamilyIndices         queueFamilyIndices{};
+		std::array<vk::Queue, 3u>  queues;
+		std::array<std::mutex, 3u> queueMutexes; // Submission is not thread-safe
 
 		#pragma endregion
-
-		#pragma region allocator
 
 		VmaAllocator allocator{nullptr};
 
-		#pragma endregion
-
-		#pragma region descriptor heaps
-
-		Pool<ResourceDescriptorHeap> resourceHeaps;
-		Pool<SamplerDescriptorHeap>  samplerHeaps;
-
-		#pragma endregion
-
-		#pragma region command lists
-
-		Pool<CommandList> commandLists;
-
+		TST_REGISTER_RESOURCE_POOL(CommandList, commandLists);
 		std::array<std::vector<CommandListHandle>, 3u> freeCommandLists;   // Free command lists per queue type
 		std::array<std::vector<CommandListHandle>, 3u> freeSecondaryLists; // Free command lists per queue type
+		std::array<vk::CommandPool, 3u>                transientPools;     // Mostly used for allocating command buffers for image layout transitions
 
-		std::array<vk::CommandPool, 3u> transientPools; // Mostly used for allocating command buffers for image layout transitions
+		TST_REGISTER_RESOURCE_POOL(ResourceDescriptorHeap, resourceHeaps);
+		TST_REGISTER_RESOURCE_POOL(SamplerDescriptorHeap, samplerHeaps);
 
-		#pragma endregion
-
-		TST_REGISTER_RESOURCE_POOL(Semaphore, semaphores);
-		TST_REGISTER_RESOURCE_POOL(Buffer, buffers);
 		TST_REGISTER_RESOURCE_POOL(Texture, textures);
-
 		std::unordered_set<TextureHandle> undefinedTextures; // All the textures that are in the undefined format and are awaiting a layout transition
 		std::mutex                        undefinedTexturesMutex;
 
-		#pragma region samplers
-
-		Pool<Sampler> samplers;
-
-		#pragma endregion
-
-		#pragma region swapchain
-
-		Pool<Surface>   surfaces;
-		Pool<Swapchain> swapchains;
-
-		#pragma endregion
-
+		TST_REGISTER_RESOURCE_POOL(Semaphore, semaphores);
+		TST_REGISTER_RESOURCE_POOL(Buffer, buffers);
+		TST_REGISTER_RESOURCE_POOL(Sampler, samplers);
+		TST_REGISTER_RESOURCE_POOL(Surface, surfaces);
+		TST_REGISTER_RESOURCE_POOL(Swapchain, swapchains);
 		TST_REGISTER_RESOURCE_POOL(Shader, shaders);
-
-		std::vector<MemoryBlock> pages;
-		std::vector<MemoryBlock> dedicatedPages;
 	};
 
 	static APIImpl *g_impl{nullptr};
@@ -1235,9 +1195,11 @@ namespace toaster::gpu
 		submit_info.setSignalSemaphoreInfos(signal_infos);
 		submit_info.setCommandBufferInfos(command_buffer_submit_infos);
 
-		vk::Queue queue{g_impl->queues[static_cast<uint32>(p_queue_type)]};
-
-		queue.submit2(submit_info);
+		{
+			vk::Queue                    queue{g_impl->queues[static_cast<uint32>(p_queue_type)]};
+			std::scoped_lock<std::mutex> submit_lock{g_impl->queueMutexes[static_cast<uint32>(p_queue_type)]}; // Yes
+			queue.submit2(submit_info);
+		}
 	}
 
 	auto submit(EQueueType p_queue_type, InitialiserList<const CommandListHandle> p_command_lists, InitialiserList<const SemaphoreSubmitInfo> p_wait_semaphore_infos,
@@ -1403,40 +1365,46 @@ namespace toaster::gpu
 		TST_ASSERT_MSG(dst_texture->desc.usage & ETextureUsageFlagBits::eTransferSrc, "Texture was not created with the usage of transfer src");
 		TST_ASSERT_MSG(dst_texture->desc.usage & ETextureUsageFlagBits::eTransferDst, "Texture was not created with the usage of transfer dst");
 
-		vk::ImageMemoryBarrier2 memory_barrier{};
-		memory_barrier.image                           = dst_texture->image;
-		memory_barrier.oldLayout                       = vk::ImageLayout::eGeneral;
-		memory_barrier.newLayout                       = vk::ImageLayout::eGeneral;
-		memory_barrier.srcAccessMask                   = vk::AccessFlagBits2::eTransferWrite;
-		memory_barrier.dstAccessMask                   = vk::AccessFlagBits2::eTransferRead;
-		memory_barrier.srcQueueFamilyIndex             = vk::QueueFamilyIgnored;
-		memory_barrier.dstQueueFamilyIndex             = vk::QueueFamilyIgnored;
-		memory_barrier.subresourceRange.aspectMask     = vk::ImageAspectFlagBits::eColor;
-		memory_barrier.subresourceRange.baseArrayLayer = 0u;
-		memory_barrier.subresourceRange.baseMipLevel   = 0u;
-		memory_barrier.subresourceRange.layerCount     = 1u;
-		memory_barrier.subresourceRange.levelCount     = 1u;
-
 		int32 mip_width{static_cast<int32>(dst_texture->desc.extent.x)};
 		int32 mip_height{static_cast<int32>(dst_texture->desc.extent.y)};
 
 		vk::ImageAspectFlags image_aspect{getImageAspectMask(dst_texture->desc.format)};
 
+		vk::ImageMemoryBarrier2 memory_barrier{};
+		memory_barrier.image                           = dst_texture->image;
+		memory_barrier.oldLayout                       = vk::ImageLayout::eGeneral;
+		memory_barrier.newLayout                       = vk::ImageLayout::eGeneral;
+		memory_barrier.srcQueueFamilyIndex             = vk::QueueFamilyIgnored;
+		memory_barrier.dstQueueFamilyIndex             = vk::QueueFamilyIgnored;
+		memory_barrier.subresourceRange.aspectMask     = image_aspect;
+		memory_barrier.subresourceRange.baseArrayLayer = 0u;
+		memory_barrier.subresourceRange.layerCount     = 1u;
+		memory_barrier.subresourceRange.levelCount     = 1u;
+
 		for (uint32 i{1u}; i < dst_texture->desc.mipCount; ++i)
 		{
-			memory_barrier.subresourceRange.baseMipLevel = i - 1;
-			memory_barrier.srcAccessMask                 = vk::AccessFlagBits2::eTransferWrite;
-			memory_barrier.dstAccessMask                 = vk::AccessFlagBits2::eTransferRead;
+			std::array<vk::ImageMemoryBarrier2, 2u> pre_blit_barriers;
 
-			{
-				memory_barrier.srcStageMask = vk::PipelineStageFlagBits2::eTransfer;
-				memory_barrier.dstStageMask = vk::PipelineStageFlagBits2::eTransfer;
+			// Src mip
+			pre_blit_barriers[0u]                               = memory_barrier;
+			pre_blit_barriers[0u].subresourceRange.baseMipLevel = i - 1u;
+			pre_blit_barriers[0u].srcStageMask                  = vk::PipelineStageFlagBits2::eTransfer;
+			pre_blit_barriers[0u].srcAccessMask                 = vk::AccessFlagBits2::eTransferWrite;
+			pre_blit_barriers[0u].dstStageMask                  = vk::PipelineStageFlagBits2::eTransfer;
+			pre_blit_barriers[0u].dstAccessMask                 = vk::AccessFlagBits2::eTransferRead;
 
-				vk::DependencyInfo dependency_info{};
-				dependency_info.imageMemoryBarrierCount = 1;
-				dependency_info.pImageMemoryBarriers    = &memory_barrier;
-				cmd.cmd.pipelineBarrier2(dependency_info);
-			}
+			// Dst mip
+			pre_blit_barriers[1u]                               = memory_barrier;
+			pre_blit_barriers[1u].subresourceRange.baseMipLevel = i;
+			pre_blit_barriers[1u].srcStageMask                  = vk::PipelineStageFlagBits2::eNone;
+			pre_blit_barriers[1u].srcAccessMask                 = vk::AccessFlagBits2::eNone;
+			pre_blit_barriers[1u].dstStageMask                  = vk::PipelineStageFlagBits2::eTransfer;
+			pre_blit_barriers[1u].dstAccessMask                 = vk::AccessFlagBits2::eTransferWrite;
+
+			vk::DependencyInfo dependency_info{};
+			dependency_info.imageMemoryBarrierCount = 2u;
+			dependency_info.pImageMemoryBarriers    = pre_blit_barriers.data();
+			cmd.cmd.pipelineBarrier2(dependency_info);
 
 			std::array<vk::Offset3D, 2> src_offsets;
 			std::array<vk::Offset3D, 2> dst_offsets;
@@ -1444,8 +1412,11 @@ namespace toaster::gpu
 			src_offsets[0] = vk::Offset3D{0, 0, 0};
 			src_offsets[1] = vk::Offset3D{mip_width, mip_height, 1};
 
+			int32 next_width  = mip_width > 1 ? mip_width / 2 : 1;
+			int32 next_height = mip_height > 1 ? mip_height / 2 : 1;
+
 			dst_offsets[0] = vk::Offset3D{0, 0, 0};
-			dst_offsets[1] = vk::Offset3D{mip_width > 1 ? mip_width / 2 : 1, mip_height > 1 ? mip_height / 2 : 1, 1};
+			dst_offsets[1] = vk::Offset3D{next_width, next_height, 1};
 
 			vk::ImageBlit2 image_blit{};
 			image_blit.srcOffsets     = src_offsets;
@@ -1463,38 +1434,35 @@ namespace toaster::gpu
 			blit_info.filter         = vk::Filter::eLinear;
 			cmd.cmd.blitImage2(blit_info);
 
-			memory_barrier.srcAccessMask = vk::AccessFlagBits2::eTransferRead;
-			memory_barrier.dstAccessMask = vk::AccessFlagBits2::eShaderRead;
-
-			while (mip_width > 1)
+			if (mip_width > 1)
 				mip_width /= 2;
-			while (mip_height > 1)
+			if (mip_height > 1)
 				mip_height /= 2;
 
-			{
-				memory_barrier.srcStageMask = vk::PipelineStageFlagBits2::eTransfer;
-				memory_barrier.dstStageMask = vk::PipelineStageFlagBits2::eFragmentShader;
+			vk::ImageMemoryBarrier2 post_blit_barrier       = memory_barrier;
+			post_blit_barrier.subresourceRange.baseMipLevel = i - 1u;
+			post_blit_barrier.srcStageMask                  = vk::PipelineStageFlagBits2::eTransfer;
+			post_blit_barrier.srcAccessMask                 = vk::AccessFlagBits2::eTransferRead;
+			post_blit_barrier.dstStageMask                  = vk::PipelineStageFlagBits2::eFragmentShader;
+			post_blit_barrier.dstAccessMask                 = vk::AccessFlagBits2::eShaderRead;
 
-				vk::DependencyInfo dependency_info{};
-				dependency_info.imageMemoryBarrierCount = 1;
-				dependency_info.pImageMemoryBarriers    = &memory_barrier;
-				cmd.cmd.pipelineBarrier2(dependency_info);
-			}
+			vk::DependencyInfo post_dependency_info{};
+			post_dependency_info.imageMemoryBarrierCount = 1u;
+			post_dependency_info.pImageMemoryBarriers    = &post_blit_barrier;
+			cmd.cmd.pipelineBarrier2(post_dependency_info);
 		}
 
-		memory_barrier.subresourceRange.baseMipLevel = dst_texture->desc.mipCount - 1u;
-		memory_barrier.srcAccessMask                 = vk::AccessFlagBits2::eTransferWrite;
-		memory_barrier.dstAccessMask                 = vk::AccessFlagBits2::eShaderRead;
+		vk::ImageMemoryBarrier2 final_barrier       = memory_barrier;
+		final_barrier.subresourceRange.baseMipLevel = dst_texture->desc.mipCount - 1u;
+		final_barrier.srcStageMask                  = vk::PipelineStageFlagBits2::eTransfer;
+		final_barrier.srcAccessMask                 = vk::AccessFlagBits2::eTransferWrite;
+		final_barrier.dstStageMask                  = vk::PipelineStageFlagBits2::eFragmentShader;
+		final_barrier.dstAccessMask                 = vk::AccessFlagBits2::eShaderRead;
 
-		{
-			memory_barrier.srcStageMask = vk::PipelineStageFlagBits2::eTransfer;
-			memory_barrier.dstStageMask = vk::PipelineStageFlagBits2::eFragmentShader;
-
-			vk::DependencyInfo dependency_info{};
-			dependency_info.imageMemoryBarrierCount = 1;
-			dependency_info.pImageMemoryBarriers    = &memory_barrier;
-			cmd.cmd.pipelineBarrier2(dependency_info);
-		}
+		vk::DependencyInfo final_dependency_info{};
+		final_dependency_info.imageMemoryBarrierCount = 1u;
+		final_dependency_info.pImageMemoryBarriers    = &final_barrier;
+		cmd.cmd.pipelineBarrier2(final_dependency_info);
 	}
 
 	auto beginRendering(CommandListHandle p_command_list, const RenderingInfo &p_rendering_info) -> void
@@ -2777,6 +2745,10 @@ namespace toaster::gpu
 		raw_waits.emplace_back(swapchain.imageAvailableSemaphores[swapchain.acquisitonIndex]);
 		for (const SemaphoreSubmitInfo &wait: p_wait_semaphore_infos)
 			raw_waits.emplace_back(g_impl->semaphores[wait.semaphore].semaphore, wait.value);
+
+		// #ifndef NDEBUG
+		// uint64 current_value{getSemaphoreValue(p_signal_semaphore_info.semaphore)};
+		// #endif
 
 		submit(EQueueType::eGraphics, p_command_list, raw_waits, {
 				   vk::SemaphoreSubmitInfo{swapchain.renderFinishedSemaphores[swapchain.imageIndex]},
