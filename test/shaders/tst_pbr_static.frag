@@ -38,6 +38,7 @@ layout (push_constant) uniform PushData
     uint64_t objectBuffer;
     MaterialBuffer materialBuffer;
     uint64_t transformBuffer;
+    uint64_t meshMetadataBuffer;
 
     uint samplerId;
     uint _padd[1];

@@ -1,0 +1,85 @@
+#version 460
+#define __TASK__
+
+#extension GL_GOOGLE_include_directive: require
+#include "common.glsl"
+
+struct DrawMeshTasksIndirectCommand
+{
+    uint32 workGroupsX;
+    uint32 workGroupsY;
+    uint32 workGroupsZ;
+
+    uint32 objectId; // Index into the object data buffer
+};
+
+layout (buffer_reference, scalar) readonly buffer IndirectCommandBuffer { DrawMeshTasksIndirectCommand commands[]; };
+
+layout (push_constant) uniform PushData
+{
+    CameraBuffer camera;
+    ObjectDataBuffer objectBuffer;
+    uintptr materialBuffer;
+    TransformDataBuffer transformBuffer;
+    MeshMetadataBuffer meshMetadataBuffer;
+    IndirectCommandBuffer indirectBuffer;
+
+    uint32 samplerId;
+    uint32 _padd[1u];
+} pcs;
+
+struct TaskPayload
+{
+    uint32 objectId;
+    uint32 meshletIds[32u];
+};
+
+taskPayloadSharedEXT TaskPayload payload;
+
+layout (local_size_x = 32u) in; // NOTE to self, remember to specify this
+
+shared uint32 survivingMeshletCount;
+
+void main()
+{
+    uint32 local_id = gl_LocalInvocationID.x;
+    uint32 meshlet_index = gl_GlobalInvocationID.x;
+
+    uint32 draw_id = gl_DrawID;
+    uint32 obj_id = pcs.indirectBuffer.commands[draw_id].objectId;
+
+    if (local_id == 0u) // Checks if it is the very first invokation in the local workgroup
+    {
+        survivingMeshletCount = 0u; // Initialise to 0
+        payload.objectId = obj_id;
+    }
+    barrier();
+
+    ObjectData obj_data = pcs.objectBuffer.data[obj_id];
+
+    MeshMetadata metadata = pcs.meshMetadataBuffer.metadata[obj_data.meshId];
+
+    bool visible = true;
+
+    if (meshlet_index < metadata.meshletCount)
+    {
+        // Actually cull... TODO
+    }
+    else
+    {
+        visible = false;
+    }
+
+    if (visible)
+    {
+        uint32 index = atomicAdd(survivingMeshletCount, 1u);
+        payload.meshletIds[index] = meshlet_index;
+    }
+
+    barrier();
+
+    if (local_id == 0u)
+    {
+        EmitMeshTasksEXT(survivingMeshletCount, 1u, 1u); // Actually dispatch the mesh shader work groups
+    }
+}

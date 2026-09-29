@@ -1,131 +1,93 @@
 #version 460
+#define __MESH__
 
-#extension GL_EXT_nonuniform_qualifier: require
-#extension GL_EXT_buffer_reference2: require
-#extension GL_EXT_descriptor_heap: enable
-#extension GL_EXT_scalar_block_layout: enable
-#extension GL_EXT_mesh_shader: require
-#extension GL_EXT_shader_explicit_arithmetic_types_int64: enable
-#extension GL_EXT_shader_explicit_arithmetic_types_int32: enable
-#extension GL_EXT_shader_explicit_arithmetic_types_int16: enable
-#extension GL_EXT_shader_explicit_arithmetic_types_int8: enable
+#extension GL_GOOGLE_include_directive: require
+#include "common.glsl"
 
-struct Vertex
+struct DrawMeshTasksIndirectCommand
 {
-    vec3 position;
-    vec3 normal;
-    vec2 texCoord;
+    uint32 workGroupsX;
+    uint32 workGroupsY;
+    uint32 workGroupsZ;
+
+    uint32 objectId; // Index into the object data buffer
 };
 
-struct Meshlet
-{
-    uint32_t materialIndex;
-
-    uint32_t vertexOffset;
-    uint32_t triangleOffset;
-    uint32_t vertexCount;
-    uint32_t triangleCount;
-
-    vec4 boundingSphere;
-};
-
-layout (descriptor_heap, scalar) readonly buffer VertexBuffer { Vertex vertices[]; } vertexPages[];
-layout (descriptor_heap, scalar) readonly buffer MeshletBuffer { Meshlet meshlets[]; } meshletPages[];
-layout (descriptor_heap, scalar) readonly buffer MeshletVertexBuffer { uint32_t vertices[]; } meshletVertexPages[];
-layout (descriptor_heap, scalar) readonly buffer MeshletTriangleBuffer { uint8_t indices[]; } meshletTrianglePages[];
-layout (descriptor_heap, scalar) readonly buffer MaterialIndirectionBuffer { uint32_t materials[]; } materialIndirectionPages[];
-
-layout (buffer_reference, std140) readonly buffer CameraBuffer
-{
-    mat4 view;
-    mat4 proj;
-    vec4 position;
-};
-
-struct ObjectData
-{
-    uint32_t transformId;
-
-    uint32_t vertexBufferOffset;
-    uint32_t meshletBufferOffset;
-    uint32_t meshletVertexBufferOffset;
-    uint32_t meshletTriangleBufferOffset;
-    uint32_t materialIndirectionBufferOffset;
-
-    uint8_t vertexBufferPageId;
-    uint8_t meshletBufferPageId;
-    uint8_t meshletVertexBufferPageId;
-    uint8_t meshletTriangleBufferPageId;
-    uint8_t materialIndirectionBufferPageId;
-
-    uint8_t _padd[3u]; // I need to find something to put here because this is essentially free space
-};
-
-layout (buffer_reference, scalar) readonly buffer ObjectDataBuffer { ObjectData data[]; };
-layout (buffer_reference, scalar) readonly buffer TransformDataBuffer { mat4 data[]; };
+layout (buffer_reference, scalar) readonly buffer IndirectCommandBuffer { DrawMeshTasksIndirectCommand commands[]; };
 
 layout (push_constant) uniform PushData
 {
     CameraBuffer camera;
     ObjectDataBuffer objectBuffer;
-    uint64_t materialBuffer;
+    uintptr materialBuffer;
     TransformDataBuffer transformBuffer;
+    MeshMetadataBuffer meshMetadataBuffer;
+    IndirectCommandBuffer indirectBuffer;
 
-    uint samplerId;
-    uint _padd[1];
+    uint32 samplerId;
+    uint32 _padd[1u];
 } pcs;
 
 layout (local_size_x = 32u, local_size_y = 1u, local_size_z = 1u) in; // 32 is the NVIDIA warp size
 layout (triangles, max_vertices = 64u, max_primitives = 128u) out;
 
-layout (location = 0) out vec3 o_Position[];
-layout (location = 1) out vec3 o_WorldPos[];
-layout (location = 2) out vec2 o_TexCoord[];
-layout (location = 3) flat out uint o_MaterialIndex[];
+layout (location = 0) out float3 o_Position[];
+layout (location = 1) out float3 o_WorldPos[];
+layout (location = 2) out float2 o_TexCoord[];
+layout (location = 3) flat out uint32 o_MaterialIndex[];
+
+struct TaskPayload
+{
+    uint32 objectId;
+    uint32 meshletIds[32u];
+};
+
+taskPayloadSharedEXT TaskPayload taskPayload;
 
 void main()
 {
-    uint instance_id = gl_DrawID;
-    ObjectData obj_data = pcs.objectBuffer.data[instance_id];
+    ObjectData obj_data = pcs.objectBuffer.data[taskPayload.objectId];
 
-    uint meshlet_index = uint(obj_data.meshletBufferOffset) + gl_WorkGroupID.x;
+    MeshMetadata metadata = pcs.meshMetadataBuffer.metadata[obj_data.meshId];
 
-    Meshlet meshlet = meshletPages[obj_data.meshletBufferPageId].meshlets[meshlet_index];
+    uint32 meshlet_index = uint32(metadata.meshletBufferOffset) + taskPayload.meshletIds[gl_WorkGroupID.x];
+
+    Meshlet meshlet = meshletPages[metadata.meshletBufferPageId].meshlets[meshlet_index];
 
     SetMeshOutputsEXT(meshlet.vertexCount, meshlet.triangleCount);
-    
-    uint thread_id = gl_LocalInvocationID.x;
 
-    for (uint vertex_id = thread_id; vertex_id < meshlet.vertexCount; vertex_id += gl_WorkGroupSize.x)
+    uint32 thread_id = gl_LocalInvocationID.x;
+
+    for (uint32 vertex_id = thread_id; vertex_id < meshlet.vertexCount; vertex_id += gl_WorkGroupSize.x)
     {
-        uint32_t vertex_index = meshletVertexPages[obj_data.meshletVertexBufferPageId].vertices[obj_data.meshletVertexBufferOffset + uint(meshlet.vertexOffset) + vertex_id];
+        uint32 vertex_index = meshletVertexPages[metadata.meshletVertexBufferPageId].vertices[metadata.meshletVertexBufferOffset + uint32(meshlet.vertexOffset) + vertex_id];
 
-        Vertex vertex = vertexPages[obj_data.vertexBufferPageId].vertices[obj_data.vertexBufferOffset + vertex_index];
+        Vertex vertex = vertexPages[metadata.vertexBufferPageId].vertices[metadata.vertexBufferOffset + vertex_index];
 
-        mat4 transform = pcs.transformBuffer.data[obj_data.transformId];
+        float4x4 transform = pcs.transformBuffer.data[obj_data.transformId];
 
-        vec4 world_pos = transform * vec4(vertex.position.xyz, 1.0f);
+        float4 world_pos = transform * float4(vertex.position.xyz, 1.0f);
         o_Position[vertex_id] = vertex.position.xyz;
         o_WorldPos[vertex_id] = world_pos.xyz;
 
-        vec4 view_pos = pcs.camera.view * world_pos;
+        float4 view_pos = pcs.camera.view * world_pos;
 
         o_TexCoord[vertex_id] = vertex.texCoord;
 
-        uint32_t material_index = materialIndirectionPages[obj_data.materialIndirectionBufferPageId].materials[obj_data.materialIndirectionBufferOffset + meshlet.materialIndex];
+        uint32 material_index = materialIndirectionPages[metadata.materialIndirectionBufferPageId].materials[metadata.materialIndirectionBufferOffset + meshlet.materialIndex];
         o_MaterialIndex[vertex_id] = material_index;
 
         gl_MeshVerticesEXT[vertex_id].gl_Position = pcs.camera.proj * view_pos;
     }
 
-    for (uint triangle_id = thread_id; triangle_id < meshlet.triangleCount; triangle_id += gl_WorkGroupSize.x)
+    for (uint32 triangle_id = thread_id; triangle_id < meshlet.triangleCount; triangle_id += gl_WorkGroupSize.x)
     {
-        uint triangle_index = uint(obj_data.meshletTriangleBufferOffset) + uint(meshlet.triangleOffset) + triangle_id * 3u;
+        uint32 triangle_index = uint32(metadata.meshletTriangleBufferOffset) + uint32(meshlet.triangleOffset) + triangle_id * 3u;
 
-        gl_PrimitiveTriangleIndicesEXT[triangle_id] = uvec3(
-        meshletTrianglePages[obj_data.meshletTriangleBufferPageId].indices[triangle_index + 0u],
-        meshletTrianglePages[obj_data.meshletTriangleBufferPageId].indices[triangle_index + 1u],
-        meshletTrianglePages[obj_data.meshletTriangleBufferPageId].indices[triangle_index + 2u]
+        gl_PrimitiveTriangleIndicesEXT[triangle_id] = uint3(
+        meshletTrianglePages[metadata.meshletTriangleBufferPageId].indices[triangle_index + 0u],
+        meshletTrianglePages[metadata.meshletTriangleBufferPageId].indices[triangle_index + 1u],
+        meshletTrianglePages[metadata.meshletTriangleBufferPageId].indices[triangle_index + 2u]
         );
     }
 }

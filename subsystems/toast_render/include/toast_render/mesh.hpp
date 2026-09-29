@@ -27,6 +27,23 @@ namespace toaster::render
 		tsm::float4 boundingSphere{0.0f};
 	};
 
+	struct TST_RENDER_API StaticMeshMetadata
+	{
+		uint32 meshletCount{0u}; // Used for populating the indirect dispatch command in compute culling shaders
+
+		uint32 vertexBufferOffset{0u};
+		uint32 meshletBufferOffset{0u};
+		uint32 meshletVertexBufferOffset{0u};
+		uint32 meshletTriangleBufferOffset{0u};
+		uint32 materialIndirectionBufferOffset{0u};
+
+		uint8 vertexBufferPageSlot{0u};
+		uint8 meshletBufferPageSlot{0u};
+		uint8 meshletVertexBufferPageSlot{0u};
+		uint8 meshletTriangleBufferPageSlot{0u};
+		uint8 materialIndirectionBufferPageSlot{0u};
+	};
+
 	struct TST_RENDER_API StaticMesh
 	{
 		std::vector<Meshlet>        meshlets;
@@ -73,6 +90,8 @@ namespace toaster::render
 		[[nodiscard]] auto tryGetStaticMesh(StaticMeshHandle p_handle) -> StaticMesh * { return m_staticMeshes.tryGet(p_handle); }
 		[[nodiscard]] auto tryGetStaticMesh(StaticMeshHandle p_handle) const -> const StaticMesh * { return m_staticMeshes.tryGet(p_handle); }
 
+		[[nodiscard]] auto getStaticMeshMetadataBufferAddress() const -> gpu::DeviceAddress { return gpu::getBufferAddress(m_staticMeshMetadataBuffer); }
+
 	private:
 		// Total initial page size of 576 Mib. Unless you are loading the entire planet, pages won't really be added during runtime.
 		// For scale, the Sponza only uses ~60 Mib for its vertex data.
@@ -92,6 +111,8 @@ namespace toaster::render
 		// This is more than enough. E.g. Sponza only uses 27-30 materials, which is 30 * sizeof(uint32) = 120 bytes
 		static constexpr uint64                 materialIndirectionPageSize{2u * 1024 * 1024u}; // 2 Mib.
 		UniquePtr<gpu::alloc::GPUPageAllocator> m_materialIndirectionPager{nullptr};
+
+		gpu::BufferHandle m_staticMeshMetadataBuffer{nullptr}; // Indexed by the mesh handle's id
 
 		Pool<StaticMesh> m_staticMeshes;
 

@@ -1,0 +1,55 @@
+#version 460
+#define __COMP__
+
+#extension GL_GOOGLE_include_directive: require
+#include "common.glsl"
+
+struct DrawMeshTasksIndirectCommand
+{
+    uint32 workGroupsX;
+    uint32 workGroupsY;
+    uint32 workGroupsZ;
+
+    uint32 objectId; // Index into the object data buffer
+};
+
+layout (buffer_reference, scalar) writeonly buffer IndirectCommandBuffer { DrawMeshTasksIndirectCommand commands[]; };
+layout (buffer_reference, scalar) writeonly buffer CountBuffer { uint32 count; };
+
+layout (push_constant) uniform PushData
+{
+    CameraBuffer cameraBuffer;
+    ObjectDataBuffer objectDataBuffer;
+    TransformDataBuffer transformBuffer;
+    MeshMetadataBuffer meshMetadataBuffer;
+    IndirectCommandBuffer indirectBuffer;
+    CountBuffer countBuffer;
+
+    uint32 activeObjectCount;
+} pcs;
+
+layout (local_size_x = 32u) in;
+
+void main()
+{
+    uint32 global_id = gl_GlobalInvocationID.x;
+
+    if (global_id >= pcs.activeObjectCount)
+    {
+        return;
+    }
+
+    ObjectData obj_data = pcs.objectDataBuffer.data[global_id];
+
+    if (true) // TODO
+    {
+        uint32 command_index = atomicAdd(pcs.countBuffer.count, 1u);
+
+        MeshMetadata metadata = pcs.meshMetadataBuffer.metadata[obj_data.meshId];
+
+        pcs.indirectBuffer.commands[command_index].workGroupsX = (metadata.meshletCount + 31u) / 32u;
+        pcs.indirectBuffer.commands[command_index].workGroupsY = 1u;
+        pcs.indirectBuffer.commands[command_index].workGroupsZ = 1u;
+        pcs.indirectBuffer.commands[command_index].objectId = global_id;
+    }
+}

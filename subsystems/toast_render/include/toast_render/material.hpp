@@ -9,38 +9,6 @@
 
 namespace toaster::render
 {
-	// struct TST_RENDER_API MaterialParameter
-	// {
-	// 	String name;
-	// 	uint32 offset{0u};
-	// 	uint32 size{0u};
-	// };
-	//
-	// using MaterialTemplateHandle = RefPtr<struct MaterialTemplate>;
-	//
-	// struct TST_RENDER_API MaterialTemplate
-	// {
-	// 	std::vector<MaterialParameter> parameters;
-	// 	uint32                         totalSize{0u}; // Summed size of all the parameters
-	//
-	// 	static auto create(InitialiserList<const MaterialParameter> p_params) -> MaterialTemplateHandle
-	// 	{
-	// 		auto material_template{MaterialTemplateHandle{new MaterialTemplate{}}};
-	//
-	// 		material_template->parameters.resize(p_params.size());
-	//
-	// 		for (uint32 i{0u}; i < p_params.size(); ++i)
-	// 		{
-	// 			const auto &param{p_params[i]};
-	//
-	// 			material_template->parameters[i] = param;
-	// 			material_template->totalSize     += param.size;
-	// 		}
-	//
-	// 		return material_template;
-	// 	}
-	// };
-
 	struct TST_RENDER_API alignas(16u) MaterialParams
 	{
 		tsm::float3 albedoColour{1.0f};

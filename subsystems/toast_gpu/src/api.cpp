@@ -736,6 +736,7 @@ namespace toaster::gpu
 		ExtensionSet required_device_extensions{
 			vk::EXTDescriptorHeapExtensionName,
 			vk::EXTShaderObjectExtensionName,
+			vk::EXTColorWriteEnableExtensionName,
 			vk::EXTMeshShaderExtensionName,
 			vk::KHRMaintenance1ExtensionName,
 			vk::KHRShaderUntypedPointersExtensionName,
@@ -825,6 +826,7 @@ namespace toaster::gpu
 		feature_chain.get<vk::PhysicalDeviceVulkan12Features>().shaderSampledImageArrayNonUniformIndexing  = true;
 		feature_chain.get<vk::PhysicalDeviceVulkan12Features>().shaderUniformBufferArrayNonUniformIndexing = true;
 		feature_chain.get<vk::PhysicalDeviceVulkan12Features>().shaderStorageImageArrayNonUniformIndexing  = true;
+		feature_chain.get<vk::PhysicalDeviceVulkan12Features>().drawIndirectCount                          = true;
 		feature_chain.get<vk::PhysicalDeviceVulkan13Features>().dynamicRendering                           = true;
 		feature_chain.get<vk::PhysicalDeviceVulkan13Features>().synchronization2                           = true;
 		feature_chain.get<vk::PhysicalDeviceVulkan13Features>().maintenance4                               = true;
@@ -1339,20 +1341,41 @@ namespace toaster::gpu
 		cmd.cmd.copyBufferToImage2(copy_buffer_to_image_info);
 	}
 
-	// auto pipelineBarrier(CommandListHandle                           p_command_list, InitialiserList<const BufferMemoryBarrier> p_buffer_memory_barriers,
-	// 					 InitialiserList<const TextureMemoryBarrier> p_texture_memory_barriers) -> void
-	// {
-	// 	CommandList &cmd{g_impl->commandLists[p_command_list]};
-	// 	TST_ASSERT(cmd.open);
-	//
-	// 	std::vector<vk::BufferMemoryBarrier2> buffer_barriers(p_buffer_memory_barriers.size());
-	// 	for (uint32 i{0u}; i < buffer_barriers.size(); ++i)
-	// 	{
-	// 		auto &barrier{buffer_barriers[i]};
-	// 		barrier.buffer = g_impl->buffers[p_buffer_memory_barriers[i].buffer].buffer;
-	// 		barrier.
-	// 	}
-	// }
+	auto fillBuffer(CommandListHandle p_command_list, BufferHandle p_buffer, uint64 p_dst_offset, uint64 p_size, uint32 p_data) -> void
+	{
+		CommandList &cmd{g_impl->commandLists[p_command_list]};
+		TST_ASSERT(cmd.open);
+
+		Buffer &buffer{g_impl->buffers[p_buffer]};
+
+		cmd.cmd.fillBuffer(buffer.buffer, p_dst_offset, p_size, p_data, FunctionDispatcher::get());
+	}
+
+	auto pipelineBarrier(CommandListHandle                           p_command_list, InitialiserList<const BufferMemoryBarrier> p_buffer_memory_barriers,
+						 InitialiserList<const TextureMemoryBarrier> p_texture_memory_barriers) -> void
+	{
+		CommandList &cmd{g_impl->commandLists[p_command_list]};
+		TST_ASSERT(cmd.open);
+
+		std::vector<vk::BufferMemoryBarrier2> buffer_barriers(p_buffer_memory_barriers.size());
+		for (uint32 i{0u}; i < buffer_barriers.size(); ++i)
+		{
+			auto &barrier{buffer_barriers[i]};
+			barrier.buffer = g_impl->buffers[p_buffer_memory_barriers[i].buffer].buffer;
+			barrier.size   = p_buffer_memory_barriers[i].size;
+
+			barrier.srcStageMask = vk::PipelineStageFlagBits2::eComputeShader;
+			barrier.dstStageMask = vk::PipelineStageFlagBits2::eMeshShaderEXT | vk::PipelineStageFlagBits2::eDrawIndirect;
+
+			barrier.srcAccessMask = vk::AccessFlagBits2::eShaderWrite;
+			barrier.dstAccessMask = vk::AccessFlagBits2::eIndirectCommandRead;
+		}
+
+		vk::DependencyInfo dependency_info{};
+		dependency_info.setBufferMemoryBarriers(buffer_barriers);
+
+		cmd.cmd.pipelineBarrier2(dependency_info, FunctionDispatcher::get());
+	}
 
 	auto generateMipmaps(CommandListHandle p_command_list, TextureHandle p_texture) -> void
 	{
@@ -1793,6 +1816,19 @@ namespace toaster::gpu
 		cmd.cmd.setStencilTestEnableEXT(p_test_enable, FunctionDispatcher::get());
 	}
 
+	auto setColourWriteEnable(CommandListHandle p_command_list, InitialiserList<const bool32> p_enables) -> void
+	{
+		CommandList &cmd{g_impl->commandLists[p_command_list]};
+		cmd.cmd.setColorWriteEnableEXT(p_enables, FunctionDispatcher::get());
+	}
+
+	auto setColourWriteMask(CommandListHandle p_command_list, InitialiserList<const EColourComponentFlags> p_masks, uint32 p_first_attachment_index) -> void
+	{
+		CommandList &cmd{g_impl->commandLists[p_command_list]};
+		cmd.cmd.setColorWriteMaskEXT(p_first_attachment_index, p_masks.size(), reinterpret_cast<const vk::ColorComponentFlags *>(p_masks.data()),
+									 FunctionDispatcher::get());
+	}
+
 	auto draw(CommandListHandle p_command_list, uint32 p_vertex_count, uint32 p_instance_count, uint32 p_first_vertex, uint32 p_first_instance) -> void
 	{
 		CommandList &cmd{g_impl->commandLists[p_command_list]};
@@ -1831,6 +1867,24 @@ namespace toaster::gpu
 		CommandList &cmd{g_impl->commandLists[p_command_list]};
 		Buffer &     buffer{g_impl->buffers[p_buffer]};
 		cmd.cmd.drawMeshTasksIndirectEXT(buffer.buffer, p_offset, p_draw_count, p_stride, FunctionDispatcher::get());
+	}
+
+	auto drawMeshTasksIndirectCount(CommandListHandle p_command_list, BufferHandle  p_indirect_buffer, uint64 p_indirect_buffer_offset, BufferHandle p_count_buffer,
+									uint64            p_count_buffer_offset, uint32 p_max_draw_count, uint32  p_stride) -> void
+	{
+		CommandList &cmd{g_impl->commandLists[p_command_list]};
+
+		Buffer &indirect_buffer{g_impl->buffers[p_indirect_buffer]};
+		Buffer &count_buffer{g_impl->buffers[p_count_buffer]};
+
+		cmd.cmd.drawMeshTasksIndirectCountEXT(indirect_buffer.buffer, p_indirect_buffer_offset, count_buffer.buffer, p_count_buffer_offset, p_max_draw_count, p_stride,
+											  FunctionDispatcher::get());
+	}
+
+	auto dispatch(CommandListHandle p_command_list, uint32 p_work_groups_x, uint32 p_work_groups_y, uint32 p_work_groups_z) -> void
+	{
+		CommandList &cmd{g_impl->commandLists[p_command_list]};
+		cmd.cmd.dispatch(p_work_groups_x, p_work_groups_y, p_work_groups_z);
 	}
 
 	static auto getTextureBaseHeapSlot(ResourceDescriptorHeapHandle p_resource_heap, uint32 p_heap_slot) -> uint32
@@ -2226,6 +2280,10 @@ namespace toaster::gpu
 		Buffer &buffer{g_impl->buffers[p_buffer]};
 		TST_ASSERT_MSG(buffer.mapped != nullptr, "Buffer is not host visible");
 		return buffer.mapped;
+	}
+
+	auto fillBuffer(BufferHandle p_buffer) -> void
+	{
 	}
 
 	auto getBufferAddress(BufferHandle p_buffer) -> DeviceAddress
@@ -2780,7 +2838,7 @@ namespace toaster::gpu
 		vk::ShaderStageFlags    next_stage{getVulkanShaderStages(p_desc.nextStage)};
 
 		vk::ShaderCreateInfoEXT shader_create_info{};
-		shader_create_info.flags     = vk::ShaderCreateFlagBitsEXT::eDescriptorHeap | vk::ShaderCreateFlagBitsEXT::eNoTaskShader;
+		shader_create_info.flags     = vk::ShaderCreateFlagBitsEXT::eDescriptorHeap;
 		shader_create_info.stage     = shader_stage;
 		shader_create_info.nextStage = next_stage;
 		shader_create_info.codeType  = vk::ShaderCodeTypeEXT::eSpirv;

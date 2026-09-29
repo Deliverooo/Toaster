@@ -15,6 +15,12 @@ namespace toaster::render
 		m_meshletTrianglePager     = makeUnique<gpu::alloc::GPUPageAllocator>(meshletTrianglePageSize, m_renderCtx->getResourceHeap());
 		m_materialIndirectionPager = makeUnique<gpu::alloc::GPUPageAllocator>(materialIndirectionPageSize, m_renderCtx->getResourceHeap());
 
+		gpu::BufferDesc static_mesh_metadata_buffer_desc{};
+		static_mesh_metadata_buffer_desc.size       = 1028u * 1028u * sizeof(StaticMeshMetadata); // 28 Mib / ~ 1 million meshes
+		static_mesh_metadata_buffer_desc.usage      = gpu::EBufferUsageFlagBits::eTransferDst | gpu::EBufferUsageFlagBits::eStorageBuffer;
+		static_mesh_metadata_buffer_desc.memoryType = gpu::EMemoryType::eDeviceLocal; // More efficient?
+		m_staticMeshMetadataBuffer                  = gpu::createBuffer(static_mesh_metadata_buffer_desc);
+
 		m_staticMeshes.setDestructorUserData(this);
 		m_staticMeshes.setDestructorFn(+[](StaticMesh *p_data, void *p_user_data) -> void
 		{
@@ -44,10 +50,13 @@ namespace toaster::render
 
 	MeshManager::~MeshManager()
 	{
-		gpu::waitQueueIdle(gpu::EQueueType::eTransfer); // Make sure all the state trackers are ready to be destroyed
+		gpu::waitIdle(); // Make sure all the state trackers are ready to be destroyed
 		gpu::upload::pollUploads();
 
 		m_staticMeshes.clear();
+
+		gpu::destroyBuffer(m_staticMeshMetadataBuffer);
+
 		m_vertexPager.reset();
 		m_meshletPager.reset();
 		m_meshletVertexPager.reset();
@@ -59,8 +68,8 @@ namespace toaster::render
 	{
 		StaticMesh temp_mesh{};
 
-		// Vertex buffer, meshlet buffer, meshlet vertex buffer, meshlet triangle buffer and material indirection buffer
-		temp_mesh.stateTracker = gpu::upload::createStateTracker(5u);
+		// Vertex buffer, meshlet buffer, meshlet vertex buffer, meshlet triangle buffer, material indirection buffer and metadata buffer
+		temp_mesh.stateTracker = gpu::upload::createStateTracker(6u);
 
 		return m_staticMeshes.emplace(std::move(temp_mesh));
 	}
@@ -148,9 +157,34 @@ namespace toaster::render
 											static_mesh.materialIndirectionBufferAllocation.offset
 										}, static_mesh.stateTracker);
 		#ifndef NDEBUG
-		std::println("\tMaterial indirection buffer: Offset: {} | Size: {}\n", static_mesh.materialIndirectionBufferAllocation.offset,
+		std::println("\tMaterial indirection buffer: Offset: {} | Size: {}", static_mesh.materialIndirectionBufferAllocation.offset,
 					 ByteSize{material_indirection_buffer_buffer_size});
 		#endif
+
+		#ifndef NDEBUG
+		std::println("\tUploading mesh metadata\n");
+		#endif
+
+		StaticMeshMetadata metadata{};
+
+		metadata.meshletCount = static_cast<uint32>(p_meshlets.size());
+
+		metadata.vertexBufferOffset              = static_cast<uint32>(static_mesh.vertexBufferOffset());
+		metadata.meshletBufferOffset             = static_cast<uint32>(static_mesh.meshletBufferOffset());
+		metadata.meshletVertexBufferOffset       = static_cast<uint32>(static_mesh.meshletVertexBufferOffset());
+		metadata.meshletTriangleBufferOffset     = static_cast<uint32>(static_mesh.meshletTriangleBufferOffset());
+		metadata.materialIndirectionBufferOffset = static_cast<uint32>(static_mesh.materialIndirectionBufferOffset());
+
+		metadata.vertexBufferPageSlot              = static_cast<uint8>(static_mesh.vertexBufferAllocation.heapSlot);
+		metadata.meshletBufferPageSlot             = static_cast<uint8>(static_mesh.meshletBufferAllocation.heapSlot);
+		metadata.meshletVertexBufferPageSlot       = static_cast<uint8>(static_mesh.meshletVertexBufferAllocation.heapSlot);
+		metadata.meshletTriangleBufferPageSlot     = static_cast<uint8>(static_mesh.meshletTriangleBufferAllocation.heapSlot);
+		metadata.materialIndirectionBufferPageSlot = static_cast<uint8>(static_mesh.materialIndirectionBufferAllocation.heapSlot);
+
+		uint64 metadata_offset{p_handle.getId() * sizeof(StaticMeshMetadata)};
+
+		gpu::upload::uploadDataToBuffer(gpu::upload::BufferUploadDesc{m_staticMeshMetadataBuffer, &metadata, sizeof(StaticMeshMetadata), metadata_offset},
+										static_mesh.stateTracker);
 	}
 
 	auto MeshManager::createStaticMesh(const std::vector<StaticMeshVertex> &p_vertices, const std::vector<Meshlet> &      p_meshlets,

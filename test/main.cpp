@@ -9,7 +9,6 @@
 
 #include "toast_asset/mesh_importer.hpp"
 #include "toast_asset/texture_importer.hpp"
-#include "toast_gpu/upload.hpp"
 #include "toast_kernel/camera.hpp"
 #include "toast_kernel/events/key_event.hpp"
 #include "toast_kernel/events/window_event.hpp"
@@ -20,6 +19,8 @@
 
 using namespace toaster;
 
+#include <object_culling.comp.h>
+#include <meshlet_culling.task.h>
 #include <tst_pbr_static.mesh.h>
 #include <tst_pbr_static.frag.h>
 
@@ -67,21 +68,17 @@ public:
 
 	struct ObjectData
 	{
+		uint32 meshId;
 		uint32 transformId;
+	};
 
-		uint32 vertexBufferOffset;
-		uint32 meshletBufferOffset;
-		uint32 meshletVertexBufferOffset;
-		uint32 meshletTriangleBufferOffset;
-		uint32 materialIndirectionBufferOffset;
+	struct DrawMeshTasksIndirectCountCommand
+	{
+		uint32 groupCountX{0u};
+		uint32 groupCountY{0u};
+		uint32 groupCountZ{0u};
 
-		uint8 vertexBufferPageId;
-		uint8 meshletBufferPageId;
-		uint8 meshletVertexBufferPageId;
-		uint8 meshletTriangleBufferPageId;
-		uint8 materialIndirectionBufferPageId;
-
-		uint8 _padd[3u]; // I need to find something to put here because this is essentially free space
+		uint32 objectId{0u}; // Index into the object data buffer
 	};
 
 	auto onInit() -> void override
@@ -128,12 +125,27 @@ public:
 		m_samplerHeapSlot = gpu::allocSamplerHeapSlot(m_renderCtx->getSamplerHeap());
 		gpu::writeSamplerDescriptor(m_renderCtx->getSamplerHeap(), m_samplerHeapSlot, sampler);
 
+		m_objectCullingShader = gpu::createShader(gpu::ShaderDesc{
+													  "main",
+													  c_object_culling_comp_bytecode,
+													  sizeof(c_object_culling_comp_bytecode) / sizeof(uint32),
+													  gpu::EShaderStageFlagBits::eCompute
+												  });
+
 		m_ms = gpu::createShader(gpu::ShaderDesc{
 									 "main",
 									 c_tst_pbr_static_mesh_bytecode,
 									 sizeof(c_tst_pbr_static_mesh_bytecode) / sizeof(uint32),
 									 gpu::EShaderStageFlagBits::eMesh,
 									 gpu::EShaderStageFlagBits::ePixel
+								 });
+
+		m_ts = gpu::createShader(gpu::ShaderDesc{
+									 "main",
+									 c_meshlet_culling_task_bytecode,
+									 sizeof(c_meshlet_culling_task_bytecode) / sizeof(uint32),
+									 gpu::EShaderStageFlagBits::eTask,
+									 gpu::EShaderStageFlagBits::eMesh
 								 });
 
 		m_ps = gpu::createShader(gpu::ShaderDesc{
@@ -156,26 +168,29 @@ public:
 				buffer = gpu::createBuffer(camera_buffer_desc);
 		}
 
-		m_secondaryBuffers.resize(Application::maxFramesInFlight);
-		for (auto &cmd: m_secondaryBuffers)
-			cmd.emplace_back(gpu::getOrCreateCommandList(gpu::EQueueType::eGraphics, true));
-
 		gpu::BufferDesc indirect_buffer_desc{};
-		indirect_buffer_desc.size       = sizeof(gpu::DrawMeshTasksIndirectCommand) * maxDrawCalls;
-		indirect_buffer_desc.usage      = gpu::EBufferUsageFlagBits::eIndirectBuffer;
-		indirect_buffer_desc.memoryType = gpu::EMemoryType::eHostVisibleCoherent;
+		indirect_buffer_desc.size       = sizeof(DrawMeshTasksIndirectCountCommand) * maxDrawCalls;
+		indirect_buffer_desc.usage      = gpu::EBufferUsageFlagBits::eIndirectBuffer | gpu::EBufferUsageFlagBits::eStorageBuffer;
+		indirect_buffer_desc.memoryType = gpu::EMemoryType::eDeviceLocal;
 
 		gpu::BufferDesc object_buffer_desc{};
 		object_buffer_desc.size       = sizeof(ObjectData) * maxDrawCalls;
 		object_buffer_desc.usage      = gpu::EBufferUsageFlagBits::eStorageBuffer;
 		object_buffer_desc.memoryType = gpu::EMemoryType::eHostVisibleCoherent;
 
+		gpu::BufferDesc count_buffer_desc{};
+		count_buffer_desc.size       = sizeof(uint32);
+		count_buffer_desc.usage      = gpu::EBufferUsageFlagBits::eIndirectBuffer | gpu::EBufferUsageFlagBits::eStorageBuffer | gpu::EBufferUsageFlagBits::eTransferDst;
+		count_buffer_desc.memoryType = gpu::EMemoryType::eDeviceLocal;
+
 		m_indirectBuffers.resize(Application::maxFramesInFlight);
 		m_objectDataBuffers.resize(Application::maxFramesInFlight);
+		m_countBuffers.resize(Application::maxFramesInFlight);
 		for (uint32 i{0u}; i < Application::maxFramesInFlight; ++i)
 		{
 			m_indirectBuffers[i]   = gpu::createBuffer(indirect_buffer_desc);
 			m_objectDataBuffers[i] = gpu::createBuffer(object_buffer_desc);
+			m_countBuffers[i]      = gpu::createBuffer(count_buffer_desc);
 		}
 
 		{
@@ -216,15 +231,14 @@ public:
 
 		gpu::destroyShader(m_ps);
 		gpu::destroyShader(m_ms);
+		gpu::destroyShader(m_ts);
+		gpu::destroyShader(m_objectCullingShader);
 
 		gpu::freeSamplerHeapSlot(m_renderCtx->getSamplerHeap(), m_samplerHeapSlot);
 
-		for (auto &cmd_vec: m_secondaryBuffers)
-			for (auto &cmd: cmd_vec)
-				gpu::freeCommandList(cmd);
-
 		for (uint32 i{0u}; i < Application::maxFramesInFlight; ++i)
 		{
+			gpu::destroyBuffer(m_countBuffers[i]);
 			gpu::destroyBuffer(m_objectDataBuffers[i]);
 			gpu::destroyBuffer(m_indirectBuffers[i]);
 		}
@@ -257,11 +271,6 @@ public:
 		CameraCB camera_cb{};
 		m_camera.populateConstantBuffer(camera_cb);
 		gpu::writeBufferData(m_cameraBuffers[m_app->getFrameIndex()], &camera_cb, sizeof(CameraCB));
-
-		// auto &tc{m_scene.getRegistry().get<TransformComponent>(m_orboEntity)};
-		//
-		// auto &gpu_tc{m_scene.getRegistry().get<GPUTransformComponent>(m_orboEntity)};
-		// m_transformSystem->updateTransform(gpu_tc.transformId, m_app->getFrameIndex(), tc.getTransform());
 	}
 
 	auto onRender(gpu::CommandListHandle p_cmd) -> void override
@@ -270,13 +279,70 @@ public:
 		m_materialManager->updateDirtyMaterials(m_app->getFrameIndex());
 		m_textureManager->pollTextureUploads(p_cmd);
 
-		for (auto &list: m_secondaryBuffers[m_app->getFrameIndex()])
-			gpu::resetCommandList(list);
+		gpu::bindResourceHeap(p_cmd, m_renderCtx->getResourceHeap());
+		gpu::bindSamplerHeap(p_cmd, m_renderCtx->getSamplerHeap());
 
-		auto &secondary_cmd{m_secondaryBuffers[m_app->getFrameIndex()][0]};
+		uint32 active_object_count{0u};
+		{
+			ObjectData *mapped_object_data{static_cast<ObjectData *>(gpu::getBufferMappedData(m_objectDataBuffers[m_app->getFrameIndex()]))};
+
+			const auto view{m_scene.getRegistry().view<StaticMeshComponent, GPUTransformComponent>()};
+			view.each([this, &active_object_count, mapped_object_data]([[maybe_unused]] entt::entity p_entity, const StaticMeshComponent &p_smc,
+																	   const GPUTransformComponent & p_gpu_tc) -> void
+			{
+				const render::StaticMesh *mesh{m_meshManager->tryGetStaticMesh(p_smc.mesh)};
+				TST_ASSERT(p_gpu_tc.transformId != UINT32_MAX);
+
+				if (mesh && p_smc.visible && m_meshManager->isStaticMeshReady(p_smc.mesh))
+				{
+					auto &obj_data{mapped_object_data[active_object_count]};
+
+					obj_data.meshId      = p_smc.mesh.getId();
+					obj_data.transformId = p_gpu_tc.transformId;
+					++active_object_count;
+				}
+			});
+
+			gpu::fillBuffer(p_cmd, m_countBuffers[m_app->getFrameIndex()], 0u, sizeof(uint32), 0u); // Reset the count to 0
+
+			struct PushData
+			{
+				uintptr cameraBuffer;
+				uintptr objectDataBuffer;
+				uintptr transformBuffer;
+				uintptr meshMetadataBuffer;
+				uintptr indirectBuffer;
+				uintptr countBuffer;
+
+				uint32 activeObjectCount;
+			};
+
+			PushData push_data{};
+			push_data.cameraBuffer       = gpu::getBufferAddress(m_cameraBuffers[m_app->getFrameIndex()]);
+			push_data.objectDataBuffer   = gpu::getBufferAddress(m_objectDataBuffers[m_app->getFrameIndex()]);
+			push_data.transformBuffer    = gpu::getBufferAddress(m_transformSystem->getTransformBuffer(m_app->getFrameIndex()));
+			push_data.meshMetadataBuffer = m_meshManager->getStaticMeshMetadataBufferAddress();
+			push_data.indirectBuffer     = gpu::getBufferAddress(m_indirectBuffers[m_app->getFrameIndex()]);
+			push_data.countBuffer        = gpu::getBufferAddress(m_countBuffers[m_app->getFrameIndex()]);
+
+			push_data.activeObjectCount = active_object_count;
+
+			gpu::pushData(p_cmd, push_data);
+
+			gpu::bindShaders(p_cmd, m_objectCullingShader);
+
+			gpu::dispatch(p_cmd, (active_object_count + 31u) / 32u, 1u, 1u);
+		}
+
+		std::array<gpu::BufferMemoryBarrier, 2u> buffer_memory_barriers;
+		buffer_memory_barriers[0u].buffer = m_indirectBuffers[m_app->getFrameIndex()];
+		buffer_memory_barriers[0u].size   = sizeof(DrawMeshTasksIndirectCountCommand) * maxDrawCalls;
+
+		buffer_memory_barriers[1u].buffer = m_countBuffers[m_app->getFrameIndex()];
+		buffer_memory_barriers[1u].size   = sizeof(uint32);
+		gpu::pipelineBarrier(p_cmd, buffer_memory_barriers, {});
 
 		gpu::TextureHandle render_tex{m_app->getWindow().getCurrentTexture()};
-		gpu::TextureDesc   render_tex_desc{gpu::getTextureDesc(render_tex)};
 
 		gpu::RenderingInfo rendering_info{};
 		rendering_info.colourAttachments = {
@@ -297,77 +363,30 @@ public:
 		};
 		rendering_info.renderArea = tsm::Rect{m_app->getWindow().getSize()};
 
-		gpu::bindResourceHeap(p_cmd, m_renderCtx->getResourceHeap());
-		gpu::bindSamplerHeap(p_cmd, m_renderCtx->getSamplerHeap());
-
 		gpu::beginRendering(p_cmd, rendering_info);
 
-		gpu::CommandListInheritanceInfo inheritance_info{};
-		inheritance_info.resourceHeap            = m_renderCtx->getResourceHeap();
-		inheritance_info.samplerHeap             = m_renderCtx->getSamplerHeap();
-		inheritance_info.colourAttachmentFormats = {render_tex_desc.format};
-		inheritance_info.depthAttachmentFormat   = gpu::EFormat::eD32Sfloat;
-		inheritance_info.samples                 = msaaSamples;
-		gpu::openCommandList(secondary_cmd, &inheritance_info);
+		gpu::bindShaders(p_cmd, {m_ts, m_ms, m_ps});
 
-		gpu::bindShaders(secondary_cmd, {m_ms, m_ps});
+		gpu::setPrimitiveTopology(p_cmd, gpu::EPrimitiveTopology::eTriangleList);
+		gpu::setPrimitiveRestart(p_cmd, false);
 
-		gpu::setPrimitiveTopology(secondary_cmd, gpu::EPrimitiveTopology::eTriangleList);
-		gpu::setPrimitiveRestart(secondary_cmd, false);
+		gpu::setViewport(p_cmd, tsm::Viewport{rendering_info.renderArea});
+		gpu::setScissor(p_cmd, rendering_info.renderArea);
 
-		gpu::setViewport(secondary_cmd, tsm::Viewport{rendering_info.renderArea});
-		gpu::setScissor(secondary_cmd, rendering_info.renderArea);
+		gpu::setRasterizerDiscardEnable(p_cmd, false);
+		gpu::setPolygonMode(p_cmd, gpu::EPolygonMode::eFill);
+		gpu::setCullMode(p_cmd, gpu::ECullMode::eBack);
+		gpu::setFrontFace(p_cmd, gpu::EFrontFace::eCCW);
+		gpu::setDepthBias(p_cmd, false);
+		gpu::setLineWidth(p_cmd, 1.0f);
 
-		gpu::setRasterizerDiscardEnable(secondary_cmd, false);
-		gpu::setPolygonMode(secondary_cmd, gpu::EPolygonMode::eFill);
-		gpu::setCullMode(secondary_cmd, gpu::ECullMode::eBack);
-		gpu::setFrontFace(secondary_cmd, gpu::EFrontFace::eCCW);
-		gpu::setDepthBias(secondary_cmd, false);
-		gpu::setLineWidth(secondary_cmd, 1.0f);
+		gpu::setRasterizationSamples(p_cmd, msaaSamples);
 
-		gpu::setRasterizationSamples(secondary_cmd, msaaSamples);
+		gpu::setDepthState(p_cmd, true);
+		gpu::setStencilState(p_cmd, false);
 
-		gpu::setDepthState(secondary_cmd, true);
-		gpu::setStencilState(secondary_cmd, false);
-
-		uint32 draw_count{0u};
-
-		gpu::DrawMeshTasksIndirectCommand *mapped_cmd{
-			static_cast<gpu::DrawMeshTasksIndirectCommand *>(gpu::getBufferMappedData(m_indirectBuffers[m_app->getFrameIndex()]))
-		};
-		ObjectData *mapped_object_data{static_cast<ObjectData *>(gpu::getBufferMappedData(m_objectDataBuffers[m_app->getFrameIndex()]))};
-
-		const auto view{m_scene.getRegistry().view<StaticMeshComponent, GPUTransformComponent>()};
-		view.each([this, &draw_count, mapped_cmd, mapped_object_data]([[maybe_unused]] entt::entity p_entity, const StaticMeshComponent &p_smc,
-																	  const GPUTransformComponent & p_gpu_tc) -> void
-		{
-			const render::StaticMesh *mesh{m_meshManager->tryGetStaticMesh(p_smc.mesh)};
-			TST_ASSERT(p_gpu_tc.transformId != UINT32_MAX);
-
-			if (mesh && p_smc.visible && gpu::upload::isStateTrackerReady(mesh->stateTracker))
-			{
-				auto &obj_data{mapped_object_data[draw_count]};
-
-				obj_data.transformId = p_gpu_tc.transformId;
-
-				obj_data.vertexBufferOffset              = mesh->vertexBufferOffset();
-				obj_data.meshletBufferOffset             = mesh->meshletBufferOffset();
-				obj_data.meshletVertexBufferOffset       = mesh->meshletVertexBufferOffset();
-				obj_data.meshletTriangleBufferOffset     = mesh->meshletTriangleBufferOffset();
-				obj_data.materialIndirectionBufferOffset = mesh->materialIndirectionBufferOffset();
-
-				obj_data.vertexBufferPageId              = mesh->vertexBufferAllocation.heapSlot;
-				obj_data.meshletBufferPageId             = mesh->meshletBufferAllocation.heapSlot;
-				obj_data.meshletVertexBufferPageId       = mesh->meshletVertexBufferAllocation.heapSlot;
-				obj_data.meshletTriangleBufferPageId     = mesh->meshletTriangleBufferAllocation.heapSlot;
-				obj_data.materialIndirectionBufferPageId = mesh->materialIndirectionBufferAllocation.heapSlot;
-
-				uint32 task_work_groups_x{static_cast<uint32>(mesh->meshlets.size())};
-				mapped_cmd[draw_count] = {task_work_groups_x, 1u, 1u};
-
-				++draw_count;
-			}
-		});
+		gpu::setColourWriteEnable(p_cmd, {true});
+		gpu::setColourWriteMask(p_cmd, {gpu::EColourComponentFlagBits::eAll});
 
 		struct PushData
 		{
@@ -375,25 +394,27 @@ public:
 			uintptr objectDataBuffer;
 			uintptr materialBuffer;
 			uintptr transformBuffer;
+			uintptr meshMetadataBuffer;
+			uintptr indirectBuffer;
 
 			uint32 samplerId;
 			uint32 _padd[1];
 		};
 		PushData push_data{};
-		push_data.cameraBuffer     = gpu::getBufferAddress(m_cameraBuffers[m_app->getFrameIndex()]);
-		push_data.objectDataBuffer = gpu::getBufferAddress(m_objectDataBuffers[m_app->getFrameIndex()]);
-		push_data.materialBuffer   = m_materialManager->getMaterialBufferAddress(m_app->getFrameIndex());
-		push_data.transformBuffer  = gpu::getBufferAddress(m_transformSystem->getTransformBuffer(m_app->getFrameIndex()));
-		push_data.samplerId        = m_samplerHeapSlot;
+		push_data.cameraBuffer       = gpu::getBufferAddress(m_cameraBuffers[m_app->getFrameIndex()]);
+		push_data.objectDataBuffer   = gpu::getBufferAddress(m_objectDataBuffers[m_app->getFrameIndex()]);
+		push_data.materialBuffer     = m_materialManager->getMaterialBufferAddress(m_app->getFrameIndex());
+		push_data.transformBuffer    = gpu::getBufferAddress(m_transformSystem->getTransformBuffer(m_app->getFrameIndex()));
+		push_data.meshMetadataBuffer = m_meshManager->getStaticMeshMetadataBufferAddress();
+		push_data.indirectBuffer     = gpu::getBufferAddress(m_indirectBuffers[m_app->getFrameIndex()]);
+		push_data.samplerId          = m_samplerHeapSlot;
 
-		gpu::pushData(secondary_cmd, push_data);
-		gpu::bindIndexBuffer(secondary_cmd, nullptr);
+		gpu::pushData(p_cmd, push_data);
+		gpu::bindIndexBuffer(p_cmd, nullptr);
 
-		if (draw_count)
-			gpu::drawMeshTasksIndirect(secondary_cmd, m_indirectBuffers[m_app->getFrameIndex()], 0u, draw_count);
-
-		gpu::closeCommandList(secondary_cmd);
-		gpu::executeCommandLists(p_cmd, secondary_cmd);
+		if (active_object_count > 0u)
+			gpu::drawMeshTasksIndirectCount(p_cmd, m_indirectBuffers[m_app->getFrameIndex()], 0u, m_countBuffers[m_app->getFrameIndex()], 0u, active_object_count,
+											sizeof(DrawMeshTasksIndirectCountCommand));
 
 		gpu::endRendering(p_cmd);
 	}
@@ -468,13 +489,14 @@ private :
 
 	uint32 m_samplerHeapSlot{UINT32_MAX};
 
+	gpu::ShaderHandle m_objectCullingShader{nullptr};
+
+	gpu::ShaderHandle m_ts{nullptr};
 	gpu::ShaderHandle m_ms{nullptr};
 	gpu::ShaderHandle m_ps{nullptr};
 
 	Camera                         m_camera;
 	std::vector<gpu::BufferHandle> m_cameraBuffers;
-
-	std::vector<std::vector<gpu::CommandListHandle> > m_secondaryBuffers;
 
 	UniquePtr<render::MaterialManager> m_materialManager{nullptr};
 	UniquePtr<render::MeshManager>     m_meshManager{nullptr};
@@ -486,6 +508,7 @@ private :
 
 	std::vector<gpu::BufferHandle> m_indirectBuffers;
 	std::vector<gpu::BufferHandle> m_objectDataBuffers;
+	std::vector<gpu::BufferHandle> m_countBuffers;
 
 	scene::Scene m_scene;
 };

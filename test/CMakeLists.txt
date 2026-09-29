@@ -20,6 +20,8 @@ set(SHADER_SOURCES
 		"${SHADER_SRC_DIR}/test.frag"
 		"${SHADER_SRC_DIR}/tst_pbr_static.mesh"
 		"${SHADER_SRC_DIR}/tst_pbr_static.frag"
+		"${SHADER_SRC_DIR}/object_culling.comp"
+		"${SHADER_SRC_DIR}/meshlet_culling.task"
 )
 
 set(GENERATED_HEADERS "")

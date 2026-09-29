@@ -310,6 +310,17 @@ namespace toaster::gpu
 		eAlways
 	};
 
+	enum class EColourComponentFlagBits : uint8
+	{
+		eR   = TST_BIT(0u),
+		eG   = TST_BIT(1u),
+		eB   = TST_BIT(2u),
+		eA   = TST_BIT(3u),
+		eAll = eR | eG | eB | eA
+	};
+
+	TST_SPECIALISE_FLAGS(EColourComponentFlagBits, EColourComponentFlags);
+
 	#pragma endregion
 
 	#pragma region shader
@@ -415,17 +426,20 @@ namespace toaster::gpu
 	auto TST_GPU_API copyBufferToTexture(CommandListHandle p_command_list, BufferHandle p_src_buffer, TextureHandle p_dst_texture, uint64 p_src_offset = 0u,
 										 uint32            p_mip_level = 0u, uint32 p_base_layer = 0u, uint32 p_layer_count = 1u, tsm::uint3 p_extent = {}) -> void;
 
+	auto TST_GPU_API fillBuffer(CommandListHandle p_command_list, BufferHandle p_buffer, uint64 p_dst_offset, uint64 p_size, uint32 p_data) -> void;
+
 	struct TST_GPU_API BufferMemoryBarrier
 	{
-		EQueueType   srcQueueType{0u};
-		EQueueType   dstQueueType{0u};
 		BufferHandle buffer{nullptr};
+
+		// AccessFlags srcAccessMask{0u};
+		// AccessFlags dstAccessMask{0u};
+
+		uint64 size{0u};
 	};
 
 	struct TST_GPU_API TextureMemoryBarrier
 	{
-		EQueueType    srcQueueType{0u};
-		EQueueType    dstQueueType{0u};
 		TextureHandle texture{nullptr};
 	};
 
@@ -473,6 +487,10 @@ namespace toaster::gpu
 								   ECompareOp        p_compare_op                                            = ECompareOp::eLessOrEqual) -> void;
 	auto TST_GPU_API setStencilState(CommandListHandle p_command_list, bool p_test_enable) -> void;
 
+	auto TST_GPU_API setColourWriteEnable(CommandListHandle p_command_list, InitialiserList<const bool32> p_enables) -> void;
+	auto TST_GPU_API setColourWriteMask(CommandListHandle p_command_list, InitialiserList<const EColourComponentFlags> p_masks,
+										uint32            p_first_attachment_index = 0u) -> void;
+
 	struct TST_GPU_API DrawIndirectCommand
 	{
 		uint32 vertexCount{0u};
@@ -509,6 +527,11 @@ namespace toaster::gpu
 	auto TST_GPU_API drawMeshTasks(CommandListHandle p_command_list, uint32 p_group_count_x, uint32 p_group_count_y, uint32 p_group_count_z) -> void;
 	auto TST_GPU_API drawMeshTasksIndirect(CommandListHandle p_command_list, BufferHandle p_buffer, uint64 p_offset, uint32 p_draw_count,
 										   uint32            p_stride = sizeof(DrawMeshTasksIndirectCommand)) -> void;
+	auto TST_GPU_API drawMeshTasksIndirectCount(CommandListHandle p_command_list, BufferHandle p_indirect_buffer, uint64     p_indirect_buffer_offset,
+												BufferHandle      p_count_buffer, uint64       p_count_buffer_offset, uint32 p_max_draw_count,
+												uint32            p_stride = sizeof(DrawMeshTasksIndirectCommand)) -> void;
+
+	auto TST_GPU_API dispatch(CommandListHandle p_command_list, uint32 p_work_groups_x, uint32 p_work_groups_y, uint32 p_work_groups_z) -> void;
 
 	#pragma endregion
 
