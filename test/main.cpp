@@ -268,8 +268,17 @@ public:
 				m_inputCtx->setCursorMode(ECursorMode::eNormal);
 		}
 
+		XMMATRIX camera_view{m_camera.getViewMatrix()};
+		XMMATRIX camera_proj{m_camera.getProjectionMatrix()};
+		XMMATRIX camera_inverse_proj{XMMatrixInverse(nullptr, camera_proj)};
+		XMVECTOR camera_position{m_camera.getPosition()};
+
 		CameraCB camera_cb{};
-		m_camera.populateConstantBuffer(camera_cb);
+		XMStoreFloat4x4(&camera_cb.view, camera_view);
+		XMStoreFloat4x4(&camera_cb.proj, camera_proj);
+		XMStoreFloat4x4(&camera_cb.invProj, camera_inverse_proj);
+		XMStoreFloat4(&camera_cb.position, camera_position);
+
 		gpu::writeBufferData(m_cameraBuffers[m_app->getFrameIndex()], &camera_cb, sizeof(CameraCB));
 	}
 

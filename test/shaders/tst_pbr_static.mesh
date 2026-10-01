@@ -28,7 +28,7 @@ layout (push_constant) uniform PushData
     uint32 _padd[1u];
 } pcs;
 
-layout (local_size_x = 32u, local_size_y = 1u, local_size_z = 1u) in; // 32 is the NVIDIA warp size
+layout (local_size_x = WARP_SIZE, local_size_y = 1u, local_size_z = 1u) in; // 32 is the NVIDIA warp size
 layout (triangles, max_vertices = 64u, max_primitives = 128u) out;
 
 layout (location = 0) out float3 o_Position[];
@@ -39,7 +39,7 @@ layout (location = 3) flat out uint32 o_MaterialIndex[];
 struct TaskPayload
 {
     uint32 objectId;
-    uint32 meshletIds[32u];
+    uint32 meshletIds[WARP_SIZE];
 };
 
 taskPayloadSharedEXT TaskPayload taskPayload;

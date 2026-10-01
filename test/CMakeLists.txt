@@ -16,8 +16,6 @@ set(SHADER_GEN_DIR ${CMAKE_CURRENT_BINARY_DIR}/shader_headers)
 file(MAKE_DIRECTORY ${SHADER_GEN_DIR})
 
 set(SHADER_SOURCES
-		"${SHADER_SRC_DIR}/test.vert"
-		"${SHADER_SRC_DIR}/test.frag"
 		"${SHADER_SRC_DIR}/tst_pbr_static.mesh"
 		"${SHADER_SRC_DIR}/tst_pbr_static.frag"
 		"${SHADER_SRC_DIR}/object_culling.comp"

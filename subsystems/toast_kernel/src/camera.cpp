@@ -59,19 +59,18 @@ namespace toaster
 		_calcProjection();
 	}
 
-	auto Camera::populateConstantBuffer(CameraCB &p_out_cb) const -> void
-	{
-		XMMATRIX view{getViewMatrix()};
-		XMMATRIX proj{getProjectionMatrix()};
-		XMVECTOR position{getPosition()};
-
-		XMStoreFloat4x4(&p_out_cb.view, view);
-		XMStoreFloat4x4(&p_out_cb.proj, proj);
-		XMStoreFloat4(&p_out_cb.position, position);
-	}
-
 	auto Camera::_calcProjection() -> void
 	{
-		XMStoreFloat4x4(&m_projectionMatrix, XMMatrixPerspectiveFovLH(XMConvertToRadians(m_fov), m_aspect, m_zNear, m_zFar));
+		float32 cot_half_fov{1.0f / std::tanf(XMConvertToRadians(m_fov) / 2.0f)};
+
+		XMMATRIX proj{XMMatrixSet(
+			cot_half_fov / m_aspect, 0.0f,		 0.0f,									  0.0f,
+			0.0f,					   cot_half_fov, 0.0f,									  0.0f,
+			0.0f,					   0.0f,		 (m_zNear + m_zFar) / (m_zFar - m_zNear), (-2.0f * m_zNear * m_zFar) / (m_zFar - m_zNear),
+			0.0f,					   0.0f,		 1.0f,									  0.0f
+			)
+		};
+
+		XMStoreFloat4x4(&m_projectionMatrix, XMMatrixTranspose(proj));
 	}
 }

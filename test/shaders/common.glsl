@@ -94,7 +94,10 @@ layout (buffer_reference, std140) readonly buffer CameraBuffer
 {
     float4x4 view;
     float4x4 proj;
+    float4x4 invProj;
+
     float4 position;
+    float4 frustumPlanes[6u];
 };
 
 struct ObjectData
@@ -117,6 +120,6 @@ struct Material
     uint32 _padd;
     uint32 albedoMapHeapSlot;
     uint32 normalMapHeapSlot;
-    uint32 _padd2[2];
+    uint32 _padd2[2u];
 };
 layout (buffer_reference, scalar) readonly buffer MaterialBuffer { Material materials[]; };

@@ -46,8 +46,8 @@ void main()
         uint32 command_index = atomicAdd(pcs.countBuffer.count, 1u);
 
         MeshMetadata metadata = pcs.meshMetadataBuffer.metadata[obj_data.meshId];
-
-        pcs.indirectBuffer.commands[command_index].workGroupsX = (metadata.meshletCount + 31u) / 32u;
+        
+        pcs.indirectBuffer.commands[command_index].workGroupsX = (metadata.meshletCount + WARP_SIZE - 1u) / WARP_SIZE;
         pcs.indirectBuffer.commands[command_index].workGroupsY = 1u;
         pcs.indirectBuffer.commands[command_index].workGroupsZ = 1u;
         pcs.indirectBuffer.commands[command_index].objectId = global_id;

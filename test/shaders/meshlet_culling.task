@@ -31,12 +31,12 @@ layout (push_constant) uniform PushData
 struct TaskPayload
 {
     uint32 objectId;
-    uint32 meshletIds[32u];
+    uint32 meshletIds[WARP_SIZE];
 };
 
 taskPayloadSharedEXT TaskPayload payload;
 
-layout (local_size_x = 32u) in; // NOTE to self, remember to specify this
+layout (local_size_x = WARP_SIZE) in; // NOTE to self, remember to specify this
 
 shared uint32 survivingMeshletCount;
 

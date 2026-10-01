@@ -15,7 +15,10 @@ namespace toaster
 	{
 		XMFLOAT4X4 view;
 		XMFLOAT4X4 proj;
-		XMFLOAT4   position;
+		XMFLOAT4X4 invProj;
+
+		XMFLOAT4 position;
+		XMFLOAT4 frustumPlanes[6u];
 	};
 
 	class TST_KERNEL_API Camera
@@ -41,8 +44,6 @@ namespace toaster
 		auto XM_CALLCONV getCameraUp() const -> XMVECTOR { return XMVector3Transform(unitUpDir, getRotationMatrix()); }
 
 		auto XM_CALLCONV getPosition() const -> XMVECTOR { return XMLoadFloat3(&m_position); }
-
-		auto populateConstantBuffer(CameraCB &p_out_cb) const -> void;
 
 	private:
 		auto _calcProjection() -> void;
