@@ -76,12 +76,14 @@ namespace toaster::render
 
 	auto MeshManager::uploadStaticMeshData(StaticMeshHandle p_handle, const std::vector<StaticMeshVertex> &p_vertices, const std::vector<Meshlet> &p_meshlets,
 										   const std::vector<uint32> &p_meshlet_vertices, const std::vector<uint8> &p_meshlet_triangles,
-										   const std::vector<MaterialHandle> &p_materials) -> void
+										   const std::vector<MaterialHandle> &p_materials, XMVECTOR p_bounding_sphere) -> void
 	{
 		StaticMesh &static_mesh{m_staticMeshes[p_handle]};
 
 		static_mesh.meshlets  = p_meshlets;
 		static_mesh.materials = p_materials;
+
+		XMStoreFloat4(&static_mesh.boundingSphere, p_bounding_sphere);
 
 		const uint64 vertex_buffer_size{p_vertices.size() * sizeof(StaticMeshVertex)};
 		const uint64 meshlet_buffer_size{p_meshlets.size() * sizeof(Meshlet)};
@@ -90,7 +92,7 @@ namespace toaster::render
 		const uint64 material_indirection_buffer_buffer_size{p_materials.size() * sizeof(uint32)};
 
 		{
-			std::scoped_lock<std::mutex> lock{m_pageMutex};
+			TST_SCP_LOCK(m_pageMutex);
 
 			m_vertexPager->allocateAcrossPages(vertex_buffer_size, alignof(StaticMeshVertex), static_mesh.vertexBufferAllocation);
 			m_meshletPager->allocateAcrossPages(meshlet_buffer_size, alignof(Meshlet), static_mesh.meshletBufferAllocation);
@@ -167,6 +169,8 @@ namespace toaster::render
 
 		StaticMeshMetadata metadata{};
 
+		XMStoreFloat4(&metadata.boundingSphere, p_bounding_sphere);
+
 		metadata.meshletCount = static_cast<uint32>(p_meshlets.size());
 
 		metadata.vertexBufferOffset              = static_cast<uint32>(static_mesh.vertexBufferOffset());
@@ -189,10 +193,10 @@ namespace toaster::render
 
 	auto MeshManager::createStaticMesh(const std::vector<StaticMeshVertex> &p_vertices, const std::vector<Meshlet> &      p_meshlets,
 									   const std::vector<uint32> &          p_meshlet_vertices, const std::vector<uint8> &p_meshlet_triangles,
-									   const std::vector<MaterialHandle> &  p_materials) -> StaticMeshHandle
+									   const std::vector<MaterialHandle> &  p_materials, XMVECTOR                         p_bounding_sphere) -> StaticMeshHandle
 	{
 		const StaticMeshHandle out_handle{registerStaticMesh()};
-		uploadStaticMeshData(out_handle, p_vertices, p_meshlets, p_meshlet_vertices, p_meshlet_triangles, p_materials);
+		uploadStaticMeshData(out_handle, p_vertices, p_meshlets, p_meshlet_vertices, p_meshlet_triangles, p_materials, p_bounding_sphere);
 		return out_handle;
 	}
 

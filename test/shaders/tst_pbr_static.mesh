@@ -85,9 +85,9 @@ void main()
         uint32 triangle_index = uint32(metadata.meshletTriangleBufferOffset) + uint32(meshlet.triangleOffset) + triangle_id * 3u;
 
         gl_PrimitiveTriangleIndicesEXT[triangle_id] = uint3(
-        meshletTrianglePages[metadata.meshletTriangleBufferPageId].indices[triangle_index + 0u],
-        meshletTrianglePages[metadata.meshletTriangleBufferPageId].indices[triangle_index + 1u],
-        meshletTrianglePages[metadata.meshletTriangleBufferPageId].indices[triangle_index + 2u]
+            meshletTrianglePages[metadata.meshletTriangleBufferPageId].indices[triangle_index + 0u],
+            meshletTrianglePages[metadata.meshletTriangleBufferPageId].indices[triangle_index + 1u],
+            meshletTrianglePages[metadata.meshletTriangleBufferPageId].indices[triangle_index + 2u]
         );
     }
 }

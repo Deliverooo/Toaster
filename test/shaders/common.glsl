@@ -73,6 +73,8 @@ layout (descriptor_heap, scalar) readonly buffer MaterialIndirectionBuffer { uin
 
 struct MeshMetadata
 {
+    float4 boundingSphere;
+
     uint32 meshletCount;
 
     uint32 vertexBufferOffset;

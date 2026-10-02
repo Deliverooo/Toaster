@@ -59,17 +59,34 @@ namespace toaster
 		_calcProjection();
 	}
 
+	auto Camera::getFrustumPlanes() const -> std::array<XMVECTOR, 6u>
+	{
+		XMMATRIX clip_matrix{XMMatrixTranspose(getViewMatrix() * getProjectionMatrix())};
+
+		XMVECTOR left{clip_matrix.r[3u] + clip_matrix.r[0u]};
+		XMVECTOR right{clip_matrix.r[3u] - clip_matrix.r[0u]};
+		XMVECTOR bottom{clip_matrix.r[3u] + clip_matrix.r[1u]};
+		XMVECTOR top{clip_matrix.r[3u] - clip_matrix.r[1u]};
+		XMVECTOR near{clip_matrix.r[2u]};
+		XMVECTOR far{clip_matrix.r[3u] - clip_matrix.r[2u]};
+
+		std::array simd_planes{left, right, bottom, top, near, far};
+
+		for (uint32 i{0u}; i < 6u; ++i)
+			simd_planes[i] = XMPlaneNormalize(simd_planes[i]);
+
+		return simd_planes;
+	}
+
 	auto Camera::_calcProjection() -> void
 	{
 		float32 cot_half_fov{1.0f / std::tanf(XMConvertToRadians(m_fov) / 2.0f)};
-
-		XMMATRIX proj{XMMatrixSet(
-			cot_half_fov / m_aspect, 0.0f,		 0.0f,									  0.0f,
-			0.0f,					   cot_half_fov, 0.0f,									  0.0f,
-			0.0f,					   0.0f,		 (m_zNear + m_zFar) / (m_zFar - m_zNear), (-2.0f * m_zNear * m_zFar) / (m_zFar - m_zNear),
-			0.0f,					   0.0f,		 1.0f,									  0.0f
-			)
+		XMMATRIX proj{
+		XMMatrixSet(cot_half_fov / m_aspect, 0.0f, 0.0f, 0.0f, 0.0f, cot_half_fov, 0.0f, 0.0f, 0.0f, 0.0f, (m_zNear + m_zFar) / (m_zFar - m_zNear),
+		(-2.0f * m_zNear * m_zFar) / (m_zFar - m_zNear), 0.0f, 0.0f, 1.0f, 0.0f)
 		};
+
+		// XMMATRIX proj{XMMatrixPerspectiveFovLH(XMConvertToRadians(m_fov), m_aspect, m_zNear, m_zFar)};
 
 		XMStoreFloat4x4(&m_projectionMatrix, XMMatrixTranspose(proj));
 	}

@@ -45,6 +45,8 @@ namespace toaster
 
 		auto XM_CALLCONV getPosition() const -> XMVECTOR { return XMLoadFloat3(&m_position); }
 
+		[[nodiscard]] auto XM_CALLCONV getFrustumPlanes() const -> std::array<XMVECTOR, 6u>;
+
 	private:
 		auto _calcProjection() -> void;
 

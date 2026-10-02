@@ -24,11 +24,13 @@ namespace toaster::render
 		uint32 vertexCount{0u};
 		uint32 triangleCount{0u};
 
-		tsm::float4 boundingSphere{0.0f};
+		XMFLOAT4 boundingSphere{0.0f, 0.0f, 0.0f, 1.0f};
 	};
 
 	struct TST_RENDER_API StaticMeshMetadata
 	{
+		XMFLOAT4 boundingSphere{0.0f, 0.0f, 0.0f, 1.0f};
+
 		uint32 meshletCount{0u}; // Used for populating the indirect dispatch command in compute culling shaders
 
 		uint32 vertexBufferOffset{0u};
@@ -57,6 +59,8 @@ namespace toaster::render
 
 		gpu::upload::StateTrackerHandle stateTracker{nullptr};
 
+		XMFLOAT4 boundingSphere{0.0f, 0.0f, 0.0f, 1.0f};
+
 		[[nodiscard]] auto vertexBufferOffset() const -> uint64 { return vertexBufferAllocation.offset / sizeof(StaticMeshVertex); }
 		[[nodiscard]] auto meshletBufferOffset() const -> uint64 { return meshletBufferAllocation.offset / sizeof(Meshlet); }
 		[[nodiscard]] auto meshletVertexBufferOffset() const -> uint64 { return meshletVertexBufferAllocation.offset / sizeof(uint32); }
@@ -74,13 +78,13 @@ namespace toaster::render
 
 		// Register so you can upload the gpu data once it is loaded from disk
 		[[nodiscard]] auto registerStaticMesh() -> StaticMeshHandle;
-		auto               uploadStaticMeshData(StaticMeshHandle     p_handle, const std::vector<StaticMeshVertex> &p_vertices, const std::vector<Meshlet> &p_meshlets,
-												const std::vector<uint32> &        p_meshlet_vertices, const std::vector<uint8> & p_meshlet_triangles,
-												const std::vector<MaterialHandle> &p_materials) -> void;
+		auto XM_CALLCONV   uploadStaticMeshData(StaticMeshHandle p_handle, const std::vector<StaticMeshVertex> &p_vertices, const std::vector<Meshlet> &p_meshlets,
+												const std::vector<uint32> &p_meshlet_vertices, const std::vector<uint8> &p_meshlet_triangles,
+												const std::vector<MaterialHandle> &p_materials, XMVECTOR p_bounding_sphere) -> void;
 
-		[[nodiscard]] auto createStaticMesh(const std::vector<StaticMeshVertex> &p_vertices, const std::vector<Meshlet> &      p_meshlets,
-											const std::vector<uint32> &          p_meshlet_vertices, const std::vector<uint8> &p_meshlet_triangles,
-											const std::vector<MaterialHandle> &  p_materials) -> StaticMeshHandle;
+		[[nodiscard]] auto XM_CALLCONV createStaticMesh(const std::vector<StaticMeshVertex> &p_vertices, const std::vector<Meshlet> &p_meshlets,
+														const std::vector<uint32> &          p_meshlet_vertices, const std::vector<uint8> &p_meshlet_triangles,
+														const std::vector<MaterialHandle> &  p_materials, XMVECTOR p_bounding_sphere) -> StaticMeshHandle;
 		auto destroyStaticMesh(StaticMeshHandle p_handle) -> void;
 
 		auto isStaticMeshReady(StaticMeshHandle p_handle) -> bool;

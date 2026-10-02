@@ -15,6 +15,8 @@ namespace toaster::asset
 		std::vector<uint32>                   meshletVertices;
 		std::vector<uint8>                    meshletTriangles;
 		std::vector<render::MaterialHandle>   materials;
+
+		XMFLOAT4 boundingSphere;
 	};
 
 	class TST_ASSET_API MeshImporter

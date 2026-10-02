@@ -40,6 +40,18 @@ layout (local_size_x = WARP_SIZE) in; // NOTE to self, remember to specify this
 
 shared uint32 survivingMeshletCount;
 
+bool isVisible(float3 p_center, float p_radius)
+{
+    for (uint32 i = 0u; i < 6u; ++i)
+    {
+        if (dot(pcs.camera.frustumPlanes[i].xyz, p_center) + pcs.camera.frustumPlanes[i].w < -p_radius)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
 void main()
 {
     uint32 local_id = gl_LocalInvocationID.x;
@@ -63,7 +75,14 @@ void main()
 
     if (meshlet_index < metadata.meshletCount)
     {
-        // Actually cull... TODO
+        Meshlet meshlet = meshletPages[metadata.meshletBufferPageId].meshlets[metadata.meshletBufferOffset + meshlet_index];
+
+        float4x4 model = pcs.transformBuffer.data[obj_data.transformId];
+        float3 center = (model * float4(meshlet.boundingSphere.xyz, 1.0f)).xyz;
+        float max_scale = max(length(model[0u].xyz), max(length(model[1u].xyz), length(model[2u].xyz)));
+        float radius = meshlet.boundingSphere.w * max_scale;
+
+        visible = isVisible(center, radius);
     }
     else
     {

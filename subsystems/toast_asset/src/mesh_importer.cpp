@@ -46,6 +46,9 @@ namespace toaster::asset
 		// Used because it is more efficient to group mesh data by material
 		std::unordered_map<uint32, RawSubmeshData> raw_submesh_data; // Maps from material index to raw data
 
+		XMFLOAT3 min_bounds{FLT_MAX, FLT_MAX, FLT_MAX};
+		XMFLOAT3 max_bounds{FLT_MIN, FLT_MIN, FLT_MIN};
+
 		for (uint32 m{0u}; m < scene->mNumMeshes; ++m)
 		{
 			const aiMesh *mesh{scene->mMeshes[m]};
@@ -60,7 +63,11 @@ namespace toaster::asset
 				render::StaticMeshVertex &vertex{data.vertices[base_vertex_offset + v]};
 
 				vertex.position = {mesh->mVertices[v].x, mesh->mVertices[v].y, mesh->mVertices[v].z};
-				vertex.normal   = {mesh->mNormals[v].x, mesh->mNormals[v].y, mesh->mNormals[v].z};
+
+				min_bounds = {std::min(min_bounds.x, vertex.position.x), std::min(min_bounds.y, vertex.position.y), std::min(min_bounds.z, vertex.position.z)};
+				max_bounds = {std::max(max_bounds.x, vertex.position.x), std::max(max_bounds.y, vertex.position.y), std::max(max_bounds.z, vertex.position.z)};
+
+				vertex.normal = {mesh->mNormals[v].x, mesh->mNormals[v].y, mesh->mNormals[v].z};
 
 				if (mesh->HasTextureCoords(0))
 					vertex.texCoord = {mesh->mTextureCoords[0][v].x, mesh->mTextureCoords[0][v].y};
@@ -85,6 +92,18 @@ namespace toaster::asset
 				}
 			}
 		}
+
+		out_data.boundingSphere.x = (min_bounds.x + max_bounds.x) / 2.0f;
+		out_data.boundingSphere.y = (min_bounds.y + max_bounds.y) / 2.0f;
+		out_data.boundingSphere.z = (min_bounds.z + max_bounds.z) / 2.0f;
+
+		float32 dx{max_bounds.x - out_data.boundingSphere.x};
+		float32 dy{max_bounds.y - out_data.boundingSphere.y};
+		float32 dz{max_bounds.z - out_data.boundingSphere.z};
+
+		out_data.boundingSphere.w = std::sqrtf(dx * dx + dy * dy + dz * dz);
+
+		std::println("{}", out_data.boundingSphere.w);
 
 		static constexpr uint64  maxVertices{64u};
 		static constexpr uint64  maxTriangles{128u};
@@ -250,7 +269,7 @@ namespace toaster::asset
 	{
 		const auto cpu_mesh_data{importStaticMeshDataFromFile(p_path)};
 		m_meshManager->uploadStaticMeshData(p_dst_mesh, cpu_mesh_data.vertices, cpu_mesh_data.meshlets, cpu_mesh_data.meshletVertices, cpu_mesh_data.meshletTriangles,
-											cpu_mesh_data.materials);
+											cpu_mesh_data.materials, XMLoadFloat4(&cpu_mesh_data.boundingSphere));
 	}
 
 	auto MeshImporter::asyncLoadStaticMeshFromFile(render::StaticMeshHandle p_dst_mesh, const std::filesystem::path &p_path) -> void
@@ -263,7 +282,7 @@ namespace toaster::asset
 				return;
 
 			m_meshManager->uploadStaticMeshData(p_dst_mesh, cpu_mesh_data.vertices, cpu_mesh_data.meshlets, cpu_mesh_data.meshletVertices, cpu_mesh_data.meshletTriangles,
-												cpu_mesh_data.materials);
+												cpu_mesh_data.materials, XMLoadFloat4(&cpu_mesh_data.boundingSphere));
 		});
 	}
 

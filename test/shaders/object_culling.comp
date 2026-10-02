@@ -30,6 +30,18 @@ layout (push_constant) uniform PushData
 
 layout (local_size_x = 32u) in;
 
+bool isVisible(float3 p_center, float p_radius)
+{
+    for (uint32 i = 0u; i < 6u; ++i)
+    {
+        if (dot(pcs.cameraBuffer.frustumPlanes[i].xyz, p_center) + pcs.cameraBuffer.frustumPlanes[i].w < -p_radius)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
 void main()
 {
     uint32 global_id = gl_GlobalInvocationID.x;
@@ -40,13 +52,17 @@ void main()
     }
 
     ObjectData obj_data = pcs.objectDataBuffer.data[global_id];
+    MeshMetadata metadata = pcs.meshMetadataBuffer.metadata[obj_data.meshId];
 
-    if (true) // TODO
+    float4x4 model = pcs.transformBuffer.data[obj_data.transformId];
+    float3 center = (model * float4(metadata.boundingSphere.xyz, 1.0f)).xyz;
+    float max_scale = max(length(model[0u].xyz), max(length(model[1u].xyz), length(model[2u].xyz)));
+    float radius = metadata.boundingSphere.w * max_scale;
+
+    if (isVisible(center, radius))
     {
         uint32 command_index = atomicAdd(pcs.countBuffer.count, 1u);
 
-        MeshMetadata metadata = pcs.meshMetadataBuffer.metadata[obj_data.meshId];
-        
         pcs.indirectBuffer.commands[command_index].workGroupsX = (metadata.meshletCount + WARP_SIZE - 1u) / WARP_SIZE;
         pcs.indirectBuffer.commands[command_index].workGroupsY = 1u;
         pcs.indirectBuffer.commands[command_index].workGroupsZ = 1u;

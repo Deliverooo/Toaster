@@ -104,8 +104,8 @@ public:
 		}
 		{
 			render::StaticMeshHandle level_mesh{m_meshManager->registerStaticMesh()};
-			// m_meshImporter->asyncLoadStaticMeshFromFile(level_mesh, R"(C:\Users\Oliver\Downloads\main_sponza\main_sponza\NewSponza_Main_glTF_003.gltf)");
-			m_meshImporter->asyncLoadStaticMeshFromFile(level_mesh, "resources/meshes/Backrooms.fbx");
+			m_meshImporter->asyncLoadStaticMeshFromFile(level_mesh, R"(C:\Users\Oliver\Downloads\main_sponza\main_sponza\NewSponza_Main_glTF_003.gltf)");
+			// m_meshImporter->asyncLoadStaticMeshFromFile(level_mesh, "resources/meshes/Backrooms.fbx");
 
 			m_levelEntity = m_scene.createEntity();
 			m_scene.addComponent<StaticMeshComponent>(m_levelEntity, level_mesh);
@@ -279,7 +279,26 @@ public:
 		XMStoreFloat4x4(&camera_cb.invProj, camera_inverse_proj);
 		XMStoreFloat4(&camera_cb.position, camera_position);
 
+		const auto planes{m_camera.getFrustumPlanes()};
+		for (uint32 i{0u}; i < 6u; ++i)
+			XMStoreFloat4(&camera_cb.frustumPlanes[i], planes[i]);
+
 		gpu::writeBufferData(m_cameraBuffers[m_app->getFrameIndex()], &camera_cb, sizeof(CameraCB));
+
+		auto &   tc{m_scene.getRegistry().get<TransformComponent>(m_orboEntity)};
+		XMVECTOR orbo_translation{tc.getTranslation()};
+
+		if (m_inputCtx->isKeyDown(EKeyCode::eUp))
+			orbo_translation += XMVectorSet(1.0f * p_dt, 0.0f, 0.0f, 0.0f);
+		if (m_inputCtx->isKeyDown(EKeyCode::eDown))
+			orbo_translation -= XMVectorSet(1.0f * p_dt, 0.0f, 0.0f, 0.0f);
+		if (m_inputCtx->isKeyDown(EKeyCode::eLeft))
+			orbo_translation += XMVectorSet(0.0f, 0.0f, 1.0f * p_dt, 0.0f);
+		if (m_inputCtx->isKeyDown(EKeyCode::eRight))
+			orbo_translation -= XMVectorSet(0.0f, 0.0f, 1.0f * p_dt, 0.0f);
+
+		tc.setTranslation(orbo_translation);
+		m_transformSystem->updateTransform(m_scene.getRegistry().get<GPUTransformComponent>(m_orboEntity).transformId, m_app->getFrameIndex(), tc.getTransform());
 	}
 
 	auto onRender(gpu::CommandListHandle p_cmd) -> void override
