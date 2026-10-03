@@ -9,7 +9,6 @@ namespace toaster::gpu::upload
 {
 	struct TST_GPU_API UploadContextDesc
 	{
-		// TODO: Replace maybe with a multi-paged allocator, with per-allocation tracking. IYKYK
 		uint64 maxStagingSize{1024u * 1024u * 500u}; // 500 Mib
 
 		uint32 maxAllocationCommandLists{2u}; // Basically frames in flight, but for the transfer queue
@@ -26,12 +25,11 @@ namespace toaster::gpu::upload
 
 	using StateTrackerReadyFn = std::function<void()>; // Std function is okay to use because it will only be invoked once
 
-	auto TST_GPU_API createStateTracker(uint32 p_expected_subresources) -> StateTrackerHandle;
+	// State trackers are automatically destroyed upon completion...
+	auto TST_GPU_API registerStateTracker(uint32 p_expected_subresources) -> StateTrackerHandle;
 
 	// Invokes when the state tracker has finished processing all the associated subresources
 	auto TST_GPU_API registerStateTrackerReadyCallback(StateTrackerHandle p_state_tracker, StateTrackerReadyFn p_ready_callback) -> void;
-	auto TST_GPU_API destroyStateTracker(StateTrackerHandle p_state_tracker) -> void;
-	auto TST_GPU_API resetStateTracker(StateTrackerHandle p_state_tracker, uint32 p_pending_subresources) -> void;
 	auto TST_GPU_API isStateTrackerReady(StateTrackerHandle p_state_tracker) -> bool;
 
 	#pragma endregion

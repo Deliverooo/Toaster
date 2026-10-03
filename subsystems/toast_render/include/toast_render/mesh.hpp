@@ -87,7 +87,7 @@ namespace toaster::render
 														const std::vector<MaterialHandle> &  p_materials, XMVECTOR p_bounding_sphere) -> StaticMeshHandle;
 		auto destroyStaticMesh(StaticMeshHandle p_handle) -> void;
 
-		auto isStaticMeshReady(StaticMeshHandle p_handle) -> bool;
+		auto isStaticMeshReady(StaticMeshHandle p_handle) const -> bool;
 
 		[[nodiscard]] auto getStaticMesh(StaticMeshHandle p_handle) -> StaticMesh & { return m_staticMeshes[p_handle]; }
 		[[nodiscard]] auto getStaticMesh(StaticMeshHandle p_handle) const -> const StaticMesh & { return m_staticMeshes[p_handle]; }

@@ -24,42 +24,6 @@ using namespace toaster;
 #include <tst_pbr_static.mesh.h>
 #include <tst_pbr_static.frag.h>
 
-struct StaticMeshComponent
-{
-	render::StaticMeshHandle mesh{nullptr};
-	bool                     visible{true};
-};
-
-struct TransformComponent
-{
-	XMFLOAT3 translation{0.0f, 0.0f, 0.0f};
-	XMFLOAT4 orientation{g_XMIdentityR3.f};
-	XMFLOAT3 scale{1.0f, 1.0f, 1.0f};
-
-	[[nodiscard]] auto XM_CALLCONV getTransform() const -> XMMATRIX
-	{
-		XMVECTOR simd_translation{XMLoadFloat3(&translation)};
-		XMVECTOR simd_orientation{XMLoadFloat4(&orientation)};
-		XMVECTOR simd_scale{XMLoadFloat3(&scale)};
-
-		XMMATRIX transformation{XMMatrixTransformation(XMVectorZero(), XMVectorZero(), simd_scale, XMVectorZero(), simd_orientation, simd_translation)};
-		return transformation;
-	}
-
-	[[nodiscard]] auto XM_CALLCONV getTranslation() const -> XMVECTOR { return XMLoadFloat3(&translation); }
-	[[nodiscard]] auto XM_CALLCONV getOrientation() const -> XMVECTOR { return XMLoadFloat4(&orientation); }
-	[[nodiscard]] auto XM_CALLCONV getScale() const -> XMVECTOR { return XMLoadFloat3(&scale); }
-
-	auto XM_CALLCONV setTranslation(FXMVECTOR p_translation) -> void { XMStoreFloat3(&translation, p_translation); }
-	auto XM_CALLCONV setOrientation(FXMVECTOR p_orientation) -> void { XMStoreFloat4(&orientation, p_orientation); }
-	auto XM_CALLCONV setScale(FXMVECTOR p_scale) -> void { XMStoreFloat3(&scale, p_scale); }
-};
-
-struct GPUTransformComponent
-{
-	uint32 transformId{UINT32_MAX};
-};
-
 class TestLayer : public IAppLayer
 {
 public:
@@ -90,26 +54,25 @@ public:
 
 		std::filesystem::current_path("../test");
 
-		m_textureImporter = makeUnique<asset::TextureImporter>(m_textureManager.get());
-		m_meshImporter    = makeUnique<asset::MeshImporter>(m_meshManager.get(), m_materialManager.get(), m_textureImporter.get());
+		m_meshImporter = makeUnique<asset::MeshImporter>(m_meshManager.get(), m_materialManager.get(), m_textureManager.get());
 
 		{
 			render::StaticMeshHandle orbo_mesh{m_meshManager->registerStaticMesh()};
-			m_meshImporter->asyncLoadStaticMeshFromFile(orbo_mesh, "resources/meshes/Orbo_Geo.gltf");
+			m_meshImporter->asyncLoadStaticMeshFromFile(orbo_mesh, "resources/meshes/Orbo_Geo.gltf", m_executor);
 
 			m_orboEntity = m_scene.createEntity();
-			m_scene.addComponent<StaticMeshComponent>(m_orboEntity, orbo_mesh);
-			m_scene.addComponent<GPUTransformComponent>(m_orboEntity, m_transformSystem->createTransform());
-			m_scene.addComponent<TransformComponent>(m_orboEntity);
+			m_scene.addComponent<scene::StaticMeshComponent>(m_orboEntity, orbo_mesh);
+			m_scene.addComponent<scene::GPUTransformComponent>(m_orboEntity, m_transformSystem->createTransform());
+			m_scene.addComponent<scene::TransformComponent>(m_orboEntity);
 		}
 		{
 			render::StaticMeshHandle level_mesh{m_meshManager->registerStaticMesh()};
-			m_meshImporter->asyncLoadStaticMeshFromFile(level_mesh, R"(C:\Users\Oliver\Downloads\main_sponza\main_sponza\NewSponza_Main_glTF_003.gltf)");
-			// m_meshImporter->asyncLoadStaticMeshFromFile(level_mesh, "resources/meshes/Backrooms.fbx");
+			// m_meshImporter->asyncLoadStaticMeshFromFile(level_mesh, R"(C:\Users\Oliver\Downloads\main_sponza\main_sponza\NewSponza_Main_glTF_003.gltf)", m_executor);
+			m_meshImporter->asyncLoadStaticMeshFromFile(level_mesh, "resources/meshes/Backrooms.fbx", m_executor);
 
 			m_levelEntity = m_scene.createEntity();
-			m_scene.addComponent<StaticMeshComponent>(m_levelEntity, level_mesh);
-			m_scene.addComponent<GPUTransformComponent>(m_levelEntity, m_transformSystem->createTransform());
+			m_scene.addComponent<scene::StaticMeshComponent>(m_levelEntity, level_mesh);
+			m_scene.addComponent<scene::GPUTransformComponent>(m_levelEntity, m_transformSystem->createTransform());
 		}
 
 		gpu::SamplerDesc sampler_desc{};
@@ -225,6 +188,8 @@ public:
 
 	auto onDestroy() -> void override
 	{
+		m_executor.wait_for_all();
+
 		gpu::destroyTexture(m_depthAttachment);
 		gpu::destroyTexture(m_msaaDepthAttachment);
 		gpu::destroyTexture(m_msaaColourAttachment);
@@ -247,7 +212,6 @@ public:
 		m_meshImporter.reset();
 		m_meshManager.reset();
 		m_materialManager.reset();
-		m_textureImporter.reset();
 		m_textureManager.reset();
 	}
 
@@ -285,7 +249,7 @@ public:
 
 		gpu::writeBufferData(m_cameraBuffers[m_app->getFrameIndex()], &camera_cb, sizeof(CameraCB));
 
-		auto &   tc{m_scene.getRegistry().get<TransformComponent>(m_orboEntity)};
+		auto &   tc{m_scene.getRegistry().get<scene::TransformComponent>(m_orboEntity)};
 		XMVECTOR orbo_translation{tc.getTranslation()};
 
 		if (m_inputCtx->isKeyDown(EKeyCode::eUp))
@@ -298,7 +262,7 @@ public:
 			orbo_translation -= XMVectorSet(0.0f, 0.0f, 1.0f * p_dt, 0.0f);
 
 		tc.setTranslation(orbo_translation);
-		m_transformSystem->updateTransform(m_scene.getRegistry().get<GPUTransformComponent>(m_orboEntity).transformId, m_app->getFrameIndex(), tc.getTransform());
+		m_transformSystem->updateTransform(m_scene.getRegistry().get<scene::GPUTransformComponent>(m_orboEntity).transformId, m_app->getFrameIndex(), tc.getTransform());
 	}
 
 	auto onRender(gpu::CommandListHandle p_cmd) -> void override
@@ -314,9 +278,9 @@ public:
 		{
 			ObjectData *mapped_object_data{static_cast<ObjectData *>(gpu::getBufferMappedData(m_objectDataBuffers[m_app->getFrameIndex()]))};
 
-			const auto view{m_scene.getRegistry().view<StaticMeshComponent, GPUTransformComponent>()};
-			view.each([this, &active_object_count, mapped_object_data]([[maybe_unused]] entt::entity p_entity, const StaticMeshComponent &p_smc,
-																	   const GPUTransformComponent & p_gpu_tc) -> void
+			const auto view{m_scene.getRegistry().view<scene::StaticMeshComponent, scene::GPUTransformComponent>()};
+			view.each([this, &active_object_count, mapped_object_data]([[maybe_unused]] entt::entity       p_entity, const scene::StaticMeshComponent &p_smc,
+																	   const scene::GPUTransformComponent &p_gpu_tc) -> void
 			{
 				const render::StaticMesh *mesh{m_meshManager->tryGetStaticMesh(p_smc.mesh)};
 				TST_ASSERT(p_gpu_tc.transformId != UINT32_MAX);
@@ -528,17 +492,18 @@ private :
 
 	UniquePtr<render::MaterialManager> m_materialManager{nullptr};
 	UniquePtr<render::MeshManager>     m_meshManager{nullptr};
-	UniquePtr<asset::MeshImporter>     m_meshImporter{nullptr};;
+	UniquePtr<asset::MeshImporter>     m_meshImporter{nullptr};
 
 	UniquePtr<rd::TransformSystem>    m_transformSystem{nullptr};
 	UniquePtr<render::TextureManager> m_textureManager{nullptr};
-	UniquePtr<asset::TextureImporter> m_textureImporter{nullptr};
 
 	std::vector<gpu::BufferHandle> m_indirectBuffers;
 	std::vector<gpu::BufferHandle> m_objectDataBuffers;
 	std::vector<gpu::BufferHandle> m_countBuffers;
 
 	scene::Scene m_scene;
+
+	tf::Executor m_executor{};
 };
 
 TST_WINMAIN()

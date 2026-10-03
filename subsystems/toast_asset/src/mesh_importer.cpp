@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <meshoptimizer.h>
 
+#include "stb/stb_image.h"
 #include "toast_gpu/upload.hpp"
 
 static constexpr uint32 s_MeshImportFlags{
@@ -17,26 +18,19 @@ static constexpr uint32 s_MeshImportFlags{
 
 namespace toaster::asset
 {
-	MeshImporter::MeshImporter(render::MeshManager *p_mesh_manager, render::MaterialManager *p_material_manager,
-							   TextureImporter *    p_texture_importer) : m_textureImporter(p_texture_importer), m_meshManager(p_mesh_manager),
-																		  m_materialManager(p_material_manager), m_textureManager(p_texture_importer->getTextureManager())
+	MeshImporter::MeshImporter(render::MeshManager *   p_mesh_manager, render::MaterialManager *p_material_manager,
+							   render::TextureManager *p_texture_manager) : m_meshManager(p_mesh_manager), m_materialManager(p_material_manager),
+																			m_textureManager(p_texture_manager)
 	{
 	}
 
-	MeshImporter::~MeshImporter()
-	{
-		m_terminationRequested.store(true);
-		for (auto &import: m_pendingImports)
-			import.join();
-	}
-
-	auto MeshImporter::importStaticMeshDataFromFile(const std::filesystem::path &p_path) const -> MeshImportData
+	auto MeshImporter::importStaticMeshDataFromFile(const std::filesystem::path &p_path, RefPtr<MeshImportData> &p_out_data) -> void
 	{
 		Assimp::Importer importer{};
 		const aiScene *  scene{importer.ReadFile(p_path.string(), s_MeshImportFlags)};
 		TST_PERMA_ASSERT(scene);
 
-		MeshImportData out_data{};
+		// MeshImportData out_data{};
 
 		struct RawSubmeshData
 		{
@@ -93,17 +87,17 @@ namespace toaster::asset
 			}
 		}
 
-		out_data.boundingSphere.x = (min_bounds.x + max_bounds.x) / 2.0f;
-		out_data.boundingSphere.y = (min_bounds.y + max_bounds.y) / 2.0f;
-		out_data.boundingSphere.z = (min_bounds.z + max_bounds.z) / 2.0f;
+		p_out_data->boundingSphere.x = (min_bounds.x + max_bounds.x) / 2.0f;
+		p_out_data->boundingSphere.y = (min_bounds.y + max_bounds.y) / 2.0f;
+		p_out_data->boundingSphere.z = (min_bounds.z + max_bounds.z) / 2.0f;
 
-		float32 dx{max_bounds.x - out_data.boundingSphere.x};
-		float32 dy{max_bounds.y - out_data.boundingSphere.y};
-		float32 dz{max_bounds.z - out_data.boundingSphere.z};
+		float32 dx{max_bounds.x - p_out_data->boundingSphere.x};
+		float32 dy{max_bounds.y - p_out_data->boundingSphere.y};
+		float32 dz{max_bounds.z - p_out_data->boundingSphere.z};
 
-		out_data.boundingSphere.w = std::sqrtf(dx * dx + dy * dy + dz * dz);
+		p_out_data->boundingSphere.w = std::sqrtf(dx * dx + dy * dy + dz * dz);
 
-		std::println("{}", out_data.boundingSphere.w);
+		std::println("{}", p_out_data->boundingSphere.w);
 
 		static constexpr uint64  maxVertices{64u};
 		static constexpr uint64  maxTriangles{128u};
@@ -154,14 +148,14 @@ namespace toaster::asset
 			local_meshlet_vertices.resize(meshlet_vertex_count);
 			local_meshlet_triangles.resize(meshlet_triangle_count);
 
-			uint32 global_vertex_offset{static_cast<uint32>(out_data.vertices.size())};
-			out_data.vertices.insert(out_data.vertices.end(), optimised_vertices.begin(), optimised_vertices.end());
+			uint32 global_vertex_offset{static_cast<uint32>(p_out_data->vertices.size())};
+			p_out_data->vertices.insert(p_out_data->vertices.end(), optimised_vertices.begin(), optimised_vertices.end());
 
-			uint64 global_meshlet_offset{out_data.meshlets.size()};
-			out_data.meshlets.resize(global_meshlet_offset + meshlet_count);
+			uint64 global_meshlet_offset{p_out_data->meshlets.size()};
+			p_out_data->meshlets.resize(global_meshlet_offset + meshlet_count);
 
-			uint64 global_meshlet_vertex_offset{out_data.meshletVertices.size()};
-			uint64 global_meshlet_triangle_offset{out_data.meshletTriangles.size()};
+			uint64 global_meshlet_vertex_offset{p_out_data->meshletVertices.size()};
+			uint64 global_meshlet_triangle_offset{p_out_data->meshletTriangles.size()};
 
 			for (uint64 m{0u}; m < meshlet_count; ++m)
 			{
@@ -169,11 +163,11 @@ namespace toaster::asset
 
 				meshopt_Bounds meshlet_bounds{
 					meshopt_computeMeshletBounds(&local_meshlet_vertices[local_meshlet.vertex_offset], &local_meshlet_triangles[local_meshlet.triangle_offset],
-												 local_meshlet.triangle_count, &out_data.vertices[global_vertex_offset].position.x, optimised_vertices.size(),
+												 local_meshlet.triangle_count, &p_out_data->vertices[global_vertex_offset].position.x, optimised_vertices.size(),
 												 sizeof(render::StaticMeshVertex))
 				};
 
-				render::Meshlet &meshlet{out_data.meshlets[global_meshlet_offset + m]};
+				render::Meshlet &meshlet{p_out_data->meshlets[global_meshlet_offset + m]};
 				meshlet.vertexOffset   = static_cast<uint32>(global_meshlet_vertex_offset) + local_meshlet.vertex_offset;
 				meshlet.triangleOffset = static_cast<uint32>(global_meshlet_triangle_offset) + local_meshlet.triangle_offset;
 				meshlet.vertexCount    = local_meshlet.vertex_count;
@@ -185,20 +179,23 @@ namespace toaster::asset
 			for (uint32 &vertex_index: local_meshlet_vertices)
 				vertex_index += global_vertex_offset;
 
-			out_data.meshletVertices.insert(out_data.meshletVertices.end(), local_meshlet_vertices.begin(), local_meshlet_vertices.end());
-			out_data.meshletTriangles.insert(out_data.meshletTriangles.end(), local_meshlet_triangles.begin(), local_meshlet_triangles.end());
+			p_out_data->meshletVertices.insert(p_out_data->meshletVertices.end(), local_meshlet_vertices.begin(), local_meshlet_vertices.end());
+			p_out_data->meshletTriangles.insert(p_out_data->meshletTriangles.end(), local_meshlet_triangles.begin(), local_meshlet_triangles.end());
 		}
 
 		std::println("Material count: {}", scene->mNumMaterials);
+
+		p_out_data->materials.resize(scene->mNumMaterials);
 		for (uint32 i{0u}; i < scene->mNumMaterials; ++i)
 		{
 			const aiMaterial *ai_mat{scene->mMaterials[i]};
 
+			MaterialImportData &tst_mat{p_out_data->materials[i]};
+
 			aiColor3D ai_albedo_colour{};
 			ai_mat->Get(AI_MATKEY_COLOR_DIFFUSE, ai_albedo_colour);
 
-			auto &tst_mat{out_data.materials.emplace_back(m_materialManager->createMaterial())};
-			m_materialManager->setAlbedoColour(tst_mat, {ai_albedo_colour.r, ai_albedo_colour.g, ai_albedo_colour.b});
+			tst_mat.albedoColour = {ai_albedo_colour.r, ai_albedo_colour.g, ai_albedo_colour.b, 1.0f};
 
 			auto get_path_and_create_texture_if_exists{
 				[p_path](const aiString &p_ai_path) -> std::optional<std::filesystem::path>
@@ -223,20 +220,10 @@ namespace toaster::asset
 			if (!has_albedo_map)
 				has_albedo_map = ai_mat->GetTexture(aiTextureType_DIFFUSE, 0, &ai_albedo_map_path) == AI_SUCCESS;
 
-			#define LOAD_TEXTURES 1
 			if (has_albedo_map)
 			{
 				auto albedo_map_path{get_path_and_create_texture_if_exists(ai_albedo_map_path)};
-				if (albedo_map_path.has_value())
-				{
-					#if LOAD_TEXTURES
-					render::TextureHandle tex{m_textureManager->registerTexture()};
-					m_textureImporter->asyncLoadTextureFromFile(tex, *albedo_map_path);
-					m_materialManager->setAlbedoMap(tst_mat, tex);
-					#endif
-				}
-				else
-					m_materialManager->setAlbedoColour(tst_mat, {1.0f, 0.0f, 1.0f}); // Error magenta
+				tst_mat.albedoMap.path = albedo_map_path;
 			}
 
 			aiString ai_normal_map_path;
@@ -246,51 +233,77 @@ namespace toaster::asset
 			{
 				auto normal_map_path{get_path_and_create_texture_if_exists(ai_normal_map_path)};
 				if (normal_map_path.has_value())
-				{
-					#if LOAD_TEXTURES
-					render::TextureHandle tex{m_textureManager->registerTexture()};
-					m_textureImporter->asyncLoadTextureFromFile(tex, *normal_map_path);
-					m_materialManager->setNormalMap(tst_mat, tex);
-					#endif
-				}
+					tst_mat.normalMap.path = *normal_map_path;
 			}
 		}
 
 		if (!scene->HasMaterials())
 		{
-			auto &tst_mat{out_data.materials.emplace_back(m_materialManager->createMaterial())};
-			m_materialManager->setAlbedoColour(tst_mat, {1.0f, 0.0f, 1.0f});
+			auto &default_mat{p_out_data->materials.emplace_back()};
+			default_mat.albedoColour = {1.0f, 0.0f, 1.0f, 1.0f};
 		}
-
-		return out_data;
 	}
 
-	auto MeshImporter::loadStaticMeshFromFile(render::StaticMeshHandle p_dst_mesh, const std::filesystem::path &p_path) const -> void
+	auto MeshImporter::asyncLoadStaticMeshFromFile(render::StaticMeshHandle p_dst_mesh, const std::filesystem::path &p_path, tf::Executor &p_executor) -> void
 	{
-		const auto cpu_mesh_data{importStaticMeshDataFromFile(p_path)};
-		m_meshManager->uploadStaticMeshData(p_dst_mesh, cpu_mesh_data.vertices, cpu_mesh_data.meshlets, cpu_mesh_data.meshletVertices, cpu_mesh_data.meshletTriangles,
-											cpu_mesh_data.materials, XMLoadFloat4(&cpu_mesh_data.boundingSphere));
-	}
-
-	auto MeshImporter::asyncLoadStaticMeshFromFile(render::StaticMeshHandle p_dst_mesh, const std::filesystem::path &p_path) -> void
-	{
-		m_pendingImports.emplace_back([this, p_dst_mesh, p_path]() -> void
+		p_executor.silent_async([this, p_dst_mesh, p_path, &p_executor]()-> void
 		{
-			const auto cpu_mesh_data{importStaticMeshDataFromFile(p_path)};
+			tf::Taskflow graph{};
 
-			if (m_terminationRequested.load())
-				return;
+			RefPtr<MeshImportData> import_data{makeReference<MeshImportData>()};
 
-			m_meshManager->uploadStaticMeshData(p_dst_mesh, cpu_mesh_data.vertices, cpu_mesh_data.meshlets, cpu_mesh_data.meshletVertices, cpu_mesh_data.meshletTriangles,
-												cpu_mesh_data.materials, XMLoadFloat4(&cpu_mesh_data.boundingSphere));
+			tf::Task load_mesh_task{
+				graph.emplace([import_data, p_path]() mutable -> void
+				{
+					importStaticMeshDataFromFile(p_path, import_data);
+				})
+			};
+
+			auto     materials{makeReference<std::vector<render::MaterialHandle> >()};
+			tf::Task create_materials_task{
+				graph.emplace([this, materials, import_data, &p_executor]() mutable -> void
+				{
+					materials->resize(import_data->materials.size());
+					for (uint32 i{0u}; i < import_data->materials.size(); ++i)
+					{
+						const MaterialImportData &cpu_mat{import_data->materials[i]};
+						render::MaterialHandle &  gpu_mat{materials->at(i)};
+
+						gpu_mat = m_materialManager->createMaterial();
+						m_materialManager->setAlbedoColour(gpu_mat, cpu_mat.albedoColour);
+						if (cpu_mat.albedoMap.path.has_value())
+						{
+							render::TextureHandle albedo_map{m_textureManager->registerTexture()};
+							asyncLoadTextureFromFile(albedo_map, *m_textureManager, *cpu_mat.albedoMap.path, p_executor);
+							m_materialManager->setAlbedoMap(gpu_mat, albedo_map);
+						}
+						else
+							m_materialManager->setAlbedoColour(gpu_mat, {1.0f, 0.0f, 1.0f}); // TODO: Embed
+
+						if (cpu_mat.normalMap.path.has_value())
+						{
+							render::TextureHandle normal_map{m_textureManager->registerTexture()};
+							asyncLoadTextureFromFile(normal_map, *m_textureManager, *cpu_mat.normalMap.path, p_executor);
+							m_materialManager->setNormalMap(gpu_mat, normal_map);
+						}
+					}
+				})
+			};
+
+			tf::Task upload_task{
+				graph.emplace([this, import_data, p_dst_mesh, materials]() -> void
+				{
+					m_meshManager->uploadStaticMeshData(p_dst_mesh, import_data->vertices, import_data->meshlets, import_data->meshletVertices,
+														import_data->meshletTriangles, *materials, XMLoadFloat4(&import_data->boundingSphere));
+				})
+			};
+
+			create_materials_task.succeed(load_mesh_task);
+			create_materials_task.precede(upload_task);
+
+			load_mesh_task.precede(upload_task);
+
+			p_executor.run(graph).wait();
 		});
-	}
-
-	auto MeshImporter::waitImports() -> void
-	{
-		for (auto &import: m_pendingImports)
-			import.join();
-
-		m_pendingImports.clear();
 	}
 }

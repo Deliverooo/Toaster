@@ -121,6 +121,47 @@ namespace toaster
 			return _isValid(p_handle);
 		}
 
+		auto removeAt(uint32 p_id) -> void
+		{
+			std::unique_lock<std::shared_mutex> lock{m_mutex};
+
+			if (p_id >= m_entries.size())
+				TST_PERMA_ASSERT(false);
+
+			m_entries[p_id]->alive = false;
+			++m_entries[p_id]->magic;
+			m_freeIndices.push_back(p_id);
+
+			if (m_destructorFn)
+				m_destructorFn(std::addressof(m_entries[p_id]->data), m_destructorUserData);
+		}
+
+		template<typename TFunc>
+		auto forEachAlive(TFunc &&p_func) -> void
+		{
+			std::shared_lock<std::shared_mutex> lock{m_mutex};
+
+			uint32 i{0u};
+			for (auto &entry: m_entries)
+			{
+				if (entry->alive)
+					p_func(entry->data, i);
+
+				++i;
+			}
+		}
+
+		auto getLiveCount() -> uint32
+		{
+			std::shared_lock<std::shared_mutex> lock{m_mutex};
+			uint32                              alive_count{0u};
+			for (auto &entry: m_entries)
+				if (entry->alive)
+					++alive_count;
+
+			return alive_count;
+		}
+
 	private:
 		auto _isValid(HandleType p_handle) const -> bool
 		{

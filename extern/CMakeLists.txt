@@ -40,3 +40,14 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(entt)
 #EnTT ---
+
+#Taskflow ---
+set(TF_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(TF_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+FetchContent_Declare(
+		taskflow
+		GIT_REPOSITORY https://github.com/taskflow/taskflow.git
+		GIT_TAG master
+)
+FetchContent_MakeAvailable(taskflow)
+#Taskflow ---

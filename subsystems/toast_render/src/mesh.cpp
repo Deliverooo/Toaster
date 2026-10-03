@@ -44,7 +44,7 @@ namespace toaster::render
 			p_data->meshletTriangleBufferAllocation     = {};
 			p_data->materialIndirectionBufferAllocation = {};
 
-			gpu::upload::destroyStateTracker(p_data->stateTracker);
+			// gpu::upload::destroyStateTracker(p_data->stateTracker);
 		});
 	}
 
@@ -69,7 +69,7 @@ namespace toaster::render
 		StaticMesh temp_mesh{};
 
 		// Vertex buffer, meshlet buffer, meshlet vertex buffer, meshlet triangle buffer, material indirection buffer and metadata buffer
-		temp_mesh.stateTracker = gpu::upload::createStateTracker(6u);
+		temp_mesh.stateTracker = gpu::upload::registerStateTracker(6u);
 
 		return m_staticMeshes.emplace(std::move(temp_mesh));
 	}
@@ -205,9 +205,9 @@ namespace toaster::render
 		m_staticMeshes.destroy(p_handle);
 	}
 
-	auto MeshManager::isStaticMeshReady(StaticMeshHandle p_handle) -> bool
+	auto MeshManager::isStaticMeshReady(StaticMeshHandle p_handle) const -> bool
 	{
-		StaticMesh &mesh{m_staticMeshes[p_handle]};
+		const StaticMesh &mesh{m_staticMeshes[p_handle]};
 		return gpu::upload::isStateTrackerReady(mesh.stateTracker);
 	}
 }

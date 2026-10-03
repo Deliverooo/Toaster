@@ -25,8 +25,6 @@ namespace toaster::render
 				if (slot != UINT32_MAX)
 					gpu::frame::defferTextureSlotFreeing(ts->m_renderCtx->getResourceHeap(), slot);
 			}
-
-			gpu::upload::destroyStateTracker(p_data->stateTracker);
 		});
 	}
 
@@ -41,7 +39,7 @@ namespace toaster::render
 	auto TextureManager::registerTexture() -> TextureHandle
 	{
 		Texture temp_texture{};
-		temp_texture.stateTracker = gpu::upload::createStateTracker(1u); // Just the texture
+		temp_texture.stateTracker = gpu::upload::registerStateTracker(1u); // Just the texture
 
 		TextureHandle out_handle{m_textures.emplace(temp_texture)};
 
@@ -66,7 +64,7 @@ namespace toaster::render
 			gpu::writeTextureDescriptor(m_renderCtx->getResourceHeap(), texture_data.shaderReadHeapSlot, texture_data.texture, false);
 		}
 
-		texture_data.stateTracker = gpu::upload::createStateTracker(1u); // Just the texture
+		texture_data.stateTracker = gpu::upload::registerStateTracker(1u); // Just the texture
 
 		return m_textures.emplace(std::move(texture_data));
 	}

@@ -81,11 +81,11 @@ namespace toaster::gpu::upload
 		std::mutex pageMutex;
 		std::mutex uploadMutex;
 		std::mutex batchMutex;
-		std::mutex activeStateTrackerMutex;
+		// std::mutex activeStateTrackerMutex;
 
-		std::queue<UploadTask>                 taskQueue;
-		std::vector<LiveUploadBatch>           liveBatches;
-		std::unordered_set<StateTrackerHandle> activeStateTrackers; // State trackers that are not finished
+		std::queue<UploadTask>       taskQueue;
+		std::vector<LiveUploadBatch> liveBatches;
+		// std::unordered_set<StateTrackerHandle> activeStateTrackers; // State trackers that are not finished
 	};
 
 	static UploadContextImpl *g_impl{nullptr};
@@ -333,7 +333,7 @@ namespace toaster::gpu::upload
 		g_impl = nullptr;
 	}
 
-	auto createStateTracker(uint32 p_expected_subresources) -> StateTrackerHandle
+	auto registerStateTracker(uint32 p_expected_subresources) -> StateTrackerHandle
 	{
 		StateTracker state_tracker{};
 		state_tracker.ticketMutex         = makeUnique<std::mutex>();
@@ -343,38 +343,16 @@ namespace toaster::gpu::upload
 
 	auto registerStateTrackerReadyCallback(StateTrackerHandle p_state_tracker, StateTrackerReadyFn p_ready_callback) -> void
 	{
-		TST_ASSERT_MSG(!g_impl->activeStateTrackers.contains(p_state_tracker), "State tracker is in use");
-
-		StateTracker &tracker{g_impl->stateTrackers[p_state_tracker]};
-		tracker.readyCb = p_ready_callback;
-	}
-
-	auto destroyStateTracker(StateTrackerHandle p_state_tracker) -> void
-	{
-		uint64 size{g_impl->activeStateTrackers.size()};
-		TST_ASSERT_MSG(!g_impl->activeStateTrackers.contains(p_state_tracker), "State tracker is in use");
-		g_impl->stateTrackers.destroy(p_state_tracker);
-	}
-
-	auto resetStateTracker(StateTrackerHandle p_state_tracker, uint32 p_pending_subresources) -> void
-	{
-		TST_ASSERT_MSG(!g_impl->activeStateTrackers.contains(p_state_tracker), "State tracker is in use");
-
-		StateTracker &tracker{g_impl->stateTrackers[p_state_tracker]};
-
-		tracker.timelineTickets.clear();
-		tracker.pendingSubresources = p_pending_subresources;
-		tracker.readyCb             = nullptr;
+		StateTracker *tracker{g_impl->stateTrackers.tryGet(p_state_tracker)};
+		TST_ASSERT_MSG(tracker, "State tracker does not exist or is already completed");
+		tracker->readyCb = p_ready_callback;
 	}
 
 	auto isStateTrackerReady(StateTrackerHandle p_state_tracker) -> bool
 	{
-		StateTracker &tracker{g_impl->stateTrackers[p_state_tracker]};
-
-		std::scoped_lock<std::mutex> lock{g_impl->activeStateTrackerMutex};
-
-		TST_SCOPED_ATOMIC(tracker.pendingSubresources, pending_subresources);
-		return !g_impl->activeStateTrackers.contains(p_state_tracker) && (pending_subresources.load() == 0u);
+		if (g_impl->stateTrackers.isValid(p_state_tracker)) // If the state tracker is valid, it means that it has not completed all of it's operations
+			return false;
+		return true;
 	}
 
 	auto pollUploads() -> void
@@ -412,60 +390,49 @@ namespace toaster::gpu::upload
 			}
 		}
 
+		std::vector<uint32> indices_to_remove;
+		g_impl->stateTrackers.forEachAlive([&indices_to_remove, current_value](StateTracker &p_data, uint32 p_index) -> void
 		{
-			std::scoped_lock<std::mutex> lock{g_impl->activeStateTrackerMutex};
+			bool all_finished{true};
 
-			for (auto it{g_impl->activeStateTrackers.begin()}; it != g_impl->activeStateTrackers.end();)
 			{
-				StateTracker &tracker{g_impl->stateTrackers[*it]};
+				std::scoped_lock<std::mutex> ticket_lock{*p_data.ticketMutex};
+				// If the tracker has no timeline tickets, it indicates that worker threads have not yet begun an upload on it
+				if (p_data.timelineTickets.empty())
+					all_finished = false;
 
-				bool all_finished{true};
+				for (const uint64 ticket: p_data.timelineTickets)
 				{
-					std::scoped_lock<std::mutex> ticket_lock{*tracker.ticketMutex};
-					if (tracker.timelineTickets.empty()) // If the tracker has no timeline tickets, it indicates that worker threads have not yet begun an upload on it
-						all_finished = false;
-
-					for (const uint64 ticket: tracker.timelineTickets)
+					if (current_value < ticket)
 					{
-						if (current_value < ticket)
-						{
-							all_finished = false;
-							break;
-						}
+						all_finished = false;
+						break;
 					}
 				}
-
-				TST_SCOPED_ATOMIC(tracker.pendingSubresources, pending_subresources);
-				if (all_finished && pending_subresources.load() == 0u)
-				{
-					if (tracker.readyCb)
-						tracker.readyCb();
-
-					it = g_impl->activeStateTrackers.erase(it);
-				}
-				else
-					++it;
 			}
-		}
+
+			TST_SCOPED_ATOMIC(p_data.pendingSubresources, pending_subresources);
+			if (all_finished && pending_subresources.load() == 0u)
+			{
+				if (p_data.readyCb)
+					p_data.readyCb();
+
+				indices_to_remove.push_back(p_index); // The state tracker is ready, so it can be destroyed
+			}
+		});
+
+		for (const auto index: indices_to_remove)
+			g_impl->stateTrackers.removeAt(index);
 	}
 
 	auto uploadDataToBuffer(const BufferUploadDesc &p_upload_desc, StateTrackerHandle p_state_tracker) -> void
 	{
+		TST_ASSERT(g_impl->stateTrackers.isValid(p_state_tracker));
+
 		UploadTask upload_task{};
 		allocateAcrossPages(p_upload_desc.size, upload_task.stagingAllocation);
 
 		std::memcpy(upload_task.stagingAllocation.mapped, p_upload_desc.data, p_upload_desc.size);
-
-		{
-			std::scoped_lock<std::mutex> lock{g_impl->activeStateTrackerMutex};
-
-			StateTracker &tracker{g_impl->stateTrackers[p_state_tracker]};
-
-			TST_SCOPED_ATOMIC(tracker.pendingSubresources, pending_subresources);
-			TST_ASSERT(pending_subresources.load() != 0u);
-
-			g_impl->activeStateTrackers.insert(p_state_tracker);
-		}
 
 		upload_task.dstOffset    = p_upload_desc.dstOffset;
 		upload_task.stateTracker = p_state_tracker;
@@ -482,21 +449,12 @@ namespace toaster::gpu::upload
 
 	auto uploadDataToTexture(const TextureUploadDesc &p_upload_desc, StateTrackerHandle p_state_tracker) -> void
 	{
+		TST_ASSERT(g_impl->stateTrackers.isValid(p_state_tracker));
+
 		UploadTask upload_task{};
 		allocateAcrossPages(p_upload_desc.size, upload_task.stagingAllocation);
 
 		std::memcpy(upload_task.stagingAllocation.mapped, p_upload_desc.data, p_upload_desc.size);
-
-		{
-			std::scoped_lock<std::mutex> lock{g_impl->activeStateTrackerMutex};
-
-			StateTracker &tracker{g_impl->stateTrackers[p_state_tracker]};
-
-			TST_SCOPED_ATOMIC(tracker.pendingSubresources, pending_subresources);
-			TST_ASSERT(pending_subresources.load() != 0u);
-
-			g_impl->activeStateTrackers.insert(p_state_tracker);
-		}
 
 		upload_task.stateTracker = p_state_tracker;
 		upload_task.size         = p_upload_desc.size;
