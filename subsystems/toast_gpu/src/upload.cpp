@@ -1,5 +1,6 @@
 #include "toast_gpu/upload.hpp"
 
+#include <algorithm>
 #include <queue>
 #include <unordered_map>
 #include <unordered_set>
@@ -353,6 +354,33 @@ namespace toaster::gpu::upload
 		if (g_impl->stateTrackers.isValid(p_state_tracker)) // If the state tracker is valid, it means that it has not completed all of it's operations
 			return false;
 		return true;
+	}
+
+	auto waitForStateTracker(StateTrackerHandle p_state_tracker) -> void
+	{
+		StateTracker *tracker{g_impl->stateTrackers.tryGet(p_state_tracker)};
+		TST_ASSERT_MSG(tracker, "State tracker does not exist or is already completed");
+
+		std::vector<uint64> wait_values;
+		{
+			std::scoped_lock<std::mutex> ticket_lock{*tracker->ticketMutex};
+			wait_values = tracker->timelineTickets;
+		}
+
+		const SemaphoreHandle transfer_semaphore{frame::getTransferTimelineSemaphore()};
+
+		// Remove completed ticket values
+		uint64 current_value{getSemaphoreValue(transfer_semaphore)};
+		for (auto ticket_it{wait_values.begin()}; ticket_it != wait_values.end();)
+		{
+			if (current_value >= *ticket_it)
+				ticket_it = wait_values.erase(ticket_it);
+		}
+
+		std::vector<SemaphoreHandle> wait_semaphores(wait_values.size());
+		std::ranges::fill(wait_values, transfer_semaphore);
+
+		waitSemaphores(wait_semaphores, wait_values);
 	}
 
 	auto pollUploads() -> void

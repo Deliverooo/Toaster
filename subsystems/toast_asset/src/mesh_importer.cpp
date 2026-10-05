@@ -277,8 +277,8 @@ namespace toaster::asset
 							asyncLoadTextureFromFile(albedo_map, *m_textureManager, *cpu_mat.albedoMap.path, p_executor);
 							m_materialManager->setAlbedoMap(gpu_mat, albedo_map);
 						}
-						else
-							m_materialManager->setAlbedoColour(gpu_mat, {1.0f, 0.0f, 1.0f}); // TODO: Embed
+						// else
+						// m_materialManager->setAlbedoColour(gpu_mat, {1.0f, 0.0f, 1.0f}); // TODO: Embed
 
 						if (cpu_mat.normalMap.path.has_value())
 						{

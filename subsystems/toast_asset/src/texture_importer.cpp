@@ -19,7 +19,8 @@ namespace toaster::asset
 				{
 					int32  width, height, num_channels;
 					uint8 *data{stbi_load(p_path.string().c_str(), &width, &height, &num_channels, 4u)};
-					TST_ASSERT(data);
+					if (!data)
+						return;
 
 					gpu::TextureDesc texture_desc{};
 					texture_desc.usage    = gpu::ETextureUsageFlagBits::eTransferSrc | gpu::ETextureUsageFlagBits::eTransferDst | gpu::ETextureUsageFlagBits::eSampled;

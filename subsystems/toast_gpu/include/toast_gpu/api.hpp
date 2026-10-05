@@ -349,6 +349,8 @@ namespace toaster::gpu
 
 		EShaderStageFlagBits stage{EShaderStageFlagBits::eNone};
 		EShaderStageFlags    nextStage{EShaderStageFlagBits::eNone}; // The bitset of possible next stages
+
+		bool task{false};
 	};
 
 	#pragma endregion

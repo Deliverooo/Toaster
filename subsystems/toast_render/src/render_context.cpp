@@ -18,8 +18,8 @@ namespace toaster::render
 		gpu::alloc::initAllocationContext();
 		gpu::upload::initUploadContext({});
 
-		m_resourceHeap = gpu::createResourceDescriptorHeap({16u, 64u});
-		m_samplerHeap  = gpu::createSamplerDescriptorHeap({16u});
+		m_resourceHeap = gpu::createResourceDescriptorHeap({128u, 1028u});
+		m_samplerHeap  = gpu::createSamplerDescriptorHeap({32u});
 	}
 
 	RenderContext::~RenderContext()

@@ -2838,7 +2838,9 @@ namespace toaster::gpu
 		vk::ShaderStageFlags    next_stage{getVulkanShaderStages(p_desc.nextStage)};
 
 		vk::ShaderCreateInfoEXT shader_create_info{};
-		shader_create_info.flags     = vk::ShaderCreateFlagBitsEXT::eDescriptorHeap;
+		shader_create_info.flags = vk::ShaderCreateFlagBitsEXT::eDescriptorHeap | ((!p_desc.task && shader_stage & vk::ShaderStageFlagBits::eMeshEXT)
+																					   ? vk::ShaderCreateFlagBitsEXT::eNoTaskShader
+																					   : vk::ShaderCreateFlagBitsEXT{0u});
 		shader_create_info.stage     = shader_stage;
 		shader_create_info.nextStage = next_stage;
 		shader_create_info.codeType  = vk::ShaderCodeTypeEXT::eSpirv;

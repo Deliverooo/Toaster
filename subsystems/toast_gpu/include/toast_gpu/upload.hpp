@@ -32,6 +32,8 @@ namespace toaster::gpu::upload
 	auto TST_GPU_API registerStateTrackerReadyCallback(StateTrackerHandle p_state_tracker, StateTrackerReadyFn p_ready_callback) -> void;
 	auto TST_GPU_API isStateTrackerReady(StateTrackerHandle p_state_tracker) -> bool;
 
+	auto TST_GPU_API waitForStateTracker(StateTrackerHandle p_state_tracker) -> void; // Blocks until all pending subresources have completed execution
+
 	#pragma endregion
 
 	auto TST_GPU_API pollUploads() -> void;
