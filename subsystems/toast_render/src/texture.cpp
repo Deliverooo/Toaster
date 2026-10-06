@@ -64,6 +64,12 @@ namespace toaster::render
 			gpu::writeTextureDescriptor(m_renderCtx->getResourceHeap(), texture_data.shaderReadHeapSlot, texture_data.texture, false);
 		}
 
+		if (p_desc.usage & gpu::ETextureUsageFlagBits::eStorage)
+		{
+			texture_data.storageHeapSlot = gpu::allocTextureHeapSlot(m_renderCtx->getResourceHeap());
+			gpu::writeTextureDescriptor(m_renderCtx->getResourceHeap(), texture_data.storageHeapSlot, texture_data.texture, true);
+		}
+
 		texture_data.stateTracker = gpu::upload::registerStateTracker(1u); // Just the texture
 
 		return m_textures.emplace(std::move(texture_data));

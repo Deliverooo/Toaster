@@ -41,7 +41,10 @@ namespace toaster::asset
 		MeshImporter(render::MeshManager *p_mesh_manager, render::MaterialManager *p_material_manager, render::TextureManager *p_texture_manager);
 
 		static auto importStaticMeshDataFromFile(const std::filesystem::path &p_path, RefPtr<MeshImportData> &p_out_data) -> void;
-		auto        asyncLoadStaticMeshFromFile(render::StaticMeshHandle p_dst_mesh, const std::filesystem::path &p_path, tf::Executor &p_executor) -> void;
+
+		// The callback will probably be used to set material properties just after loading. This does not mean that the GPU uploads have completed, only the mesh parsing has
+		auto asyncLoadStaticMeshFromFile(render::StaticMeshHandle                             p_dst_mesh, const std::filesystem::path &p_path, tf::Executor &p_executor,
+										 const std::function<void(render::StaticMeshHandle)> &p_on_finish_cb = nullptr) -> void;
 
 	private:
 		NonOwningPtr<render::MeshManager>     m_meshManager{nullptr};

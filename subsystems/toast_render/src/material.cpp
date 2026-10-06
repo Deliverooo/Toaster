@@ -75,6 +75,7 @@ namespace toaster::render
 		material.normalMap                = m_defaultNormalMap;
 		material.params.albedoMapHeapSlot = m_textureManager->getTexture(m_defaultColourMap).shaderReadHeapSlot;
 		material.params.normalMapHeapSlot = m_textureManager->getTexture(m_defaultNormalMap).shaderReadHeapSlot;
+		material.params.backfaceCulling   = true;
 
 		MaterialHandle out_handle{m_materials.emplace(material)};
 
@@ -135,6 +136,13 @@ namespace toaster::render
 		else
 			material.params.normalMapHeapSlot = m_textureManager->getTexture(p_normal_map).shaderReadHeapSlot;
 
+		markMaterialDirty(p_handle);
+	}
+
+	auto MaterialManager::setBackfaceCulling(MaterialHandle p_handle, bool p_enable) -> void
+	{
+		Material &material{m_materials[p_handle]};
+		material.params.backfaceCulling = p_enable;
 		markMaterialDirty(p_handle);
 	}
 

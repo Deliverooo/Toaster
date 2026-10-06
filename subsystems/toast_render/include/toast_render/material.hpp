@@ -9,13 +9,12 @@
 
 namespace toaster::render
 {
-	struct TST_RENDER_API alignas(16u) MaterialParams
+	struct TST_RENDER_API MaterialParams
 	{
 		tsm::float3 albedoColour{1.0f};
-		uint32      _padd;
 		uint32      albedoMapHeapSlot{UINT32_MAX};
 		uint32      normalMapHeapSlot{UINT32_MAX};
-		uint32      _padd2[2];
+		bool32      backfaceCulling{true};
 	};
 
 	struct TST_RENDER_API Material
@@ -44,6 +43,7 @@ namespace toaster::render
 		auto setAlbedoColour(MaterialHandle p_handle, const tsm::float3 &p_colour) -> void;
 		auto setAlbedoMap(MaterialHandle p_handle, TextureHandle p_albedo_map) -> void;
 		auto setNormalMap(MaterialHandle p_handle, TextureHandle p_normal_map) -> void;
+		auto setBackfaceCulling(MaterialHandle p_handle, bool p_enable) -> void;
 
 		auto pollMaterialTextureUploads() -> void;
 

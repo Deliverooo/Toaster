@@ -244,9 +244,10 @@ namespace toaster::asset
 		}
 	}
 
-	auto MeshImporter::asyncLoadStaticMeshFromFile(render::StaticMeshHandle p_dst_mesh, const std::filesystem::path &p_path, tf::Executor &p_executor) -> void
+	auto MeshImporter::asyncLoadStaticMeshFromFile(render::StaticMeshHandle p_dst_mesh, const std::filesystem::path &p_path, tf::Executor &p_executor,
+												   const std::function<void(render::StaticMeshHandle)> &p_on_finish_cb) -> void
 	{
-		p_executor.silent_async([this, p_dst_mesh, p_path, &p_executor]()-> void
+		p_executor.silent_async([this, p_dst_mesh, p_path, &p_executor, p_on_finish_cb]()-> void
 		{
 			tf::Taskflow graph{};
 
@@ -304,6 +305,9 @@ namespace toaster::asset
 			load_mesh_task.precede(upload_task);
 
 			p_executor.run(graph).wait();
+
+			if (p_on_finish_cb)
+				p_on_finish_cb(p_dst_mesh);
 		});
 	}
 }

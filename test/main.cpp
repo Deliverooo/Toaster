@@ -100,7 +100,7 @@ public:
 									 c_tst_pbr_static_mesh_bytecode,
 									 sizeof(c_tst_pbr_static_mesh_bytecode) / sizeof(uint32),
 									 gpu::EShaderStageFlagBits::eMesh,
-									 gpu::EShaderStageFlagBits::ePixel
+									 gpu::EShaderStageFlagBits::ePixel, true
 								 });
 
 		m_ts = gpu::createShader(gpu::ShaderDesc{

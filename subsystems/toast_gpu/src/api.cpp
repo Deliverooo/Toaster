@@ -12,6 +12,8 @@
 
 #include <vma/vk_mem_alloc.h>
 
+#include "toast_lib/atomic.hpp"
+
 #undef min
 #undef max
 
@@ -212,6 +214,7 @@ namespace toaster::gpu
 		VmaAllocator allocator{nullptr};
 
 		TST_REGISTER_RESOURCE_POOL(CommandList, commandLists);
+		std::mutex                                     freeCommandListMutex;
 		std::array<std::vector<CommandListHandle>, 3u> freeCommandLists;   // Free command lists per queue type
 		std::array<std::vector<CommandListHandle>, 3u> freeSecondaryLists; // Free command lists per queue type
 		std::array<vk::CommandPool, 3u>                transientPools;     // Mostly used for allocating command buffers for image layout transitions
@@ -1067,13 +1070,16 @@ namespace toaster::gpu
 
 	auto getOrCreateCommandList(EQueueType p_queue_type, bool p_secondary) -> CommandListHandle
 	{
-		auto &free_lists{p_secondary ? g_impl->freeSecondaryLists[static_cast<uint32>(p_queue_type)] : g_impl->freeCommandLists[static_cast<uint32>(p_queue_type)]};
-		if (!free_lists.empty())
 		{
-			CommandListHandle command_list_handle{free_lists.back()};
-			free_lists.pop_back();
+			TST_SCP_LOCK(g_impl->freeCommandListMutex);
+			auto &free_lists{p_secondary ? g_impl->freeSecondaryLists[static_cast<uint32>(p_queue_type)] : g_impl->freeCommandLists[static_cast<uint32>(p_queue_type)]};
+			if (!free_lists.empty())
+			{
+				CommandListHandle command_list_handle{free_lists.back()};
+				free_lists.pop_back();
 
-			return command_list_handle;
+				return command_list_handle;
+			}
 		}
 		vk::CommandPoolCreateInfo command_pool_create_info{};
 		command_pool_create_info.queueFamilyIndex = g_impl->queueFamilyIndices.get(p_queue_type);
@@ -1150,6 +1156,8 @@ namespace toaster::gpu
 	{
 		CommandList &cmd{g_impl->commandLists[p_command_list]};
 		TST_ASSERT(!cmd.open);
+
+		TST_SCP_LOCK(g_impl->freeCommandListMutex);
 
 		if (cmd.secondary)
 			g_impl->freeSecondaryLists[static_cast<uint32>(cmd.queueType)].push_back(p_command_list);
