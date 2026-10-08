@@ -2812,10 +2812,6 @@ namespace toaster::gpu
 		for (const SemaphoreSubmitInfo &wait: p_wait_semaphore_infos)
 			raw_waits.emplace_back(g_impl->semaphores[wait.semaphore].semaphore, wait.value);
 
-		// #ifndef NDEBUG
-		// uint64 current_value{getSemaphoreValue(p_signal_semaphore_info.semaphore)};
-		// #endif
-
 		submit(EQueueType::eGraphics, p_command_list, raw_waits, {
 				   vk::SemaphoreSubmitInfo{swapchain.renderFinishedSemaphores[swapchain.imageIndex]},
 				   vk::SemaphoreSubmitInfo{g_impl->semaphores[p_signal_semaphore_info.semaphore].semaphore, p_signal_semaphore_info.value}

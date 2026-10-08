@@ -18,7 +18,7 @@ target_include_directories(ToastKernel PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_
 target_sources(ToastKernel PRIVATE ${KERNEL_SRC})
 
 target_link_libraries(ToastKernel PUBLIC Toaster::ToastRender)
-target_link_libraries(ToastKernel PRIVATE glfw)
+target_link_libraries(ToastKernel PUBLIC glfw)
 target_link_libraries(ToastKernel PRIVATE dwmapi)
 
 add_library(Toaster::ToastKernel ALIAS ToastKernel)

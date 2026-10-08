@@ -160,7 +160,7 @@ namespace toaster
 	auto Window::beginFrame(gpu::CommandListHandle p_cmd) -> bool
 	{
 		m_currentTexture = gpu::acquireNextImage(m_swapchain);
-
+		
 		if (!m_currentTexture)
 		{
 			gpu::resizeSwapchain(m_swapchain, getSize());

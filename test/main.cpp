@@ -63,12 +63,12 @@ public:
 			m_orboEntity = m_scene.createEntity();
 			m_scene.addComponent<scene::StaticMeshComponent>(m_orboEntity, orbo_mesh);
 			m_scene.addComponent<scene::GPUTransformComponent>(m_orboEntity, m_transformSystem->createTransform());
-			m_scene.addComponent<scene::TransformComponent>(m_orboEntity);
+			m_scene.addComponent<scene::TransformComponent >(m_orboEntity);
 		}
 		{
 			render::StaticMeshHandle level_mesh{m_meshManager->registerStaticMesh()};
-			m_meshImporter->asyncLoadStaticMeshFromFile(level_mesh, R"(C:\Users\Oliver\Downloads\main_sponza\main_sponza\NewSponza_Main_glTF_003.gltf)", m_executor);
-			// m_meshImporter->asyncLoadStaticMeshFromFile(level_mesh, "resources/meshes/Backrooms.fbx", m_executor);
+			// m_meshImporter->asyncLoadStaticMeshFromFile(level_mesh, R"(C:\Users\Oliver\Downloads\main_sponza\main_sponza\NewSponza_Main_glTF_003.gltf)", m_executor);
+			m_meshImporter->asyncLoadStaticMeshFromFile(level_mesh, "resources/meshes/Backrooms.fbx", m_executor);
 
 			m_levelEntity = m_scene.createEntity();
 			m_scene.addComponent<scene::StaticMeshComponent>(m_levelEntity, level_mesh);
@@ -100,7 +100,8 @@ public:
 									 c_tst_pbr_static_mesh_bytecode,
 									 sizeof(c_tst_pbr_static_mesh_bytecode) / sizeof(uint32),
 									 gpu::EShaderStageFlagBits::eMesh,
-									 gpu::EShaderStageFlagBits::ePixel, true
+									 gpu::EShaderStageFlagBits::ePixel,
+									 true
 								 });
 
 		m_ts = gpu::createShader(gpu::ShaderDesc{
@@ -274,7 +275,7 @@ public:
 		gpu::bindResourceHeap(p_cmd, m_renderCtx->getResourceHeap());
 		gpu::bindSamplerHeap(p_cmd, m_renderCtx->getSamplerHeap());
 
-		uint32 active_object_count{0u};
+		uint32 active_object_count{0u}; 
 		{
 			ObjectData *mapped_object_data{static_cast<ObjectData *>(gpu::getBufferMappedData(m_objectDataBuffers[m_app->getFrameIndex()]))};
 

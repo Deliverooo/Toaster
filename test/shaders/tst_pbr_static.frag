@@ -27,7 +27,6 @@ void main()
     Material material = pcs.materialBuffer.materials[v_Material];
 
     float3 tex_colour = SAMPLE_TEXTURE(material.albedoMapHeapSlot, pcs.samplerId, v_TexCoord).rgb;
-
     float3 final_colour = tex_colour * material.albedoColour;
 
     o_Colour = float4(tex_colour, 1.0f);

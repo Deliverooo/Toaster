@@ -23,6 +23,7 @@ FetchContent_MakeAvailable(meshopt)
 #Meshoptimizer ---
 
 #GLFW ---
+set(GLFW_INSTALL ON CACHE BOOL "" FORCE)
 FetchContent_Declare(
 		glfw
 		GIT_REPOSITORY https://github.com/glfw/glfw.git
@@ -51,3 +52,14 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(taskflow)
 #Taskflow ---
+
+#Jolt ---
+set(JPH_BUILD_SHARED_LIBS ON CACHE BOOL "" FORCE)
+FetchContent_Declare(
+		jolt
+		GIT_REPOSITORY https://github.com/jrouwe/JoltPhysics.git
+		GIT_TAG master
+		SOURCE_SUBDIR "Build"
+)
+FetchContent_MakeAvailable(jolt)
+#Jolt ---
