@@ -157,6 +157,9 @@ namespace toaster::gpu
 		ESamplerAddressMode addressModeU{ESamplerAddressMode::eRepeat};
 		ESamplerAddressMode addressModeV{ESamplerAddressMode::eRepeat};
 		ESamplerAddressMode addressModeW{ESamplerAddressMode::eRepeat};
+		float32             minLod{0.0f};
+		float32             maxLod{1000.0f};
+		float32             maxAnisotropy{-1.0f}; // -1	means choose the physical device's limit
 	};
 
 	#pragma endregion
@@ -426,7 +429,8 @@ namespace toaster::gpu
 
 	// If the texture's layout is undefined, this will insert a memory barrier
 	auto TST_GPU_API copyBufferToTexture(CommandListHandle p_command_list, BufferHandle p_src_buffer, TextureHandle p_dst_texture, uint64 p_src_offset = 0u,
-										 uint32            p_mip_level = 0u, uint32 p_base_layer = 0u, uint32 p_layer_count = 1u, tsm::uint3 p_extent = {}) -> void;
+										 uint32            p_mip_level = 0u, uint32 p_base_layer = 0u, uint32 p_layer_count = 1u, tsm::uint3 p_extent = {},
+										 tsm::int3         p_offset = {}) -> void;
 
 	auto TST_GPU_API fillBuffer(CommandListHandle p_command_list, BufferHandle p_buffer, uint64 p_dst_offset, uint64 p_size, uint32 p_data) -> void;
 
@@ -467,7 +471,12 @@ namespace toaster::gpu
 	auto TST_GPU_API bindResourceHeap(CommandListHandle p_command_list, ResourceDescriptorHeapHandle p_resource_heap) -> void;
 	auto TST_GPU_API bindSamplerHeap(CommandListHandle p_command_list, SamplerDescriptorHeapHandle p_sampler_heap) -> void;
 
-	auto TST_GPU_API bindIndexBuffer(CommandListHandle p_command_list, BufferHandle p_index_buffer) -> void;
+	enum class EIndexType
+	{
+		eUint8, eUint16, eUint32
+	};
+
+	auto TST_GPU_API bindIndexBuffer(CommandListHandle p_command_list, BufferHandle p_index_buffer, EIndexType p_index_type) -> void;
 
 	auto TST_GPU_API setPrimitiveTopology(CommandListHandle p_command_list, EPrimitiveTopology p_primitive_topology) -> void;
 	auto TST_GPU_API setPrimitiveRestart(CommandListHandle p_command_list, bool p_enable, uint32 p_index = UINT32_MAX) -> void; // This should be false 99% of the time
@@ -492,6 +501,53 @@ namespace toaster::gpu
 	auto TST_GPU_API setColourWriteEnable(CommandListHandle p_command_list, InitialiserList<const bool32> p_enables) -> void;
 	auto TST_GPU_API setColourWriteMask(CommandListHandle p_command_list, InitialiserList<const EColourComponentFlags> p_masks,
 										uint32            p_first_attachment_index = 0u) -> void;
+
+	auto TST_GPU_API setColourBlendEnable(CommandListHandle p_command_list, InitialiserList<const bool32> p_enables, uint32 p_first_attachment_index = 0u) -> void;
+
+	enum class EBlendFactor
+	{
+		eZero,
+		eOne,
+		eSrcColor,
+		eOneMinusSrcColor,
+		eDstColor,
+		eOneMinusDstColor,
+		eSrcAlpha,
+		eOneMinusSrcAlpha,
+		eDstAlpha,
+		eOneMinusDstAlpha,
+		eConstantColor,
+		eOneMinusConstantColor,
+		eConstantAlpha,
+		eOneMinusConstantAlpha,
+		eSrcAlphaSaturate,
+		eSrc1Color,
+		eOneMinusSrc1Color,
+		eSrc1Alpha,
+		eOneMinusSrc1Alpha
+	};
+
+	enum class EBlendOp
+	{
+		eAdd,
+		eSubtract,
+		eReverseSubtract,
+		eMin,
+		eMax
+	};
+
+	struct TST_GPU_API ColourBlendEquation
+	{
+		EBlendFactor srcColorBlendFactor{EBlendFactor::eZero};
+		EBlendFactor dstColorBlendFactor{EBlendFactor::eZero};
+		EBlendOp     colorBlendOp{EBlendOp::eAdd};
+		EBlendFactor srcAlphaBlendFactor{EBlendFactor::eZero};
+		EBlendFactor dstAlphaBlendFactor{EBlendFactor::eZero};
+		EBlendOp     alphaBlendOp{EBlendOp::eAdd};
+	};
+
+	auto TST_GPU_API setColourBlendEquation(CommandListHandle p_command_list, InitialiserList<const ColourBlendEquation> p_blend_equations,
+											uint32            p_first_attachment_index = 0u) -> void;
 
 	struct TST_GPU_API DrawIndirectCommand
 	{

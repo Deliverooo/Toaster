@@ -50,6 +50,8 @@ namespace toaster::gpu::upload
 
 		PageAllocation     stagingAllocation{};
 		StateTrackerHandle stateTracker{nullptr};
+		tsm::uint3         extent{0u};
+		tsm::int3          offset{0};
 		uint64             size{0u};
 		uint64             dstOffset{0u};
 		uint64             handle{0u};
@@ -217,7 +219,7 @@ namespace toaster::gpu::upload
 					TextureHandle handle{static_cast<TextureHandle>(task.handle)};
 					TST_ASSERT(handle.valid());
 
-					copyBufferToTexture(cmd, task.stagingAllocation.buffer, handle, task.stagingAllocation.offset); // TODO: Information
+					copyBufferToTexture(cmd, task.stagingAllocation.buffer, handle, task.stagingAllocation.offset, 0u, 0u, 1u, task.extent, task.offset);
 
 					// auto &release_barrier{image_barriers.emplace_back()};
 
@@ -361,26 +363,38 @@ namespace toaster::gpu::upload
 		StateTracker *tracker{g_impl->stateTrackers.tryGet(p_state_tracker)};
 		TST_ASSERT_MSG(tracker, "State tracker does not exist or is already completed");
 
-		std::vector<uint64> wait_values;
+		while (true)
 		{
-			std::scoped_lock<std::mutex> ticket_lock{*tracker->ticketMutex};
-			wait_values = tracker->timelineTickets;
+			uint64 current_value{getSemaphoreValue(frame::getTransferTimelineSemaphore())};
+
+			bool all_finished{true};
+
+			{
+				std::scoped_lock<std::mutex> ticket_lock{*tracker->ticketMutex};
+				// If the tracker has no timeline tickets, it indicates that worker threads have not yet begun an upload on it
+				if (tracker->timelineTickets.empty())
+					all_finished = false;
+
+				for (const uint64 ticket: tracker->timelineTickets)
+				{
+					if (current_value < ticket)
+					{
+						all_finished = false;
+						break;
+					}
+				}
+			}
+			TST_SCOPED_ATOMIC(tracker->pendingSubresources, pending_subresources);
+			if (all_finished && pending_subresources.load() == 0u)
+			{
+				if (tracker->readyCb)
+					tracker->readyCb();
+
+				g_impl->stateTrackers.destroy(p_state_tracker);
+
+				break;
+			}
 		}
-
-		const SemaphoreHandle transfer_semaphore{frame::getTransferTimelineSemaphore()};
-
-		// Remove completed ticket values
-		uint64 current_value{getSemaphoreValue(transfer_semaphore)};
-		for (auto ticket_it{wait_values.begin()}; ticket_it != wait_values.end();)
-		{
-			if (current_value >= *ticket_it)
-				ticket_it = wait_values.erase(ticket_it);
-		}
-
-		std::vector<SemaphoreHandle> wait_semaphores(wait_values.size());
-		std::ranges::fill(wait_values, transfer_semaphore);
-
-		waitSemaphores(wait_semaphores, wait_values);
 	}
 
 	auto pollUploads() -> void
@@ -484,6 +498,8 @@ namespace toaster::gpu::upload
 
 		std::memcpy(upload_task.stagingAllocation.mapped, p_upload_desc.data, p_upload_desc.size);
 
+		upload_task.extent       = p_upload_desc.extent;
+		upload_task.offset       = p_upload_desc.offset;
 		upload_task.stateTracker = p_state_tracker;
 		upload_task.size         = p_upload_desc.size;
 		upload_task.handle       = static_cast<uint64>(p_upload_desc.dstTexture);

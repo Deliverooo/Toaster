@@ -63,7 +63,7 @@ public:
 			m_orboEntity = m_scene.createEntity();
 			m_scene.addComponent<scene::StaticMeshComponent>(m_orboEntity, orbo_mesh);
 			m_scene.addComponent<scene::GPUTransformComponent>(m_orboEntity, m_transformSystem->createTransform());
-			m_scene.addComponent<scene::TransformComponent >(m_orboEntity);
+			m_scene.addComponent<scene::TransformComponent>(m_orboEntity);
 		}
 		{
 			render::StaticMeshHandle level_mesh{m_meshManager->registerStaticMesh()};
@@ -275,7 +275,7 @@ public:
 		gpu::bindResourceHeap(p_cmd, m_renderCtx->getResourceHeap());
 		gpu::bindSamplerHeap(p_cmd, m_renderCtx->getSamplerHeap());
 
-		uint32 active_object_count{0u}; 
+		uint32 active_object_count{0u};
 		{
 			ObjectData *mapped_object_data{static_cast<ObjectData *>(gpu::getBufferMappedData(m_objectDataBuffers[m_app->getFrameIndex()]))};
 
@@ -403,7 +403,6 @@ public:
 		push_data.samplerId          = m_samplerHeapSlot;
 
 		gpu::pushData(p_cmd, push_data);
-		gpu::bindIndexBuffer(p_cmd, nullptr);
 
 		if (active_object_count > 0u)
 			gpu::drawMeshTasksIndirectCount(p_cmd, m_indirectBuffers[m_app->getFrameIndex()], 0u, m_countBuffers[m_app->getFrameIndex()], 0u, active_object_count,
@@ -472,7 +471,7 @@ public:
 		});
 	}
 
-private :
+private:
 	gpu::TextureHandle m_depthAttachment{nullptr};
 	gpu::TextureHandle m_msaaDepthAttachment{nullptr};
 	gpu::TextureHandle m_msaaColourAttachment{nullptr};

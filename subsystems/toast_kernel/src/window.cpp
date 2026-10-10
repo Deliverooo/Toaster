@@ -118,9 +118,18 @@ namespace toaster
 				data->inputCtx.m_firstMouse = true;
 		});
 
-		#undef TST_DISPATCH_EVENT
+		glfwSetDropCallback(m_window, +[](GLFWwindow *p_window, int32 p_path_count, CString p_paths[])
+		{
+			auto data{static_cast<CallbackData *>(glfwGetWindowUserPointer(p_window))};
 
-		//TODO: Actually finish setting up the callbacks...
+			std::vector<String> filepaths{static_cast<std::vector<String>::size_type>(p_path_count)};
+			for (uint32 i{0u}; i < p_path_count; ++i)
+				filepaths[i] = p_paths[i];
+
+			TST_DISPATCH_EVENT(WindowFileDropEvent, filepaths);
+		});
+
+		#undef TST_DISPATCH_EVENT
 
 		HWND hwnd{glfwGetWin32Window(m_window)};
 
@@ -160,7 +169,7 @@ namespace toaster
 	auto Window::beginFrame(gpu::CommandListHandle p_cmd) -> bool
 	{
 		m_currentTexture = gpu::acquireNextImage(m_swapchain);
-		
+
 		if (!m_currentTexture)
 		{
 			gpu::resizeSwapchain(m_swapchain, getSize());

@@ -805,7 +805,7 @@ namespace toaster::gpu
 		vk::StructureChain<vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan11Features, vk::PhysicalDeviceVulkan12Features, vk::PhysicalDeviceVulkan13Features,
 			vk::PhysicalDeviceVulkan14Features, vk::PhysicalDeviceShaderObjectFeaturesEXT, vk::PhysicalDeviceDescriptorHeapFeaturesEXT,
 			vk::PhysicalDeviceShaderUntypedPointersFeaturesKHR, vk::PhysicalDeviceMaintenance9FeaturesKHR, vk::PhysicalDeviceUnifiedImageLayoutsFeaturesKHR,
-			vk::PhysicalDeviceMeshShaderFeaturesEXT> feature_chain{{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}};
+			vk::PhysicalDeviceMeshShaderFeaturesEXT, vk::PhysicalDeviceColorWriteEnableFeaturesEXT> feature_chain{{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}};
 
 		feature_chain.get<vk::PhysicalDeviceFeatures2>().features.samplerAnisotropy                        = true;
 		feature_chain.get<vk::PhysicalDeviceFeatures2>().features.sampleRateShading                        = true;
@@ -842,6 +842,7 @@ namespace toaster::gpu
 		feature_chain.get<vk::PhysicalDeviceUnifiedImageLayoutsFeaturesKHR>().unifiedImageLayouts          = true;
 		feature_chain.get<vk::PhysicalDeviceMeshShaderFeaturesEXT>().meshShader                            = true;
 		feature_chain.get<vk::PhysicalDeviceMeshShaderFeaturesEXT>().taskShader                            = true;
+		feature_chain.get<vk::PhysicalDeviceColorWriteEnableFeaturesEXT>().colorWriteEnable                = true;
 
 		g_impl->queueFamilyIndices = selectQueueFamilyIndices(g_impl->physicalDevice, p_desc.usingSwapchain);
 
@@ -1280,7 +1281,7 @@ namespace toaster::gpu
 	}
 
 	auto copyBufferToTexture(CommandListHandle p_command_list, BufferHandle p_src_buffer, TextureHandle p_dst_texture, uint64 p_src_offset, uint32 p_mip_level,
-							 uint32            p_base_layer, uint32         p_layer_count, tsm::uint3   p_extent) -> void
+							 uint32            p_base_layer, uint32         p_layer_count, tsm::uint3   p_extent, tsm::int3   p_offset) -> void
 	{
 		CommandList &cmd{g_impl->commandLists[p_command_list]};
 		TST_ASSERT(cmd.open);
@@ -1334,7 +1335,7 @@ namespace toaster::gpu
 		copy_region.bufferRowLength   = 0u; // TODO: More options for advanced copy operations
 		copy_region.bufferImageHeight = 0u;
 		copy_region.imageSubresource  = vk::ImageSubresourceLayers{getImageAspectMask(dst_texture->desc.format), p_mip_level, p_base_layer, p_layer_count};
-		copy_region.imageOffset       = vk::Offset3D{0u, 0u, 0u};
+		copy_region.imageOffset       = vk::Offset3D{p_offset.x, p_offset.y, p_offset.z};
 		copy_region.imageExtent       = vk::Extent3D{p_extent.x, p_extent.y, p_extent.z};
 
 		vk::CopyBufferToImageInfo2 copy_buffer_to_image_info{};
@@ -1636,17 +1637,25 @@ namespace toaster::gpu
 		cmd.cmd.bindSamplerHeapEXT(sampler_heap.bindInfo, FunctionDispatcher::get());
 	}
 
-	auto bindIndexBuffer(CommandListHandle p_command_list, BufferHandle p_index_buffer) -> void
+	auto bindIndexBuffer(CommandListHandle p_command_list, BufferHandle p_index_buffer, EIndexType p_index_type) -> void
 	{
 		CommandList & cmd{g_impl->commandLists[p_command_list]};
 		const Buffer *index_buffer{g_impl->buffers.tryGet(p_index_buffer)};
 
 		cmd.cmd.setVertexInputEXT({}, {}, FunctionDispatcher::get());
 
+		vk::IndexType index_type{};
+		switch (p_index_type)
+		{
+			case EIndexType::eUint8: index_type = vk::IndexType::eUint8;
+				break;
+			case EIndexType::eUint16: index_type = vk::IndexType::eUint16;
+				break;
+			case EIndexType::eUint32: index_type = vk::IndexType::eUint32;
+				break;
+		}
 		if (index_buffer)
-			cmd.cmd.bindIndexBuffer(index_buffer->buffer, 0u, vk::IndexType::eUint32, FunctionDispatcher::get());
-		// else
-		// cmd.cmd.bindIndexBuffer(nullptr, 0u, vk::IndexType::eUint32, FunctionDispatcher::get());
+			cmd.cmd.bindIndexBuffer(index_buffer->buffer, 0u, index_type, FunctionDispatcher::get());
 	}
 
 	auto setPrimitiveTopology(CommandListHandle p_command_list, EPrimitiveTopology p_primitive_topology) -> void
@@ -1833,8 +1842,90 @@ namespace toaster::gpu
 	auto setColourWriteMask(CommandListHandle p_command_list, InitialiserList<const EColourComponentFlags> p_masks, uint32 p_first_attachment_index) -> void
 	{
 		CommandList &cmd{g_impl->commandLists[p_command_list]};
-		cmd.cmd.setColorWriteMaskEXT(p_first_attachment_index, p_masks.size(), reinterpret_cast<const vk::ColorComponentFlags *>(p_masks.data()),
-									 FunctionDispatcher::get());
+
+		const auto get_vulkan_colour_component_flags{
+			+[](const EColourComponentFlags p_flags) -> vk::ColorComponentFlags
+			{
+				vk::ColorComponentFlags out_flags{0u};
+				out_flags |= (p_flags & EColourComponentFlagBits::eR) ? vk::ColorComponentFlagBits::eR : vk::ColorComponentFlagBits{0u};
+				out_flags |= (p_flags & EColourComponentFlagBits::eG) ? vk::ColorComponentFlagBits::eG : vk::ColorComponentFlagBits{0u};
+				out_flags |= (p_flags & EColourComponentFlagBits::eB) ? vk::ColorComponentFlagBits::eB : vk::ColorComponentFlagBits{0u};
+				out_flags |= (p_flags & EColourComponentFlagBits::eA) ? vk::ColorComponentFlagBits::eA : vk::ColorComponentFlagBits{0u};
+				return out_flags;
+			}
+		};
+
+		std::vector<vk::ColorComponentFlags> component_flags(p_masks.size());
+		for (uint32 i{0u}; i < p_masks.size(); ++i)
+			component_flags[i] = get_vulkan_colour_component_flags(p_masks[i]);
+		cmd.cmd.setColorWriteMaskEXT(p_first_attachment_index, component_flags, FunctionDispatcher::get());
+	}
+
+	auto setColourBlendEnable(CommandListHandle p_command_list, InitialiserList<const bool32> p_enables, uint32 p_first_attachment_index) -> void
+	{
+		CommandList &cmd{g_impl->commandLists[p_command_list]};
+		cmd.cmd.setColorBlendEnableEXT(p_first_attachment_index, p_enables, FunctionDispatcher::get());
+	}
+
+	auto setColourBlendEquation(CommandListHandle p_command_list, InitialiserList<const ColourBlendEquation> p_blend_equations, uint32 p_first_attachment_index) -> void
+	{
+		CommandList &cmd{g_impl->commandLists[p_command_list]};
+
+		const auto get_colour_blend_factor{
+			+[](EBlendFactor p_factor) -> vk::BlendFactor
+			{
+				switch (p_factor)
+				{
+					case EBlendFactor::eZero: return vk::BlendFactor::eZero;
+					case EBlendFactor::eOne: return vk::BlendFactor::eOne;
+					case EBlendFactor::eSrcColor: return vk::BlendFactor::eSrcColor;
+					case EBlendFactor::eOneMinusSrcColor: return vk::BlendFactor::eOneMinusSrcColor;
+					case EBlendFactor::eDstColor: return vk::BlendFactor::eDstColor;
+					case EBlendFactor::eOneMinusDstColor: return vk::BlendFactor::eOneMinusDstColor;
+					case EBlendFactor::eSrcAlpha: return vk::BlendFactor::eSrcAlpha;
+					case EBlendFactor::eOneMinusSrcAlpha: return vk::BlendFactor::eOneMinusSrcAlpha;
+					case EBlendFactor::eDstAlpha: return vk::BlendFactor::eDstAlpha;
+					case EBlendFactor::eOneMinusDstAlpha: return vk::BlendFactor::eOneMinusDstAlpha;
+					case EBlendFactor::eConstantColor: return vk::BlendFactor::eConstantColor;
+					case EBlendFactor::eOneMinusConstantColor: return vk::BlendFactor::eOneMinusConstantColor;
+					case EBlendFactor::eConstantAlpha: return vk::BlendFactor::eConstantAlpha;
+					case EBlendFactor::eOneMinusConstantAlpha: return vk::BlendFactor::eOneMinusConstantAlpha;
+					case EBlendFactor::eSrcAlphaSaturate: return vk::BlendFactor::eSrcAlphaSaturate;
+					case EBlendFactor::eSrc1Color: return vk::BlendFactor::eSrc1Color;
+					case EBlendFactor::eOneMinusSrc1Color: return vk::BlendFactor::eOneMinusSrc1Color;
+					case EBlendFactor::eSrc1Alpha: return vk::BlendFactor::eSrc1Alpha;
+					case EBlendFactor::eOneMinusSrc1Alpha: return vk::BlendFactor::eOneMinusSrc1Alpha;
+				}
+				return vk::BlendFactor::eZero;
+			}
+		};
+
+		const auto get_colour_blend_op{
+			+[](EBlendOp p_op) -> vk::BlendOp
+			{
+				switch (p_op)
+				{
+					case EBlendOp::eAdd: return vk::BlendOp::eAdd;
+					case EBlendOp::eSubtract: return vk::BlendOp::eSubtract;
+					case EBlendOp::eReverseSubtract: return vk::BlendOp::eReverseSubtract;
+					case EBlendOp::eMin: return vk::BlendOp::eMin;
+					case EBlendOp::eMax: return vk::BlendOp::eMax;
+				}
+				return vk::BlendOp::eAdd;
+			}
+		};
+		std::vector<vk::ColorBlendEquationEXT> colour_blend_equations(p_blend_equations.size());
+		for (uint32 i{0u}; i < p_blend_equations.size(); ++i)
+		{
+			auto &dst_equation{colour_blend_equations[i]};
+			dst_equation.srcColorBlendFactor = get_colour_blend_factor(p_blend_equations[i].srcColorBlendFactor);
+			dst_equation.dstColorBlendFactor = get_colour_blend_factor(p_blend_equations[i].dstColorBlendFactor);
+			dst_equation.colorBlendOp        = get_colour_blend_op(p_blend_equations[i].colorBlendOp);
+			dst_equation.srcAlphaBlendFactor = get_colour_blend_factor(p_blend_equations[i].srcAlphaBlendFactor);
+			dst_equation.dstAlphaBlendFactor = get_colour_blend_factor(p_blend_equations[i].dstAlphaBlendFactor);
+			dst_equation.alphaBlendOp        = get_colour_blend_op(p_blend_equations[i].alphaBlendOp);
+		}
+		cmd.cmd.setColorBlendEquationEXT(p_first_attachment_index, colour_blend_equations, FunctionDispatcher::get());
 	}
 
 	auto draw(CommandListHandle p_command_list, uint32 p_vertex_count, uint32 p_instance_count, uint32 p_first_vertex, uint32 p_first_instance) -> void
@@ -2195,13 +2286,15 @@ namespace toaster::gpu
 		sampler_create_info.addressModeV = getAddressMode(sampler.desc.addressModeV);
 		sampler_create_info.addressModeW = getAddressMode(sampler.desc.addressModeW);
 
-		sampler_create_info.mipLodBias              = 0.0f;
-		sampler_create_info.anisotropyEnable        = true;
-		sampler_create_info.maxAnisotropy           = g_impl->physicalDevice.getProperties2().properties.limits.maxSamplerAnisotropy;
+		sampler_create_info.mipLodBias       = 0.0f;
+		sampler_create_info.anisotropyEnable = true;
+		sampler_create_info.maxAnisotropy    = (sampler.desc.maxAnisotropy == -1.0f)
+												   ? g_impl->physicalDevice.getProperties2().properties.limits.maxSamplerAnisotropy
+												   : sampler.desc.maxAnisotropy;
 		sampler_create_info.compareEnable           = false;
 		sampler_create_info.compareOp               = vk::CompareOp::eNever;
-		sampler_create_info.minLod                  = 0.0f;
-		sampler_create_info.maxLod                  = vk::LodClampNone;
+		sampler_create_info.minLod                  = sampler.desc.minLod;
+		sampler_create_info.maxLod                  = sampler.desc.maxLod;
 		sampler_create_info.borderColor             = vk::BorderColor::eFloatOpaqueWhite;
 		sampler_create_info.unnormalizedCoordinates = false;
 

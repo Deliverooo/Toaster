@@ -54,6 +54,7 @@ namespace toaster::gpu::upload
 		const void *  data{nullptr};
 		uint64        size{0u};
 		tsm::uint3    extent{0u}; // If zero, uses the texture's actual size
+		tsm::int3     offset{0};
 		uint32        mipLevel{0u};
 		uint32        baseLayer{0u};
 		uint32        layerCount{1u};
