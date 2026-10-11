@@ -53,17 +53,21 @@ namespace toaster
 
 		glfwSetKeyCallback(m_window, +[](GLFWwindow *p_window, int32 p_key, int32 p_scancode, int32 p_action, int32 p_mods) -> void
 		{
-			auto     data{static_cast<CallbackData *>(glfwGetWindowUserPointer(p_window))};
+			auto data{static_cast<CallbackData *>(glfwGetWindowUserPointer(p_window))};
+
+			if (p_key == GLFW_KEY_UNKNOWN)
+				return;
+
 			EKeyCode keycode{static_cast<EKeyCode>(p_key)};
 
 			if (p_action == GLFW_PRESS)
 			{
-				data->inputCtx.m_currentKeyStates[keycode] = true;
+				data->inputCtx.m_currentKeyStates[static_cast<uint32>(keycode)] = true;
 				TST_DISPATCH_EVENT(KeyPressEvent, keycode);
 			}
 			else if (p_action == GLFW_RELEASE)
 			{
-				data->inputCtx.m_currentKeyStates[keycode] = false;
+				data->inputCtx.m_currentKeyStates[static_cast<uint32>(keycode)] = false;
 				TST_DISPATCH_EVENT(KeyReleaseEvent, keycode);
 			}
 		});
@@ -75,13 +79,13 @@ namespace toaster
 
 			if (p_action == GLFW_PRESS)
 			{
-				data->inputCtx.m_currentMouseStates[button] = true;
+				data->inputCtx.m_currentMouseStates[static_cast<uint32>(button)] = true;
 				// TST_DISPATCH_EVENT(MouseButtonPressEvent, button);
 			}
 			else if (p_action == GLFW_RELEASE)
 			{
-				data->inputCtx.m_currentMouseStates[button] = false;
-				// TST_DISPATCH_EVENT(MouseButtonReleaseEvent, button);
+				data->inputCtx.m_currentMouseStates[static_cast<uint32>(button)] = false;
+				// TST_DISPATCH_EVENT(MouseButtonReleaseEvent, button); 
 			}
 		});
 

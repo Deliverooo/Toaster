@@ -18,6 +18,89 @@ static constexpr uint32 s_MeshImportFlags{
 
 namespace toaster::asset
 {
+	auto generateGeometryData(const RawSubmeshData &p_submesh_data, std::vector<render::StaticMeshVertex> &p_out_vertices, std::vector<render::Meshlet> &p_out_meshlets,
+							  std::vector<uint32> & p_out_meshlet_vertices, std::vector<uint8> &           p_out_meshlet_triangles) -> void
+	{
+		static constexpr uint64  maxVertices{64u};
+		static constexpr uint64  maxTriangles{128u};
+		static constexpr float32 coneWeight{0.0f};
+
+		std::vector<uint32> remap(p_submesh_data.indices.size());
+		uint64              unique_vertex_count{
+			meshopt_generateVertexRemap(remap.data(), p_submesh_data.indices.data(), p_submesh_data.indices.size(), p_submesh_data.vertices.data(),
+										p_submesh_data.vertices.size(), sizeof(render::StaticMeshVertex))
+		};
+
+		std::vector<render::StaticMeshVertex> optimised_vertices(unique_vertex_count);
+		std::vector<uint32>                   optimised_indices(p_submesh_data.indices.size());
+
+		meshopt_remapIndexBuffer(optimised_indices.data(), p_submesh_data.indices.data(), p_submesh_data.indices.size(), remap.data());
+		meshopt_remapVertexBuffer(optimised_vertices.data(), p_submesh_data.vertices.data(), p_submesh_data.vertices.size(), sizeof(render::StaticMeshVertex),
+								  remap.data());
+
+		meshopt_optimizeVertexCache(optimised_indices.data(), optimised_indices.data(), optimised_indices.size(), optimised_vertices.size());
+		meshopt_optimizeVertexFetch(optimised_vertices.data(), optimised_indices.data(), optimised_indices.size(), optimised_vertices.data(), optimised_vertices.size(),
+									sizeof(render::StaticMeshVertex));
+
+		uint64 max_meshlets{meshopt_buildMeshletsBound(optimised_indices.size(), maxVertices, maxTriangles)};
+
+		std::vector<meshopt_Meshlet> local_meshlets(max_meshlets);
+		std::vector<uint32>          local_meshlet_vertices(max_meshlets * maxVertices);
+		std::vector<uint8>           local_meshlet_triangles(max_meshlets * maxTriangles * 3u);
+
+		uint64 meshlet_count{
+			meshopt_buildMeshlets(local_meshlets.data(), local_meshlet_vertices.data(), local_meshlet_triangles.data(), optimised_indices.data(),
+								  optimised_indices.size(), &optimised_vertices[0].position.x, optimised_vertices.size(), sizeof(render::StaticMeshVertex), maxVertices,
+								  maxTriangles, coneWeight)
+		};
+
+		// Shrink the meshlet data to the actual packed counts.
+		local_meshlets.resize(meshlet_count);
+		uint64 meshlet_vertex_count{0u};
+		uint64 meshlet_triangle_count{0u};
+		for (const meshopt_Meshlet &meshlet: local_meshlets)
+		{
+			meshlet_vertex_count   = std::max(meshlet_vertex_count, uint64{meshlet.vertex_offset} + meshlet.vertex_count);
+			meshlet_triangle_count = std::max(meshlet_triangle_count, uint64{meshlet.triangle_offset} + meshlet.triangle_count * 3u);
+		}
+		local_meshlet_vertices.resize(meshlet_vertex_count);
+		local_meshlet_triangles.resize(meshlet_triangle_count);
+
+		uint32 global_vertex_offset{static_cast<uint32>(p_out_vertices.size())};
+		p_out_vertices.insert(p_out_vertices.end(), optimised_vertices.begin(), optimised_vertices.end());
+
+		uint64 global_meshlet_offset{p_out_meshlets.size()};
+		p_out_meshlets.resize(global_meshlet_offset + meshlet_count);
+
+		uint64 global_meshlet_vertex_offset{p_out_meshlet_vertices.size()};
+		uint64 global_meshlet_triangle_offset{p_out_meshlet_triangles.size()};
+
+		for (uint64 m{0u}; m < meshlet_count; ++m)
+		{
+			const meshopt_Meshlet &local_meshlet{local_meshlets[m]};
+
+			meshopt_Bounds meshlet_bounds{
+				meshopt_computeMeshletBounds(&local_meshlet_vertices[local_meshlet.vertex_offset], &local_meshlet_triangles[local_meshlet.triangle_offset],
+											 local_meshlet.triangle_count, &p_out_vertices[global_vertex_offset].position.x, optimised_vertices.size(),
+											 sizeof(render::StaticMeshVertex))
+			};
+
+			render::Meshlet &meshlet{p_out_meshlets[global_meshlet_offset + m]};
+			meshlet.vertexOffset   = static_cast<uint32>(global_meshlet_vertex_offset) + local_meshlet.vertex_offset;
+			meshlet.triangleOffset = static_cast<uint32>(global_meshlet_triangle_offset) + local_meshlet.triangle_offset;
+			meshlet.vertexCount    = local_meshlet.vertex_count;
+			meshlet.triangleCount  = local_meshlet.triangle_count;
+			meshlet.materialIndex  = p_submesh_data.materialIndex;
+			meshlet.boundingSphere = {meshlet_bounds.center[0u], meshlet_bounds.center[1u], meshlet_bounds.center[2u], meshlet_bounds.radius};
+		}
+
+		for (uint32 &vertex_index: local_meshlet_vertices)
+			vertex_index += global_vertex_offset;
+
+		p_out_meshlet_vertices.insert(p_out_meshlet_vertices.end(), local_meshlet_vertices.begin(), local_meshlet_vertices.end());
+		p_out_meshlet_triangles.insert(p_out_meshlet_triangles.end(), local_meshlet_triangles.begin(), local_meshlet_triangles.end());
+	}
+
 	MeshImporter::MeshImporter(render::MeshManager *   p_mesh_manager, render::MaterialManager *p_material_manager,
 							   render::TextureManager *p_texture_manager) : m_meshManager(p_mesh_manager), m_materialManager(p_material_manager),
 																			m_textureManager(p_texture_manager)
@@ -30,13 +113,6 @@ namespace toaster::asset
 		const aiScene *  scene{importer.ReadFile(p_path.string(), s_MeshImportFlags)};
 		TST_PERMA_ASSERT(scene);
 
-		// MeshImportData out_data{};
-
-		struct RawSubmeshData
-		{
-			std::vector<render::StaticMeshVertex> vertices;
-			std::vector<uint32>                   indices;
-		};
 		// Used because it is more efficient to group mesh data by material
 		std::unordered_map<uint32, RawSubmeshData> raw_submesh_data; // Maps from material index to raw data
 
@@ -49,6 +125,7 @@ namespace toaster::asset
 
 			uint32 material_index{mesh->mMaterialIndex};
 			auto & data{raw_submesh_data[material_index]};
+			data.materialIndex = material_index;
 
 			uint32 base_vertex_offset{static_cast<uint32>(data.vertices.size())};
 			data.vertices.resize(base_vertex_offset + mesh->mNumVertices);
@@ -108,79 +185,7 @@ namespace toaster::asset
 			if (data.indices.empty())
 				continue;
 
-			std::vector<uint32> remap(data.indices.size());
-			uint64              unique_vertex_count{
-				meshopt_generateVertexRemap(remap.data(), data.indices.data(), data.indices.size(), data.vertices.data(), data.vertices.size(),
-											sizeof(render::StaticMeshVertex))
-			};
-
-			std::vector<render::StaticMeshVertex> optimised_vertices(unique_vertex_count);
-			std::vector<uint32>                   optimised_indices(data.indices.size());
-
-			meshopt_remapIndexBuffer(optimised_indices.data(), data.indices.data(), data.indices.size(), remap.data());
-			meshopt_remapVertexBuffer(optimised_vertices.data(), data.vertices.data(), data.vertices.size(), sizeof(render::StaticMeshVertex), remap.data());
-
-			meshopt_optimizeVertexCache(optimised_indices.data(), optimised_indices.data(), optimised_indices.size(), optimised_vertices.size());
-			meshopt_optimizeVertexFetch(optimised_vertices.data(), optimised_indices.data(), optimised_indices.size(), optimised_vertices.data(),
-										optimised_vertices.size(), sizeof(render::StaticMeshVertex));
-
-			uint64 max_meshlets{meshopt_buildMeshletsBound(optimised_indices.size(), maxVertices, maxTriangles)};
-
-			std::vector<meshopt_Meshlet> local_meshlets(max_meshlets);
-			std::vector<uint32>          local_meshlet_vertices(max_meshlets * maxVertices);
-			std::vector<uint8>           local_meshlet_triangles(max_meshlets * maxTriangles * 3u);
-
-			uint64 meshlet_count{
-				meshopt_buildMeshlets(local_meshlets.data(), local_meshlet_vertices.data(), local_meshlet_triangles.data(), optimised_indices.data(),
-									  optimised_indices.size(), &optimised_vertices[0].position.x, optimised_vertices.size(), sizeof(render::StaticMeshVertex),
-									  maxVertices, maxTriangles, coneWeight)
-			};
-
-			// Shrink the meshlet data to the actual packed counts.
-			local_meshlets.resize(meshlet_count);
-			uint64 meshlet_vertex_count{0u};
-			uint64 meshlet_triangle_count{0u};
-			for (const meshopt_Meshlet &meshlet: local_meshlets)
-			{
-				meshlet_vertex_count   = std::max(meshlet_vertex_count, uint64{meshlet.vertex_offset} + meshlet.vertex_count);
-				meshlet_triangle_count = std::max(meshlet_triangle_count, uint64{meshlet.triangle_offset} + meshlet.triangle_count * 3u);
-			}
-			local_meshlet_vertices.resize(meshlet_vertex_count);
-			local_meshlet_triangles.resize(meshlet_triangle_count);
-
-			uint32 global_vertex_offset{static_cast<uint32>(p_out_data->vertices.size())};
-			p_out_data->vertices.insert(p_out_data->vertices.end(), optimised_vertices.begin(), optimised_vertices.end());
-
-			uint64 global_meshlet_offset{p_out_data->meshlets.size()};
-			p_out_data->meshlets.resize(global_meshlet_offset + meshlet_count);
-
-			uint64 global_meshlet_vertex_offset{p_out_data->meshletVertices.size()};
-			uint64 global_meshlet_triangle_offset{p_out_data->meshletTriangles.size()};
-
-			for (uint64 m{0u}; m < meshlet_count; ++m)
-			{
-				const meshopt_Meshlet &local_meshlet{local_meshlets[m]};
-
-				meshopt_Bounds meshlet_bounds{
-					meshopt_computeMeshletBounds(&local_meshlet_vertices[local_meshlet.vertex_offset], &local_meshlet_triangles[local_meshlet.triangle_offset],
-												 local_meshlet.triangle_count, &p_out_data->vertices[global_vertex_offset].position.x, optimised_vertices.size(),
-												 sizeof(render::StaticMeshVertex))
-				};
-
-				render::Meshlet &meshlet{p_out_data->meshlets[global_meshlet_offset + m]};
-				meshlet.vertexOffset   = static_cast<uint32>(global_meshlet_vertex_offset) + local_meshlet.vertex_offset;
-				meshlet.triangleOffset = static_cast<uint32>(global_meshlet_triangle_offset) + local_meshlet.triangle_offset;
-				meshlet.vertexCount    = local_meshlet.vertex_count;
-				meshlet.triangleCount  = local_meshlet.triangle_count;
-				meshlet.materialIndex  = mat_idx;
-				meshlet.boundingSphere = {meshlet_bounds.center[0u], meshlet_bounds.center[1u], meshlet_bounds.center[2u], meshlet_bounds.radius};
-			}
-
-			for (uint32 &vertex_index: local_meshlet_vertices)
-				vertex_index += global_vertex_offset;
-
-			p_out_data->meshletVertices.insert(p_out_data->meshletVertices.end(), local_meshlet_vertices.begin(), local_meshlet_vertices.end());
-			p_out_data->meshletTriangles.insert(p_out_data->meshletTriangles.end(), local_meshlet_triangles.begin(), local_meshlet_triangles.end());
+			generateGeometryData(data, p_out_data->vertices, p_out_data->meshlets, p_out_data->meshletVertices, p_out_data->meshletTriangles);
 		}
 
 		std::println("Material count: {}", scene->mNumMaterials);

@@ -10,6 +10,17 @@
 
 namespace toaster::asset
 {
+	struct TST_ASSET_API RawSubmeshData // Use if you need to generate meshes using an algorithm, then create meshlets
+	{
+		std::vector<render::StaticMeshVertex> vertices;
+		std::vector<uint32>                   indices;
+		uint32                                materialIndex;
+	};
+
+	auto TST_ASSET_API generateGeometryData(const RawSubmeshData &        p_submesh_data, std::vector<render::StaticMeshVertex> &p_out_vertices,
+											std::vector<render::Meshlet> &p_out_meshlets, std::vector<uint32> &                  p_out_meshlet_vertices,
+											std::vector<uint8> &          p_out_meshlet_triangles) -> void;
+
 	struct TST_ASSET_API TextureImportData
 	{
 		std::optional<filesystem::Path> path;

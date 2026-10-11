@@ -7,64 +7,38 @@ namespace toaster
 {
 	auto InputContext::isKeyDown(EKeyCode p_key_code) const -> bool
 	{
-		const auto it{m_currentKeyStates.find(p_key_code)};
-		return it != m_currentKeyStates.end() && it->second;
+		return m_currentKeyStates[static_cast<uint32>(p_key_code)];
 	}
 
 	auto InputContext::isKeyPressed(EKeyCode p_key_code) const -> bool
 	{
-		const auto current_it{m_currentKeyStates.find(p_key_code)};
-		const auto previous_it{m_previousKeyStates.find(p_key_code)};
-
-		const bool current_down{(current_it != m_currentKeyStates.end() && current_it->second)};
-		const bool previous_down{(previous_it != m_previousKeyStates.end() && previous_it->second)};
-
-		return current_down && !previous_down;
+		return m_currentKeyStates[static_cast<uint32>(p_key_code)] && !m_previousKeyStates[static_cast<uint32>(p_key_code)];
 	}
 
 	auto InputContext::isKeyReleased(EKeyCode p_key_code) const -> bool
 	{
-		const auto current_it{m_currentKeyStates.find(p_key_code)};
-		const auto previous_it{m_previousKeyStates.find(p_key_code)};
-
-		const bool current_down{(current_it != m_currentKeyStates.end() && current_it->second)};
-		const bool previous_down{(previous_it != m_previousKeyStates.end() && previous_it->second)};
-
-		return !current_down && previous_down;
+		return !m_currentKeyStates[static_cast<uint32>(p_key_code)] && m_previousKeyStates[static_cast<uint32>(p_key_code)];
 	}
 
 	auto InputContext::isMouseButtonDown(EMouseButton p_button) const -> bool
 	{
-		const auto it{m_currentMouseStates.find(p_button)};
-		return it != m_currentMouseStates.end() && it->second;
+		return m_currentMouseStates[static_cast<uint32>(p_button)];
 	}
 
 	auto InputContext::isMouseButtonPressed(EMouseButton p_button) const -> bool
 	{
-		const auto current_it{m_currentMouseStates.find(p_button)};
-		const auto previous_it{m_previousMouseStates.find(p_button)};
-
-		const bool current_down{(current_it != m_currentMouseStates.end() && current_it->second)};
-		const bool previous_down{(previous_it != m_previousMouseStates.end() && previous_it->second)};
-
-		return current_down && !previous_down;
+		return m_currentMouseStates[static_cast<uint32>(p_button)] && !m_previousMouseStates[static_cast<uint32>(p_button)];
 	}
 
 	auto InputContext::isMouseButtonReleased(EMouseButton p_button) const -> bool
 	{
-		const auto current_it{m_currentMouseStates.find(p_button)};
-		const auto previous_it{m_previousMouseStates.find(p_button)};
-
-		const bool current_down{(current_it != m_currentMouseStates.end() && current_it->second)};
-		const bool previous_down{(previous_it != m_previousMouseStates.end() && previous_it->second)};
-
-		return !current_down && previous_down;
+		return !m_currentMouseStates[static_cast<uint32>(p_button)] && m_previousMouseStates[static_cast<uint32>(p_button)];
 	}
 
 	auto InputContext::setCursorMode(ECursorMode p_mode) -> void
 	{
 		glfwSetInputMode(static_cast<GLFWwindow *>(m_windowCtx), GLFW_CURSOR, GLFW_CURSOR_NORMAL + static_cast<int32>(p_mode));
-		m_cursorMode = p_mode;
+		m_currentCursorMode = p_mode;
 	}
 
 	auto InputContext::update() -> void
@@ -81,10 +55,10 @@ namespace toaster
 
 	auto InputContext::clearStates() -> void
 	{
-		m_currentKeyStates.clear();
-		m_previousKeyStates.clear();
+		m_currentKeyStates.reset();
+		m_previousKeyStates.reset();
 
-		m_currentMouseStates.clear();
-		m_previousMouseStates.clear();
+		m_currentMouseStates.reset();
+		m_previousMouseStates.reset();
 	}
 }

@@ -132,7 +132,9 @@ namespace toaster
 		eMenu         = 348
 	};
 
-	enum class EMouseButton : int32
+	constexpr uint32 c_keyLast{static_cast<uint32>(EKeyCode::eMenu)};
+
+	enum class EMouseButton : uint32
 	{
 		eButton1 = 0,
 		eButton2 = 1,
@@ -147,7 +149,9 @@ namespace toaster
 		eMiddle  = eButton3
 	};
 
-	enum class ECursorMode
+	constexpr uint32 c_mouseButtonLast{static_cast<uint32>(EMouseButton::eButton8)};
+
+	enum class ECursorMode : uint8
 	{
 		eNormal,
 		eHidden,
@@ -158,7 +162,8 @@ namespace toaster
 	class TST_KERNEL_API InputContext
 	{
 	public:
-		InputContext() = default;
+		InputContext()  = default;
+		~InputContext() = default;
 
 		explicit InputContext(void *p_window_ctx) : m_windowCtx(p_window_ctx)
 		{
@@ -177,7 +182,7 @@ namespace toaster
 		auto isMouseButtonReleased(EMouseButton p_button) const -> bool;
 
 		auto setCursorMode(ECursorMode p_mode) -> void;
-		auto getCursorMode() const -> ECursorMode { return m_cursorMode; }
+		auto getCursorMode() const -> ECursorMode { return m_currentCursorMode; }
 
 		auto getMouseX() const -> float32 { return m_mouseX; }
 		auto getMouseY() const -> float32 { return m_mouseY; }
@@ -191,18 +196,13 @@ namespace toaster
 		auto clearStates() -> void;
 
 	private:
-		std::unordered_map<EKeyCode, bool> m_currentKeyStates;
-		std::unordered_map<EKeyCode, bool> m_previousKeyStates;
+		std::bitset<c_keyLast> m_currentKeyStates;
+		std::bitset<c_keyLast> m_previousKeyStates;
 
-		std::unordered_map<EMouseButton, bool> m_currentMouseStates;
-		std::unordered_map<EMouseButton, bool> m_previousMouseStates;
+		std::bitset<c_mouseButtonLast> m_currentMouseStates;
+		std::bitset<c_mouseButtonLast> m_previousMouseStates;
 
 		void *m_windowCtx{nullptr}; // GLFWwindow*
-
-		ECursorMode m_cursorMode{ECursorMode::eNormal};
-
-		// Essentially, when the cursor first enters the window, the initial X position will be out of date. This will mess up the Dx/Dy and cause issues...
-		bool m_firstMouse{true};
 
 		float32 m_mouseX{0.0f};
 		float32 m_mouseY{0.0f};
@@ -211,6 +211,11 @@ namespace toaster
 
 		float32 m_scrollX{0.0f};
 		float32 m_scrollY{0.0f};
+
+		ECursorMode m_currentCursorMode{ECursorMode::eNormal};
+
+		// Essentially, when the cursor first enters the window, the initial X position will be out of date. This will mess up the Dx/Dy and cause issues...
+		bool m_firstMouse{true};
 
 		friend class Window;
 	};

@@ -1506,6 +1506,7 @@ namespace toaster::gpu
 			auto &dst_attachment{colour_attachments[i]};
 
 			const Texture *render_target{g_impl->textures.tryGet(src_attachment.renderTarget)};
+			TST_ASSERT(render_target);
 			dst_attachment.imageView   = render_target->imageView;
 			dst_attachment.imageLayout = vk::ImageLayout::eGeneral;
 
@@ -1516,6 +1517,7 @@ namespace toaster::gpu
 			if (g_impl->textures.isValid(src_attachment.resolveTarget))
 			{
 				const Texture *resolve_render_target{g_impl->textures.tryGet(src_attachment.resolveTarget)};
+				TST_ASSERT(resolve_render_target);
 				dst_attachment.resolveImageView   = resolve_render_target->imageView;
 				dst_attachment.resolveImageLayout = vk::ImageLayout::eGeneral;
 				dst_attachment.resolveMode        = getResolveMode(src_attachment.resolveMode);
@@ -1528,6 +1530,7 @@ namespace toaster::gpu
 			auto &src_attachment{p_rendering_info.depthAttachment.value()};
 
 			const Texture *render_target{g_impl->textures.tryGet(src_attachment.renderTarget)};
+			TST_ASSERT(render_target);
 			depth_attachment.imageView   = render_target->imageView;
 			depth_attachment.imageLayout = vk::ImageLayout::eGeneral;
 
@@ -1538,6 +1541,7 @@ namespace toaster::gpu
 			if (g_impl->textures.isValid(src_attachment.resolveTarget))
 			{
 				const Texture *resolve_render_target{g_impl->textures.tryGet(src_attachment.resolveTarget)};
+				TST_ASSERT(resolve_render_target);
 				depth_attachment.resolveImageView   = resolve_render_target->imageView;
 				depth_attachment.resolveImageLayout = vk::ImageLayout::eGeneral;
 				depth_attachment.resolveMode        = getResolveMode(src_attachment.resolveMode);
@@ -1550,6 +1554,7 @@ namespace toaster::gpu
 			auto &src_attachment{p_rendering_info.stencilAttachment.value()};
 
 			const Texture *render_target{g_impl->textures.tryGet(src_attachment.renderTarget)};
+			TST_ASSERT(render_target);
 			stencil_attachment.imageView   = render_target->imageView;
 			stencil_attachment.imageLayout = vk::ImageLayout::eGeneral;
 
@@ -1560,6 +1565,7 @@ namespace toaster::gpu
 			if (g_impl->textures.isValid(src_attachment.resolveTarget))
 			{
 				const Texture *resolve_render_target{g_impl->textures.tryGet(src_attachment.resolveTarget)};
+				TST_ASSERT(resolve_render_target);
 				stencil_attachment.resolveImageView   = resolve_render_target->imageView;
 				stencil_attachment.resolveImageLayout = vk::ImageLayout::eGeneral;
 				stencil_attachment.resolveMode        = getResolveMode(src_attachment.resolveMode);
