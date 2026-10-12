@@ -29,6 +29,7 @@ namespace toaster::render
 			p_data->meshlets.clear();
 
 			{
+				// TODO: Freeing these allocations should be deferred (while under the mutex lock in the local deferred scope)
 				std::scoped_lock<std::mutex> lock{ts->m_pageMutex};
 
 				ts->m_vertexPager->freePageAllocation(p_data->vertexBufferAllocation);
@@ -43,8 +44,6 @@ namespace toaster::render
 			p_data->meshletVertexBufferAllocation       = {};
 			p_data->meshletTriangleBufferAllocation     = {};
 			p_data->materialIndirectionBufferAllocation = {};
-
-			// gpu::upload::destroyStateTracker(p_data->stateTracker);
 		});
 	}
 

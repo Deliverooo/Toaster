@@ -13,17 +13,17 @@ namespace toaster::render
 			TextureManager *ts{static_cast<TextureManager *>(p_user_data)};
 
 			if (p_data->texture)
-				gpu::frame::defferTextureDeletion(p_data->texture);
+				gpu::frame::deferTextureDeletion(p_data->texture);
 
 			if (p_data->shaderReadHeapSlot != UINT32_MAX)
-				gpu::frame::defferTextureSlotFreeing(ts->m_renderCtx->getResourceHeap(), p_data->shaderReadHeapSlot);
+				gpu::frame::deferTextureHeapSlotFreeing(ts->m_renderCtx->getResourceHeap(), p_data->shaderReadHeapSlot);
 			if (p_data->storageHeapSlot != UINT32_MAX)
-				gpu::frame::defferTextureSlotFreeing(ts->m_renderCtx->getResourceHeap(), p_data->storageHeapSlot);
+				gpu::frame::deferTextureHeapSlotFreeing(ts->m_renderCtx->getResourceHeap(), p_data->storageHeapSlot);
 
 			for (const auto &slot: p_data->perMipStorageHeapSlots | std::views::values)
 			{
 				if (slot != UINT32_MAX)
-					gpu::frame::defferTextureSlotFreeing(ts->m_renderCtx->getResourceHeap(), slot);
+					gpu::frame::deferTextureHeapSlotFreeing(ts->m_renderCtx->getResourceHeap(), slot);
 			}
 		});
 	}

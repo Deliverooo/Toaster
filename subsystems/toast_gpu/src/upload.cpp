@@ -67,6 +67,9 @@ namespace toaster::gpu::upload
 
 	struct UploadContextImpl
 	{
+		SemaphoreHandle     transferTimelineSemaphore{nullptr};
+		std::atomic<uint64> transferTimelineCounter{0u};
+
 		uint32                                  nextPageId{0u};
 		uint32                                  activePageId{0u};
 		std::unordered_map<uint32, StagingPage> stagingPages;
@@ -84,11 +87,9 @@ namespace toaster::gpu::upload
 		std::mutex pageMutex;
 		std::mutex uploadMutex;
 		std::mutex batchMutex;
-		// std::mutex activeStateTrackerMutex;
 
 		std::queue<UploadTask>       taskQueue;
 		std::vector<LiveUploadBatch> liveBatches;
-		// std::unordered_set<StateTrackerHandle> activeStateTrackers; // State trackers that are not finished
 	};
 
 	static UploadContextImpl *g_impl{nullptr};
@@ -181,12 +182,12 @@ namespace toaster::gpu::upload
 
 	static auto executeBatchSubmission(const std::vector<UploadTask> &p_tasks, uint32 p_cmd_index) -> void
 	{
-		uint64 current_value{getSemaphoreValue(frame::getTransferTimelineSemaphore())};
+		uint64 current_value{getSemaphoreValue(g_impl->transferTimelineSemaphore)};
 
 		CommandListHandle cmd{g_impl->commandLists[p_cmd_index]};
 
 		if (current_value < g_impl->uploadTimeline[p_cmd_index])
-			waitSemaphores(frame::getTransferTimelineSemaphore(), g_impl->uploadTimeline[p_cmd_index]);
+			waitSemaphores(g_impl->transferTimelineSemaphore, g_impl->uploadTimeline[p_cmd_index]);
 
 		resetCommandList(cmd);
 		openCommandList(cmd);
@@ -230,11 +231,11 @@ namespace toaster::gpu::upload
 
 		closeCommandList(cmd);
 
-		uint64 target_signal_value{frame::acquireTransferTimelineCounterValue()};
+		uint64 target_signal_value{acquireTransferTimelineCounterValue()};
 		g_impl->uploadTimeline[p_cmd_index] = target_signal_value;
 		live_batch.timelineValue            = target_signal_value;
 
-		submit(EQueueType::eTransfer, cmd, {}, SemaphoreSubmitInfo{frame::getTransferTimelineSemaphore(), target_signal_value});
+		submit(EQueueType::eTransfer, cmd, {}, SemaphoreSubmitInfo{g_impl->transferTimelineSemaphore, target_signal_value});
 
 		for (const auto &task: p_tasks)
 		{
@@ -292,6 +293,8 @@ namespace toaster::gpu::upload
 
 		g_impl = new UploadContextImpl{};
 
+		g_impl->transferTimelineSemaphore = createSemaphore();
+
 		g_impl->maxAllocationCommandLists = p_desc.maxAllocationCommandLists;
 
 		insertPage(); // Default page
@@ -332,6 +335,8 @@ namespace toaster::gpu::upload
 		for (auto &[id, page]: g_impl->stagingPages)
 			destroyPage(page);
 
+		destroySemaphore(g_impl->transferTimelineSemaphore);
+
 		delete g_impl;
 		g_impl = nullptr;
 	}
@@ -365,7 +370,7 @@ namespace toaster::gpu::upload
 
 		while (true)
 		{
-			uint64 current_value{getSemaphoreValue(frame::getTransferTimelineSemaphore())};
+			uint64 current_value{getSemaphoreValue(g_impl->transferTimelineSemaphore)};
 
 			bool all_finished{true};
 
@@ -399,7 +404,7 @@ namespace toaster::gpu::upload
 
 	auto pollUploads() -> void
 	{
-		uint64 current_value{getSemaphoreValue(frame::getTransferTimelineSemaphore())};
+		uint64 current_value{getSemaphoreValue(g_impl->transferTimelineSemaphore)};
 
 		{
 			std::scoped_lock<std::mutex> batch_lock{g_impl->batchMutex}; // Locks so multiple threads cannot call ts at once
@@ -510,5 +515,20 @@ namespace toaster::gpu::upload
 			g_impl->taskQueue.push(upload_task);
 			g_impl->cv.notify_one();
 		}
+	}
+
+	auto getTransferTimelineSemaphore() -> SemaphoreHandle
+	{
+		return g_impl->transferTimelineSemaphore;
+	}
+
+	auto acquireTransferTimelineCounterValue() -> uint64
+	{
+		return ++g_impl->transferTimelineCounter; // Pre inc
+	}
+
+	auto getTransferTimelineCounterValue() -> uint64
+	{
+		return g_impl->transferTimelineCounter.load();
 	}
 }

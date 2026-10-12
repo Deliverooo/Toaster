@@ -3,6 +3,8 @@
 #include "buffer.hpp"
 #include <concepts>
 
+#include "memory.hpp"
+
 namespace toaster
 {
 	class TST_LIB_API CommandBuffer
@@ -13,9 +15,8 @@ namespace toaster
 
 		CommandBuffer(uint64 p_max_size_bytes = 10u * 1028u * 1028u /*10MB*/) : m_bufferCapacity(p_max_size_bytes)
 		{
-			m_buffer = static_cast<uint8 *>(::operator new[](m_bufferCapacity, std::align_val_t{alignof(std::max_align_t)}));
-
-			m_ptr = m_buffer;
+			m_buffer = static_cast<uint8 *>(alignedAlloc(m_bufferCapacity, maxAlignment));
+			m_ptr    = m_buffer;
 		}
 
 		~CommandBuffer()
@@ -47,7 +48,7 @@ namespace toaster
 				buffer += payload_size;
 			}
 
-			::operator delete[](m_buffer, std::align_val_t{alignof(std::max_align_t)});
+			alignedFree(m_buffer);
 		}
 
 		CommandBuffer(const CommandBuffer &)            = delete;
@@ -66,7 +67,7 @@ namespace toaster
 		{
 			if (this != &p_other)
 			{
-				delete[] m_buffer;
+				alignedFree(m_buffer);
 				m_buffer         = p_other.m_buffer;
 				m_ptr            = p_other.m_ptr;
 				m_bufferCapacity = p_other.m_bufferCapacity;

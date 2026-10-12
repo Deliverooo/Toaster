@@ -61,4 +61,9 @@ namespace toaster::gpu::upload
 	};
 
 	auto TST_GPU_API uploadDataToTexture(const TextureUploadDesc &p_upload_desc, StateTrackerHandle p_state_tracker) -> void;
+
+	// You should not really be calling these, but here...
+	[[nodiscard]] auto TST_GPU_API getTransferTimelineSemaphore() -> SemaphoreHandle;
+	[[nodiscard]] auto TST_GPU_API acquireTransferTimelineCounterValue() -> uint64; // returns the current value, then increments the counter
+	[[nodiscard]] auto TST_GPU_API getTransferTimelineCounterValue() -> uint64;
 }

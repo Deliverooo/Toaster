@@ -25,10 +25,6 @@ namespace toaster::render
 
 		m_dirtyMaterials.resize(m_maxFramesInFlight);
 
-		m_materials.setDestructorFn(+[](Material *p_data, void *) -> void
-		{
-		});
-
 		{
 			gpu::TextureDesc colour_texture_desc{};
 			colour_texture_desc.extent      = {1u, 1u, 1u};
@@ -63,7 +59,7 @@ namespace toaster::render
 	MaterialManager::~MaterialManager()
 	{
 		for (auto ssbo: m_materialSSBOs)
-			gpu::frame::defferBufferDeletion(ssbo);
+			gpu::frame::deferBufferDeletion(ssbo);
 
 		m_materials.clear();
 	}
