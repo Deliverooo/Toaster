@@ -43,7 +43,7 @@ namespace toaster
 				if(data->eventCallback)\
 				data->eventCallback(event, data->eventCallbackUserData)
 
-		glfwSetFramebufferSizeCallback(m_window, +[](GLFWwindow *p_window, int32 p_width, int32 p_height) -> void
+		glfwSetFramebufferSizeCallback(m_window, +[](GLFWwindow *p_window, int32 p_width, int32 p_height) noexcept -> void
 		{
 			auto data{static_cast<CallbackData *>(glfwGetWindowUserPointer(p_window))};
 			data->resized = true;
@@ -51,7 +51,7 @@ namespace toaster
 			data->height  = static_cast<uint32>(p_height);
 		});
 
-		glfwSetKeyCallback(m_window, +[](GLFWwindow *p_window, int32 p_key, int32 p_scancode, int32 p_action, int32 p_mods) -> void
+		glfwSetKeyCallback(m_window, +[](GLFWwindow *p_window, int32 p_key, int32 p_scancode, int32 p_action, int32 p_mods) noexcept -> void
 		{
 			auto data{static_cast<CallbackData *>(glfwGetWindowUserPointer(p_window))};
 
@@ -72,7 +72,7 @@ namespace toaster
 			}
 		});
 
-		glfwSetMouseButtonCallback(m_window, +[](GLFWwindow *p_window, int32 p_button, int32 p_action, int32 p_mods) -> void
+		glfwSetMouseButtonCallback(m_window, +[](GLFWwindow *p_window, int32 p_button, int32 p_action, int32 p_mods) noexcept -> void
 		{
 			auto         data{static_cast<CallbackData *>(glfwGetWindowUserPointer(p_window))};
 			EMouseButton button{static_cast<EMouseButton>(p_button)};
@@ -89,7 +89,7 @@ namespace toaster
 			}
 		});
 
-		glfwSetCursorPosCallback(m_window, +[](GLFWwindow *p_window, float64 p_xpos, float64 p_ypos) -> void
+		glfwSetCursorPosCallback(m_window, +[](GLFWwindow *p_window, float64 p_xpos, float64 p_ypos) noexcept -> void
 		{
 			auto data{static_cast<CallbackData *>(glfwGetWindowUserPointer(p_window))};
 
@@ -106,7 +106,7 @@ namespace toaster
 			data->inputCtx.m_mouseY = static_cast<float32>(p_ypos);
 		});
 
-		glfwSetScrollCallback(m_window, +[](GLFWwindow *p_window, float64 p_x_offset, float64 p_y_offset) -> void
+		glfwSetScrollCallback(m_window, +[](GLFWwindow *p_window, float64 p_x_offset, float64 p_y_offset) noexcept -> void
 		{
 			auto data{static_cast<CallbackData *>(glfwGetWindowUserPointer(p_window))};
 
@@ -114,7 +114,7 @@ namespace toaster
 			data->inputCtx.m_scrollY = static_cast<float32>(p_y_offset);
 		});
 
-		glfwSetCursorEnterCallback(m_window, +[](GLFWwindow *p_window, int32 p_entered) -> void
+		glfwSetCursorEnterCallback(m_window, +[](GLFWwindow *p_window, int32 p_entered) noexcept -> void
 		{
 			auto data{static_cast<CallbackData *>(glfwGetWindowUserPointer(p_window))};
 
@@ -122,7 +122,18 @@ namespace toaster
 				data->inputCtx.m_firstMouse = true;
 		});
 
-		glfwSetDropCallback(m_window, +[](GLFWwindow *p_window, int32 p_path_count, CString p_paths[])
+		glfwSetWindowFocusCallback(m_window, +[](GLFWwindow *p_window, int32 p_focused) noexcept -> void
+		{
+			auto data{static_cast<CallbackData *>(glfwGetWindowUserPointer(p_window))};
+
+			if (!p_focused) // Clear input states if the window has lost focus
+			{
+				data->inputCtx.clearStates();
+				data->inputCtx.m_firstMouse = true;
+			}
+		});
+
+		glfwSetDropCallback(m_window, +[](GLFWwindow *p_window, int32 p_path_count, CString p_paths[]) noexcept -> void
 		{
 			auto data{static_cast<CallbackData *>(glfwGetWindowUserPointer(p_window))};
 

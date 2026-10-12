@@ -6,20 +6,20 @@
 
 namespace toaster::render
 {
-	RenderContext::RenderContext()
+	RenderContext::RenderContext(uint32 p_max_frames_in_flight, uint32 p_max_buffer_descriptors, uint32 p_max_texture_descriptors, uint32 p_max_sampler_descriptors)
 	{
 		gpu::GPUContextDesc gpu_context_desc{};
 		gpu_context_desc.enableDebugInfo                 = true;
-		gpu_context_desc.maxConcurrentSwapchainWorkloads = 3u;
+		gpu_context_desc.maxConcurrentSwapchainWorkloads = p_max_frames_in_flight;
 		gpu_context_desc.usingSwapchain                  = true;
 		gpu::initGPUContext(gpu_context_desc);
 
-		gpu::frame::initFrameContext({3u});
+		gpu::frame::initFrameContext({p_max_frames_in_flight});
 		gpu::alloc::initAllocationContext();
 		gpu::upload::initUploadContext({});
 
-		m_resourceHeap = gpu::createResourceDescriptorHeap({128u, 1028u});
-		m_samplerHeap  = gpu::createSamplerDescriptorHeap({32u});
+		m_resourceHeap = gpu::createResourceDescriptorHeap({p_max_buffer_descriptors, p_max_texture_descriptors});
+		m_samplerHeap  = gpu::createSamplerDescriptorHeap({p_max_sampler_descriptors});
 	}
 
 	RenderContext::~RenderContext()

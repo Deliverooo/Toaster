@@ -9,7 +9,8 @@ namespace toaster::render
 	class TST_RENDER_API RenderContext
 	{
 	public:
-		RenderContext();
+		RenderContext(uint32 p_max_frames_in_flight    = 3u, uint32 p_max_buffer_descriptors = 128u, uint32 p_max_texture_descriptors = 1028u,
+					  uint32 p_max_sampler_descriptors = 32u);
 		~RenderContext();
 
 		[[nodiscard]] auto getResourceHeap() const -> gpu::ResourceDescriptorHeapHandle { return m_resourceHeap; }
