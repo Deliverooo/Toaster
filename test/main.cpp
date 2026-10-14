@@ -328,11 +328,19 @@ public:
 		}
 
 		std::array<gpu::BufferMemoryBarrier, 2u> buffer_memory_barriers;
-		buffer_memory_barriers[0u].buffer = m_indirectBuffers[m_app->getFrameIndex()];
-		buffer_memory_barriers[0u].size   = sizeof(DrawMeshTasksIndirectCountCommand) * maxDrawCalls;
+		buffer_memory_barriers[0u].buffer        = m_indirectBuffers[m_app->getFrameIndex()];
+		buffer_memory_barriers[0u].size          = sizeof(DrawMeshTasksIndirectCountCommand) * maxDrawCalls;
+		buffer_memory_barriers[0u].srcAccessMask = gpu::EAccessFlagBits::eShaderWrite;
+		buffer_memory_barriers[0u].dstAccessMask = gpu::EAccessFlagBits::eIndirectCommandRead | gpu::EAccessFlagBits::eShaderRead;
+		buffer_memory_barriers[0u].srcStageMask  = gpu::EPipelineStageFlagBits::eComputeShader;
+		buffer_memory_barriers[0u].dstStageMask  = gpu::EPipelineStageFlagBits::eDrawIndirect | gpu::EPipelineStageFlagBits::eTaskShader;
 
-		buffer_memory_barriers[1u].buffer = m_countBuffers[m_app->getFrameIndex()];
-		buffer_memory_barriers[1u].size   = sizeof(uint32);
+		buffer_memory_barriers[1u].buffer        = m_countBuffers[m_app->getFrameIndex()];
+		buffer_memory_barriers[1u].size          = sizeof(uint32);
+		buffer_memory_barriers[1u].srcAccessMask = gpu::EAccessFlagBits::eShaderWrite;
+		buffer_memory_barriers[1u].dstAccessMask = gpu::EAccessFlagBits::eIndirectCommandRead | gpu::EAccessFlagBits::eShaderRead;
+		buffer_memory_barriers[1u].srcStageMask  = gpu::EPipelineStageFlagBits::eComputeShader;
+		buffer_memory_barriers[1u].dstStageMask  = gpu::EPipelineStageFlagBits::eDrawIndirect | gpu::EPipelineStageFlagBits::eTaskShader;
 		gpu::pipelineBarrier(p_cmd, buffer_memory_barriers, {});
 
 		gpu::TextureHandle render_tex{m_app->getWindow().getCurrentTexture()};

@@ -50,7 +50,7 @@ namespace toaster
 		auto isResized() const noexcept -> bool { return m_cbData.resized; }
 		auto isMaximised() const noexcept -> bool { return m_cbData.maximised; }
 		auto isMinimised() const noexcept -> bool { return m_cbData.minimised; }
-		auto isFullscreen() const noexcept -> bool;
+		auto isFullscreen() const -> bool;
 
 		auto setResized(bool p_resized) noexcept -> void { m_cbData.resized = p_resized; } // Safe to modify because the wnd proc is on the main thread
 		auto maximiseWindow() -> void;

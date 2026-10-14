@@ -617,6 +617,87 @@ namespace toaster::gpu
 		}
 	}
 
+	constexpr auto getVulkanAccessFlags(EAccessFlags p_access_flags) -> vk::AccessFlags2
+	{
+		vk::AccessFlags2 out_flags{0u};
+
+		out_flags |= (p_access_flags & EAccessFlagBits::eNone) ? vk::AccessFlagBits2::eNone : vk::AccessFlagBits2{0u};
+		out_flags |= (p_access_flags & EAccessFlagBits::eIndirectCommandRead) ? vk::AccessFlagBits2::eIndirectCommandRead : vk::AccessFlagBits2{0u};
+		out_flags |= (p_access_flags & EAccessFlagBits::eIndexRead) ? vk::AccessFlagBits2::eIndexRead : vk::AccessFlagBits2{0u};
+		out_flags |= (p_access_flags & EAccessFlagBits::eVertexAttributeRead) ? vk::AccessFlagBits2::eVertexAttributeRead : vk::AccessFlagBits2{0u};
+		out_flags |= (p_access_flags & EAccessFlagBits::eUniformRead) ? vk::AccessFlagBits2::eUniformRead : vk::AccessFlagBits2{0u};
+		out_flags |= (p_access_flags & EAccessFlagBits::eInputAttachmentRead) ? vk::AccessFlagBits2::eInputAttachmentRead : vk::AccessFlagBits2{0u};
+		out_flags |= (p_access_flags & EAccessFlagBits::eShaderRead) ? vk::AccessFlagBits2::eShaderRead : vk::AccessFlagBits2{0u};
+		out_flags |= (p_access_flags & EAccessFlagBits::eShaderWrite) ? vk::AccessFlagBits2::eShaderWrite : vk::AccessFlagBits2{0u};
+		out_flags |= (p_access_flags & EAccessFlagBits::eColorAttachmentRead) ? vk::AccessFlagBits2::eColorAttachmentRead : vk::AccessFlagBits2{0u};
+		out_flags |= (p_access_flags & EAccessFlagBits::eColorAttachmentWrite) ? vk::AccessFlagBits2::eColorAttachmentWrite : vk::AccessFlagBits2{0u};
+		out_flags |= (p_access_flags & EAccessFlagBits::eDepthStencilAttachmentRead) ? vk::AccessFlagBits2::eDepthStencilAttachmentRead : vk::AccessFlagBits2{0u};
+		out_flags |= (p_access_flags & EAccessFlagBits::eDepthStencilAttachmentWrite) ? vk::AccessFlagBits2::eDepthStencilAttachmentWrite : vk::AccessFlagBits2{0u};
+		out_flags |= (p_access_flags & EAccessFlagBits::eTransferRead) ? vk::AccessFlagBits2::eTransferRead : vk::AccessFlagBits2{0u};
+		out_flags |= (p_access_flags & EAccessFlagBits::eTransferWrite) ? vk::AccessFlagBits2::eTransferWrite : vk::AccessFlagBits2{0u};
+		out_flags |= (p_access_flags & EAccessFlagBits::eHostRead) ? vk::AccessFlagBits2::eHostRead : vk::AccessFlagBits2{0u};
+		out_flags |= (p_access_flags & EAccessFlagBits::eHostWrite) ? vk::AccessFlagBits2::eHostWrite : vk::AccessFlagBits2{0u};
+		out_flags |= (p_access_flags & EAccessFlagBits::eMemoryRead) ? vk::AccessFlagBits2::eMemoryRead : vk::AccessFlagBits2{0u};
+		out_flags |= (p_access_flags & EAccessFlagBits::eMemoryWrite) ? vk::AccessFlagBits2::eMemoryWrite : vk::AccessFlagBits2{0u};
+		out_flags |= (p_access_flags & EAccessFlagBits::eShaderSampledRead) ? vk::AccessFlagBits2::eShaderSampledRead : vk::AccessFlagBits2{0u};
+		out_flags |= (p_access_flags & EAccessFlagBits::eShaderStorageRead) ? vk::AccessFlagBits2::eShaderStorageRead : vk::AccessFlagBits2{0u};
+		out_flags |= (p_access_flags & EAccessFlagBits::eShaderStorageWrite) ? vk::AccessFlagBits2::eShaderStorageWrite : vk::AccessFlagBits2{0u};
+		out_flags |= (p_access_flags & EAccessFlagBits::eSamplerHeapRead) ? vk::AccessFlagBits2::eSamplerHeapReadEXT : vk::AccessFlagBits2{0u};
+		out_flags |= (p_access_flags & EAccessFlagBits::eResourceHeapRead) ? vk::AccessFlagBits2::eResourceHeapReadEXT : vk::AccessFlagBits2{0u};
+
+		return out_flags;
+	}
+
+	constexpr auto getVulkanPipelineStageFlags(EPipelineStageFlags p_pipeline_stage_flags) -> vk::PipelineStageFlags2
+	{
+		vk::PipelineStageFlags2 out_flags{0u};
+
+		out_flags |= (p_pipeline_stage_flags & EPipelineStageFlagBits::eNone) ? vk::PipelineStageFlagBits2::eNone : vk::PipelineStageFlagBits2{0u};
+		out_flags |= (p_pipeline_stage_flags & EPipelineStageFlagBits::eTopOfPipe) ? vk::PipelineStageFlagBits2::eTopOfPipe : vk::PipelineStageFlagBits2{0u};
+		out_flags |= (p_pipeline_stage_flags & EPipelineStageFlagBits::eDrawIndirect) ? vk::PipelineStageFlagBits2::eDrawIndirect : vk::PipelineStageFlagBits2{0u};
+		out_flags |= (p_pipeline_stage_flags & EPipelineStageFlagBits::eVertexInput) ? vk::PipelineStageFlagBits2::eVertexInput : vk::PipelineStageFlagBits2{0u};
+		out_flags |= (p_pipeline_stage_flags & EPipelineStageFlagBits::eVertexShader) ? vk::PipelineStageFlagBits2::eVertexShader : vk::PipelineStageFlagBits2{0u};
+		out_flags |= (p_pipeline_stage_flags & EPipelineStageFlagBits::eTessellationControlShader)
+						 ? vk::PipelineStageFlagBits2::eTessellationControlShader
+						 : vk::PipelineStageFlagBits2{0u};
+		out_flags |= (p_pipeline_stage_flags & EPipelineStageFlagBits::eTessellationEvaluationShader)
+						 ? vk::PipelineStageFlagBits2::eTessellationEvaluationShader
+						 : vk::PipelineStageFlagBits2{0u};
+		out_flags |= (p_pipeline_stage_flags & EPipelineStageFlagBits::eGeometryShader) ? vk::PipelineStageFlagBits2::eGeometryShader : vk::PipelineStageFlagBits2{0u};
+		out_flags |= (p_pipeline_stage_flags & EPipelineStageFlagBits::eFragmentShader) ? vk::PipelineStageFlagBits2::eFragmentShader : vk::PipelineStageFlagBits2{0u};
+		out_flags |= (p_pipeline_stage_flags & EPipelineStageFlagBits::eEarlyFragmentTests)
+						 ? vk::PipelineStageFlagBits2::eEarlyFragmentTests
+						 : vk::PipelineStageFlagBits2{0u};
+		out_flags |= (p_pipeline_stage_flags & EPipelineStageFlagBits::eLateFragmentTests)
+						 ? vk::PipelineStageFlagBits2::eLateFragmentTests
+						 : vk::PipelineStageFlagBits2{0u};
+		out_flags |= (p_pipeline_stage_flags & EPipelineStageFlagBits::eColorAttachmentOutput)
+						 ? vk::PipelineStageFlagBits2::eColorAttachmentOutput
+						 : vk::PipelineStageFlagBits2{0u};
+		out_flags |= (p_pipeline_stage_flags & EPipelineStageFlagBits::eComputeShader) ? vk::PipelineStageFlagBits2::eComputeShader : vk::PipelineStageFlagBits2{0u};
+		out_flags |= (p_pipeline_stage_flags & EPipelineStageFlagBits::eAllTransfer) ? vk::PipelineStageFlagBits2::eAllTransfer : vk::PipelineStageFlagBits2{0u};
+		out_flags |= (p_pipeline_stage_flags & EPipelineStageFlagBits::eTransfer) ? vk::PipelineStageFlagBits2::eTransfer : vk::PipelineStageFlagBits2{0u};
+		out_flags |= (p_pipeline_stage_flags & EPipelineStageFlagBits::eBottomOfPipe) ? vk::PipelineStageFlagBits2::eBottomOfPipe : vk::PipelineStageFlagBits2{0u};
+		out_flags |= (p_pipeline_stage_flags & EPipelineStageFlagBits::eHost) ? vk::PipelineStageFlagBits2::eHost : vk::PipelineStageFlagBits2{0u};
+		out_flags |= (p_pipeline_stage_flags & EPipelineStageFlagBits::eAllGraphics) ? vk::PipelineStageFlagBits2::eAllGraphics : vk::PipelineStageFlagBits2{0u};
+		out_flags |= (p_pipeline_stage_flags & EPipelineStageFlagBits::eAllCommands) ? vk::PipelineStageFlagBits2::eAllCommands : vk::PipelineStageFlagBits2{0u};
+		out_flags |= (p_pipeline_stage_flags & EPipelineStageFlagBits::eCopy) ? vk::PipelineStageFlagBits2::eCopy : vk::PipelineStageFlagBits2{0u};
+		out_flags |= (p_pipeline_stage_flags & EPipelineStageFlagBits::eResolve) ? vk::PipelineStageFlagBits2::eResolve : vk::PipelineStageFlagBits2{0u};
+		out_flags |= (p_pipeline_stage_flags & EPipelineStageFlagBits::eBlit) ? vk::PipelineStageFlagBits2::eBlit : vk::PipelineStageFlagBits2{0u};
+		out_flags |= (p_pipeline_stage_flags & EPipelineStageFlagBits::eClear) ? vk::PipelineStageFlagBits2::eClear : vk::PipelineStageFlagBits2{0u};
+		out_flags |= (p_pipeline_stage_flags & EPipelineStageFlagBits::eIndexInput) ? vk::PipelineStageFlagBits2::eIndexInput : vk::PipelineStageFlagBits2{0u};
+		out_flags |= (p_pipeline_stage_flags & EPipelineStageFlagBits::eVertexAttributeInput)
+						 ? vk::PipelineStageFlagBits2::eVertexAttributeInput
+						 : vk::PipelineStageFlagBits2{0u};
+		out_flags |= (p_pipeline_stage_flags & EPipelineStageFlagBits::ePreRasterizationShaders)
+						 ? vk::PipelineStageFlagBits2::ePreRasterizationShaders
+						 : vk::PipelineStageFlagBits2{0u};
+		out_flags |= (p_pipeline_stage_flags & EPipelineStageFlagBits::eTaskShader) ? vk::PipelineStageFlagBits2::eTaskShaderEXT : vk::PipelineStageFlagBits2{0u};
+		out_flags |= (p_pipeline_stage_flags & EPipelineStageFlagBits::eMeshShader) ? vk::PipelineStageFlagBits2::eMeshShaderEXT : vk::PipelineStageFlagBits2{0u};
+
+		return out_flags;
+	}
+
 	auto initGPUContext(const GPUContextDesc &p_desc) -> void
 	{
 		if (g_impl)
@@ -1371,17 +1452,51 @@ namespace toaster::gpu
 		{
 			auto &barrier{buffer_barriers[i]};
 			barrier.buffer = g_impl->buffers[p_buffer_memory_barriers[i].buffer].buffer;
+			barrier.offset = p_buffer_memory_barriers[i].offset;
 			barrier.size   = p_buffer_memory_barriers[i].size;
 
-			barrier.srcStageMask = vk::PipelineStageFlagBits2::eComputeShader;
-			barrier.dstStageMask = vk::PipelineStageFlagBits2::eMeshShaderEXT | vk::PipelineStageFlagBits2::eDrawIndirect;
+			barrier.srcStageMask = getVulkanPipelineStageFlags(p_buffer_memory_barriers[i].srcStageMask);
+			barrier.dstStageMask = getVulkanPipelineStageFlags(p_buffer_memory_barriers[i].dstStageMask);
 
-			barrier.srcAccessMask = vk::AccessFlagBits2::eShaderWrite;
-			barrier.dstAccessMask = vk::AccessFlagBits2::eIndirectCommandRead;
+			barrier.srcAccessMask = getVulkanAccessFlags(p_buffer_memory_barriers[i].srcAccessMask);
+			barrier.dstAccessMask = getVulkanAccessFlags(p_buffer_memory_barriers[i].dstAccessMask);
+
+			barrier.srcQueueFamilyIndex = g_impl->queueFamilyIndices.get(p_buffer_memory_barriers[i].srcQueue);
+			barrier.dstQueueFamilyIndex = g_impl->queueFamilyIndices.get(p_buffer_memory_barriers[i].dstQueue);
+		}
+
+		std::vector<vk::ImageMemoryBarrier2> image_barriers(p_texture_memory_barriers.size());
+		for (uint32 i{0u}; i < p_texture_memory_barriers.size(); ++i)
+		{
+			auto &barrier{image_barriers[i]};
+			auto &texture{g_impl->textures[p_texture_memory_barriers[i].texture]};
+
+			barrier.image = texture.image;
+
+			barrier.oldLayout = vk::ImageLayout::eGeneral;
+			barrier.newLayout = vk::ImageLayout::eGeneral;
+
+			barrier.srcStageMask = getVulkanPipelineStageFlags(p_buffer_memory_barriers[i].srcStageMask);
+			barrier.dstStageMask = getVulkanPipelineStageFlags(p_buffer_memory_barriers[i].dstStageMask);
+
+			barrier.srcAccessMask = getVulkanAccessFlags(p_buffer_memory_barriers[i].srcAccessMask);
+			barrier.dstAccessMask = getVulkanAccessFlags(p_buffer_memory_barriers[i].dstAccessMask);
+
+			barrier.subresourceRange.aspectMask     = getImageAspectMask(texture.desc.format);
+			barrier.subresourceRange.baseArrayLayer = p_texture_memory_barriers[i].baseArrayLayer;
+			barrier.subresourceRange.baseMipLevel   = p_texture_memory_barriers[i].baseMip;
+			barrier.subresourceRange.layerCount     = (p_texture_memory_barriers[i].layerCount == UINT32_MAX)
+														  ? texture.desc.layerCount
+														  : p_texture_memory_barriers[i].layerCount;
+			barrier.subresourceRange.levelCount = (p_texture_memory_barriers[i].mipCount == UINT32_MAX) ? texture.desc.mipCount : p_texture_memory_barriers[i].mipCount;
+
+			barrier.srcQueueFamilyIndex = g_impl->queueFamilyIndices.get(p_texture_memory_barriers[i].srcQueue);
+			barrier.dstQueueFamilyIndex = g_impl->queueFamilyIndices.get(p_texture_memory_barriers[i].dstQueue);
 		}
 
 		vk::DependencyInfo dependency_info{};
 		dependency_info.setBufferMemoryBarriers(buffer_barriers);
+		dependency_info.setImageMemoryBarriers(image_barriers);
 
 		cmd.cmd.pipelineBarrier2(dependency_info, FunctionDispatcher::get());
 	}

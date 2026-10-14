@@ -49,6 +49,73 @@ namespace toaster::gpu
 
 	#pragma endregion
 
+	#pragma region misc / idk
+
+	enum class EAccessFlagBits : uint32
+	{
+		eNone                        = TST_BIT(0u),
+		eIndirectCommandRead         = TST_BIT(1u),
+		eIndexRead                   = TST_BIT(2u),
+		eVertexAttributeRead         = TST_BIT(3u),
+		eUniformRead                 = TST_BIT(4u),
+		eInputAttachmentRead         = TST_BIT(5u),
+		eShaderRead                  = TST_BIT(6u),
+		eShaderWrite                 = TST_BIT(7u),
+		eColorAttachmentRead         = TST_BIT(8u),
+		eColorAttachmentWrite        = TST_BIT(9u),
+		eDepthStencilAttachmentRead  = TST_BIT(10u),
+		eDepthStencilAttachmentWrite = TST_BIT(11u),
+		eTransferRead                = TST_BIT(12u),
+		eTransferWrite               = TST_BIT(13u),
+		eHostRead                    = TST_BIT(14u),
+		eHostWrite                   = TST_BIT(15u),
+		eMemoryRead                  = TST_BIT(16u),
+		eMemoryWrite                 = TST_BIT(17u),
+		eShaderSampledRead           = TST_BIT(18u),
+		eShaderStorageRead           = TST_BIT(19u),
+		eShaderStorageWrite          = TST_BIT(20u),
+		eSamplerHeapRead             = TST_BIT(21u),
+		eResourceHeapRead            = TST_BIT(22u)
+	};
+
+	TST_SPECIALISE_FLAGS(EAccessFlagBits, EAccessFlags);
+
+	enum class EPipelineStageFlagBits : uint32
+	{
+		eNone                         = TST_BIT(0u),
+		eTopOfPipe                    = TST_BIT(1u),
+		eDrawIndirect                 = TST_BIT(2u),
+		eVertexInput                  = TST_BIT(3u),
+		eVertexShader                 = TST_BIT(4u),
+		eTessellationControlShader    = TST_BIT(5u),
+		eTessellationEvaluationShader = TST_BIT(6u),
+		eGeometryShader               = TST_BIT(7u),
+		eFragmentShader               = TST_BIT(8u),
+		eEarlyFragmentTests           = TST_BIT(9u),
+		eLateFragmentTests            = TST_BIT(10u),
+		eColorAttachmentOutput        = TST_BIT(11u),
+		eComputeShader                = TST_BIT(12u),
+		eAllTransfer                  = TST_BIT(13u),
+		eTransfer                     = TST_BIT(14u),
+		eBottomOfPipe                 = TST_BIT(15u),
+		eHost                         = TST_BIT(16u),
+		eAllGraphics                  = TST_BIT(17u),
+		eAllCommands                  = TST_BIT(18u),
+		eCopy                         = TST_BIT(19u),
+		eResolve                      = TST_BIT(20u),
+		eBlit                         = TST_BIT(21u),
+		eClear                        = TST_BIT(22u),
+		eIndexInput                   = TST_BIT(23u),
+		eVertexAttributeInput         = TST_BIT(24u),
+		ePreRasterizationShaders      = TST_BIT(25u),
+		eTaskShader                   = TST_BIT(26u),
+		eMeshShader                   = TST_BIT(27u)
+	};
+
+	TST_SPECIALISE_FLAGS(EPipelineStageFlagBits, EPipelineStageFlags);
+
+	#pragma endregion
+
 	#pragma region buffer
 
 	enum class EMemoryType : uint8
@@ -437,20 +504,40 @@ namespace toaster::gpu
 	struct TST_GPU_API BufferMemoryBarrier
 	{
 		BufferHandle buffer{nullptr};
+		uint64       offset{0u};
+		uint64       size{0u};
 
-		// AccessFlags srcAccessMask{0u};
-		// AccessFlags dstAccessMask{0u};
+		EAccessFlags srcAccessMask{0u};
+		EAccessFlags dstAccessMask{0u};
 
-		uint64 size{0u};
+		EPipelineStageFlags srcStageMask{0u};
+		EPipelineStageFlags dstStageMask{0u};
+
+		EQueueType srcQueue{EQueueType::eGraphics};
+		EQueueType dstQueue{EQueueType::eGraphics};
 	};
 
 	struct TST_GPU_API TextureMemoryBarrier
 	{
 		TextureHandle texture{nullptr};
+
+		EAccessFlags srcAccessMask{0u};
+		EAccessFlags dstAccessMask{0u};
+
+		EPipelineStageFlags srcStageMask{0u};
+		EPipelineStageFlags dstStageMask{0u};
+
+		uint32 baseArrayLayer{0u};
+		uint32 baseMip{0u};
+		uint32 layerCount{UINT32_MAX}; // UINT32_MAX uses the one from the desc
+		uint32 mipCount{UINT32_MAX};
+
+		EQueueType srcQueue{EQueueType::eGraphics};
+		EQueueType dstQueue{EQueueType::eGraphics};
 	};
 
 	auto TST_GPU_API pipelineBarrier(CommandListHandle                           p_command_list, InitialiserList<const BufferMemoryBarrier> p_buffer_memory_barriers,
-									 InitialiserList<const TextureMemoryBarrier> p_texture_memory_barriers) -> void; // TODO
+									 InitialiserList<const TextureMemoryBarrier> p_texture_memory_barriers) -> void;
 
 	auto TST_GPU_API generateMipmaps(CommandListHandle p_command_list, TextureHandle p_texture) -> void;
 
