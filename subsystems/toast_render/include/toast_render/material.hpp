@@ -9,12 +9,19 @@
 
 namespace toaster::render
 {
+	enum class EMaterialFlagBits : uint8
+	{
+		eBackfaceCulling = TST_BIT(0u), eTransparent = TST_BIT(1u)
+	};
+
+	TST_SPECIALISE_FLAGS(EMaterialFlagBits, EMaterialFlags);
+
 	struct TST_RENDER_API MaterialParams
 	{
-		tsm::float3 albedoColour{1.0f};
-		uint32      albedoMapHeapSlot{UINT32_MAX};
-		uint32      normalMapHeapSlot{UINT32_MAX};
-		bool32      backfaceCulling{true};
+		tsm::float4    albedoColour{1.0f};
+		uint32         albedoMapHeapSlot{UINT32_MAX};
+		uint32         normalMapHeapSlot{UINT32_MAX};
+		EMaterialFlags flags{EMaterialFlagBits::eBackfaceCulling};
 	};
 
 	struct TST_RENDER_API Material
@@ -40,10 +47,13 @@ namespace toaster::render
 		[[nodiscard]] auto tryGetMaterial(MaterialHandle p_handle) -> Material * { return m_materials.tryGet(p_handle); }
 		[[nodiscard]] auto tryGetMaterial(MaterialHandle p_handle) const -> const Material * { return m_materials.tryGet(p_handle); }
 
-		auto setAlbedoColour(MaterialHandle p_handle, const tsm::float3 &p_colour) -> void;
+		auto setAlbedoColour(MaterialHandle p_handle, const tsm::float4 &p_colour) -> void;
 		auto setAlbedoMap(MaterialHandle p_handle, TextureHandle p_albedo_map) -> void;
 		auto setNormalMap(MaterialHandle p_handle, TextureHandle p_normal_map) -> void;
+
+		auto setMaterialFlags(MaterialHandle p_handle, EMaterialFlags p_flags, bool p_enable) -> void;
 		auto setBackfaceCulling(MaterialHandle p_handle, bool p_enable) -> void;
+		auto setIsTransparent(MaterialHandle p_handle, bool p_is_transparent) -> void;
 
 		auto pollMaterialTextureUploads() -> void;
 

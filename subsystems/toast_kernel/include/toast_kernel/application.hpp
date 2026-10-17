@@ -9,10 +9,10 @@ namespace toaster
 	class TST_KERNEL_API Application
 	{
 	public:
-		static constexpr uint32 maxFramesInFlight{3u};
-
-		Application();
+		Application(const WindowDesc& p_window_desc, uint32 p_max_frames_in_flight);
 		~Application();
+
+		const uint32 maxFramesInFlight{3u};
 
 		auto run() -> void;
 		auto close() -> void;
@@ -37,7 +37,8 @@ namespace toaster
 		std::vector<IAppLayer *> m_layers;
 
 		float32 m_deltaTime{0.0f};
-		uint32  m_frameIndex{0u}; // TODO: Move to render ctx
+
+		uint32 m_frameIndex{0u};
 
 		bool m_running{true};
 

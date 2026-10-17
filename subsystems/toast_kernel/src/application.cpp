@@ -7,16 +7,13 @@
 
 namespace toaster
 {
-	Application::Application()
+	Application::Application(const WindowDesc& p_window_desc, uint32 p_max_frames_in_flight) : maxFramesInFlight(p_max_frames_in_flight)
 	{
 		Window::initWindowingAPI();
 
-		m_renderCtx = makeUnique<render::RenderContext>();
+		m_renderCtx = makeUnique<render::RenderContext>(maxFramesInFlight);
 
-		WindowDesc window_desc{};
-		window_desc.startMaximized = true;
-		window_desc.title          = "Toaster-3.0";
-		m_window                   = makeUnique<Window>(window_desc);
+		m_window                   = makeUnique<Window>(p_window_desc);
 
 		m_window->setEventCallbackUserData(this);
 		m_window->setEventCallback(+[](Event &p_event, void *p_user_data) -> void
@@ -51,7 +48,7 @@ namespace toaster
 
 	auto Application::run() -> void
 	{
-		std::array<gpu::CommandListHandle, maxFramesInFlight> command_lists;
+		std::vector<gpu::CommandListHandle> command_lists(maxFramesInFlight);
 		for (auto &cmd: command_lists)
 			cmd = gpu::getOrCreateCommandList(gpu::EQueueType::eGraphics);
 
@@ -98,7 +95,6 @@ namespace toaster
 
 		for (auto &cmd: command_lists)
 			gpu::freeCommandList(cmd);
-		command_lists.fill(nullptr);
 	}
 
 	auto Application::close() -> void

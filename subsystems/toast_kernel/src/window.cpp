@@ -203,7 +203,8 @@ namespace toaster
 
 	auto Window::submitAndPresent(gpu::CommandListHandle p_cmd) -> void
 	{
-		gpu::frame::submitAndPresent(m_swapchain, p_cmd);
+		bool success{gpu::frame::submitAndPresent(m_swapchain, p_cmd)};
+		TST_PERMA_ASSERT(success);
 
 		// Set the current key states to the previous ones
 		m_cbData.inputCtx.update();

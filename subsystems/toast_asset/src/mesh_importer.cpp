@@ -18,6 +18,31 @@ static constexpr uint32 s_MeshImportFlags{
 
 namespace toaster::asset
 {
+	static auto isAiMatTransparent(const aiMaterial *p_mat) -> bool
+	{
+		TST_ASSERT(p_mat);
+
+		float32 opacity{1.0f};
+		if (p_mat->Get(AI_MATKEY_OPACITY, opacity) == AI_SUCCESS)
+			if (opacity < 1.0f)
+				return true;
+
+		float32 transparency_factor{0.0f};
+		if (p_mat->Get(AI_MATKEY_TRANSPARENCYFACTOR, transparency_factor) == AI_SUCCESS)
+			if (transparency_factor > 0.0f)
+				return true;
+
+		aiColor4D diffuse_colour{};
+		if (p_mat->Get(AI_MATKEY_COLOR_DIFFUSE, diffuse_colour) == AI_SUCCESS)
+			if (diffuse_colour.a < 1.0f)
+				return true;
+
+		if (p_mat->GetTextureCount(aiTextureType_OPACITY) > 0u)
+			return true;
+
+		return false;
+	}
+
 	auto generateGeometryData(const RawSubmeshData &p_submesh_data, std::vector<render::StaticMeshVertex> &p_out_vertices, std::vector<render::Meshlet> &p_out_meshlets,
 							  std::vector<uint32> & p_out_meshlet_vertices, std::vector<uint8> &           p_out_meshlet_triangles) -> void
 	{
@@ -202,6 +227,9 @@ namespace toaster::asset
 
 			tst_mat.albedoColour = {ai_albedo_colour.r, ai_albedo_colour.g, ai_albedo_colour.b, 1.0f};
 
+			bool is_transparent{isAiMatTransparent(ai_mat)};
+			tst_mat.flags |= is_transparent ? render::EMaterialFlagBits::eTransparent : render::EMaterialFlagBits{0u};
+
 			auto get_path_and_create_texture_if_exists{
 				[p_path](const aiString &p_ai_path) -> std::optional<std::filesystem::path>
 				{
@@ -283,6 +311,7 @@ namespace toaster::asset
 							asyncLoadTextureFromFile(albedo_map, *m_textureManager, *cpu_mat.albedoMap.path, p_executor);
 							m_materialManager->setAlbedoMap(gpu_mat, albedo_map);
 						}
+						m_materialManager->setMaterialFlags(gpu_mat, cpu_mat.flags, true);
 						// else
 						// m_materialManager->setAlbedoColour(gpu_mat, {1.0f, 0.0f, 1.0f}); // TODO: Embed
 

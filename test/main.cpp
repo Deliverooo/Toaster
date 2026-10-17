@@ -67,8 +67,8 @@ public:
 		}
 		{
 			render::StaticMeshHandle level_mesh{m_meshManager->registerStaticMesh()};
-			// m_meshImporter->asyncLoadStaticMeshFromFile(level_mesh, R"(C:\Users\Oliver\Downloads\main_sponza\main_sponza\NewSponza_Main_glTF_003.gltf)", m_executor);
-			m_meshImporter->asyncLoadStaticMeshFromFile(level_mesh, "resources/meshes/Backrooms.fbx", m_executor);
+			m_meshImporter->asyncLoadStaticMeshFromFile(level_mesh, R"(C:\Users\Oliver\Downloads\main_sponza\main_sponza\NewSponza_Main_glTF_003.gltf)", m_executor);
+			// m_meshImporter->asyncLoadStaticMeshFromFile(level_mesh, "resources/meshes/Backrooms.fbx", m_executor);
 
 			m_levelEntity = m_scene.createEntity();
 			m_scene.addComponent<scene::StaticMeshComponent>(m_levelEntity, level_mesh);
@@ -127,7 +127,7 @@ public:
 			camera_buffer_desc.usage      = gpu::EBufferUsageFlagBits::eUniformBuffer;
 			camera_buffer_desc.memoryType = gpu::EMemoryType::eHostVisibleCoherent;
 
-			m_cameraBuffers.resize(Application::maxFramesInFlight);
+			m_cameraBuffers.resize(m_app->maxFramesInFlight);
 			for (auto &buffer: m_cameraBuffers)
 				buffer = gpu::createBuffer(camera_buffer_desc);
 		}
@@ -147,10 +147,10 @@ public:
 		count_buffer_desc.usage      = gpu::EBufferUsageFlagBits::eIndirectBuffer | gpu::EBufferUsageFlagBits::eStorageBuffer | gpu::EBufferUsageFlagBits::eTransferDst;
 		count_buffer_desc.memoryType = gpu::EMemoryType::eDeviceLocal;
 
-		m_indirectBuffers.resize(Application::maxFramesInFlight);
-		m_objectDataBuffers.resize(Application::maxFramesInFlight);
-		m_countBuffers.resize(Application::maxFramesInFlight);
-		for (uint32 i{0u}; i < Application::maxFramesInFlight; ++i)
+		m_indirectBuffers.resize(m_app->maxFramesInFlight);
+		m_objectDataBuffers.resize(m_app->maxFramesInFlight);
+		m_countBuffers.resize(m_app->maxFramesInFlight);
+		for (uint32 i{0u}; i < m_app->maxFramesInFlight; ++i)
 		{
 			m_indirectBuffers[i]   = gpu::createBuffer(indirect_buffer_desc);
 			m_objectDataBuffers[i] = gpu::createBuffer(object_buffer_desc);
@@ -202,7 +202,7 @@ public:
 
 		gpu::freeSamplerHeapSlot(m_renderCtx->getSamplerHeap(), m_samplerHeapSlot);
 
-		for (uint32 i{0u}; i < Application::maxFramesInFlight; ++i)
+		for (uint32 i{0u}; i < m_app->maxFramesInFlight; ++i)
 		{
 			gpu::destroyBuffer(m_countBuffers[i]);
 			gpu::destroyBuffer(m_objectDataBuffers[i]);
@@ -518,7 +518,12 @@ TST_WINMAIN()
 {
 	os::createOutputConsole();
 	{
-		Application app{};
+		WindowDesc window_desc{};
+		window_desc.title          = "Toaster-3.0";
+		window_desc.size           = {1920u, 1080u};
+		window_desc.startMaximized = false;
+
+		Application app{window_desc, 3u};
 		app.addLayer<TestLayer>();
 		app.run();
 	}

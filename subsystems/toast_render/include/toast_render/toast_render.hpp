@@ -11,3 +11,9 @@
 #endif
 
 #include <toast_lib/core_basic.hpp>
+#include <toast_lib/enum_flags.hpp>
+
+namespace toaster::render
+{
+	TST_DECLARE_FLAGS_FOR_NAMESPACE()
+}

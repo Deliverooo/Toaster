@@ -71,7 +71,7 @@ namespace toaster::render
 		material.normalMap                = m_defaultNormalMap;
 		material.params.albedoMapHeapSlot = m_textureManager->getTexture(m_defaultColourMap).shaderReadHeapSlot;
 		material.params.normalMapHeapSlot = m_textureManager->getTexture(m_defaultNormalMap).shaderReadHeapSlot;
-		material.params.backfaceCulling   = true;
+		material.params.flags             = EMaterialFlagBits::eBackfaceCulling;
 
 		MaterialHandle out_handle{m_materials.emplace(material)};
 
@@ -85,7 +85,7 @@ namespace toaster::render
 		m_materials.destroy(p_handle);
 	}
 
-	auto MaterialManager::setAlbedoColour(MaterialHandle p_handle, const tsm::float3 &p_colour) -> void
+	auto MaterialManager::setAlbedoColour(MaterialHandle p_handle, const tsm::float4 &p_colour) -> void
 	{
 		Material &material{m_materials[p_handle]};
 		material.params.albedoColour = p_colour;
@@ -135,11 +135,25 @@ namespace toaster::render
 		markMaterialDirty(p_handle);
 	}
 
-	auto MaterialManager::setBackfaceCulling(MaterialHandle p_handle, bool p_enable) -> void
+	auto MaterialManager::setMaterialFlags(MaterialHandle p_handle, EMaterialFlags p_flags, bool p_enable) -> void
 	{
 		Material &material{m_materials[p_handle]};
-		material.params.backfaceCulling = p_enable;
+		if (p_enable)
+			material.params.flags |= p_flags;
+		else
+			material.params.flags &= ~p_flags;
+
 		markMaterialDirty(p_handle);
+	}
+
+	auto MaterialManager::setBackfaceCulling(MaterialHandle p_handle, bool p_enable) -> void
+	{
+		setMaterialFlags(p_handle, EMaterialFlagBits::eBackfaceCulling, p_enable);
+	}
+
+	auto MaterialManager::setIsTransparent(MaterialHandle p_handle, bool p_is_transparent) -> void
+	{
+		setMaterialFlags(p_handle, EMaterialFlagBits::eTransparent, p_is_transparent);
 	}
 
 	auto MaterialManager::pollMaterialTextureUploads() -> void

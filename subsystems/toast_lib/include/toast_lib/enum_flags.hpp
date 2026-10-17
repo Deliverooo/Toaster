@@ -23,7 +23,7 @@
 		constexpr auto operator&(const Flags &p_other) const noexcept -> Flags { return Flags(m_bitmask & p_other.m_bitmask); }\
 		constexpr auto operator^(const Flags &p_other) const noexcept -> Flags { return Flags(m_bitmask ^ p_other.m_bitmask); }\
 \
-		constexpr auto operator~() const noexcept = delete;\
+		constexpr auto operator~() const noexcept -> Flags { return Flags(~m_bitmask); }\
 \
 		constexpr Flags &operator=(const Flags &p_other)  noexcept = default;\
 		constexpr Flags &operator|=(const Flags &p_other) noexcept { m_bitmask |= p_other.m_bitmask; return *this; };\
@@ -51,8 +51,9 @@
 	template<typename TBitType> requires FlagOperations<TBitType>::defined\
 	constexpr Flags<TBitType> operator&(TBitType p_lhs, TBitType p_rhs) noexcept { return Flags<TBitType>{p_lhs} & p_rhs; }\
 	template<typename TBitType> requires FlagOperations<TBitType>::defined\
-	constexpr Flags<TBitType> operator^(TBitType p_lhs, TBitType p_rhs) noexcept { return Flags<TBitType>{p_lhs} ^ p_rhs; }
-
+	constexpr Flags<TBitType> operator^(TBitType p_lhs, TBitType p_rhs) noexcept { return Flags<TBitType>{p_lhs} ^ p_rhs; }\
+	template<typename TBitType> requires FlagOperations<TBitType>::defined\
+	constexpr Flags<TBitType> operator~(TBitType p_bit) noexcept { return ~Flags<TBitType>{p_bit}; }
 
 #define TST_SPECIALISE_FLAGS(__bit_type, __name) template<> struct FlagOperations<__bit_type> { static constexpr bool defined{true}; };\
 	using __name = Flags<__bit_type>

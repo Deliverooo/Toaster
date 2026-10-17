@@ -60,31 +60,64 @@ namespace toaster::asset
 	auto asyncLoadTextureFromFile(render::TextureHandle p_dst_texture, render::TextureManager &p_texture_manager, const std::filesystem::path &p_path,
 								  tf::Executor &        p_executor) -> void
 	{
-		p_executor.silent_async([p_dst_texture, &p_texture_manager, p_path, &p_executor]() -> void
+		p_executor.silent_async([p_dst_texture, &p_texture_manager, p_path]() mutable -> void
 		{
-			tf::Taskflow graph{};
+			std::println("Started loading texture: {}", p_path.string());
 
-			tf::Task load_task{
-				graph.emplace([p_dst_texture, &p_texture_manager, p_path]() -> void
-				{
-					gpu::TextureDesc texture_desc{};
-					texture_desc.usage  = gpu::ETextureUsageFlagBits::eTransferSrc | gpu::ETextureUsageFlagBits::eTransferDst | gpu::ETextureUsageFlagBits::eSampled;
-					texture_desc.format = gpu::EFormat::eR8G8B8A8Srgb;
-					texture_desc.extent.z = 1u;
+			gpu::TextureDesc texture_desc{};
+			texture_desc.usage    = gpu::ETextureUsageFlagBits::eTransferSrc | gpu::ETextureUsageFlagBits::eTransferDst | gpu::ETextureUsageFlagBits::eSampled;
+			texture_desc.format   = gpu::EFormat::eR8G8B8A8Srgb;
+			texture_desc.extent.z = 1u;
 
-					DataBuffer image_data{loadTextureIntoBuffer(p_path.string(), texture_desc.format, texture_desc.extent.x, texture_desc.extent.y)};
-					texture_desc.mipCount = static_cast<uint32>(std::floor(std::log2(std::max(texture_desc.extent.x, texture_desc.extent.y)))) + 1u;
+			DataBuffer image_data{loadTextureIntoBuffer(p_path.string(), texture_desc.format, texture_desc.extent.x, texture_desc.extent.y)};
+			texture_desc.mipCount = static_cast<uint32>(std::floor(std::log2(std::max(texture_desc.extent.x, texture_desc.extent.y)))) + 1u;
 
-					p_texture_manager.createIntoTexture(p_dst_texture, texture_desc);
-					p_texture_manager.setData(p_dst_texture, image_data.data(), image_data.size());
+			p_texture_manager.createIntoTexture(p_dst_texture, texture_desc);
+			p_texture_manager.setData(p_dst_texture, image_data.data(), image_data.size());
 
-					image_data.release();
-				})
-			};
+			image_data.release();
 
-			load_task.name("Load");
+			std::println("Finished loading texture: {}", p_path.string());
+		});
+	}
 
-			p_executor.run(graph).wait();
+	auto asyncLoadTextureFromFile(render::TextureHandle p_dst_texture, render::TextureManager &p_texture_manager, const std::filesystem::path &p_path,
+								  tf::Taskflow &        p_taskflow) -> void
+	{
+		p_taskflow.emplace([p_dst_texture, &p_texture_manager, p_path]() -> void
+		{
+			gpu::TextureDesc texture_desc{};
+			texture_desc.usage    = gpu::ETextureUsageFlagBits::eTransferSrc | gpu::ETextureUsageFlagBits::eTransferDst | gpu::ETextureUsageFlagBits::eSampled;
+			texture_desc.format   = gpu::EFormat::eR8G8B8A8Srgb;
+			texture_desc.extent.z = 1u;
+
+			DataBuffer image_data{loadTextureIntoBuffer(p_path.string(), texture_desc.format, texture_desc.extent.x, texture_desc.extent.y)};
+			texture_desc.mipCount = static_cast<uint32>(std::floor(std::log2(std::max(texture_desc.extent.x, texture_desc.extent.y)))) + 1u;
+
+			p_texture_manager.createIntoTexture(p_dst_texture, texture_desc);
+			p_texture_manager.setData(p_dst_texture, image_data.data(), image_data.size());
+
+			image_data.release();
+		});
+	}
+
+	auto asyncLoadTextureFromFile(render::TextureHandle p_dst_texture, render::TextureManager &p_texture_manager, const std::filesystem::path &p_path,
+								  tf::Subflow &         p_subflow) -> void
+	{
+		p_subflow.emplace([p_dst_texture, &p_texture_manager, p_path]() -> void
+		{
+			gpu::TextureDesc texture_desc{};
+			texture_desc.usage    = gpu::ETextureUsageFlagBits::eTransferSrc | gpu::ETextureUsageFlagBits::eTransferDst | gpu::ETextureUsageFlagBits::eSampled;
+			texture_desc.format   = gpu::EFormat::eR8G8B8A8Srgb;
+			texture_desc.extent.z = 1u;
+
+			DataBuffer image_data{loadTextureIntoBuffer(p_path.string(), texture_desc.format, texture_desc.extent.x, texture_desc.extent.y)};
+			texture_desc.mipCount = static_cast<uint32>(std::floor(std::log2(std::max(texture_desc.extent.x, texture_desc.extent.y)))) + 1u;
+
+			p_texture_manager.createIntoTexture(p_dst_texture, texture_desc);
+			p_texture_manager.setData(p_dst_texture, image_data.data(), image_data.size());
+
+			image_data.release();
 		});
 	}
 }

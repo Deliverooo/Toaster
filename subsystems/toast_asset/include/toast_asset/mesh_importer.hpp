@@ -32,7 +32,8 @@ namespace toaster::asset
 		TextureImportData albedoMap;
 		TextureImportData normalMap;
 
-		tsm::float4 albedoColour;
+		tsm::float4            albedoColour;
+		render::EMaterialFlags flags{render::EMaterialFlagBits::eBackfaceCulling};
 	};
 
 	struct TST_ASSET_API MeshImportData

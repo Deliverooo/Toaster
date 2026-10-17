@@ -19,6 +19,8 @@
 // For NVIDIA GPUs
 #define WARP_SIZE 32u
 
+#define TST_BIT(__shift) 1u << __shift
+
 // GLSL has no typedef, so I use this instead to match the tyes of toaster
 #define int8 int8_t
 #define int16 int16_t
@@ -121,11 +123,14 @@ layout (descriptor_heap) uniform sampler samplerHeap[];
 #define SAMPLE_TEXTURE(__textureId, __samplerId, __texCoord) texture(sampler2D(texture2DHeap[__textureId], samplerHeap[__samplerId]), __texCoord)
 #define SAMPLE_CUBE(__textureId, __samplerId, __texCoord, __lod) textureLod(samplerCube(textureCubeHeap[__textureId], samplerHeap[__samplerId]), __texCoord, __lod)
 
+#define TST_MATERIAL_FLAGS_BACKFACE_CULLING_BIT TST_BIT(0u)
+#define TST_MATERIAL_FLAGS_BACKFACE_TRANSPARENT_BIT TST_BIT(1u)
+
 struct Material
 {
-    float3 albedoColour;
+    float4 albedoColour;
     uint32 albedoMapHeapSlot;
     uint32 normalMapHeapSlot;
-    uint32 backfaceCulling;
+    uint8 flags;
 };
 layout (buffer_reference, scalar) readonly buffer MaterialBuffer { Material materials[]; };
