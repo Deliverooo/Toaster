@@ -31,8 +31,13 @@ namespace toaster::asset
 	{
 		TextureImportData albedoMap;
 		TextureImportData normalMap;
+		TextureImportData roughnessMap;
+		TextureImportData metalnessMap;
 
-		tsm::float4            albedoColour;
+		tsm::float4 albedoColour;
+		float32     roughness{0.0f};
+		float32     metalness{0.0f};
+
 		render::EMaterialFlags flags{render::EMaterialFlagBits::eBackfaceCulling};
 	};
 

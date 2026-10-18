@@ -6,31 +6,34 @@
 
 namespace toaster::render
 {
-	RenderContext::RenderContext(uint32 p_max_frames_in_flight, uint32 p_max_buffer_descriptors, uint32 p_max_texture_descriptors, uint32 p_max_sampler_descriptors)
+	auto render_context_create(RenderContext *p_out_render_ctx, const RenderContextDesc &p_desc) -> void
 	{
 		gpu::GPUContextDesc gpu_context_desc{};
 		gpu_context_desc.enableDebugInfo                 = true;
-		gpu_context_desc.maxConcurrentSwapchainWorkloads = p_max_frames_in_flight;
+		gpu_context_desc.maxConcurrentSwapchainWorkloads = p_desc.maxFramesInFlight;
 		gpu_context_desc.usingSwapchain                  = true;
 		gpu::initGPUContext(gpu_context_desc);
 
-		gpu::frame::initFrameContext({p_max_frames_in_flight});
+		gpu::frame::initFrameContext({p_desc.maxFramesInFlight});
 		gpu::alloc::initAllocationContext();
 		gpu::upload::initUploadContext({});
 
-		m_resourceHeap = gpu::createResourceDescriptorHeap({p_max_buffer_descriptors, p_max_texture_descriptors});
-		m_samplerHeap  = gpu::createSamplerDescriptorHeap({p_max_sampler_descriptors});
+		p_out_render_ctx->resourceHeap = gpu::createResourceDescriptorHeap({p_desc.maxBufferDescriptors, p_desc.maxTextureDescriptors});
+		p_out_render_ctx->samplerHeap  = gpu::createSamplerDescriptorHeap({p_desc.maxSamplerDescriptors});
 	}
 
-	RenderContext::~RenderContext()
+	auto render_context_destroy(RenderContext *p_render_ctx) -> void
 	{
 		gpu::upload::shutdownUploadContext();
 		gpu::alloc::shutdownAllocationContext();
 		gpu::frame::shutdownFrameContext();
 
 		// Must happen after shutting down the frame context because some deferred deletions may depend on the descriptor heaps
-		gpu::destroySamplerDescriptorHeap(m_samplerHeap);
-		gpu::destroyResourceDescriptorHeap(m_resourceHeap);
+		gpu::destroySamplerDescriptorHeap(p_render_ctx->samplerHeap);
+		gpu::destroyResourceDescriptorHeap(p_render_ctx->resourceHeap);
+
+		p_render_ctx->samplerHeap  = nullptr;
+		p_render_ctx->resourceHeap = nullptr;
 
 		gpu::shutdownGPUContext();
 	}

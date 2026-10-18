@@ -3,23 +3,13 @@
 #include <optional>
 #include <vector>
 
-#include "gpu_enums.hpp"
-#include "toast_gpu.hpp"
 #include "toast_math/math_vector.hpp"
+
+#include "fwd.hpp"
+#include "gpu_enums.hpp"
 
 namespace toaster::gpu
 {
-	TST_DECLARE_GPU_HANDLE(CommandList);
-	TST_DECLARE_GPU_HANDLE(ResourceDescriptorHeap);
-	TST_DECLARE_GPU_HANDLE(SamplerDescriptorHeap);
-	TST_DECLARE_GPU_HANDLE(Semaphore);
-	TST_DECLARE_GPU_HANDLE(Buffer);
-	TST_DECLARE_GPU_HANDLE(Texture);
-	TST_DECLARE_GPU_HANDLE(Sampler);
-	TST_DECLARE_GPU_HANDLE(Surface);
-	TST_DECLARE_GPU_HANDLE(Swapchain);
-	TST_DECLARE_GPU_HANDLE(Shader);
-
 	using DeviceAddress = uintptr;
 	constexpr DeviceAddress nullGpuPtr{0u};
 

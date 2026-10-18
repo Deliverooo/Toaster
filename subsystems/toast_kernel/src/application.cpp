@@ -1,245 +1,127 @@
 #include "toast_kernel/application.hpp"
 
-#include <chrono>
-
 #include "toast_gpu/frame.hpp"
 #include "toast_gpu/upload.hpp"
 
-namespace toaster
+#include <chrono>
+
+namespace toaster::ke
 {
-	Application::Application(const WindowDesc& p_window_desc, uint32 p_max_frames_in_flight) : maxFramesInFlight(p_max_frames_in_flight)
+	auto application_create(Application *p_out_app, const ApplicationDesc &p_desc) -> void
 	{
-		Window::initWindowingAPI();
+		p_out_app->maxFramesInFlight = p_desc.maxFramesInFlight;
 
-		m_renderCtx = makeUnique<render::RenderContext>(maxFramesInFlight);
+		render::render_context_create(&p_out_app->renderCtx, p_desc.renderCtxDesc);
 
-		m_window                   = makeUnique<Window>(p_window_desc);
+		window_init_api();
+		window_create(&p_out_app->window, p_desc.windowDesc);
 
-		m_window->setEventCallbackUserData(this);
-		m_window->setEventCallback(+[](Event &p_event, void *p_user_data) -> void
+		window_set_event_callback_user_data(&p_out_app->window, p_out_app);
+		window_set_event_callback(&p_out_app->window, +[](Event &p_event, void *p_user_data) -> void
 		{
-			const auto ts{static_cast<Application *>(p_user_data)};
-			for (auto layer: ts->m_layers)
+			const auto app{static_cast<Application *>(p_user_data)};
+			for (auto &layer: app->layers)
 			{
 				if (p_event.isHandled())
 					continue;
-				layer->onEvent(p_event);
+
+				if (layer.onEventFn)
+					layer.onEventFn(app, layer.userData, p_event);
 			}
 		});
 	}
 
-	Application::~Application()
+	auto application_destroy(Application *p_app) -> void
 	{
 		gpu::waitIdle();
 		gpu::upload::pollUploads();
 
-		for (auto layer: m_layers)
+		for (const auto &layer: p_app->layers)
 		{
-			layer->onDestroy();
-			delete layer;
+			if (layer.destroyFn)
+				layer.destroyFn(p_app, layer.userData);
 		}
-		m_layers.clear();
+		p_app->layers.clear();
 
-		m_window.reset();
-		m_renderCtx.reset();
+		window_destroy(&p_app->window);
 
-		Window::shutdownWindowingAPI();
+		render::render_context_destroy(&p_app->renderCtx);
+
+		window_shutdown_api();
 	}
 
-	auto Application::run() -> void
+	auto application_run(Application *p_app) -> void
 	{
-		std::vector<gpu::CommandListHandle> command_lists(maxFramesInFlight);
+		std::vector<gpu::CommandListHandle> command_lists(p_app->maxFramesInFlight);
 		for (auto &cmd: command_lists)
 			cmd = gpu::getOrCreateCommandList(gpu::EQueueType::eGraphics);
 
 		auto last_time{std::chrono::high_resolution_clock::now()};
-		while (m_running)
+		while (p_app->running)
 		{
-			if (!m_window->processMessages())
+			if (!window_process_messages(&p_app->window))
 				break;
 
-			if (!m_window->checkForResize())
+			if (!window_check_for_resize(&p_app->window))
 				continue;
 
 			auto                           current_time{std::chrono::high_resolution_clock::now()};
 			std::chrono::duration<float32> elapsed{current_time - last_time};
-			m_deltaTime = elapsed.count();
-			last_time   = current_time;
+			p_app->deltaTime = elapsed.count();
+			last_time        = current_time;
 
 			gpu::upload::pollUploads();
-			gpu::frame::beginFrame(m_frameIndex);
+			gpu::frame::beginFrame(p_app->frameIndex);
 
-			gpu::CommandListHandle &cmd{command_lists[m_frameIndex]};
+			gpu::CommandListHandle &cmd{command_lists[p_app->frameIndex]};
 			gpu::resetCommandList(cmd);
 
 			gpu::openCommandList(cmd);
-			if (!m_window->beginFrame(cmd))
+			if (!window_begin_frame(&p_app->window, cmd))
 			{
 				gpu::resetCommandList(cmd);
 				continue;
 			}
 
-			if (!m_window->isMinimised())
+			if (!window_is_minimised(&p_app->window))
 			{
-				for (auto &layer: m_layers)
+				for (auto &layer: p_app->layers)
 				{
-					layer->onUpdate(m_deltaTime);
-					layer->onRender(cmd);
+					if (layer.onUpdateFn)
+						layer.onUpdateFn(p_app, layer.userData, p_app->deltaTime);
+					if (layer.onRenderFn)
+						layer.onRenderFn(p_app, layer.userData, cmd);
 				}
 			}
 
-			m_window->submitAndPresent(cmd);
+			window_submit_and_present(&p_app->window, cmd);
 
-			m_frameIndex = (m_frameIndex + 1u) % maxFramesInFlight;
+			p_app->frameIndex = (p_app->frameIndex + 1u) % p_app->maxFramesInFlight;
 		}
 
 		for (auto &cmd: command_lists)
 			gpu::freeCommandList(cmd);
 	}
 
-	auto Application::close() -> void
+	auto application_close(Application *p_app) -> void
 	{
-		m_running = false;
-		// TODO: Close stuff
+		p_app->running = false;
 	}
 
-	// Application::Application(const ApplicationSpecInfo &p_spec_info, const CommandLineArgs *p_command_line_args) : m_specInfo(p_spec_info),
-	// 																											   m_commandLineArgs(p_command_line_args)
-	// {
-	// 	Window::initWindowingAPI();
-	//
-	// 	render::RenderContextSpecInfo render_context_spec_info{};
-	// 	render_context_spec_info.sdkDir             = m_specInfo.sdkDir / "bin";
-	// 	render_context_spec_info.instanceExtensions = Window::getRequiredInstanceExtensions();
-	// 	render_context_spec_info.printDebugInfo     = m_specInfo.printGPUDebugInfo;
-	// 	m_renderContext                             = new render::RenderContext{render_context_spec_info};
-	//
-	// 	TST_PERMA_ASSERT(m_renderContext);
-	//
-	// 	#pragma region create window
-	// 	m_window = new Window(m_renderContext, m_specInfo.windowSpecInfo);
-	// 	m_window->setEventCallback([this](Event &e)
-	// 	{
-	// 		EventDispatcher dispatcher{e};
-	// 		dispatcher.dispatch<WindowCloseEvent>(TST_BIND_EVENT_FN(Application::onWindowCloseEvent));
-	// 		dispatcher.dispatch<WindowResizeEvent>(TST_BIND_EVENT_FN(Application::onWindowResizeEvent));
-	//
-	// 		for (const auto &layer: m_layers)
-	// 		{
-	// 			if (e.isHandled())
-	// 				continue;
-	// 			layer->onEvent(e);
-	// 		}
-	// 	});
-	//
-	// 	m_window->getSwapchain()->setResizeUserDataPointer(this);
-	// 	m_window->getSwapchain()->setResizeCallback([](void *p_user_data, tsm::uint2 p_size) -> void
-	// 	{
-	// 		for (const auto app{static_cast<Application *>(p_user_data)}; const auto &layer: app->m_layers)
-	// 		{
-	// 			layer->onResize(p_size);
-	// 		}
-	// 	});
-	//
-	// 	#pragma endregion
-	// }
-	//
-	// Application::~Application() noexcept
-	// {
-	// 	for (auto &layer: m_layers)
-	// 	{
-	// 		layer->onDestroy();
-	// 		m_renderContext->gpuWaitIdle(); // Wait until the GPU is finished using all the layers' resources
-	// 		delete layer;
-	// 	}
-	//
-	// 	m_layers.clear();
-	//
-	// 	delete m_window;
-	// 	delete m_renderContext;
-	// 	Window::shutdownWindowingAPI();
-	// }
-	//
-	// auto Application::run() -> int32
-	// {
-	// 	for (auto &layer: m_layers)
-	// 		layer->onUIInit(m_onUIInitUserData);
-	//
-	// 	while (m_isRunning)
-	// 	{
-	// 		const auto startTime{static_cast<float32>(glfwGetTime())};
-	// 		m_deltaTime     = startTime - m_lastFrameTime;
-	// 		m_lastFrameTime = startTime;
-	//
-	// 		m_window->processEvents();
-	// 		m_window->beginFrame();
-	//
-	// 		m_renderContext->setCurrentCommandBuffer(&m_window->getSwapchain()->getCurrentCommandBuffer());
-	// 		m_renderContext->getGPUContext()->bindDescriptorHeap();
-	//
-	// 		if (!m_minimized)
-	// 		{
-	// 			for (auto &layer: m_layers)
-	// 				layer->onUpdate(m_deltaTime);
-	//
-	// 			if (m_cbBeginUIRender)
-	// 				m_cbBeginUIRender();
-	//
-	// 			for (auto &layer: m_layers)
-	// 				layer->onUIRender();
-	//
-	// 			if (m_cbEndUIRender)
-	// 				m_cbEndUIRender();
-	// 		}
-	// 		m_window->endFrame();
-	// 	}
-	//
-	// 	return 0;
-	// }
-	//
-	// auto Application::close() noexcept -> void
-	// {
-	// 	m_isRunning = false;
-	// }
-	//
-	// auto Application::createScene(const String &p_name) const -> UniquePtr<scene::Scene>
-	// {
-	// 	return toaster::makeUnique<scene::Scene>(m_renderContext, nullptr, p_name);
-	// }
-	//
-	// auto Application::onWindowCloseEvent([[maybe_unused]] WindowCloseEvent &p_event) -> bool
-	// {
-	// 	m_isRunning = false;
-	// 	return true;
-	// }
-	//
-	// auto Application::onWindowResizeEvent(WindowResizeEvent &p_event) -> bool
-	// {
-	// 	const uint32 width{p_event.getWidth()};
-	// 	const uint32 height{p_event.getHeight()};
-	//
-	// 	if (width == 0 || height == 0)
-	// 	{
-	// 		m_minimized = true;
-	// 		return false;
-	// 	}
-	//
-	// 	m_minimized = false;
-	// 	return false;
-	// }
-	//
-	// auto Application::setOnUIInitUserData(void *p_user_data) -> void
-	// {
-	// 	m_onUIInitUserData = p_user_data;
-	// }
-	//
-	// auto Application::setBeginUIRenderCallback(const std::function<void()> &p_cb_begin_ui_render) -> void
-	// {
-	// 	m_cbBeginUIRender = p_cb_begin_ui_render;
-	// }
-	//
-	// auto Application::setEndUIRenderCallback(const std::function<void()> &p_cb_end_ui_render) -> void
-	// {
-	// 	m_cbEndUIRender = p_cb_end_ui_render;
-	// }
+	auto application_add_layer(Application *p_app, const AppLayer *p_layer) -> void
+	{
+		p_app->layers.push_back(*p_layer);
+		if (p_layer->initFn)
+			p_layer->initFn(p_app, p_layer->userData);
+	}
+
+	auto application_get_input_ctx(Application *p_app) -> InputContext *
+	{
+		return &p_app->window.cbData.inputCtx;
+	}
+
+	auto application_get_input_ctx(const Application *p_app) -> const InputContext *
+	{
+		return &p_app->window.cbData.inputCtx;
+	}
 }

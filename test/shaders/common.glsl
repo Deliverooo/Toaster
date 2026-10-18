@@ -55,6 +55,8 @@ struct Vertex
 {
     float3 position;
     float3 normal;
+    float3 tangent;
+    float3 bitangent;
     float2 texCoord;
 };
 
@@ -131,6 +133,10 @@ struct Material
     float4 albedoColour;
     uint32 albedoMapHeapSlot;
     uint32 normalMapHeapSlot;
+    uint32 roughnessMapHeapSlot;
+    uint32 metalnessMapHeapSlot;
+    float roughness;
+    float metalness;
     uint8 flags;
 };
 layout (buffer_reference, scalar) readonly buffer MaterialBuffer { Material materials[]; };

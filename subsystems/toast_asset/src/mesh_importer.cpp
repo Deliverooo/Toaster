@@ -165,6 +165,12 @@ namespace toaster::asset
 
 				vertex.normal = {mesh->mNormals[v].x, mesh->mNormals[v].y, mesh->mNormals[v].z};
 
+				if (mesh->HasTangentsAndBitangents())
+				{
+					vertex.tangent   = {mesh->mTangents[v].x, mesh->mTangents[v].y, mesh->mTangents[v].z};
+					vertex.bitangent = {mesh->mBitangents[v].x, mesh->mBitangents[v].y, mesh->mBitangents[v].z};
+				}
+
 				if (mesh->HasTextureCoords(0))
 					vertex.texCoord = {mesh->mTextureCoords[0][v].x, mesh->mTextureCoords[0][v].y};
 				else
@@ -199,12 +205,6 @@ namespace toaster::asset
 
 		p_out_data->boundingSphere.w = std::sqrtf(dx * dx + dy * dy + dz * dz);
 
-		std::println("{}", p_out_data->boundingSphere.w);
-
-		static constexpr uint64  maxVertices{64u};
-		static constexpr uint64  maxTriangles{128u};
-		static constexpr float32 coneWeight{0.0f};
-
 		for (auto &[mat_idx, data]: raw_submesh_data)
 		{
 			if (data.indices.empty())
@@ -224,8 +224,17 @@ namespace toaster::asset
 
 			aiColor3D ai_albedo_colour{};
 			ai_mat->Get(AI_MATKEY_COLOR_DIFFUSE, ai_albedo_colour);
-
 			tst_mat.albedoColour = {ai_albedo_colour.r, ai_albedo_colour.g, ai_albedo_colour.b, 1.0f};
+
+			if (float32 roughness; ai_mat->Get(AI_MATKEY_ROUGHNESS_FACTOR, roughness) == AI_SUCCESS)
+				tst_mat.roughness = roughness;
+			else
+				tst_mat.roughness = 0.0f;
+
+			if (float32 metalness; ai_mat->Get(AI_MATKEY_REFLECTIVITY, metalness) == AI_SUCCESS)
+				tst_mat.metalness = metalness;
+			else
+				tst_mat.metalness = 0.0f;
 
 			bool is_transparent{isAiMatTransparent(ai_mat)};
 			tst_mat.flags |= is_transparent ? render::EMaterialFlagBits::eTransparent : render::EMaterialFlagBits{0u};
@@ -259,14 +268,39 @@ namespace toaster::asset
 				tst_mat.albedoMap.path = albedo_map_path;
 			}
 
-			aiString ai_normal_map_path;
-			bool     has_normal_map{ai_mat->GetTexture(aiTextureType_NORMALS, 0, &ai_normal_map_path) == AI_SUCCESS};
-
-			if (has_normal_map)
 			{
-				auto normal_map_path{get_path_and_create_texture_if_exists(ai_normal_map_path)};
-				if (normal_map_path.has_value())
-					tst_mat.normalMap.path = *normal_map_path;
+				aiString ai_normal_map_path;
+				bool     has_normal_map{ai_mat->GetTexture(aiTextureType_NORMALS, 0, &ai_normal_map_path) == AI_SUCCESS};
+
+				if (has_normal_map)
+				{
+					auto normal_map_path{get_path_and_create_texture_if_exists(ai_normal_map_path)};
+					if (normal_map_path.has_value())
+						tst_mat.normalMap.path = *normal_map_path;
+				}
+			}
+
+			{
+				aiString ai_roughness_map_path;
+				bool     has_roughness_map{ai_mat->GetTexture(aiTextureType_DIFFUSE_ROUGHNESS, 0, &ai_roughness_map_path) == AI_SUCCESS};
+
+				if (has_roughness_map)
+				{
+					auto roughness_map_path{get_path_and_create_texture_if_exists(ai_roughness_map_path)};
+					if (roughness_map_path.has_value())
+						tst_mat.roughnessMap.path = *roughness_map_path;
+				}
+			}
+			{
+				aiString ai_metalness_map_path;
+				bool     has_metalness_map{ai_mat->GetTexture(aiTextureType_METALNESS, 0, &ai_metalness_map_path) == AI_SUCCESS};
+
+				if (has_metalness_map)
+				{
+					auto metalness_map_path{get_path_and_create_texture_if_exists(ai_metalness_map_path)};
+					if (metalness_map_path.has_value())
+						tst_mat.metalnessMap.path = *metalness_map_path;
+				}
 			}
 		}
 
@@ -318,9 +352,26 @@ namespace toaster::asset
 						if (cpu_mat.normalMap.path.has_value())
 						{
 							render::TextureHandle normal_map{m_textureManager->registerTexture()};
-							asyncLoadTextureFromFile(normal_map, *m_textureManager, *cpu_mat.normalMap.path, p_executor);
+							asyncLoadTextureFromFile(normal_map, *m_textureManager, *cpu_mat.normalMap.path, p_executor, gpu::EFormat::eR8G8B8A8Unorm);
 							m_materialManager->setNormalMap(gpu_mat, normal_map);
 						}
+
+						if (cpu_mat.roughnessMap.path.has_value())
+						{
+							render::TextureHandle roughness_map{m_textureManager->registerTexture()};
+							asyncLoadTextureFromFile(roughness_map, *m_textureManager, *cpu_mat.roughnessMap.path, p_executor, gpu::EFormat::eR8Unorm);
+							m_materialManager->setRoughnessMap(gpu_mat, roughness_map);
+						}
+
+						if (cpu_mat.metalnessMap.path.has_value())
+						{
+							render::TextureHandle metalness_map{m_textureManager->registerTexture()};
+							asyncLoadTextureFromFile(metalness_map, *m_textureManager, *cpu_mat.metalnessMap.path, p_executor, gpu::EFormat::eR8Unorm);
+							m_materialManager->setMetalnessMap(gpu_mat, metalness_map);
+						}
+
+						m_materialManager->setRoughness(gpu_mat, cpu_mat.roughness);
+						m_materialManager->setMetalness(gpu_mat, cpu_mat.metalness);
 					}
 				})
 			};

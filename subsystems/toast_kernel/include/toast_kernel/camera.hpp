@@ -5,7 +5,7 @@
 #include "toast_math/math_matrix.hpp"
 using namespace DirectX;
 
-namespace toaster
+namespace toaster::ke
 {
 	constexpr XMVECTORF32 unitForwardDir{.f{0.0f, 0.0f, -1.0f, 0.0f}};
 	constexpr XMVECTORF32 unitRightDir{.f{1.0f, 0.0f, 0.0f, 0.0f}};
@@ -27,7 +27,7 @@ namespace toaster
 		Camera() = default;
 		Camera(float32 p_fov, float32 p_aspec_ratio, float32 p_z_near = 0.1f, float32 p_z_far = 1000.0f);
 
-		auto onUpdate(const InputContext &p_input_ctx, float32 p_dt) -> void;
+		auto onUpdate(const InputContext* p_input_ctx, float32 p_dt) -> void;
 		auto onResize(float32 p_aspect) -> void;
 
 		auto XM_CALLCONV getViewMatrix() const -> XMMATRIX { return XMMatrixLookToLH(XMLoadFloat3(&m_position), getCameraForward(), unitUpDir); }

@@ -2,7 +2,7 @@
 
 #include "../toast_kernel.hpp"
 
-namespace toaster
+namespace toaster::ke
 {
 	enum class EEventType : uint8
 	{

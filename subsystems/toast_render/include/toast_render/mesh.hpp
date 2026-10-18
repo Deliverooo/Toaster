@@ -12,6 +12,8 @@ namespace toaster::render
 	{
 		XMFLOAT3 position;
 		XMFLOAT3 normal;
+		XMFLOAT3 tangent;
+		XMFLOAT3 bitangent;
 		XMFLOAT2 texCoord;
 	};
 

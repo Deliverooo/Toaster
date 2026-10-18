@@ -1,47 +1,26 @@
 #pragma once
 
-#include "toast_kernel.hpp"
 #include "events/event.hpp"
-#include "toast_gpu/api.hpp"
-#include "toast_math/math_vector.hpp"
-#include "toast_render/render_context.hpp"
+#include "toast_gpu/fwd.hpp"
 
-namespace toaster
+namespace toaster::ke
 {
-	class Application;
-	class InputContext;
+	struct Application;
 
-	class TST_KERNEL_API IAppLayer
+	struct TST_KERNEL_API AppLayer
 	{
-	public:
-		virtual ~IAppLayer() = default;
+		using InitFn     = void(*)(Application *, void *);
+		using DestroyFn  = void(*)(Application *, void *);
+		using OnRenderFn = void(*)(Application *, void *, gpu::CommandListHandle);
+		using OnUpdateFn = void(*)(Application *, void *, float32);
+		using OnEventFn  = void(*)(Application *, void *, Event &);
 
-		virtual auto onInit() -> void = 0;
+		InitFn     initFn{nullptr};
+		DestroyFn  destroyFn{nullptr};
+		OnRenderFn onRenderFn{nullptr};
+		OnUpdateFn onUpdateFn{nullptr};
+		OnEventFn  onEventFn{nullptr};
 
-		virtual auto onDestroy() -> void
-		{
-		}
-
-		virtual auto onUpdate([[maybe_unused]] float32 p_dt) -> void
-		{
-		}
-
-		virtual auto onRender([[maybe_unused]] gpu::CommandListHandle p_cmd) -> void
-		{
-		}
-
-		virtual auto onEvent([[maybe_unused]] Event &p_event) -> void
-		{
-		}
-
-	protected:
-		// Ts just makes things easier to access
-		NonOwningPtr<Application>           m_app{nullptr};
-		NonOwningPtr<InputContext>          m_inputCtx{nullptr};
-		NonOwningPtr<render::RenderContext> m_renderCtx{nullptr};
-
-	private:
-		auto _register(Application *p_app) -> void;
-		friend class Application;
+		void *userData{nullptr}; // This could be a stack of heap pointer, as it is managed by the end-user
 	};
 }

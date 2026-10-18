@@ -4,8 +4,9 @@
 #include <unordered_map>
 
 #include "toast_kernel.hpp"
+#include "toast_math/math_vector.hpp"
 
-namespace toaster
+namespace toaster::ke
 {
 	// Keycode numbers from <GLFW/glfw3.h>
 	enum class EKeyCode : uint32
@@ -159,64 +160,48 @@ namespace toaster
 		eCaptured
 	};
 
-	class TST_KERNEL_API InputContext
+	struct TST_KERNEL_API InputContext
 	{
-	public:
-		InputContext()  = default;
-		~InputContext() = default;
+		std::bitset<c_keyLast> currentKeyStates;
+		std::bitset<c_keyLast> previousKeyStates;
 
-		explicit InputContext(void *p_window_ctx) : m_windowCtx(p_window_ctx)
-		{
-		}
+		std::bitset<c_mouseButtonLast> currentMouseStates;
+		std::bitset<c_mouseButtonLast> previousMouseStates;
 
-		auto setWindowCtx(void *p_window_ctx) -> void { m_windowCtx = p_window_ctx; }
+		void *windowCtx{nullptr}; // GLFWwindow*
 
-		// Keyboard
-		auto isKeyDown(EKeyCode p_key_code) const -> bool;
-		auto isKeyPressed(EKeyCode p_key_code) const -> bool;
-		auto isKeyReleased(EKeyCode p_key_code) const -> bool;
+		float32 mouseX{0.0f};
+		float32 mouseY{0.0f};
+		float32 mouseDx{0.0f};
+		float32 mouseDy{0.0f};
 
-		// Mouse
-		auto isMouseButtonDown(EMouseButton p_button) const -> bool;
-		auto isMouseButtonPressed(EMouseButton p_button) const -> bool;
-		auto isMouseButtonReleased(EMouseButton p_button) const -> bool;
+		float32 scrollX{0.0f};
+		float32 scrollY{0.0f};
 
-		auto setCursorMode(ECursorMode p_mode) -> void;
-		auto getCursorMode() const -> ECursorMode { return m_currentCursorMode; }
-
-		auto getMouseX() const -> float32 { return m_mouseX; }
-		auto getMouseY() const -> float32 { return m_mouseY; }
-		auto getMouseDx() const -> float32 { return m_mouseDx; }
-		auto getMouseDy() const -> float32 { return m_mouseDy; }
-
-		auto getScrollX() const -> float32 { return m_scrollX; }
-		auto getScrollY() const -> float32 { return m_scrollY; }
-
-		auto update() -> void;
-		auto clearStates() -> void;
-
-	private:
-		std::bitset<c_keyLast> m_currentKeyStates;
-		std::bitset<c_keyLast> m_previousKeyStates;
-
-		std::bitset<c_mouseButtonLast> m_currentMouseStates;
-		std::bitset<c_mouseButtonLast> m_previousMouseStates;
-
-		void *m_windowCtx{nullptr}; // GLFWwindow*
-
-		float32 m_mouseX{0.0f};
-		float32 m_mouseY{0.0f};
-		float32 m_mouseDx{0.0f};
-		float32 m_mouseDy{0.0f};
-
-		float32 m_scrollX{0.0f};
-		float32 m_scrollY{0.0f};
-
-		ECursorMode m_currentCursorMode{ECursorMode::eNormal};
+		ECursorMode currentCursorMode{ECursorMode::eNormal};
 
 		// Essentially, when the cursor first enters the window, the initial X position will be out of date. This will mess up the Dx/Dy and cause issues...
-		bool m_firstMouse{true};
-
-		friend class Window;
+		bool firstMouse{true};
 	};
+
+	auto TST_KERNEL_API input_ctx_create(InputContext *p_out_input_ctx, void *p_window_ctx) -> void;
+	auto TST_KERNEL_API input_ctx_destroy(InputContext *p_input_ctx) -> void;
+
+	auto TST_KERNEL_API input_ctx_is_key_down(const InputContext *p_input_ctx, EKeyCode p_key_code) -> bool;
+	auto TST_KERNEL_API input_ctx_is_key_pressed(const InputContext *p_input_ctx, EKeyCode p_key_code) -> bool;
+	auto TST_KERNEL_API input_ctx_is_key_released(const InputContext *p_input_ctx, EKeyCode p_key_code) -> bool;
+
+	auto TST_KERNEL_API input_ctx_is_mouse_button_down(const InputContext *p_input_ctx, EMouseButton p_button) -> bool;
+	auto TST_KERNEL_API input_ctx_is_mouse_button_pressed(const InputContext *p_input_ctx, EMouseButton p_button) -> bool;
+	auto TST_KERNEL_API input_ctx_is_mouse_button_released(const InputContext *p_input_ctx, EMouseButton p_button) -> bool;
+
+	auto TST_KERNEL_API input_ctx_get_cursor_mode(const InputContext *p_input_ctx) -> ECursorMode;
+	auto TST_KERNEL_API input_ctx_set_cursor_mode(InputContext *p_input_ctx, ECursorMode p_cursor_mode) -> void;
+
+	auto TST_KERNEL_API input_ctx_update(InputContext *p_input_ctx) -> void;
+	auto TST_KERNEL_API input_ctx_clear_states(InputContext *p_input_ctx) -> void;
+
+	auto TST_KERNEL_API input_ctx_get_mouse_pos(const InputContext *p_input_ctx) -> tsm::float2;
+	auto TST_KERNEL_API input_ctx_get_mouse_delta_pos(const InputContext *p_input_ctx) -> tsm::float2;
+	auto TST_KERNEL_API input_ctx_get_mouse_scroll(const InputContext *p_input_ctx) -> tsm::float2;
 }

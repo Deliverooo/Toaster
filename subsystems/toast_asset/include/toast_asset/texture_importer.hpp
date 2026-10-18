@@ -14,9 +14,9 @@ namespace toaster::asset
 	auto TST_ASSET_API loadTextureIntoBuffer(StringView p_path, gpu::EFormat &p_out_format, uint32 &p_out_width, uint32 &p_out_height) -> DataBuffer;
 
 	auto TST_ASSET_API asyncLoadTextureFromFile(render::TextureHandle p_dst_texture, render::TextureManager &p_texture_manager, const std::filesystem::path &p_path,
-												tf::Executor &        p_executor) -> void;
+												tf::Executor &        p_executor, gpu::EFormat               p_desired_format = gpu::EFormat::eR8G8B8A8Srgb) -> void;
 	auto TST_ASSET_API asyncLoadTextureFromFile(render::TextureHandle p_dst_texture, render::TextureManager &p_texture_manager, const std::filesystem::path &p_path,
-												tf::Taskflow &        p_taskflow) -> void;
+												tf::Taskflow &        p_taskflow, gpu::EFormat               p_desired_format = gpu::EFormat::eR8G8B8A8Srgb) -> void;
 	auto TST_ASSET_API asyncLoadTextureFromFile(render::TextureHandle p_dst_texture, render::TextureManager &p_texture_manager, const std::filesystem::path &p_path,
-												tf::Subflow &         p_subflow) -> void;
+												tf::Subflow &         p_subflow, gpu::EFormat                p_desired_format = gpu::EFormat::eR8G8B8A8Srgb) -> void;
 }

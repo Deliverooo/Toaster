@@ -54,6 +54,36 @@ namespace toaster::render
 			uint32 normal_data{0xFFFF0000};
 			m_textureManager->setData(m_defaultNormalMap, &normal_data, sizeof(uint32));
 		}
+
+		{
+			gpu::TextureDesc roughness_texture_desc{};
+			roughness_texture_desc.extent      = {1u, 1u, 1u};
+			roughness_texture_desc.mipCount    = 1u;
+			roughness_texture_desc.layerCount  = 1u;
+			roughness_texture_desc.type        = gpu::ETextureType::e2D;
+			roughness_texture_desc.sampleCount = gpu::ESampleCount::e1;
+			roughness_texture_desc.format      = gpu::EFormat::eR8Unorm;
+			roughness_texture_desc.usage       = gpu::ETextureUsageFlagBits::eTransferDst | gpu::ETextureUsageFlagBits::eSampled;
+			m_defaultRoughnessMap              = m_textureManager->createTexture(roughness_texture_desc);
+
+			uint8 roughness_data{0xFF};
+			m_textureManager->setData(m_defaultRoughnessMap, &roughness_data, sizeof(uint8));
+		}
+
+		{
+			gpu::TextureDesc metalness_texture_desc{};
+			metalness_texture_desc.extent      = {1u, 1u, 1u};
+			metalness_texture_desc.mipCount    = 1u;
+			metalness_texture_desc.layerCount  = 1u;
+			metalness_texture_desc.type        = gpu::ETextureType::e2D;
+			metalness_texture_desc.sampleCount = gpu::ESampleCount::e1;
+			metalness_texture_desc.format      = gpu::EFormat::eR8Unorm;
+			metalness_texture_desc.usage       = gpu::ETextureUsageFlagBits::eTransferDst | gpu::ETextureUsageFlagBits::eSampled;
+			m_defaultMetalnessMap              = m_textureManager->createTexture(metalness_texture_desc);
+
+			uint8 metalness_data{0x00};
+			m_textureManager->setData(m_defaultMetalnessMap, &metalness_data, sizeof(uint8));
+		}
 	}
 
 	MaterialManager::~MaterialManager()
@@ -67,11 +97,16 @@ namespace toaster::render
 	auto MaterialManager::createMaterial() -> MaterialHandle
 	{
 		Material material{};
-		material.albedoMap                = m_defaultColourMap;
-		material.normalMap                = m_defaultNormalMap;
-		material.params.albedoMapHeapSlot = m_textureManager->getTexture(m_defaultColourMap).shaderReadHeapSlot;
-		material.params.normalMapHeapSlot = m_textureManager->getTexture(m_defaultNormalMap).shaderReadHeapSlot;
-		material.params.flags             = EMaterialFlagBits::eBackfaceCulling;
+		material.albedoMap                   = m_defaultColourMap;
+		material.normalMap                   = m_defaultNormalMap;
+		material.params.albedoMapHeapSlot    = m_textureManager->getTexture(m_defaultColourMap).shaderReadHeapSlot;
+		material.params.normalMapHeapSlot    = m_textureManager->getTexture(m_defaultNormalMap).shaderReadHeapSlot;
+		material.params.roughnessMapHeapSlot = m_textureManager->getTexture(m_defaultRoughnessMap).shaderReadHeapSlot;
+		material.params.metalnessMapHeapSlot = m_textureManager->getTexture(m_defaultMetalnessMap).shaderReadHeapSlot;
+		material.params.roughness            = 0.0f;
+		material.params.metalness            = 0.0f;
+		material.params.flags                = EMaterialFlagBits::eBackfaceCulling | EMaterialFlagBits::eNoNormalMap | EMaterialFlagBits::eNoRoughnessMap |
+											   EMaterialFlagBits::eNoMetalnessMap;
 
 		MaterialHandle out_handle{m_materials.emplace(material)};
 
@@ -118,6 +153,8 @@ namespace toaster::render
 	{
 		Material &material{m_materials[p_handle]};
 
+		material.params.flags &= ~EMaterialFlagBits::eNoNormalMap;
+
 		material.normalMap = p_normal_map;
 
 		if (!gpu::upload::isStateTrackerReady(m_textureManager->getTexture(p_normal_map).stateTracker))
@@ -132,6 +169,66 @@ namespace toaster::render
 		else
 			material.params.normalMapHeapSlot = m_textureManager->getTexture(p_normal_map).shaderReadHeapSlot;
 
+		markMaterialDirty(p_handle);
+	}
+
+	auto MaterialManager::setRoughnessMap(MaterialHandle p_handle, TextureHandle p_roughness_map) -> void
+	{
+		Material &material{m_materials[p_handle]};
+
+		material.params.flags &= ~EMaterialFlagBits::eNoRoughnessMap;
+
+		material.roughnessMap = p_roughness_map;
+
+		if (!gpu::upload::isStateTrackerReady(m_textureManager->getTexture(p_roughness_map).stateTracker))
+		{
+			{
+				std::scoped_lock<std::mutex> lock{m_textureUploadMutex};
+				m_pendingMaterialTextureUploads[p_handle].insert(EPendingTextureType::eRoughnessMap);
+			}
+
+			material.params.roughnessMapHeapSlot = m_textureManager->getTexture(m_defaultRoughnessMap).shaderReadHeapSlot;
+		}
+		else
+			material.params.roughnessMapHeapSlot = m_textureManager->getTexture(p_roughness_map).shaderReadHeapSlot;
+
+		markMaterialDirty(p_handle);
+	}
+
+	auto MaterialManager::setMetalnessMap(MaterialHandle p_handle, TextureHandle p_metalness_map) -> void
+	{
+		Material &material{m_materials[p_handle]};
+
+		material.params.flags &= ~EMaterialFlagBits::eNoMetalnessMap;
+
+		material.metalnessMap = p_metalness_map;
+
+		if (!gpu::upload::isStateTrackerReady(m_textureManager->getTexture(p_metalness_map).stateTracker))
+		{
+			{
+				std::scoped_lock<std::mutex> lock{m_textureUploadMutex};
+				m_pendingMaterialTextureUploads[p_handle].insert(EPendingTextureType::eMetalnessMap);
+			}
+
+			material.params.metalnessMapHeapSlot = m_textureManager->getTexture(m_defaultMetalnessMap).shaderReadHeapSlot;
+		}
+		else
+			material.params.metalnessMapHeapSlot = m_textureManager->getTexture(p_metalness_map).shaderReadHeapSlot;
+
+		markMaterialDirty(p_handle);
+	}
+
+	auto MaterialManager::setRoughness(MaterialHandle p_handle, float32 p_roughness) -> void
+	{
+		Material &material{m_materials[p_handle]};
+		material.params.roughness = p_roughness;
+		markMaterialDirty(p_handle);
+	}
+
+	auto MaterialManager::setMetalness(MaterialHandle p_handle, float32 p_metalness) -> void
+	{
+		Material &material{m_materials[p_handle]};
+		material.params.metalness = p_metalness;
 		markMaterialDirty(p_handle);
 	}
 
@@ -154,6 +251,21 @@ namespace toaster::render
 	auto MaterialManager::setIsTransparent(MaterialHandle p_handle, bool p_is_transparent) -> void
 	{
 		setMaterialFlags(p_handle, EMaterialFlagBits::eTransparent, p_is_transparent);
+	}
+
+	auto MaterialManager::setHasNormalMap(MaterialHandle p_handle, bool p_has_normal_map) -> void
+	{
+		setMaterialFlags(p_handle, EMaterialFlagBits::eNoNormalMap, !p_has_normal_map);
+	}
+
+	auto MaterialManager::setHasRoughnessMap(MaterialHandle p_handle, bool p_has_roughness_map) -> void
+	{
+		setMaterialFlags(p_handle, EMaterialFlagBits::eNoRoughnessMap, !p_has_roughness_map);
+	}
+
+	auto MaterialManager::setHasMetalnessMap(MaterialHandle p_handle, bool p_has_metalness_map) -> void
+	{
+		setMaterialFlags(p_handle, EMaterialFlagBits::eNoMetalnessMap, !p_has_metalness_map);
 	}
 
 	auto MaterialManager::pollMaterialTextureUploads() -> void
@@ -187,6 +299,26 @@ namespace toaster::render
 						mat.params.normalMapHeapSlot = m_textureManager->getTexture(mat.normalMap).shaderReadHeapSlot;
 						need_update                  = true;
 						type_it                      = types.erase(type_it);
+						continue;
+					}
+				}
+				else if (*type_it == EPendingTextureType::eRoughnessMap)
+				{
+					if (gpu::upload::isStateTrackerReady(m_textureManager->getTexture(mat.roughnessMap).stateTracker))
+					{
+						mat.params.roughnessMapHeapSlot = m_textureManager->getTexture(mat.roughnessMap).shaderReadHeapSlot;
+						need_update                     = true;
+						type_it                         = types.erase(type_it);
+						continue;
+					}
+				}
+				else if (*type_it == EPendingTextureType::eMetalnessMap)
+				{
+					if (gpu::upload::isStateTrackerReady(m_textureManager->getTexture(mat.metalnessMap).stateTracker))
+					{
+						mat.params.metalnessMapHeapSlot = m_textureManager->getTexture(mat.metalnessMap).shaderReadHeapSlot;
+						need_update                     = true;
+						type_it                         = types.erase(type_it);
 						continue;
 					}
 				}

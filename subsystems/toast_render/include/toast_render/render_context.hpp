@@ -5,19 +5,20 @@
 
 namespace toaster::render
 {
-	// Initialises everything to do with the gpu
-	class TST_RENDER_API RenderContext
+	struct TST_RENDER_API RenderContext
 	{
-	public:
-		RenderContext(uint32 p_max_frames_in_flight    = 3u, uint32 p_max_buffer_descriptors = 128u, uint32 p_max_texture_descriptors = 1028u,
-					  uint32 p_max_sampler_descriptors = 32u);
-		~RenderContext();
-
-		[[nodiscard]] auto getResourceHeap() const -> gpu::ResourceDescriptorHeapHandle { return m_resourceHeap; }
-		[[nodiscard]] auto getSamplerHeap() const -> gpu::SamplerDescriptorHeapHandle { return m_samplerHeap; }
-
-	private:
-		gpu::ResourceDescriptorHeapHandle m_resourceHeap{nullptr};
-		gpu::SamplerDescriptorHeapHandle  m_samplerHeap{nullptr};
+		gpu::ResourceDescriptorHeapHandle resourceHeap{nullptr};
+		gpu::SamplerDescriptorHeapHandle  samplerHeap{nullptr};
 	};
+
+	struct TST_RENDER_API RenderContextDesc
+	{
+		uint32 maxFramesInFlight{3u};
+		uint32 maxBufferDescriptors{128u};
+		uint32 maxTextureDescriptors{1028u};
+		uint32 maxSamplerDescriptors{32u};
+	};
+
+	auto TST_RENDER_API render_context_create(RenderContext *p_out_render_ctx, const RenderContextDesc &p_desc) -> void;
+	auto TST_RENDER_API render_context_destroy(RenderContext *p_render_ctx) -> void;
 }

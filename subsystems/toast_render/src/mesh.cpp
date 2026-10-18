@@ -9,11 +9,11 @@ namespace toaster::render
 {
 	MeshManager::MeshManager(RenderContext *p_render_ctx) : m_renderCtx(p_render_ctx)
 	{
-		m_vertexPager              = makeUnique<gpu::alloc::GPUPageAllocator>(vertexPageSize, m_renderCtx->getResourceHeap());
-		m_meshletPager             = makeUnique<gpu::alloc::GPUPageAllocator>(meshletPageSize, m_renderCtx->getResourceHeap());
-		m_meshletVertexPager       = makeUnique<gpu::alloc::GPUPageAllocator>(meshletVertexPageSize, m_renderCtx->getResourceHeap());
-		m_meshletTrianglePager     = makeUnique<gpu::alloc::GPUPageAllocator>(meshletTrianglePageSize, m_renderCtx->getResourceHeap());
-		m_materialIndirectionPager = makeUnique<gpu::alloc::GPUPageAllocator>(materialIndirectionPageSize, m_renderCtx->getResourceHeap());
+		m_vertexPager              = makeUnique<gpu::alloc::GPUPageAllocator>(vertexPageSize, m_renderCtx->resourceHeap);
+		m_meshletPager             = makeUnique<gpu::alloc::GPUPageAllocator>(meshletPageSize, m_renderCtx->resourceHeap);
+		m_meshletVertexPager       = makeUnique<gpu::alloc::GPUPageAllocator>(meshletVertexPageSize, m_renderCtx->resourceHeap);
+		m_meshletTrianglePager     = makeUnique<gpu::alloc::GPUPageAllocator>(meshletTrianglePageSize, m_renderCtx->resourceHeap);
+		m_materialIndirectionPager = makeUnique<gpu::alloc::GPUPageAllocator>(materialIndirectionPageSize, m_renderCtx->resourceHeap);
 
 		gpu::BufferDesc static_mesh_metadata_buffer_desc{};
 		static_mesh_metadata_buffer_desc.size       = 1028u * 1028u * sizeof(StaticMeshMetadata); // 28 Mib / ~ 1 million meshes

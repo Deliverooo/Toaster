@@ -16,14 +16,14 @@ namespace toaster::render
 				gpu::frame::deferTextureDeletion(p_data->texture);
 
 			if (p_data->shaderReadHeapSlot != UINT32_MAX)
-				gpu::frame::deferTextureHeapSlotFreeing(ts->m_renderCtx->getResourceHeap(), p_data->shaderReadHeapSlot);
+				gpu::frame::deferTextureHeapSlotFreeing(ts->m_renderCtx->resourceHeap, p_data->shaderReadHeapSlot);
 			if (p_data->storageHeapSlot != UINT32_MAX)
-				gpu::frame::deferTextureHeapSlotFreeing(ts->m_renderCtx->getResourceHeap(), p_data->storageHeapSlot);
+				gpu::frame::deferTextureHeapSlotFreeing(ts->m_renderCtx->resourceHeap, p_data->storageHeapSlot);
 
 			for (const auto &slot: p_data->perMipStorageHeapSlots | std::views::values)
 			{
 				if (slot != UINT32_MAX)
-					gpu::frame::deferTextureHeapSlotFreeing(ts->m_renderCtx->getResourceHeap(), slot);
+					gpu::frame::deferTextureHeapSlotFreeing(ts->m_renderCtx->resourceHeap, slot);
 			}
 		});
 	}
@@ -36,10 +36,12 @@ namespace toaster::render
 		m_textures.clear();
 	}
 
-	auto TextureManager::registerTexture() -> TextureHandle
+	auto TextureManager::registerTexture(uint32 p_state_tracker_expected_subresources) -> TextureHandle
 	{
 		Texture temp_texture{};
-		temp_texture.stateTracker = gpu::upload::registerStateTracker(1u); // Just the texture
+
+		if (p_state_tracker_expected_subresources > 0u)
+			temp_texture.stateTracker = gpu::upload::registerStateTracker(p_state_tracker_expected_subresources);
 
 		TextureHandle out_handle{m_textures.emplace(temp_texture)};
 
@@ -52,7 +54,7 @@ namespace toaster::render
 		return out_handle;
 	}
 
-	auto TextureManager::createTexture(const gpu::TextureDesc &p_desc) -> TextureHandle
+	auto TextureManager::createTexture(const gpu::TextureDesc &p_desc, uint32 p_state_tracker_expected_subresources) -> TextureHandle
 	{
 		Texture texture_data{};
 
@@ -60,17 +62,18 @@ namespace toaster::render
 
 		if (p_desc.usage & gpu::ETextureUsageFlagBits::eSampled)
 		{
-			texture_data.shaderReadHeapSlot = gpu::allocTextureHeapSlot(m_renderCtx->getResourceHeap());
-			gpu::writeTextureDescriptor(m_renderCtx->getResourceHeap(), texture_data.shaderReadHeapSlot, texture_data.texture, false);
+			texture_data.shaderReadHeapSlot = gpu::allocTextureHeapSlot(m_renderCtx->resourceHeap);
+			gpu::writeTextureDescriptor(m_renderCtx->resourceHeap, texture_data.shaderReadHeapSlot, texture_data.texture, false);
 		}
 
 		if (p_desc.usage & gpu::ETextureUsageFlagBits::eStorage)
 		{
-			texture_data.storageHeapSlot = gpu::allocTextureHeapSlot(m_renderCtx->getResourceHeap());
-			gpu::writeTextureDescriptor(m_renderCtx->getResourceHeap(), texture_data.storageHeapSlot, texture_data.texture, true);
+			texture_data.storageHeapSlot = gpu::allocTextureHeapSlot(m_renderCtx->resourceHeap);
+			gpu::writeTextureDescriptor(m_renderCtx->resourceHeap, texture_data.storageHeapSlot, texture_data.texture, true);
 		}
 
-		texture_data.stateTracker = gpu::upload::registerStateTracker(1u); // Just the texture
+		if (p_state_tracker_expected_subresources > 0u)
+			texture_data.stateTracker = gpu::upload::registerStateTracker(p_state_tracker_expected_subresources);
 
 		return m_textures.emplace(std::move(texture_data));
 	}
@@ -88,8 +91,8 @@ namespace toaster::render
 
 		if (p_desc.usage & gpu::ETextureUsageFlagBits::eSampled)
 		{
-			texture.shaderReadHeapSlot = gpu::allocTextureHeapSlot(m_renderCtx->getResourceHeap());
-			gpu::writeTextureDescriptor(m_renderCtx->getResourceHeap(), texture.shaderReadHeapSlot, texture.texture, false);
+			texture.shaderReadHeapSlot = gpu::allocTextureHeapSlot(m_renderCtx->resourceHeap);
+			gpu::writeTextureDescriptor(m_renderCtx->resourceHeap, texture.shaderReadHeapSlot, texture.texture, false);
 		}
 	}
 
@@ -118,8 +121,8 @@ namespace toaster::render
 			return texture_data.perMipStorageHeapSlots.at(p_mip);
 
 		uint32 &slot{texture_data.perMipStorageHeapSlots[p_mip]};
-		slot = gpu::allocTextureHeapSlot(m_renderCtx->getResourceHeap());
-		gpu::writeTextureDescriptor(m_renderCtx->getResourceHeap(), slot, texture_data.texture, true, p_mip);
+		slot = gpu::allocTextureHeapSlot(m_renderCtx->resourceHeap);
+		gpu::writeTextureDescriptor(m_renderCtx->resourceHeap, slot, texture_data.texture, true, p_mip);
 
 		return slot;
 	}
@@ -135,5 +138,11 @@ namespace toaster::render
 			gpu::generateMipmaps(p_cmd, texture.texture);
 		}
 		m_pendingMipmapGenerations.clear();
+	}
+
+	auto TextureManager::waitForTextureUpload(TextureHandle p_handle) -> void
+	{
+		Texture &texture_data{m_textures[p_handle]};
+		gpu::upload::waitForStateTracker(texture_data.stateTracker);
 	}
 }

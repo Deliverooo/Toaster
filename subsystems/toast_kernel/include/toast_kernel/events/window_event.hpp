@@ -4,7 +4,7 @@
 
 #include "event.hpp"
 
-namespace toaster
+namespace toaster::ke
 {
 	class TST_KERNEL_API WindowCloseEvent final : public Event
 	{

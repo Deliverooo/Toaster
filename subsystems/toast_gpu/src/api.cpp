@@ -1172,6 +1172,7 @@ namespace toaster::gpu
 
 	auto getOrCreateCommandList(EQueueType p_queue_type, bool p_secondary) -> CommandListHandle
 	{
+		TST_ASSERT(g_impl);
 		{
 			TST_SCP_LOCK(g_impl->freeCommandListMutex);
 			auto &free_lists{p_secondary ? g_impl->freeSecondaryLists[static_cast<uint32>(p_queue_type)] : g_impl->freeCommandLists[static_cast<uint32>(p_queue_type)]};

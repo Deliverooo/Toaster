@@ -1,15 +1,9 @@
 #pragma once
 
 #include "toast_lib/system_types.h"
-#include "toast_lib/util_defines.hpp"
-#include "toast_lib/enum_flags.hpp"
-
-#include <compare>
 
 namespace toaster::gpu
 {
-	TST_DECLARE_FLAGS_FOR_NAMESPACE()
-
 	enum class EFormat : uint8 // Taken directly from vulkan.hpp
 	{
 		eUndefined,

@@ -1,7 +1,5 @@
 #pragma once
 
-#include <stdbool.h>
-
 #include "input.hpp"
 #include "events/event.hpp"
 
@@ -11,93 +9,79 @@
 
 struct GLFWwindow;
 
-namespace toaster
+namespace toaster::ke
 {
-	class InputContext;
-
 	struct TST_KERNEL_API WindowDesc
 	{
 		tsm::uint2 size{1920u, 1080u};
 		CString    title{"Toaster-3.0"};
-
-		bool startMaximized{false};
+		bool       startMaximized{false};
 	};
 
-	class TST_KERNEL_API Window
+	enum class EWindowStateFlagBits : uint8
 	{
-	public:
-		// Initialises GLFW
-		static auto initWindowingAPI() -> void;
-		// Take a guess
-		static auto shutdownWindowingAPI() -> void;
+		eResized = TST_BIT(0u), eMinimised = TST_BIT(1u), eMaximised = TST_BIT(1u)
+	};
 
-		Window(const WindowDesc &p_desc);
-		~Window();
+	TST_SPECIALISE_FLAGS(EWindowStateFlagBits, EWindowStateFlags);
 
-		// Returns true if the window should close
-		auto processMessages() const -> bool;
-
-		auto beginFrame(gpu::CommandListHandle p_cmd) -> bool; // Skip a frame if this returns false.
-		auto submitAndPresent(gpu::CommandListHandle p_cmd) -> void;
-
-		auto setEventCallback(EventCallbackFn p_callback) noexcept -> void { m_cbData.eventCallback = p_callback; }
-		auto setEventCallbackUserData(void *p_user_data) noexcept -> void { m_cbData.eventCallbackUserData = p_user_data; }
-
-		// Returns true if the window was either resized successfully or there was no resizing to do.
-		// If false, it means that the window is either an invalid size or the swapchain could not be correctly recreated. In this case use this to skip a frame.
-		auto checkForResize() -> bool;
-
-		auto isResized() const noexcept -> bool { return m_cbData.resized; }
-		auto isMaximised() const noexcept -> bool { return m_cbData.maximised; }
-		auto isMinimised() const noexcept -> bool { return m_cbData.minimised; }
-		auto isFullscreen() const -> bool;
-
-		auto setResized(bool p_resized) noexcept -> void { m_cbData.resized = p_resized; } // Safe to modify because the wnd proc is on the main thread
-		auto maximiseWindow() -> void;
-		auto minimiseWindow() -> void;
-		auto restoreWindow() -> void;
-		auto setFullscreen() -> void;
-		auto setWindowed() -> void;
-
-		auto getWidth() const noexcept -> uint32 { return m_cbData.width; }
-		auto getHeight() const noexcept -> uint32 { return m_cbData.height; }
-		auto getSize() const noexcept -> tsm::uint2 { return {m_cbData.width, m_cbData.height}; }
-		auto getAspectRatio() const noexcept -> float32 { return static_cast<float32>(m_cbData.width) / static_cast<float32>(m_cbData.height); }
-		auto isInvalidSize() const noexcept -> bool { return m_cbData.width == 0u || m_cbData.height == 0u; }
-
-		auto getInputCtx() noexcept -> InputContext & { return m_cbData.inputCtx; }
-		auto getInputCtx() const noexcept -> const InputContext & { return m_cbData.inputCtx; }
-
-		auto getGLFWWindow() const noexcept -> GLFWwindow * { return m_window; }
-
-		auto getSwapchain() const noexcept -> gpu::SwapchainHandle { return m_swapchain; }
-
-		auto getCurrentTexture() const noexcept -> gpu::TextureHandle { return m_currentTexture; }
-
-	private:
-		GLFWwindow *m_window{nullptr};
+	struct TST_KERNEL_API Window
+	{
+		GLFWwindow *window{nullptr};
 
 		// The exact data that is passed as a user data pointer to the wnd proc
 		struct CallbackData
 		{
-			uint32 width{0u};
-			uint32 height{0u};
-
-			bool minimised{false};
-			bool maximised{false};
-			bool resized{false};
-
 			InputContext inputCtx;
 
 			EventCallbackFn eventCallback{nullptr};
 			void *          eventCallbackUserData{nullptr};
+
+			uint32 width{0u};
+			uint32 height{0u};
+
+			EWindowStateFlags stateFlags{0u};
 		};
 
-		CallbackData m_cbData{};
+		CallbackData cbData{};
 
-		gpu::SurfaceHandle   m_windowSurface{nullptr};
-		gpu::SwapchainHandle m_swapchain{nullptr};
+		gpu::SurfaceHandle   surface{nullptr};
+		gpu::SwapchainHandle swapchain{nullptr};
 
-		gpu::TextureHandle m_currentTexture{nullptr};
+		gpu::TextureHandle currentTexture{nullptr};
 	};
+
+	// These just initialise and shutdown GLFW...
+	auto TST_KERNEL_API window_init_api() -> void;
+	auto TST_KERNEL_API window_shutdown_api() -> void;
+
+	auto TST_KERNEL_API window_create(Window *p_out_window, const WindowDesc &p_desc) -> void;
+	auto TST_KERNEL_API window_destroy(Window *p_window) -> void;
+
+	// Returns true if the window should close
+	auto TST_KERNEL_API window_process_messages(const Window *p_window) -> bool;
+	// returns false if the window has resized and now the current frame needs to be skipped
+	auto TST_KERNEL_API window_check_for_resize(Window *p_window) -> bool;
+
+	// Returns false if the application should skip rendering the current frame
+	auto TST_KERNEL_API window_begin_frame(Window *p_window, gpu::CommandListHandle p_cmd) -> bool;
+	auto TST_KERNEL_API window_submit_and_present(Window *p_window, gpu::CommandListHandle p_cmd) -> void;
+
+	auto TST_KERNEL_API window_set_event_callback(Window *p_window, EventCallbackFn p_callback) -> void;
+	auto TST_KERNEL_API window_set_event_callback_user_data(Window *p_window, void *p_user_data) -> void;
+
+	auto TST_KERNEL_API window_is_resized(const Window *p_window) -> bool;
+	auto TST_KERNEL_API window_is_maximised(const Window *p_window) -> bool;
+	auto TST_KERNEL_API window_is_minimised(const Window *p_window) -> bool;
+	auto TST_KERNEL_API window_is_fullscreen(const Window *p_window) -> bool;
+
+	auto TST_KERNEL_API window_maximise(Window *p_window) -> void;
+	auto TST_KERNEL_API window_minimise(Window *p_window) -> void;
+	auto TST_KERNEL_API window_restore(Window *p_window) -> void;
+	auto TST_KERNEL_API window_set_fullscreen(Window *p_window) -> void;
+	auto TST_KERNEL_API window_set_windowed(Window *p_window) -> void;
+
+	auto TST_KERNEL_API window_is_invalid_size(const Window *p_window) -> bool;
+	auto TST_KERNEL_API window_get_size(const Window *p_window) -> tsm::uint2;
+	auto TST_KERNEL_API window_get_aspect_ratio(const Window *p_window) -> float32;
 }

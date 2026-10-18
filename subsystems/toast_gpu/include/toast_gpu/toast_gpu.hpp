@@ -11,10 +11,14 @@
 #endif
 
 #include "toast_lib/core_basic.hpp"
+#include "toast_lib/enum_flags.hpp"
 #include "toast_lib/handle.hpp"
+#include "toast_lib/pool.hpp"
 
 namespace toaster::gpu
 {
 	#define TST_DECLARE_GPU_HANDLE(__type) struct __type;\
 		using __type##Handle = Handle<__type>
+
+	TST_DECLARE_FLAGS_FOR_NAMESPACE()
 }

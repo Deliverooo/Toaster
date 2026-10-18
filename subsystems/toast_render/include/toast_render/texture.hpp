@@ -10,14 +10,6 @@
 
 namespace toaster::render
 {
-	enum class ETextureState : uint8
-	{
-		eUnloaded,
-		eLoading,
-		eUploadingToGPU,
-		eReady
-	};
-
 	struct TST_RENDER_API Texture
 	{
 		gpu::TextureHandle texture{nullptr};
@@ -32,14 +24,19 @@ namespace toaster::render
 
 	TST_DECLARE_HANDLE(Texture);
 
+	constexpr uint32 textureSubresourceNoUpload{0u};      // No state tracker will be created
+	constexpr uint32 textureSubresourceOneTimeUpload{1u}; // Set the expected subresouces for the state tracker to this for common use
+
 	class TST_RENDER_API TextureManager
 	{
 	public:
 		TextureManager(RenderContext *p_render_ctx);
 		~TextureManager();
 
-		auto registerTexture() -> TextureHandle;
-		auto createTexture(const gpu::TextureDesc &p_desc) -> TextureHandle;
+		auto registerTexture(uint32 p_state_tracker_expected_subresources = textureSubresourceOneTimeUpload) -> TextureHandle;
+
+		// If the p_state_tracker_expected_subresources is 0, it won't create a state tracker. Use 1 if you want to support normal texture uploads
+		auto createTexture(const gpu::TextureDesc &p_desc, uint32 p_state_tracker_expected_subresources = textureSubresourceOneTimeUpload) -> TextureHandle;
 		auto destroyTexture(TextureHandle p_handle) -> void;
 
 		auto createIntoTexture(TextureHandle p_handle, const gpu::TextureDesc &p_desc) -> void;
@@ -56,6 +53,8 @@ namespace toaster::render
 
 		auto pollTextureUploads(gpu::CommandListHandle p_cmd) -> void; // Generates texture mipmaps with the command buffer
 
+		// Note: this will not generate the mips, because that happens inside pollTextureUploads;
+		auto waitForTextureUpload(TextureHandle p_handle) -> void;
 	private:
 		NonOwningPtr<RenderContext> m_renderCtx{nullptr};
 
