@@ -88,4 +88,6 @@ namespace toaster::knl
 	auto TST_KERNEL_API window_is_invalid_size(const Window *p_window) -> bool;
 	auto TST_KERNEL_API window_get_size(const Window *p_window) -> math::UInt2;
 	auto TST_KERNEL_API window_get_aspect_ratio(const Window *p_window) -> float32;
+
+	auto TST_KERNEL_API window_get_hwnd(const Window* p_window) -> void*; // HWND
 }

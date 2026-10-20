@@ -170,6 +170,7 @@ namespace toaster::knl
 		#undef TST_DISPATCH_EVENT
 
 		HWND hwnd{glfwGetWin32Window(p_out_window->window)};
+		TST_PERMA_ASSERT(hwnd);
 
 		// Dark titlebar looks good.
 		bool32 use_dark_mode{true};
@@ -339,5 +340,10 @@ namespace toaster::knl
 	{
 		const math::UInt2 size{window_get_size(p_window)};
 		return static_cast<float32>(size.x) / static_cast<float32>(size.y);
+	}
+
+	auto window_get_hwnd(const Window *p_window) -> void *
+	{
+		return glfwGetWin32Window(p_window->window);
 	}
 }

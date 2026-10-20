@@ -1,7 +1,6 @@
 #pragma once
 
-#include <mutex>
-#include <shared_mutex>
+#include <threads.h>
 #include <vector>
 
 #include "handle.hpp"
@@ -16,13 +15,24 @@ namespace toaster
 		using DestructorFn = void(*)(TData *, void *);
 		using HandleType   = Handle<TData>;
 
-		Pool() = default;
+		Pool()
+		{
+			mtx_init(&m_mutex, mtx_plain);
+		}
 
 		explicit Pool(DestructorFn p_destructor_fn, void *p_user_data) : m_destructorFn(p_destructor_fn), m_destructorUserData(p_user_data)
 		{
+			mtx_init(&m_mutex, mtx_plain);
 		}
 
-		~Pool() { clear(); }
+		~Pool()
+		{
+			clear();
+			mtx_destroy(&m_mutex);
+		}
+
+		Pool(const Pool &)            = delete;
+		Pool &operator=(const Pool &) = delete;
 
 		auto setDestructorFn(DestructorFn p_destructor_fn) { m_destructorFn = p_destructor_fn; }
 		auto setDestructorUserData(void *p_user_data) { m_destructorUserData = p_user_data; }
@@ -30,7 +40,7 @@ namespace toaster
 		template<typename... TArgs>
 		auto emplace(TArgs &&... p_args) -> HandleType
 		{
-			std::unique_lock<std::shared_mutex> lock{m_mutex};
+			mtx_lock(&m_mutex);
 
 			uint32 id{0u};
 			uint32 magic{1u};
@@ -52,15 +62,21 @@ namespace toaster
 			m_entries[id]->magic = magic;
 			m_entries[id]->alive = true;
 
-			return HandleType{id, magic};
+			HandleType out_handle{id, magic};
+			mtx_unlock(&m_mutex);
+
+			return out_handle;
 		}
 
 		auto destroy(HandleType p_handle) -> void
 		{
-			std::unique_lock<std::shared_mutex> lock{m_mutex};
+			mtx_lock(&m_mutex);
 
 			if (!_isValid(p_handle))
+			{
+				mtx_unlock(&m_mutex);
 				TST_PERMA_ASSERT(false);
+			}
 
 			uint32 id{p_handle.getId()};
 
@@ -70,6 +86,8 @@ namespace toaster
 
 			if (m_destructorFn)
 				m_destructorFn(std::addressof(m_entries[id]->data), m_destructorUserData);
+
+			mtx_unlock(&m_mutex);
 		}
 
 		auto clear() -> void
@@ -86,46 +104,68 @@ namespace toaster
 
 		auto tryGet(HandleType p_handle) -> TData *
 		{
-			std::shared_lock<std::shared_mutex> lock{m_mutex};
+			mtx_lock(&m_mutex);
 			if (!_isValid(p_handle))
+			{
+				mtx_unlock(&m_mutex);
 				return nullptr;
-			return std::addressof(m_entries[p_handle.getId()]->data);
+			}
+
+			TData *data{std::addressof(m_entries[p_handle.getId()]->data)};
+			mtx_unlock(&m_mutex);
+
+			return data;
 		}
 
 		auto tryGet(HandleType p_handle) const -> const TData *
 		{
-			std::shared_lock<std::shared_mutex> lock{m_mutex};
+			mtx_lock(&m_mutex);
 			if (!_isValid(p_handle))
+			{
+				mtx_unlock(&m_mutex);
 				return nullptr;
-			return std::addressof(m_entries[p_handle.getId()]->data);
+			}
+
+			const TData *data{std::addressof(m_entries[p_handle.getId()]->data)};
+			mtx_unlock(&m_mutex);
+
+			return data;
 		}
 
 		auto operator[](HandleType p_handle) -> TData &
 		{
-			std::shared_lock<std::shared_mutex> lock{m_mutex};
-			TData &                             data{m_entries[p_handle.getId()]->data};
+			mtx_lock(&m_mutex);
+			TData &data{m_entries[p_handle.getId()]->data};
+			mtx_unlock(&m_mutex);
 			return data;
 		}
 
 		auto operator[](HandleType p_handle) const -> const TData &
 		{
-			std::shared_lock<std::shared_mutex> lock{m_mutex};
-			TData &                             data{m_entries[p_handle.getId()]->data};
+			mtx_lock(&m_mutex);
+			TData &data{m_entries[p_handle.getId()]->data};
+			mtx_unlock(&m_mutex);
 			return data;
 		}
 
 		auto isValid(HandleType p_handle) const -> bool
 		{
-			std::shared_lock<std::shared_mutex> lock{m_mutex};
-			return _isValid(p_handle);
+			mtx_lock(&m_mutex);
+			const bool valid{_isValid(p_handle)};
+			mtx_unlock(&m_mutex);
+			return valid;
 		}
 
 		auto removeAt(uint32 p_id) -> void
 		{
-			std::unique_lock<std::shared_mutex> lock{m_mutex};
+			mtx_lock(&m_mutex);
 
 			if (p_id >= m_entries.size())
+			{
+				mtx_unlock(&m_mutex);
+
 				TST_PERMA_ASSERT(false);
+			}
 
 			m_entries[p_id]->alive = false;
 			++m_entries[p_id]->magic;
@@ -133,12 +173,14 @@ namespace toaster
 
 			if (m_destructorFn)
 				m_destructorFn(std::addressof(m_entries[p_id]->data), m_destructorUserData);
+
+			mtx_unlock(&m_mutex);
 		}
 
 		template<typename TFunc>
 		auto forEachAlive(TFunc &&p_func) -> void
 		{
-			std::shared_lock<std::shared_mutex> lock{m_mutex};
+			mtx_lock(&m_mutex);
 
 			uint32 i{0u};
 			for (auto &entry: m_entries)
@@ -148,15 +190,20 @@ namespace toaster
 
 				++i;
 			}
+
+			mtx_unlock(&m_mutex);
 		}
 
 		auto getLiveCount() -> uint32
 		{
-			std::shared_lock<std::shared_mutex> lock{m_mutex};
-			uint32                              alive_count{0u};
+			mtx_lock(&m_mutex);
+
+			uint32 alive_count{0u};
 			for (auto &entry: m_entries)
 				if (entry->alive)
 					++alive_count;
+
+			mtx_unlock(&m_mutex);
 
 			return alive_count;
 		}
@@ -179,7 +226,7 @@ namespace toaster
 			bool   alive{false};
 		};
 
-		mutable std::shared_mutex m_mutex;
+		mutable mtx_t m_mutex;
 
 		std::vector<Entry *> m_entries;
 		std::vector<uint32>  m_freeIndices;
