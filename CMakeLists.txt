@@ -2,8 +2,13 @@ cmake_minimum_required(VERSION 3.30)
 
 set(CMAKE_DEBUG_POSTFIX "d")
 
+set(CMAKE_C_STANDARD 23)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_C_EXTENSIONS OFF)
+
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin")
@@ -18,7 +23,7 @@ if (${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR})
 endif ()
 
 # Project definition
-project(Toaster VERSION 3.0.0)
+project(Toaster LANGUAGES C CXX)
 
 find_package(Vulkan REQUIRED COMPONENTS dxc glslangValidator shaderc_combined SPIRV-Tools)
 
@@ -73,12 +78,12 @@ endif ()
 
 # Select C++23 as the standard for C++ projects.
 # If C++23 is not available, downgrading to an earlier standard is NOT OK.
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+#set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Do not enable compiler specific language extensions.
-set(CMAKE_CXX_EXTENSIONS OFF)
+#set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(CMAKE_C_FLAGS "${C_WARNINGS} ${CMAKE_C_FLAGS}")
-set(CMAKE_CXX_FLAGS "${CXX_WARNINGS} ${CMAKE_CXX_FLAGS}")
+#set(CMAKE_CXX_FLAGS "${CXX_WARNINGS} ${CMAKE_CXX_FLAGS}")
 
 option(TOASTER_INSTALL "Generate install targets for toaster" ON)
 option(TOASTER_BUILD_SHARED_LIBS "Generate install targets for toaster" ON)

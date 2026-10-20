@@ -1,11 +1,11 @@
 #pragma once
 
+#include <array>
 #include "input.hpp"
+#include "toast_kernel.hpp"
+#include "toast_math/math_vector.hpp"
 
-#include "toast_math/math_matrix.hpp"
-using namespace DirectX;
-
-namespace toaster::ke
+namespace toaster::knl
 {
 	constexpr XMVECTORF32 unitForwardDir{.f{0.0f, 0.0f, -1.0f, 0.0f}};
 	constexpr XMVECTORF32 unitRightDir{.f{1.0f, 0.0f, 0.0f, 0.0f}};
@@ -13,9 +13,9 @@ namespace toaster::ke
 
 	struct TST_KERNEL_API CameraCB
 	{
-		XMFLOAT4X4 view;
-		XMFLOAT4X4 proj;
-		XMFLOAT4X4 invProj;
+		math::Float4x4 view;
+		math::Float4x4 proj;
+		math::Float4x4 invProj;
 
 		XMFLOAT4 position;
 		XMFLOAT4 frustumPlanes[6u];
@@ -27,7 +27,7 @@ namespace toaster::ke
 		Camera() = default;
 		Camera(float32 p_fov, float32 p_aspec_ratio, float32 p_z_near = 0.1f, float32 p_z_far = 1000.0f);
 
-		auto onUpdate(const InputContext* p_input_ctx, float32 p_dt) -> void;
+		auto onUpdate(const InputContext *p_input_ctx, float32 p_dt) -> void;
 		auto onResize(float32 p_aspect) -> void;
 
 		auto XM_CALLCONV getViewMatrix() const -> XMMATRIX { return XMMatrixLookToLH(XMLoadFloat3(&m_position), getCameraForward(), unitUpDir); }
@@ -50,7 +50,7 @@ namespace toaster::ke
 	private:
 		auto _calcProjection() -> void;
 
-		XMFLOAT4X4 m_projectionMatrix;
+		math::Float4x4 m_projectionMatrix;
 
 		XMFLOAT3 m_position{0.0f, 2.0f, -2.0f};
 

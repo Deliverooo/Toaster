@@ -4,7 +4,7 @@
 
 #include <entt/entt.hpp>
 
-namespace toaster::scene
+namespace toaster::scn
 {
 	class TST_SCENE_API Scene
 	{

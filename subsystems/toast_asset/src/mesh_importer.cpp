@@ -5,6 +5,7 @@
 #include <assimp/scene.h>
 
 #include <algorithm>
+#include <print>
 #include <meshoptimizer.h>
 
 #include "stb/stb_image.h"
@@ -16,7 +17,7 @@ static constexpr uint32 s_MeshImportFlags{
 	aiProcess_ConvertToLeftHanded | aiProcess_PreTransformVertices
 };
 
-namespace toaster::asset
+namespace toaster::ast
 {
 	static auto isAiMatTransparent(const aiMaterial *p_mat) -> bool
 	{
@@ -43,8 +44,8 @@ namespace toaster::asset
 		return false;
 	}
 
-	auto generateGeometryData(const RawSubmeshData &p_submesh_data, std::vector<render::StaticMeshVertex> &p_out_vertices, std::vector<render::Meshlet> &p_out_meshlets,
-							  std::vector<uint32> & p_out_meshlet_vertices, std::vector<uint8> &           p_out_meshlet_triangles) -> void
+	auto generateGeometryData(const RawSubmeshData &p_submesh_data, std::vector<rnd::StaticMeshVertex> &p_out_vertices, std::vector<rnd::Meshlet> &p_out_meshlets,
+							  std::vector<uint32> & p_out_meshlet_vertices, std::vector<uint8> &       p_out_meshlet_triangles) -> void
 	{
 		static constexpr uint64  maxVertices{64u};
 		static constexpr uint64  maxTriangles{128u};
@@ -53,19 +54,18 @@ namespace toaster::asset
 		std::vector<uint32> remap(p_submesh_data.indices.size());
 		uint64              unique_vertex_count{
 			meshopt_generateVertexRemap(remap.data(), p_submesh_data.indices.data(), p_submesh_data.indices.size(), p_submesh_data.vertices.data(),
-										p_submesh_data.vertices.size(), sizeof(render::StaticMeshVertex))
+										p_submesh_data.vertices.size(), sizeof(rnd::StaticMeshVertex))
 		};
 
-		std::vector<render::StaticMeshVertex> optimised_vertices(unique_vertex_count);
-		std::vector<uint32>                   optimised_indices(p_submesh_data.indices.size());
+		std::vector<rnd::StaticMeshVertex> optimised_vertices(unique_vertex_count);
+		std::vector<uint32>               optimised_indices(p_submesh_data.indices.size());
 
 		meshopt_remapIndexBuffer(optimised_indices.data(), p_submesh_data.indices.data(), p_submesh_data.indices.size(), remap.data());
-		meshopt_remapVertexBuffer(optimised_vertices.data(), p_submesh_data.vertices.data(), p_submesh_data.vertices.size(), sizeof(render::StaticMeshVertex),
-								  remap.data());
+		meshopt_remapVertexBuffer(optimised_vertices.data(), p_submesh_data.vertices.data(), p_submesh_data.vertices.size(), sizeof(rnd::StaticMeshVertex), remap.data());
 
 		meshopt_optimizeVertexCache(optimised_indices.data(), optimised_indices.data(), optimised_indices.size(), optimised_vertices.size());
 		meshopt_optimizeVertexFetch(optimised_vertices.data(), optimised_indices.data(), optimised_indices.size(), optimised_vertices.data(), optimised_vertices.size(),
-									sizeof(render::StaticMeshVertex));
+									sizeof(rnd::StaticMeshVertex));
 
 		uint64 max_meshlets{meshopt_buildMeshletsBound(optimised_indices.size(), maxVertices, maxTriangles)};
 
@@ -75,7 +75,7 @@ namespace toaster::asset
 
 		uint64 meshlet_count{
 			meshopt_buildMeshlets(local_meshlets.data(), local_meshlet_vertices.data(), local_meshlet_triangles.data(), optimised_indices.data(),
-								  optimised_indices.size(), &optimised_vertices[0].position.x, optimised_vertices.size(), sizeof(render::StaticMeshVertex), maxVertices,
+								  optimised_indices.size(), &optimised_vertices[0].position.x, optimised_vertices.size(), sizeof(rnd::StaticMeshVertex), maxVertices,
 								  maxTriangles, coneWeight)
 		};
 
@@ -107,10 +107,10 @@ namespace toaster::asset
 			meshopt_Bounds meshlet_bounds{
 				meshopt_computeMeshletBounds(&local_meshlet_vertices[local_meshlet.vertex_offset], &local_meshlet_triangles[local_meshlet.triangle_offset],
 											 local_meshlet.triangle_count, &p_out_vertices[global_vertex_offset].position.x, optimised_vertices.size(),
-											 sizeof(render::StaticMeshVertex))
+											 sizeof(rnd::StaticMeshVertex))
 			};
 
-			render::Meshlet &meshlet{p_out_meshlets[global_meshlet_offset + m]};
+			rnd::Meshlet &meshlet{p_out_meshlets[global_meshlet_offset + m]};
 			meshlet.vertexOffset   = static_cast<uint32>(global_meshlet_vertex_offset) + local_meshlet.vertex_offset;
 			meshlet.triangleOffset = static_cast<uint32>(global_meshlet_triangle_offset) + local_meshlet.triangle_offset;
 			meshlet.vertexCount    = local_meshlet.vertex_count;
@@ -126,9 +126,9 @@ namespace toaster::asset
 		p_out_meshlet_triangles.insert(p_out_meshlet_triangles.end(), local_meshlet_triangles.begin(), local_meshlet_triangles.end());
 	}
 
-	MeshImporter::MeshImporter(render::MeshManager *   p_mesh_manager, render::MaterialManager *p_material_manager,
-							   render::TextureManager *p_texture_manager) : m_meshManager(p_mesh_manager), m_materialManager(p_material_manager),
-																			m_textureManager(p_texture_manager)
+	MeshImporter::MeshImporter(rnd::MeshManager *   p_mesh_manager, rnd::MaterialManager *p_material_manager,
+							   rnd::TextureManager *p_texture_manager) : m_meshManager(p_mesh_manager), m_materialManager(p_material_manager),
+																		m_textureManager(p_texture_manager)
 	{
 	}
 
@@ -156,7 +156,7 @@ namespace toaster::asset
 			data.vertices.resize(base_vertex_offset + mesh->mNumVertices);
 			for (uint32 v{0u}; v < mesh->mNumVertices; ++v)
 			{
-				render::StaticMeshVertex &vertex{data.vertices[base_vertex_offset + v]};
+				rnd::StaticMeshVertex &vertex{data.vertices[base_vertex_offset + v]};
 
 				vertex.position = {mesh->mVertices[v].x, mesh->mVertices[v].y, mesh->mVertices[v].z};
 
@@ -237,7 +237,7 @@ namespace toaster::asset
 				tst_mat.metalness = 0.0f;
 
 			bool is_transparent{isAiMatTransparent(ai_mat)};
-			tst_mat.flags |= is_transparent ? render::EMaterialFlagBits::eTransparent : render::EMaterialFlagBits{0u};
+			tst_mat.flags |= is_transparent ? rnd::EMaterialFlagBits::eTransparent : rnd::EMaterialFlagBits{0u};
 
 			auto get_path_and_create_texture_if_exists{
 				[p_path](const aiString &p_ai_path) -> std::optional<std::filesystem::path>
@@ -311,8 +311,8 @@ namespace toaster::asset
 		}
 	}
 
-	auto MeshImporter::asyncLoadStaticMeshFromFile(render::StaticMeshHandle p_dst_mesh, const std::filesystem::path &p_path, tf::Executor &p_executor,
-												   const std::function<void(render::StaticMeshHandle)> &p_on_finish_cb) -> void
+	auto MeshImporter::asyncLoadStaticMeshFromFile(rnd::StaticMeshHandle p_dst_mesh, const std::filesystem::path &p_path, tf::Executor &p_executor,
+												   const std::function<void(rnd::StaticMeshHandle)> &p_on_finish_cb) -> void
 	{
 		p_executor.silent_async([this, p_dst_mesh, p_path, &p_executor, p_on_finish_cb]()-> void
 		{
@@ -327,7 +327,7 @@ namespace toaster::asset
 				})
 			};
 
-			auto     materials{makeReference<std::vector<render::MaterialHandle> >()};
+			auto     materials{makeReference<std::vector<rnd::MaterialHandle> >()};
 			tf::Task create_materials_task{
 				graph.emplace([this, materials, import_data, &p_executor]() mutable -> void
 				{
@@ -335,14 +335,14 @@ namespace toaster::asset
 					for (uint32 i{0u}; i < import_data->materials.size(); ++i)
 					{
 						const MaterialImportData &cpu_mat{import_data->materials[i]};
-						render::MaterialHandle &  gpu_mat{materials->at(i)};
+						rnd::MaterialHandle &      gpu_mat{materials->at(i)};
 
 						gpu_mat = m_materialManager->createMaterial();
 						m_materialManager->setAlbedoColour(gpu_mat, cpu_mat.albedoColour);
 						if (cpu_mat.albedoMap.path.has_value())
 						{
-							render::TextureHandle albedo_map{m_textureManager->registerTexture()};
-							asyncLoadTextureFromFile(albedo_map, *m_textureManager, *cpu_mat.albedoMap.path, p_executor);
+							rnd::TextureHandle albedo_map{rnd::texture_register(m_textureManager)};
+							asyncLoadTextureFromFile(albedo_map, m_textureManager, *cpu_mat.albedoMap.path, p_executor);
 							m_materialManager->setAlbedoMap(gpu_mat, albedo_map);
 						}
 						m_materialManager->setMaterialFlags(gpu_mat, cpu_mat.flags, true);
@@ -351,22 +351,22 @@ namespace toaster::asset
 
 						if (cpu_mat.normalMap.path.has_value())
 						{
-							render::TextureHandle normal_map{m_textureManager->registerTexture()};
-							asyncLoadTextureFromFile(normal_map, *m_textureManager, *cpu_mat.normalMap.path, p_executor, gpu::EFormat::eR8G8B8A8Unorm);
+							rnd::TextureHandle normal_map{rnd::texture_register(m_textureManager)};
+							asyncLoadTextureFromFile(normal_map, m_textureManager, *cpu_mat.normalMap.path, p_executor, gpu::EFormat::eR8G8B8A8Unorm);
 							m_materialManager->setNormalMap(gpu_mat, normal_map);
 						}
 
 						if (cpu_mat.roughnessMap.path.has_value())
 						{
-							render::TextureHandle roughness_map{m_textureManager->registerTexture()};
-							asyncLoadTextureFromFile(roughness_map, *m_textureManager, *cpu_mat.roughnessMap.path, p_executor, gpu::EFormat::eR8Unorm);
+							rnd::TextureHandle roughness_map{rnd::texture_register(m_textureManager)};
+							asyncLoadTextureFromFile(roughness_map, m_textureManager, *cpu_mat.roughnessMap.path, p_executor, gpu::EFormat::eR8Unorm);
 							m_materialManager->setRoughnessMap(gpu_mat, roughness_map);
 						}
 
 						if (cpu_mat.metalnessMap.path.has_value())
 						{
-							render::TextureHandle metalness_map{m_textureManager->registerTexture()};
-							asyncLoadTextureFromFile(metalness_map, *m_textureManager, *cpu_mat.metalnessMap.path, p_executor, gpu::EFormat::eR8Unorm);
+							rnd::TextureHandle metalness_map{rnd::texture_register(m_textureManager)};
+							asyncLoadTextureFromFile(metalness_map, m_textureManager, *cpu_mat.metalnessMap.path, p_executor, gpu::EFormat::eR8Unorm);
 							m_materialManager->setMetalnessMap(gpu_mat, metalness_map);
 						}
 

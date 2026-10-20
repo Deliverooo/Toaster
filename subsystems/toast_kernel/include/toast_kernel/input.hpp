@@ -1,207 +1,205 @@
 #pragma once
 
-#include <bitset>
-#include <unordered_map>
-
 #include "toast_kernel.hpp"
+#include "toast_lib/bit.h"
+#include "toast_lib/enum.hpp"
 #include "toast_math/math_vector.hpp"
 
-namespace toaster::ke
+namespace toaster::knl
 {
 	// Keycode numbers from <GLFW/glfw3.h>
-	enum class EKeyCode : uint32
+	enum class EKeyCode : uint16
 	{
-		eSpace        = 32,
-		eApostrophe   = 39,
-		eComma        = 44,
-		eMinus        = 45,
-		ePeriod       = 46,
-		eSlash        = 47,
-		e0            = 48,
-		e1            = 49,
-		e2            = 50,
-		e3            = 51,
-		e4            = 52,
-		e5            = 53,
-		e6            = 54,
-		e7            = 55,
-		e8            = 56,
-		e9            = 57,
-		eSemicolon    = 59,
-		eEqual        = 61,
-		eA            = 65,
-		eB            = 66,
-		eC            = 67,
-		eD            = 68,
-		eE            = 69,
-		eF            = 70,
-		eG            = 71,
-		eH            = 72,
-		eI            = 73,
-		eJ            = 74,
-		eK            = 75,
-		eL            = 76,
-		eM            = 77,
-		eN            = 78,
-		eO            = 79,
-		eP            = 80,
-		eQ            = 81,
-		eR            = 82,
-		eS            = 83,
-		eT            = 84,
-		eU            = 85,
-		eV            = 86,
-		eW            = 87,
-		eX            = 88,
-		eY            = 89,
-		eZ            = 90,
-		eLeftBracket  = 91,
-		eBackslash    = 92,
-		eRightBracket = 93,
-		eGraveAccent  = 96,
-		eWorld1       = 161,
-		eWorld2       = 162,
-		eEscape       = 256,
-		eEnter        = 257,
-		eTab          = 258,
-		eBackspace    = 259,
-		eInsert       = 260,
-		eDelete       = 261,
-		eRight        = 262,
-		eLeft         = 263,
-		eDown         = 264,
-		eUp           = 265,
-		ePageUp       = 266,
-		ePageDown     = 267,
-		eHome         = 268,
-		eEnd          = 269,
-		eCapsLock     = 280,
-		eScrollLock   = 281,
-		eNumLock      = 282,
-		ePrintScreen  = 283,
-		ePause        = 284,
-		eF1           = 290,
-		eF2           = 291,
-		eF3           = 292,
-		eF4           = 293,
-		eF5           = 294,
-		eF6           = 295,
-		eF7           = 296,
-		eF8           = 297,
-		eF9           = 298,
-		eF10          = 299,
-		eF11          = 300,
-		eF12          = 301,
-		eF13          = 302,
-		eF14          = 303,
-		eF15          = 304,
-		eF16          = 305,
-		eF17          = 306,
-		eF18          = 307,
-		eF19          = 308,
-		eF20          = 309,
-		eF21          = 310,
-		eF22          = 311,
-		eF23          = 312,
-		eF24          = 313,
-		eF25          = 314,
-		eKP0          = 320,
-		eKP1          = 321,
-		eKP2          = 322,
-		eKP3          = 323,
-		eKP4          = 324,
-		eKP5          = 325,
-		eKP6          = 326,
-		eKP7          = 327,
-		eKP8          = 328,
-		eKP9          = 329,
-		eKPDecimal    = 330,
-		eKPDivide     = 331,
-		eKPMultiply   = 332,
-		eKPSubtract   = 333,
-		eKPAdd        = 334,
-		eKPEnter      = 335,
-		eKPEqual      = 336,
-		eLeftShift    = 340,
-		eLeftControl  = 341,
-		eLeftAlt      = 342,
-		eLeftSuper    = 343,
-		eRightShift   = 344,
-		eRightControl = 345,
-		eRightAlt     = 346,
-		eRightSuper   = 347,
-		eMenu         = 348
+		eSpace        = 32u,
+		eApostrophe   = 39u,
+		eComma        = 44u,
+		eMinus        = 45u,
+		ePeriod       = 46u,
+		eSlash        = 47u,
+		e0            = 48u,
+		e1            = 49u,
+		e2            = 50u,
+		e3            = 51u,
+		e4            = 52u,
+		e5            = 53u,
+		e6            = 54u,
+		e7            = 55u,
+		e8            = 56u,
+		e9            = 57u,
+		eSemicolon    = 59u,
+		eEqual        = 61u,
+		eA            = 65u,
+		eB            = 66u,
+		eC            = 67u,
+		eD            = 68u,
+		eE            = 69u,
+		eF            = 70u,
+		eG            = 71u,
+		eH            = 72u,
+		eI            = 73u,
+		eJ            = 74u,
+		eK            = 75u,
+		eL            = 76u,
+		eM            = 77u,
+		eN            = 78u,
+		eO            = 79u,
+		eP            = 80u,
+		eQ            = 81u,
+		eR            = 82u,
+		eS            = 83u,
+		eT            = 84u,
+		eU            = 85u,
+		eV            = 86u,
+		eW            = 87u,
+		eX            = 88u,
+		eY            = 89u,
+		eZ            = 90u,
+		eLeftBracket  = 91u,
+		eBackslash    = 92u,
+		eRightBracket = 93u,
+		eGraveAccent  = 96u,
+		eWorld1       = 161u,
+		eWorld2       = 162u,
+		eEscape       = 256u,
+		eEnter        = 257u,
+		eTab          = 258u,
+		eBackspace    = 259u,
+		eInsert       = 260u,
+		eDelete       = 261u,
+		eRight        = 262u,
+		eLeft         = 263u,
+		eDown         = 264u,
+		eUp           = 265u,
+		ePageUp       = 266u,
+		ePageDown     = 267u,
+		eHome         = 268u,
+		eEnd          = 269u,
+		eCapsLock     = 280u,
+		eScrollLock   = 281u,
+		eNumLock      = 282u,
+		ePrintScreen  = 283u,
+		ePause        = 284u,
+		eF1           = 290u,
+		eF2           = 291u,
+		eF3           = 292u,
+		eF4           = 293u,
+		eF5           = 294u,
+		eF6           = 295u,
+		eF7           = 296u,
+		eF8           = 297u,
+		eF9           = 298u,
+		eF10          = 299u,
+		eF11          = 300u,
+		eF12          = 301u,
+		eF13          = 302u,
+		eF14          = 303u,
+		eF15          = 304u,
+		eF16          = 305u,
+		eF17          = 306u,
+		eF18          = 307u,
+		eF19          = 308u,
+		eF20          = 309u,
+		eF21          = 310u,
+		eF22          = 311u,
+		eF23          = 312u,
+		eF24          = 313u,
+		eF25          = 314u,
+		eKP0          = 320u,
+		eKP1          = 321u,
+		eKP2          = 322u,
+		eKP3          = 323u,
+		eKP4          = 324u,
+		eKP5          = 325u,
+		eKP6          = 326u,
+		eKP7          = 327u,
+		eKP8          = 328u,
+		eKP9          = 329u,
+		eKPDecimal    = 330u,
+		eKPDivide     = 331u,
+		eKPMultiply   = 332u,
+		eKPSubtract   = 333u,
+		eKPAdd        = 334u,
+		eKPEnter      = 335u,
+		eKPEqual      = 336u,
+		eLeftShift    = 340u,
+		eLeftControl  = 341u,
+		eLeftAlt      = 342u,
+		eLeftSuper    = 343u,
+		eRightShift   = 344u,
+		eRightControl = 345u,
+		eRightAlt     = 346u,
+		eRightSuper   = 347u,
+		eMenu         = 348u,
+		eLast         = eMenu
 	};
 
-	constexpr uint32 c_keyLast{static_cast<uint32>(EKeyCode::eMenu)};
-
-	enum class EMouseButton : uint32
+	enum class EMouseButton : uint8
 	{
-		eButton1 = 0,
-		eButton2 = 1,
-		eButton3 = 2,
-		eButton4 = 3,
-		eButton5 = 4,
-		eButton6 = 5,
-		eButton7 = 6,
-		eButton8 = 7,
+		eButton1 = 0u,
+		eButton2 = 1u,
+		eButton3 = 2u,
+		eButton4 = 3u,
+		eButton5 = 4u,
+		eButton6 = 5u,
+		eButton7 = 6u,
+		eButton8 = 7u,
 		eLeft    = eButton1,
 		eRight   = eButton2,
-		eMiddle  = eButton3
+		eMiddle  = eButton3,
+		eLast    = eMiddle
 	};
-
-	constexpr uint32 c_mouseButtonLast{static_cast<uint32>(EMouseButton::eButton8)};
 
 	enum class ECursorMode : uint8
 	{
 		eNormal,
 		eHidden,
 		eDisabled,
-		eCaptured
+		eCaptured,
+		eLast = eCaptured
 	};
 
 	struct TST_KERNEL_API InputContext
 	{
-		std::bitset<c_keyLast> currentKeyStates;
-		std::bitset<c_keyLast> previousKeyStates;
+		void *windowCtx; // GLFWwindow*
 
-		std::bitset<c_mouseButtonLast> currentMouseStates;
-		std::bitset<c_mouseButtonLast> previousMouseStates;
+		TST_LIB_BITSET(currentKeyStates, TST_LIB_ENUM_VAL(EKeyCode::eLast));
+		TST_LIB_BITSET(previousKeyStates, TST_LIB_ENUM_VAL(EKeyCode::eLast));
 
-		void *windowCtx{nullptr}; // GLFWwindow*
+		TST_LIB_BITSET(currentMouseStates, TST_LIB_ENUM_VAL(EMouseButton::eLast));
+		TST_LIB_BITSET(previousMouseStates, TST_LIB_ENUM_VAL(EMouseButton::eLast));
 
-		float32 mouseX{0.0f};
-		float32 mouseY{0.0f};
-		float32 mouseDx{0.0f};
-		float32 mouseDy{0.0f};
+		float32 mouseX;
+		float32 mouseY;
+		float32 mouseDx;
+		float32 mouseDy;
 
-		float32 scrollX{0.0f};
-		float32 scrollY{0.0f};
+		float32 scrollX;
+		float32 scrollY;
 
-		ECursorMode currentCursorMode{ECursorMode::eNormal};
+		ECursorMode currentCursorMode;
 
 		// Essentially, when the cursor first enters the window, the initial X position will be out of date. This will mess up the Dx/Dy and cause issues...
-		bool firstMouse{true};
+		bool firstMouse;
 	};
 
-	auto TST_KERNEL_API input_ctx_create(InputContext *p_out_input_ctx, void *p_window_ctx) -> void;
-	auto TST_KERNEL_API input_ctx_destroy(InputContext *p_input_ctx) -> void;
+	void TST_KERNEL_API input_ctx_create(InputContext *p_out_input_ctx, void *p_window_ctx);
+	void TST_KERNEL_API input_ctx_destroy(InputContext *p_input_ctx);
 
-	auto TST_KERNEL_API input_ctx_is_key_down(const InputContext *p_input_ctx, EKeyCode p_key_code) -> bool;
-	auto TST_KERNEL_API input_ctx_is_key_pressed(const InputContext *p_input_ctx, EKeyCode p_key_code) -> bool;
-	auto TST_KERNEL_API input_ctx_is_key_released(const InputContext *p_input_ctx, EKeyCode p_key_code) -> bool;
+	bool TST_KERNEL_API input_is_key_down(const InputContext *p_input_ctx, EKeyCode p_key_code);
+	bool TST_KERNEL_API input_is_key_pressed(const InputContext *p_input_ctx, EKeyCode p_key_code);
+	bool TST_KERNEL_API input_is_key_released(const InputContext *p_input_ctx, EKeyCode p_key_code);
 
-	auto TST_KERNEL_API input_ctx_is_mouse_button_down(const InputContext *p_input_ctx, EMouseButton p_button) -> bool;
-	auto TST_KERNEL_API input_ctx_is_mouse_button_pressed(const InputContext *p_input_ctx, EMouseButton p_button) -> bool;
-	auto TST_KERNEL_API input_ctx_is_mouse_button_released(const InputContext *p_input_ctx, EMouseButton p_button) -> bool;
+	bool TST_KERNEL_API input_is_mouse_button_down(const InputContext *p_input_ctx, EMouseButton p_button);
+	bool TST_KERNEL_API input_is_mouse_button_pressed(const InputContext *p_input_ctx, EMouseButton p_button);
+	bool TST_KERNEL_API input_is_mouse_button_released(const InputContext *p_input_ctx, EMouseButton p_button);
 
-	auto TST_KERNEL_API input_ctx_get_cursor_mode(const InputContext *p_input_ctx) -> ECursorMode;
-	auto TST_KERNEL_API input_ctx_set_cursor_mode(InputContext *p_input_ctx, ECursorMode p_cursor_mode) -> void;
+	ECursorMode TST_KERNEL_API input_get_cursor_mode(const InputContext *p_input_ctx);
+	void TST_KERNEL_API        input_set_cursor_mode(InputContext *p_input_ctx, ECursorMode p_cursor_mode);
 
-	auto TST_KERNEL_API input_ctx_update(InputContext *p_input_ctx) -> void;
-	auto TST_KERNEL_API input_ctx_clear_states(InputContext *p_input_ctx) -> void;
+	void TST_KERNEL_API input_update(InputContext *p_input_ctx);
+	void TST_KERNEL_API input_clear_states(InputContext *p_input_ctx);
 
-	auto TST_KERNEL_API input_ctx_get_mouse_pos(const InputContext *p_input_ctx) -> tsm::float2;
-	auto TST_KERNEL_API input_ctx_get_mouse_delta_pos(const InputContext *p_input_ctx) -> tsm::float2;
-	auto TST_KERNEL_API input_ctx_get_mouse_scroll(const InputContext *p_input_ctx) -> tsm::float2;
+	math::Float2 TST_KERNEL_API input_get_mouse_pos(const InputContext *p_input_ctx);
+	math::Float2 TST_KERNEL_API input_get_mouse_delta_pos(const InputContext *p_input_ctx);
+	math::Float2 TST_KERNEL_API input_get_mouse_scroll(const InputContext *p_input_ctx);
 }

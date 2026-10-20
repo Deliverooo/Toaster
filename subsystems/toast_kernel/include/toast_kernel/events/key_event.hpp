@@ -3,7 +3,7 @@
 #include "event.hpp"
 #include "toast_kernel/input.hpp"
 
-namespace toaster::ke
+namespace toaster::knl
 {
 	class TST_KERNEL_API KeyPressEvent final: public Event
 	{

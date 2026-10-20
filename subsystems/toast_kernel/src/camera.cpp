@@ -1,7 +1,9 @@
 #include "toast_kernel/camera.hpp"
+
+#include <cmath>
 #include <toast_math/math_vector.hpp>
 
-namespace toaster::ke
+namespace toaster::knl
 {
 	Camera::Camera(float32 p_fov, float32 p_aspec_ratio, float32 p_z_near, float32 p_z_far) : m_fov(p_fov), m_aspect(p_aspec_ratio), m_zNear(p_z_near), m_zFar(p_z_far)
 	{
@@ -17,29 +19,29 @@ namespace toaster::ke
 
 		XMVECTOR delta_position{XMVectorZero()};
 
-		if (input_ctx_is_key_down(p_input_ctx, EKeyCode::eW))
+		if (input_is_key_down(p_input_ctx, EKeyCode::eW))
 			delta_position += front;
-		if (input_ctx_is_key_down(p_input_ctx, EKeyCode::eS))
+		if (input_is_key_down(p_input_ctx, EKeyCode::eS))
 			delta_position -= front;
-		if (input_ctx_is_key_down(p_input_ctx, EKeyCode::eA))
+		if (input_is_key_down(p_input_ctx, EKeyCode::eA))
 			delta_position -= right;
-		if (input_ctx_is_key_down(p_input_ctx, EKeyCode::eD))
+		if (input_is_key_down(p_input_ctx, EKeyCode::eD))
 			delta_position += right;
 
-		if (input_ctx_is_key_down(p_input_ctx, EKeyCode::eSpace))
+		if (input_is_key_down(p_input_ctx, EKeyCode::eSpace))
 			delta_position -= unitUpDir;
-		if (input_ctx_is_key_down(p_input_ctx, EKeyCode::eLeftControl))
+		if (input_is_key_down(p_input_ctx, EKeyCode::eLeftControl))
 			delta_position += unitUpDir;
 
-		m_speed = input_ctx_is_key_down(p_input_ctx, EKeyCode::eLeftShift) ? 30.0f : 10.0f;
+		m_speed = input_is_key_down(p_input_ctx, EKeyCode::eLeftShift) ? 30.0f : 10.0f;
 
-		delta_position = XMVector3NormalizeSafe(delta_position) * p_dt * m_speed;
+		delta_position = math::XMVector3NormalizeSafe(delta_position) * p_dt * m_speed;
 
 		pos += delta_position;
 
 		XMStoreFloat3(&m_position, pos);
 
-		const tsm::float2 mouse_delta{input_ctx_get_mouse_delta_pos(p_input_ctx)};
+		const math::Float2 mouse_delta{input_get_mouse_delta_pos(p_input_ctx)};
 
 		m_yaw   += p_dt * mouse_delta.x * 100.0f;
 		m_pitch += p_dt * mouse_delta.y * 100.0f;
@@ -67,7 +69,7 @@ namespace toaster::ke
 		XMVECTOR near{clip_matrix.r[2u]};
 		XMVECTOR far{clip_matrix.r[3u] - clip_matrix.r[2u]};
 
-		std::array simd_planes{left, right, bottom, top, near, far};
+		std::array<XMVECTOR, 6u> simd_planes{left, right, bottom, top, near, far};
 
 		for (uint32 i{0u}; i < 6u; ++i)
 			simd_planes[i] = XMPlaneNormalize(simd_planes[i]);

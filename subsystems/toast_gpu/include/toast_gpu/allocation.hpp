@@ -7,22 +7,25 @@
 #include "toast_lib/atomic.hpp"
 
 // This whole file is essentially just a wrapper for VMA's virtual allocation system
-namespace toaster::gpu::alloc
+namespace toaster::gpu
 {
-	TST_DECLARE_GPU_HANDLE(VirtualBlock);
-	TST_DECLARE_GPU_HANDLE(VirtualAllocation);
+	struct GPUContext;
+	struct AllocationContext;
 
-	auto TST_GPU_API initAllocationContext() -> void;
-	auto TST_GPU_API shutdownAllocationContext() -> void;
+	TST_GPU_DECLARE_GPU_HANDLE(VirtualBlock);
+	TST_GPU_DECLARE_GPU_HANDLE(VirtualAllocation);
 
-	auto TST_GPU_API createVirtualBlock(uint64 p_size) -> VirtualBlockHandle;
-	auto TST_GPU_API destroyVirtualBlock(VirtualBlockHandle p_virtual_block) -> void;
+	auto TST_GPU_API allocation_ctx_create(GPUContext *p_gpu_ctx) -> AllocationContext *; // If no GPU context is provided, you cannot use the PageAllocator
+	auto TST_GPU_API allocation_ctx_destroy(AllocationContext *p_ctx) -> void;
 
-	auto TST_GPU_API virtualAllocate(VirtualBlockHandle p_virtual_block, uint64 p_size, uint64 p_alignment) -> VirtualAllocationHandle;
-	auto TST_GPU_API virtualFree(VirtualAllocationHandle p_virtual_allocation) -> void;
+	auto TST_GPU_API virtual_block_create(AllocationContext *p_ctx, uint64 p_size) -> VirtualBlockHandle;
+	auto TST_GPU_API virtual_block_destroy(AllocationContext *p_ctx, VirtualBlockHandle p_virtual_block) -> void;
 
-	auto TST_GPU_API getAllocationOffset(VirtualAllocationHandle p_virtual_allocation) -> uint64;
-	auto TST_GPU_API getAllocationSize(VirtualAllocationHandle p_virtual_allocation) -> uint64;
+	auto TST_GPU_API virtual_block_allocate(AllocationContext *p_ctx, VirtualBlockHandle p_virtual_block, uint64 p_size, uint64 p_alignment) -> VirtualAllocationHandle;
+	auto TST_GPU_API virtual_block_free(AllocationContext *p_ctx, VirtualAllocationHandle p_virtual_allocation) -> void;
+
+	auto TST_GPU_API virtual_allocation_get_offset(AllocationContext *p_ctx, VirtualAllocationHandle p_virtual_allocation) -> uint64;
+	auto TST_GPU_API virtual_allocation_get_size(AllocationContext *p_ctx, VirtualAllocationHandle p_virtual_allocation) -> uint64;
 
 	struct TST_GPU_API Page
 	{
@@ -43,27 +46,28 @@ namespace toaster::gpu::alloc
 		uint32                  heapSlot{UINT32_MAX}; // Reference to Page::heapSlot
 	};
 
-	class TST_GPU_API GPUPageAllocator
+	struct TST_GPU_API PageAllocator
 	{
-	public:
-		GPUPageAllocator(uint64 p_page_size, ResourceDescriptorHeapHandle p_resource_heap);
-		~GPUPageAllocator();
-
-		auto freePageAllocation(const PageAllocation &p_allocation) -> void;
-		auto allocateAcrossPages(uint64 p_size, uint64 p_alignment, PageAllocation &p_out_allocation) -> void;
-
-	private:
-		auto        insertPage() -> void;
-		static auto tryAllocate(Page &p_page, uint64 p_size, uint64 p_alignment, PageAllocation &p_out_allocation) -> bool;
-		auto        createPage(uint64 p_size, uint32 p_id) -> Page;
-		auto        destroyPage(Page &p_page) -> void;
-
 		std::unordered_map<uint32, Page> pages;
-
-		ResourceDescriptorHeapHandle m_resourceHeap{nullptr};
+		ResourceDescriptorHeapHandle     resourceHeap{nullptr};
 
 		uint64 pageSize{0u};
 		uint32 nextPageId{0u};
 		uint32 activePageId{0u};
 	};
+
+	auto TST_GPU_API page_allocator_create(AllocationContext *          p_ctx, PageAllocator *p_out_allocator, uint64 p_page_size,
+										   ResourceDescriptorHeapHandle p_resource_heap) -> void;
+	auto TST_GPU_API page_allocator_destroy(AllocationContext *p_ctx, PageAllocator *p_allocator) -> void;
+
+	auto TST_GPU_API page_allocator_free_page_allocation(AllocationContext *p_ctx, PageAllocator *p_allocator, PageAllocation *p_allocation) -> void;
+	auto TST_GPU_API page_allocator_allocate_across_pages(AllocationContext *p_ctx, PageAllocator *p_allocator, uint64 p_size, uint64 p_alignment,
+														  PageAllocation *   p_out_allocation) -> void;
+
+	// Internals
+	auto TST_GPU_API _page_allocator_insert_page(AllocationContext *p_ctx, PageAllocator *p_allocator) -> void;
+	auto TST_GPU_API _page_allocator_try_allocate(AllocationContext *p_ctx, PageAllocator *p_allocator, Page *p_page, uint64 p_size, uint64 p_alignment,
+												  PageAllocation *   p_out_allocation) -> bool;
+	auto TST_GPU_API _page_allocator_create_page(AllocationContext *p_ctx, PageAllocator *p_allocator, uint64 p_size, uint32 p_id) -> Page;
+	auto TST_GPU_API _page_allocator_destroy_page(AllocationContext *p_ctx, PageAllocator *p_allocator, Page *p_page) -> void;
 }

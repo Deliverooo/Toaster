@@ -1,8 +1,7 @@
 set(SRC
-		${CMAKE_CURRENT_SOURCE_DIR}/src/toast_assert.cpp
+		${CMAKE_CURRENT_SOURCE_DIR}/src/toast_assert.c
 		${CMAKE_CURRENT_SOURCE_DIR}/src/filesystem.cpp
 		${CMAKE_CURRENT_SOURCE_DIR}/src/string.cpp
-		${CMAKE_CURRENT_SOURCE_DIR}/src/memory.cpp
 )
 
 if (TOASTER_BUILD_SHARED_LIBS)

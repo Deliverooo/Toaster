@@ -1,11 +1,14 @@
 #include "toast_asset/texture_importer.hpp"
 #include <algorithm>
 #include <cmath>
+#include <print>
 #include <stb/stb_image.h>
 
+#include "toast_gpu/api.hpp"
 #include "toast_gpu/upload.hpp"
+#include "toast_lib/buffer.hpp"
 
-namespace toaster::asset
+namespace toaster::ast
 {
 	auto loadTextureIntoBuffer(StringView p_path, gpu::EFormat &p_out_format, uint32 &p_out_width, uint32 &p_out_height) -> DataBuffer
 	{
@@ -57,10 +60,10 @@ namespace toaster::asset
 		return image_data;
 	}
 
-	auto asyncLoadTextureFromFile(render::TextureHandle p_dst_texture, render::TextureManager &p_texture_manager, const std::filesystem::path &p_path,
-								  tf::Executor &        p_executor, gpu::EFormat               p_desired_format) -> void
+	auto asyncLoadTextureFromFile(rnd::TextureHandle p_dst_texture, rnd::TextureManager *p_texture_manager, const std::filesystem::path &p_path, tf::Executor &p_executor,
+								  gpu::EFormat       p_desired_format) -> void
 	{
-		p_executor.silent_async([p_dst_texture, &p_texture_manager, p_path, p_desired_format]() mutable -> void
+		p_executor.silent_async([p_dst_texture, p_texture_manager, p_path, p_desired_format]() mutable -> void
 		{
 			std::println("Started loading texture: {}", p_path.string());
 
@@ -72,8 +75,8 @@ namespace toaster::asset
 			DataBuffer image_data{loadTextureIntoBuffer(p_path.string(), texture_desc.format, texture_desc.extent.x, texture_desc.extent.y)};
 			texture_desc.mipCount = static_cast<uint32>(std::floor(std::log2(std::max(texture_desc.extent.x, texture_desc.extent.y)))) + 1u;
 
-			p_texture_manager.createIntoTexture(p_dst_texture, texture_desc);
-			p_texture_manager.setData(p_dst_texture, image_data.data(), image_data.size());
+			rnd::texture_create_into(p_texture_manager, p_dst_texture, texture_desc);
+			rnd::texture_set_data(p_texture_manager, p_dst_texture, image_data.data(), image_data.size());
 
 			image_data.release();
 
@@ -81,10 +84,10 @@ namespace toaster::asset
 		});
 	}
 
-	auto asyncLoadTextureFromFile(render::TextureHandle p_dst_texture, render::TextureManager &p_texture_manager, const std::filesystem::path &p_path,
-								  tf::Taskflow &        p_taskflow, gpu::EFormat               p_desired_format) -> void
+	auto asyncLoadTextureFromFile(rnd::TextureHandle p_dst_texture, rnd::TextureManager *p_texture_manager, const std::filesystem::path &p_path, tf::Taskflow &p_taskflow,
+								  gpu::EFormat       p_desired_format) -> void
 	{
-		p_taskflow.emplace([p_dst_texture, &p_texture_manager, p_path, p_desired_format]() -> void
+		p_taskflow.emplace([p_dst_texture, p_texture_manager, p_path, p_desired_format]() -> void
 		{
 			gpu::TextureDesc texture_desc{};
 			texture_desc.usage    = gpu::ETextureUsageFlagBits::eTransferSrc | gpu::ETextureUsageFlagBits::eTransferDst | gpu::ETextureUsageFlagBits::eSampled;
@@ -94,17 +97,17 @@ namespace toaster::asset
 			DataBuffer image_data{loadTextureIntoBuffer(p_path.string(), texture_desc.format, texture_desc.extent.x, texture_desc.extent.y)};
 			texture_desc.mipCount = static_cast<uint32>(std::floor(std::log2(std::max(texture_desc.extent.x, texture_desc.extent.y)))) + 1u;
 
-			p_texture_manager.createIntoTexture(p_dst_texture, texture_desc);
-			p_texture_manager.setData(p_dst_texture, image_data.data(), image_data.size());
+			rnd::texture_create_into(p_texture_manager, p_dst_texture, texture_desc);
+			rnd::texture_set_data(p_texture_manager, p_dst_texture, image_data.data(), image_data.size());
 
 			image_data.release();
 		});
 	}
 
-	auto asyncLoadTextureFromFile(render::TextureHandle p_dst_texture, render::TextureManager &p_texture_manager, const std::filesystem::path &p_path,
-								  tf::Subflow &         p_subflow, gpu::EFormat               p_desired_format) -> void
+	auto asyncLoadTextureFromFile(rnd::TextureHandle p_dst_texture, rnd::TextureManager *p_texture_manager, const std::filesystem::path &p_path, tf::Subflow &p_subflow,
+								  gpu::EFormat       p_desired_format) -> void
 	{
-		p_subflow.emplace([p_dst_texture, &p_texture_manager, p_path, p_desired_format]() -> void
+		p_subflow.emplace([p_dst_texture, p_texture_manager, p_path, p_desired_format]() -> void
 		{
 			gpu::TextureDesc texture_desc{};
 			texture_desc.usage    = gpu::ETextureUsageFlagBits::eTransferSrc | gpu::ETextureUsageFlagBits::eTransferDst | gpu::ETextureUsageFlagBits::eSampled;
@@ -114,8 +117,8 @@ namespace toaster::asset
 			DataBuffer image_data{loadTextureIntoBuffer(p_path.string(), texture_desc.format, texture_desc.extent.x, texture_desc.extent.y)};
 			texture_desc.mipCount = static_cast<uint32>(std::floor(std::log2(std::max(texture_desc.extent.x, texture_desc.extent.y)))) + 1u;
 
-			p_texture_manager.createIntoTexture(p_dst_texture, texture_desc);
-			p_texture_manager.setData(p_dst_texture, image_data.data(), image_data.size());
+			rnd::texture_create_into(p_texture_manager, p_dst_texture, texture_desc);
+			rnd::texture_set_data(p_texture_manager, p_dst_texture, image_data.data(), image_data.size());
 
 			image_data.release();
 		});

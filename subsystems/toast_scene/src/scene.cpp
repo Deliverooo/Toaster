@@ -1,6 +1,6 @@
 #include "toast_scene/scene.hpp"
 
-namespace toaster::scene
+namespace toaster::scn
 {
 	Scene::Scene()
 	{

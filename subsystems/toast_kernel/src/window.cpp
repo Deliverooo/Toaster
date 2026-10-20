@@ -3,17 +3,20 @@
 #include <GLFW/glfw3.h>
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <dwmapi.h>
+#include <string>
 #include <GLFW/glfw3native.h>
 
+#include "toast_gpu/api.hpp"
 #include "toast_gpu/frame.hpp"
 #include "toast_kernel/events/key_event.hpp"
 #include "toast_kernel/events/window_event.hpp"
+#include "toast_render/render_context.hpp"
 
 #ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
 #define DWMWA_USE_IMMERSIVE_DARK_MODE 20
 #endif
 
-namespace toaster::ke
+namespace toaster::knl
 {
 	auto window_init_api() -> void
 	{
@@ -25,10 +28,12 @@ namespace toaster::ke
 		glfwTerminate();
 	}
 
-	auto window_create(Window *p_out_window, const WindowDesc &p_desc) -> void
+	auto window_create(Window *p_out_window, rnd::RenderContext *p_render_ctx, const WindowDesc &p_desc) -> void
 	{
 		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 		glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+
+		p_out_window->renderCtx = p_render_ctx;
 
 		p_out_window->cbData.width = p_desc.size.x;
 		p_out_window->cbData.height = p_desc.size.y;
@@ -44,7 +49,7 @@ namespace toaster::ke
 				if(data->eventCallback)\
 				data->eventCallback(event, data->eventCallbackUserData)
 
-		#define TST_GET_CALLBACK_DATA() auto data{static_cast<Window::CallbackData *>(glfwGetWindowUserPointer(p_window))}
+		#define TST_GET_CALLBACK_DATA() auto data{static_cast<_WindowCallbackData *>(glfwGetWindowUserPointer(p_window))}
 
 		glfwSetFramebufferSizeCallback(p_out_window->window, +[](GLFWwindow *p_window, int32 p_width, int32 p_height) noexcept -> void
 		{
@@ -65,12 +70,12 @@ namespace toaster::ke
 
 			if (p_action == GLFW_PRESS)
 			{
-				data->inputCtx.currentKeyStates[static_cast<uint32>(keycode)] = true;
+				TST_LIB_BIT_SET(data->inputCtx.currentKeyStates, static_cast<uint32>(keycode));
 				TST_DISPATCH_EVENT(KeyPressEvent, keycode);
 			}
 			else if (p_action == GLFW_RELEASE)
 			{
-				data->inputCtx.currentKeyStates[static_cast<uint32>(keycode)] = false;
+				TST_LIB_BIT_CLEAR(data->inputCtx.currentKeyStates, static_cast<uint32>(keycode));
 				TST_DISPATCH_EVENT(KeyReleaseEvent, keycode);
 			}
 		});
@@ -82,12 +87,12 @@ namespace toaster::ke
 
 			if (p_action == GLFW_PRESS)
 			{
-				data->inputCtx.currentMouseStates[static_cast<uint32>(button)] = true;
+				TST_LIB_BIT_SET(data->inputCtx.currentMouseStates, static_cast<uint32>(button));
 				// TST_DISPATCH_EVENT(MouseButtonPressEvent, button);
 			}
 			else if (p_action == GLFW_RELEASE)
 			{
-				data->inputCtx.currentMouseStates[static_cast<uint32>(button)] = false;
+				TST_LIB_BIT_CLEAR(data->inputCtx.currentMouseStates, static_cast<uint32>(button));
 				// TST_DISPATCH_EVENT(MouseButtonReleaseEvent, button);
 			}
 		});
@@ -131,7 +136,7 @@ namespace toaster::ke
 
 			if (!p_focused) // Clear input states if the window has lost focus
 			{
-				input_ctx_clear_states(&data->inputCtx);
+				input_clear_states(&data->inputCtx);
 				data->inputCtx.firstMouse = true;
 			}
 		});
@@ -140,7 +145,7 @@ namespace toaster::ke
 		{
 			TST_GET_CALLBACK_DATA();
 
-			std::vector<String> filepaths{static_cast<std::vector<String>::size_type>(p_path_count)};
+			std::vector<std::string> filepaths{static_cast<std::vector<std::string>::size_type>(p_path_count)};
 			for (uint32 i{0u}; i < p_path_count; ++i)
 				filepaths[i] = p_paths[i];
 
@@ -174,8 +179,9 @@ namespace toaster::ke
 		uint32 corner_preference{DWMWCP_DONOTROUND};
 		DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, &corner_preference, sizeof(uint32));
 
-		p_out_window->surface   = gpu::createSurface(hwnd);
-		p_out_window->swapchain = gpu::createSwapchain(p_out_window->surface, {p_out_window->cbData.width, p_out_window->cbData.height});
+		p_out_window->surface   = gpu::surface_create(p_out_window->renderCtx->gpuCtx, hwnd);
+		p_out_window->swapchain = gpu::swapchain_create(p_out_window->renderCtx->gpuCtx, p_out_window->surface,
+														{p_out_window->cbData.width, p_out_window->cbData.height});
 
 		if (p_desc.startMaximized)
 			window_maximise(p_out_window);
@@ -185,8 +191,8 @@ namespace toaster::ke
 
 	auto window_destroy(Window *p_window) -> void
 	{
-		gpu::destroySwapchain(p_window->swapchain);
-		gpu::destroySurface(p_window->surface);
+		gpu::swapchain_destroy(p_window->renderCtx->gpuCtx, p_window->swapchain);
+		gpu::surface_destroy(p_window->renderCtx->gpuCtx, p_window->surface);
 
 		input_ctx_destroy(&p_window->cbData.inputCtx);
 		glfwDestroyWindow(p_window->window);
@@ -211,9 +217,9 @@ namespace toaster::ke
 		if (window_is_invalid_size(p_window))
 			return false;
 
-		tsm::uint2 current_size{p_window->cbData.width, p_window->cbData.height};
+		math::UInt2 current_size{p_window->cbData.width, p_window->cbData.height};
 
-		if (!gpu::resizeSwapchain(p_window->swapchain, current_size))
+		if (!gpu::swapchain_resize(p_window->renderCtx->gpuCtx, p_window->swapchain, current_size))
 		{
 			WindowResizeEvent event{current_size};
 			if (p_window->cbData.eventCallback)
@@ -232,13 +238,13 @@ namespace toaster::ke
 
 	auto window_begin_frame(Window *p_window, gpu::CommandListHandle p_cmd) -> bool
 	{
-		p_window->currentTexture = gpu::acquireNextImage(p_window->swapchain);
+		p_window->currentTexture = gpu::swapchain_acquire_next_image(p_window->renderCtx->gpuCtx, p_window->swapchain);
 
 		if (!p_window->currentTexture)
 		{
-			const tsm::uint2 current_size{window_get_size(p_window)};
+			const math::UInt2 current_size{window_get_size(p_window)};
 
-			gpu::resizeSwapchain(p_window->swapchain, current_size);
+			gpu::swapchain_resize(p_window->renderCtx->gpuCtx, p_window->swapchain, current_size);
 
 			WindowResizeEvent event{current_size};
 			if (p_window->cbData.eventCallback)
@@ -247,18 +253,18 @@ namespace toaster::ke
 			return false;
 		}
 
-		gpu::insertPreRenderSwapchainResourceBarrier(p_cmd, p_window->currentTexture);
+		gpu::swapchain_insert_pre_render_resource_barrier(p_window->renderCtx->gpuCtx, p_cmd, p_window->currentTexture);
 
 		return true;
 	}
 
 	auto window_submit_and_present(Window *p_window, gpu::CommandListHandle p_cmd) -> void
 	{
-		const bool success{gpu::frame::submitAndPresent(p_window->swapchain, p_cmd)};
+		const bool success{gpu::submit_and_present(p_window->renderCtx->frameCtx, p_window->swapchain, p_cmd)};
 		TST_PERMA_ASSERT(success);
 
 		// Set the current key states to the previous ones
-		input_ctx_update(&p_window->cbData.inputCtx);
+		input_update(&p_window->cbData.inputCtx);
 	}
 
 	auto window_set_event_callback(Window *p_window, EventCallbackFn p_callback) -> void
@@ -324,14 +330,14 @@ namespace toaster::ke
 		return p_window->cbData.width == 0u || p_window->cbData.height == 0u;
 	}
 
-	auto window_get_size(const Window *p_window) -> tsm::uint2
+	auto window_get_size(const Window *p_window) -> math::UInt2
 	{
-		return tsm::uint2{p_window->cbData.width, p_window->cbData.height};
+		return math::UInt2{p_window->cbData.width, p_window->cbData.height};
 	}
 
 	auto window_get_aspect_ratio(const Window *p_window) -> float32
 	{
-		const tsm::uint2 size{window_get_size(p_window)};
-		return size.aspect();
+		const math::UInt2 size{window_get_size(p_window)};
+		return static_cast<float32>(size.x) / static_cast<float32>(size.y);
 	}
 }

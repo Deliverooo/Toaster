@@ -1,15 +1,17 @@
 #pragma once
 
+#include <vector>
+
 #include "layer.hpp"
 #include "window.hpp"
 #include "toast_render/render_context.hpp"
 
-namespace toaster::ke
+namespace toaster::knl
 {
 	struct TST_KERNEL_API Application
 	{
 		std::vector<AppLayer> layers;
-		render::RenderContext renderCtx{};
+		rnd::RenderContext    renderCtx{};
 		Window                window{};
 
 		float32 deltaTime{0.0f};
@@ -20,9 +22,9 @@ namespace toaster::ke
 
 	struct TST_KERNEL_API ApplicationDesc
 	{
-		WindowDesc                windowDesc;
-		render::RenderContextDesc renderCtxDesc;
-		uint32                    maxFramesInFlight;
+		WindowDesc             windowDesc;
+		rnd::RenderContextDesc renderCtxDesc;
+		uint32                 maxFramesInFlight;
 	};
 
 	auto TST_KERNEL_API application_create(Application *p_out_app, const ApplicationDesc &p_desc) -> void;

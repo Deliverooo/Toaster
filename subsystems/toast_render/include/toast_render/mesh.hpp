@@ -1,12 +1,11 @@
 #pragma once
 
 #include <mutex>
-#include <shared_mutex>
 
 #include "material.hpp"
 #include "toast_gpu/upload.hpp"
 
-namespace toaster::render
+namespace toaster::rnd
 {
 	struct TST_RENDER_API StaticMeshVertex
 	{
@@ -53,13 +52,13 @@ namespace toaster::render
 		std::vector<Meshlet>        meshlets;
 		std::vector<MaterialHandle> materials; // The actual materials the meshlets hold indices to
 
-		gpu::alloc::PageAllocation vertexBufferAllocation{};
-		gpu::alloc::PageAllocation meshletBufferAllocation{};
-		gpu::alloc::PageAllocation meshletVertexBufferAllocation{};
-		gpu::alloc::PageAllocation meshletTriangleBufferAllocation{};
-		gpu::alloc::PageAllocation materialIndirectionBufferAllocation{};
+		gpu::PageAllocation vertexBufferAllocation{};
+		gpu::PageAllocation meshletBufferAllocation{};
+		gpu::PageAllocation meshletVertexBufferAllocation{};
+		gpu::PageAllocation meshletTriangleBufferAllocation{};
+		gpu::PageAllocation materialIndirectionBufferAllocation{};
 
-		gpu::upload::StateTrackerHandle stateTracker{nullptr};
+		gpu::StateTrackerHandle stateTracker{nullptr};
 
 		XMFLOAT4 boundingSphere{0.0f, 0.0f, 0.0f, 1.0f};
 
@@ -96,7 +95,10 @@ namespace toaster::render
 		[[nodiscard]] auto tryGetStaticMesh(StaticMeshHandle p_handle) -> StaticMesh * { return m_staticMeshes.tryGet(p_handle); }
 		[[nodiscard]] auto tryGetStaticMesh(StaticMeshHandle p_handle) const -> const StaticMesh * { return m_staticMeshes.tryGet(p_handle); }
 
-		[[nodiscard]] auto getStaticMeshMetadataBufferAddress() const -> gpu::DeviceAddress { return gpu::getBufferAddress(m_staticMeshMetadataBuffer); }
+		[[nodiscard]] auto getStaticMeshMetadataBufferAddress() const -> gpu::DeviceAddress
+		{
+			return gpu::buffer_get_address(m_renderCtx->gpuCtx, m_staticMeshMetadataBuffer);
+		}
 
 	private:
 		// Total initial page size of 576 Mib. Unless you are loading the entire planet, pages won't really be added during runtime.
@@ -106,17 +108,18 @@ namespace toaster::render
 		static constexpr uint64 meshletVertexPageSize{128u * 1024u * 1024u};   // 128 Mib
 		static constexpr uint64 meshletTrianglePageSize{128u * 1024u * 1024u}; // 128 Mib
 
-		NonOwningPtr<RenderContext> m_renderCtx{nullptr};
+		RenderContext *m_renderCtx{nullptr};
 
-		std::mutex                              m_pageMutex; // Because all of these operations are called at the same time, I only need one mutex.
-		UniquePtr<gpu::alloc::GPUPageAllocator> m_vertexPager{nullptr};
-		UniquePtr<gpu::alloc::GPUPageAllocator> m_meshletPager{nullptr};
-		UniquePtr<gpu::alloc::GPUPageAllocator> m_meshletVertexPager{nullptr};
-		UniquePtr<gpu::alloc::GPUPageAllocator> m_meshletTrianglePager{nullptr};
+		std::mutex m_pageMutex; // Because all of these operations are called at the same time, I only need one mutex.
+
+		gpu::PageAllocator m_vertexPager;
+		gpu::PageAllocator m_meshletPager;
+		gpu::PageAllocator m_meshletVertexPager;
+		gpu::PageAllocator m_meshletTrianglePager;
 
 		// This is more than enough. E.g. Sponza only uses 27-30 materials, which is 30 * sizeof(uint32) = 120 bytes
-		static constexpr uint64                 materialIndirectionPageSize{2u * 1024 * 1024u}; // 2 Mib.
-		UniquePtr<gpu::alloc::GPUPageAllocator> m_materialIndirectionPager{nullptr};
+		static constexpr uint64 materialIndirectionPageSize{2u * 1024 * 1024u}; // 2 Mib.
+		gpu::PageAllocator      m_materialIndirectionPager;
 
 		gpu::BufferHandle m_staticMeshMetadataBuffer{nullptr}; // Indexed by the mesh handle's id
 

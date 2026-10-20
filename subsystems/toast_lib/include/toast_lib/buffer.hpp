@@ -12,8 +12,7 @@ namespace toaster
 	public:
 		DataBuffer() = default;
 
-		DataBuffer(const void *p_data, const uint64 p_size)
-			: m_data(const_cast<void *>(p_data)), m_size(p_size)
+		DataBuffer(const void *p_data, const uint64 p_size) : m_data(const_cast<void *>(p_data)), m_size(p_size)
 		{
 		}
 

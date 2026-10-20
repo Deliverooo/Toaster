@@ -2,26 +2,28 @@
 
 #include "toast_lib.hpp"
 
-#include <cstdio>
-#include <cstdlib> // Silences a warning saying that stdlib.h is deprecated when using with c++
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
-TST_LIB_API auto printAssertFailed(const char *file, int line, const char *function, const char *expression) -> void;
-TST_LIB_API auto printAssertFailedMsg(const char *file, int line, const char *function, const char *expression, const char *message) -> void;
+TST_LIB_API void printAssertFailed(const char *p_file, int p_line, const char *p_function, const char *p_expression);
+TST_LIB_API void printAssertFailedMsg(const char *p_file, int p_line, const char *p_function, const char *p_expression, const char *p_message);
 
 #ifndef NDEBUG
 
 #define TST_ASSERT(__expr)\
 	do { if(!(__expr))\
 	{\
-		printAssertFailed(__FILE__, __LINE__, __func__, #__expr);\
-		__debugbreak();\
+	printAssertFailed(__FILE__, __LINE__, __func__, #__expr);\
+	__debugbreak();\
 	} } while(false)
 
 #define TST_ASSERT_MSG(__expr, __msg)\
 	do { if(!(__expr))\
 	{\
-		printAssertFailedMsg(__FILE__, __LINE__, __func__, #__expr, __msg);\
-		__debugbreak();\
+	printAssertFailedMsg(__FILE__, __LINE__, __func__, #__expr, __msg);\
+	__debugbreak();\
 	} } while(false)
 
 #else
@@ -35,11 +37,15 @@ TST_LIB_API auto printAssertFailedMsg(const char *file, int line, const char *fu
 		do { if(!(__expr))\
 		{\
 		printAssertFailed(__FILE__, __LINE__, __func__, #__expr);\
-		std::abort();\
+		abort();\
 		} } while(false)
 #define TST_PERMA_ASSERT_MSG(__expr, __msg)\
 		do { if(!(__expr))\
 		{\
 		printAssertFailedMsg(__FILE__, __LINE__, __func__, #__expr, __msg);\
-		std::abort();\
+		abort();\
 		} } while(false)
+
+#ifdef __cplusplus
+}
+#endif

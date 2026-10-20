@@ -1,0 +1,12 @@
+Ok, so here is my style guide.
+
+. functions should be written in snake case
+. local variables should be written in snake case
+. custom types should be written in upper camel case
+. struct fields and member variables should be written in lower camel case
+. macros/defines should be written in screaming snake case AHHHH_!!!
+
+. I am only going to allow myself to use the C subset of C++ (with the exception for QOL features such as templates (in moderation) and namespaces)
+. everything should be under the master toaster namespace, with each 'subsystem' having it's own nested namespace abbreviation
+. The code should be classless and stateless (no global or implicit state)
+. Enums are always declared as enum classes (not an actual class, so it doesn't count) and they should be prefixed with E. Then, the enumeration values are prefixed with e

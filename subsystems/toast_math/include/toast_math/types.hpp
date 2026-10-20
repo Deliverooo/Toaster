@@ -1,31 +1,18 @@
 #pragma once
 
-#include <cstdint>
+#include <stdint.h>
 
-namespace tsm
-{
-	using b32 = bool;
+typedef bool TstMath_b32;
 
-	using i8  = int8_t;
-	using i16 = int16_t;
-	using i32 = int32_t;
-	using i64 = int64_t;
+typedef int8_t  TstMath_i8;
+typedef int16_t TstMath_i16;
+typedef int32_t TstMath_i32;
+typedef int64_t TstMath_i64;
 
-	using u8  = uint8_t;
-	using u16 = uint16_t;
-	using u32 = uint32_t;
-	using u64 = uint64_t;
+typedef uint8_t  TstMath_u8;
+typedef uint16_t TstMath_u16;
+typedef uint32_t TstMath_u32;
+typedef uint64_t TstMath_u64;
 
-	using f32 = float;
-	using f64 = double;
-
-	using c8  = char8_t;
-	using c16 = char16_t;
-	using c32 = char32_t;
-}
-
-#include <cassert>
-#define TSM_ASSERT_LENGTH(__length, __max) assert ((__length) >= 0 && (__length) < (__max))
-
-#include <DirectXMath.h>
-using namespace DirectX;
+typedef float  TstMath_f32;
+typedef double TstMath_f64;

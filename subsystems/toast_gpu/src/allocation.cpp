@@ -1,9 +1,13 @@
 #include "toast_gpu/allocation.hpp"
+#include "toast_gpu/allocation.hpp"
+
+#include <ranges>
+
 #include "toast_lib/pool.hpp"
 
 #include <vma/vk_mem_alloc.h>
 
-namespace toaster::gpu::alloc
+namespace toaster::gpu
 {
 	struct VirtualBlock
 	{
@@ -19,55 +23,48 @@ namespace toaster::gpu::alloc
 		uint64 size{0u};   // Size of the allocation
 	};
 
-	struct AllocationContextImpl
+	struct AllocationContext
 	{
+		GPUContext *            gpuCtx{nullptr};
 		Pool<VirtualBlock>      virtualBlocks;
 		Pool<VirtualAllocation> virtualAllocations;
 	};
 
-	static AllocationContextImpl *g_impl{nullptr};
-
-	auto initAllocationContext() -> void
+	auto allocation_ctx_create(GPUContext *p_gpu_ctx) -> AllocationContext *
 	{
-		if (g_impl)
-		{
-			TST_PERMA_ASSERT_MSG(false, "Frame context has already been initialised!");
-			return;
-		}
+		AllocationContext *ctx{new AllocationContext{}};
 
-		g_impl = new AllocationContextImpl{};
+		ctx->gpuCtx = p_gpu_ctx;
 
-		g_impl->virtualBlocks.setDestructorFn(+[](VirtualBlock *p_data, void *) -> void
+		ctx->virtualBlocks.setDestructorFn(+[](VirtualBlock *p_data, void *) -> void
 		{
 			vmaDestroyVirtualBlock(p_data->block);
 		});
 
-		g_impl->virtualAllocations.setDestructorFn(+[](VirtualAllocation *p_data, void *) -> void
+		ctx->virtualAllocations.setDestructorUserData(ctx);
+		ctx->virtualAllocations.setDestructorFn(+[](VirtualAllocation *p_data, void *p_ctx) -> void
 		{
-			if (const VirtualBlock *block{g_impl->virtualBlocks.tryGet(p_data->block)})
+			auto ctx{static_cast<AllocationContext *>(p_ctx)};
+			if (const VirtualBlock *block{ctx->virtualBlocks.tryGet(p_data->block)})
 				vmaVirtualFree(block->block, p_data->allocation);
 			else
 			{
 				TST_PERMA_ASSERT_MSG(false, "Attempted to free virtual allocation after destroying associated block!");
 			}
 		});
+
+		return ctx;
 	}
 
-	auto shutdownAllocationContext() -> void
+	auto allocation_ctx_destroy(AllocationContext *p_ctx) -> void
 	{
-		if (!g_impl)
-		{
-			TST_PERMA_ASSERT_MSG(false, "Frame context has not been initialised!");
-			return;
-		}
-		g_impl->virtualAllocations.clear();
-		g_impl->virtualBlocks.clear();
+		p_ctx->virtualAllocations.clear();
+		p_ctx->virtualBlocks.clear();
 
-		delete g_impl;
-		g_impl = nullptr;
+		delete p_ctx;
 	}
 
-	auto createVirtualBlock(uint64 p_size) -> VirtualBlockHandle
+	auto virtual_block_create(AllocationContext *p_ctx, uint64 p_size) -> VirtualBlockHandle
 	{
 		VmaVirtualBlock block{nullptr};
 
@@ -78,17 +75,17 @@ namespace toaster::gpu::alloc
 		if (result != VK_SUCCESS)
 			return nullptr;
 
-		return g_impl->virtualBlocks.emplace(VirtualBlock{block});
+		return p_ctx->virtualBlocks.emplace(VirtualBlock{block});
 	}
 
-	auto destroyVirtualBlock(VirtualBlockHandle p_virtual_block) -> void
+	auto virtual_block_destroy(AllocationContext *p_ctx, VirtualBlockHandle p_virtual_block) -> void
 	{
-		g_impl->virtualBlocks.destroy(p_virtual_block);
+		p_ctx->virtualBlocks.destroy(p_virtual_block);
 	}
 
-	auto virtualAllocate(VirtualBlockHandle p_virtual_block, uint64 p_size, uint64 p_alignment) -> VirtualAllocationHandle
+	auto virtual_block_allocate(AllocationContext *p_ctx, VirtualBlockHandle p_virtual_block, uint64 p_size, uint64 p_alignment) -> VirtualAllocationHandle
 	{
-		VirtualBlock &block{g_impl->virtualBlocks[p_virtual_block]};
+		VirtualBlock &block{p_ctx->virtualBlocks[p_virtual_block]};
 
 		VmaVirtualAllocation allocation{nullptr};
 
@@ -102,99 +99,124 @@ namespace toaster::gpu::alloc
 		if (result != VK_SUCCESS)
 			return nullptr;
 
-		return g_impl->virtualAllocations.emplace(VirtualAllocation{allocation, p_virtual_block, allocation_offset});
+		return p_ctx->virtualAllocations.emplace(VirtualAllocation{allocation, p_virtual_block, allocation_offset});
 	}
 
-	auto virtualFree(VirtualAllocationHandle p_virtual_allocation) -> void
+	auto virtual_block_free(AllocationContext *p_ctx, VirtualAllocationHandle p_virtual_allocation) -> void
 	{
-		g_impl->virtualAllocations.destroy(p_virtual_allocation);
+		p_ctx->virtualAllocations.destroy(p_virtual_allocation);
 	}
 
-	auto getAllocationOffset(VirtualAllocationHandle p_virtual_allocation) -> uint64
+	auto virtual_allocation_get_offset(AllocationContext *p_ctx, VirtualAllocationHandle p_virtual_allocation) -> uint64
 	{
-		VirtualAllocation &allocation{g_impl->virtualAllocations[p_virtual_allocation]};
+		VirtualAllocation &allocation{p_ctx->virtualAllocations[p_virtual_allocation]};
 		return allocation.offset;
 	}
 
-	auto getAllocationSize(VirtualAllocationHandle p_virtual_allocation) -> uint64
+	auto virtual_allocation_get_size(AllocationContext *p_ctx, VirtualAllocationHandle p_virtual_allocation) -> uint64
 	{
-		VirtualAllocation &allocation{g_impl->virtualAllocations[p_virtual_allocation]};
+		VirtualAllocation &allocation{p_ctx->virtualAllocations[p_virtual_allocation]};
 		return allocation.size;
 	}
 
-	GPUPageAllocator::GPUPageAllocator(uint64 p_page_size, ResourceDescriptorHeapHandle p_resource_heap) : m_resourceHeap(p_resource_heap), pageSize(p_page_size)
+	auto page_allocator_create(AllocationContext *p_ctx, PageAllocator *p_out_allocator, uint64 p_page_size, ResourceDescriptorHeapHandle p_resource_heap) -> void
 	{
-		insertPage(); // Insert the default page
+		TST_ASSERT(p_ctx->gpuCtx);
+
+		p_out_allocator->resourceHeap = p_resource_heap;
+		p_out_allocator->pageSize     = p_page_size;
+		_page_allocator_insert_page(p_ctx, p_out_allocator); // Insert the default page
 	}
 
-	GPUPageAllocator::~GPUPageAllocator()
+	auto page_allocator_destroy(AllocationContext *p_ctx, PageAllocator *p_allocator) -> void
 	{
-		for (auto &page: pages | std::views::values)
-			destroyPage(page);
+		TST_ASSERT(p_ctx->gpuCtx);
+
+		for (auto &page: p_allocator->pages | std::views::values)
+			_page_allocator_destroy_page(p_ctx, p_allocator, &page);
+		p_allocator->pages.clear();
+
+		p_allocator->resourceHeap = nullptr;
+		p_allocator->pageSize     = 0u;
+		p_allocator->nextPageId   = 0u;
+		p_allocator->activePageId = 0u;
 	}
 
-	auto GPUPageAllocator::freePageAllocation(const PageAllocation &p_allocation) -> void
+	auto page_allocator_free_page_allocation(AllocationContext *p_ctx, PageAllocator *p_allocator, PageAllocation *p_allocation) -> void
 	{
-		auto page_it{pages.find(p_allocation.pageId)};
-		if (page_it != pages.end())
+		TST_ASSERT(p_ctx->gpuCtx);
+
+		auto page_it{p_allocator->pages.find(p_allocation->pageId)};
+		if (page_it != p_allocator->pages.end())
 		{
-			virtualFree(p_allocation.allocation);
+			virtual_block_free(p_ctx, p_allocation->allocation);
 			TST_SCOPED_ATOMIC(page_it->second.activeAllocations, active_allocations);
 			--active_allocations;
 
-			if (active_allocations.load() == 0u && page_it->first != activePageId)
+			if (active_allocations.load() == 0u && page_it->first != p_allocator->activePageId)
 			{
-				destroyPage(page_it->second);
-				pages.erase(page_it);
+				_page_allocator_destroy_page(p_ctx, p_allocator, &page_it->second);
+				p_allocator->pages.erase(page_it);
 			}
 		}
+		p_allocation->buffer     = nullptr;
+		p_allocation->allocation = nullptr;
+		p_allocation->offset     = 0u;
+		p_allocation->pageId     = 0u;
+		p_allocation->heapSlot   = UINT32_MAX;
 	}
 
-	auto GPUPageAllocator::allocateAcrossPages(uint64 p_size, uint64 p_alignment, PageAllocation &p_out_allocation) -> void
+	auto page_allocator_allocate_across_pages(AllocationContext *p_ctx, PageAllocator *p_allocator, uint64 p_size, uint64 p_alignment,
+											  PageAllocation *   p_out_allocation) -> void
 	{
-		if (tryAllocate(pages[activePageId], p_size, p_alignment, p_out_allocation))
+		TST_ASSERT(p_ctx->gpuCtx);
+
+		if (_page_allocator_try_allocate(p_ctx, p_allocator, &p_allocator->pages[p_allocator->activePageId], p_size, p_alignment, p_out_allocation))
 			return;
 
-		for (auto &[page_id,page]: pages)
+		for (auto &page: p_allocator->pages | std::views::values)
 		{
-			if (tryAllocate(page, p_size, p_alignment, p_out_allocation))
+			if (_page_allocator_try_allocate(p_ctx, p_allocator, &page, p_size, p_alignment, p_out_allocation))
 				return;
 		}
 
-		if (p_size > pageSize) // Create a dedicated allocation
+		if (p_size > p_allocator->pageSize) // Create a dedicated allocation
 		{
-			uint32 page_id{++nextPageId};
-			pages[page_id] = createPage(p_size, page_id);
-			if (!tryAllocate(pages[page_id], p_size, p_alignment, p_out_allocation))
+			TST_SCOPED_ATOMIC(p_allocator->nextPageId, next_page_id);
+			uint32 page_id{++next_page_id};
+			p_allocator->pages[page_id] = _page_allocator_create_page(p_ctx, p_allocator, p_size, page_id);
+			if (!_page_allocator_try_allocate(p_ctx, p_allocator, &p_allocator->pages[page_id], p_size, p_alignment, p_out_allocation))
 				TST_PERMA_ASSERT(false);
 			return;
 		}
 
-		insertPage();
-		if (!tryAllocate(pages[activePageId], p_size, p_alignment, p_out_allocation))
+		_page_allocator_insert_page(p_ctx, p_allocator);
+		if (!_page_allocator_try_allocate(p_ctx, p_allocator, &p_allocator->pages[p_allocator->activePageId], p_size, p_alignment, p_out_allocation))
 		{
 			TST_PERMA_ASSERT(false);
 		}
 	}
 
-	auto GPUPageAllocator::insertPage() -> void
+	auto _page_allocator_insert_page(AllocationContext *p_ctx, PageAllocator *p_allocator) -> void
 	{
-		uint32 page_id{++nextPageId};
-		pages[page_id] = createPage(pageSize, page_id);
-		activePageId   = page_id;
+		TST_SCOPED_ATOMIC(p_allocator->nextPageId, next_page_id);
+		uint32 page_id{++next_page_id};
+		p_allocator->pages[page_id] = _page_allocator_create_page(p_ctx, p_allocator, p_allocator->pageSize, page_id);
+		p_allocator->activePageId   = page_id;
 	}
 
-	auto GPUPageAllocator::tryAllocate(Page &p_page, uint64 p_size, uint64 p_alignment, PageAllocation &p_out_allocation) -> bool
+	auto _page_allocator_try_allocate(AllocationContext *p_ctx, PageAllocator *p_allocator, Page *p_page, uint64 p_size, uint64 p_alignment,
+									  PageAllocation *   p_out_allocation) -> bool
 	{
-		p_out_allocation.allocation = virtualAllocate(p_page.block, p_size, p_alignment);
-		if (p_out_allocation.allocation)
+		p_out_allocation->allocation = virtual_block_allocate(p_ctx, p_page->block, p_size, p_alignment);
+		if (p_out_allocation->allocation)
 		{
-			p_out_allocation.buffer   = p_page.buffer;
-			p_out_allocation.offset   = getAllocationOffset(p_out_allocation.allocation);
-			p_out_allocation.pageId   = p_page.id;
-			p_out_allocation.heapSlot = p_page.heapSlot;
+			p_out_allocation->buffer   = p_page->buffer;
+			p_out_allocation->offset   = virtual_allocation_get_offset(p_ctx, p_out_allocation->allocation);
+			p_out_allocation->pageId   = p_page->id;
+			p_out_allocation->heapSlot = p_page->heapSlot;
 
-			TST_SCOPED_ATOMIC(p_page.activeAllocations, active_allocations);
+			TST_SCOPED_ATOMIC(p_page->activeAllocations, active_allocations);
 			++active_allocations;
 
 			return true;
@@ -202,7 +224,7 @@ namespace toaster::gpu::alloc
 		return false;
 	}
 
-	auto GPUPageAllocator::createPage(uint64 p_size, uint32 p_id) -> Page
+	auto _page_allocator_create_page(AllocationContext *p_ctx, PageAllocator *p_allocator, uint64 p_size, uint32 p_id) -> Page
 	{
 		Page page{};
 		page.size = p_size;
@@ -212,20 +234,20 @@ namespace toaster::gpu::alloc
 		page_desc.size       = p_size;
 		page_desc.memoryType = EMemoryType::eDeviceLocal;
 		page_desc.usage      = EBufferUsageFlagBits::eTransferDst | EBufferUsageFlagBits::eStorageBuffer;
-		page.buffer          = createBuffer(page_desc);
+		page.buffer          = buffer_create(p_ctx->gpuCtx, page_desc);
 
-		page.block = createVirtualBlock(p_size);
+		page.block = virtual_block_create(p_ctx, p_size);
 
-		page.heapSlot = allocBufferHeapSlot(m_resourceHeap);
-		writeBufferDescriptor(m_resourceHeap, page.heapSlot, page.buffer);
+		page.heapSlot = resource_descriptor_heap_alloc_buffer_slot(p_ctx->gpuCtx, p_allocator->resourceHeap);
+		resource_descriptor_heap_write_buffer(p_ctx->gpuCtx, p_allocator->resourceHeap, page.heapSlot, page.buffer);
 
 		return page;
 	}
 
-	auto GPUPageAllocator::destroyPage(Page &p_page) -> void
+	auto _page_allocator_destroy_page(AllocationContext *p_ctx, PageAllocator *p_allocator, Page *p_page) -> void
 	{
-		destroyVirtualBlock(p_page.block);
-		destroyBuffer(p_page.buffer);
-		freeBufferHeapSlot(m_resourceHeap, p_page.heapSlot);
+		virtual_block_destroy(p_ctx, p_page->block);
+		buffer_destroy(p_ctx->gpuCtx, p_page->buffer);
+		resource_descriptor_heap_free_buffer_slot(p_ctx->gpuCtx, p_allocator->resourceHeap, p_page->heapSlot);
 	}
 }

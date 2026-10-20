@@ -9,3 +9,5 @@
 #else
 #define TST_LIB_API
 #endif
+
+#include <stdbool.h>

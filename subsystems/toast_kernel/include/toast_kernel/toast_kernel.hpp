@@ -12,9 +12,9 @@
 
 // Everyone should get the core stuff
 #include "toast_lib/core_basic.hpp"
-#include "toast_lib/enum_flags.hpp"
+#include "toast_lib/enum.hpp"
 
-namespace toaster::ke
+namespace toaster::knl
 {
-	TST_DECLARE_FLAGS_FOR_NAMESPACE();
+	TST_LIB_DECLARE_FLAGS_FOR_NAMESPACE();
 }

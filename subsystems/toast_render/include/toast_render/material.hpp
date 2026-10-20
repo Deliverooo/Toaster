@@ -7,22 +7,22 @@
 
 #define falsity false // Is it a Verity?!
 
-namespace toaster::render
+namespace toaster::rnd
 {
 	enum class EMaterialFlagBits : uint8
 	{
-		eBackfaceCulling = TST_BIT(0u),
-		eTransparent     = TST_BIT(1u),
-		eNoNormalMap     = TST_BIT(2u),
-		eNoRoughnessMap  = TST_BIT(3u),
-		eNoMetalnessMap  = TST_BIT(4u)
+		eBackfaceCulling = TST_LIB_BIT(0u),
+		eTransparent     = TST_LIB_BIT(1u),
+		eNoNormalMap     = TST_LIB_BIT(2u),
+		eNoRoughnessMap  = TST_LIB_BIT(3u),
+		eNoMetalnessMap  = TST_LIB_BIT(4u)
 	};
 
-	TST_SPECIALISE_FLAGS(EMaterialFlagBits, EMaterialFlags);
+	TST_LIB_SPECIALISE_FLAGS(EMaterialFlagBits, EMaterialFlags);
 
 	struct TST_RENDER_API MaterialParams
 	{
-		tsm::float4    albedoColour{1.0f};
+		math::Float4   albedoColour{1.0f, 1.0f, 1.0f, 1.0f};
 		uint32         albedoMapHeapSlot{UINT32_MAX};
 		uint32         normalMapHeapSlot{UINT32_MAX};
 		uint32         roughnessMapHeapSlot{UINT32_MAX};
@@ -48,7 +48,7 @@ namespace toaster::render
 	class TST_RENDER_API MaterialManager
 	{
 	public:
-		MaterialManager(TextureManager *p_texture_manager, uint32 p_max_materials, uint32 p_max_frames_in_flight = 3u);
+		MaterialManager(RenderContext *p_render_ctx, TextureManager *p_texture_mngr, uint32 p_max_materials, uint32 p_max_frames_in_flight = 3u);
 		~MaterialManager();
 
 		[[nodiscard]] auto createMaterial() -> MaterialHandle;
@@ -59,7 +59,7 @@ namespace toaster::render
 		[[nodiscard]] auto tryGetMaterial(MaterialHandle p_handle) -> Material * { return m_materials.tryGet(p_handle); }
 		[[nodiscard]] auto tryGetMaterial(MaterialHandle p_handle) const -> const Material * { return m_materials.tryGet(p_handle); }
 
-		auto setAlbedoColour(MaterialHandle p_handle, const tsm::float4 &p_colour) -> void;
+		auto setAlbedoColour(MaterialHandle p_handle, const math::Float4 &p_colour) -> void;
 		auto setAlbedoMap(MaterialHandle p_handle, TextureHandle p_albedo_map) -> void;
 		auto setNormalMap(MaterialHandle p_handle, TextureHandle p_normal_map) -> void;
 		auto setRoughnessMap(MaterialHandle p_handle, TextureHandle p_roughness_map) -> void;
@@ -87,7 +87,8 @@ namespace toaster::render
 		[[nodiscard]] auto getDefaultMetalnessMap() const -> TextureHandle { return m_defaultMetalnessMap; }
 
 	private:
-		NonOwningPtr<TextureManager> m_textureManager{nullptr};
+		RenderContext * m_renderCtx{nullptr};
+		TextureManager *m_textureMngr{nullptr};
 
 		Pool<Material> m_materials;
 

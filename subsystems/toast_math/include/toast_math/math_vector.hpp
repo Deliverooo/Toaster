@@ -1,88 +1,91 @@
 #pragma once
 
-#include "math_constants.hpp"
-#include "vec4.hpp"
+#include <DirectXMath.h>
+using namespace DirectX; // This is probably the only socially acceptable 'using namespace' to do
 
-namespace tsm
+namespace toaster::math
 {
-	using bool2 = Vec2<b32>;
-	using bool3 = Vec3<b32>;
-	using bool4 = Vec4<b32>;
+	using f32 = float;
+	using f64 = double;
 
-	using int2 = Vec2<i32>;
-	using int3 = Vec3<i32>;
-	using int4 = Vec4<i32>;
+	// TODO: Maybe I will create my own SIMD library some day...
 
-	using uint2 = Vec2<u32>;
-	using uint3 = Vec3<u32>;
-	using uint4 = Vec4<u32>;
+	using Float2 = XMFLOAT2;
+	using Float3 = XMFLOAT3;
+	using Float4 = XMFLOAT4;
 
-	using float2 = Vec2<f32>;
-	using float3 = Vec3<f32>;
-	using float4 = Vec4<f32>;
+	// Apparently, DirectXMath does not have a 2x2 matrix?!
+	using Float3x3 = XMFLOAT3X3;
+	using Float3x4 = XMFLOAT3X4;
+	using Float4x3 = XMFLOAT4X3;
+	using Float4x4 = XMFLOAT4X4;
 
-	using double2 = Vec2<f64>;
-	using double3 = Vec3<f64>;
-	using double4 = Vec4<f64>;
+	using Int2 = XMINT2;
+	using Int3 = XMINT3;
+	using Int4 = XMINT4;
 
-	using Extent2D = uint2;
+	using UInt2 = XMUINT2;
+	using UInt3 = XMUINT3;
+	using UInt4 = XMUINT4;
+
+	// SIMD types
+	using Vector  = XMVECTOR;
+	using FVector = FXMVECTOR;
+	using Matrix  = XMMATRIX;
+	using FMatrix = FXMMATRIX;
 
 	struct Rect
 	{
 		constexpr Rect() = default;
 
-		constexpr Rect(uint2 p_size) : size(p_size), offset(0u)
+		constexpr Rect(UInt2 p_size) : size(p_size), offset(0, 0)
 		{
 		}
 
-		uint2 size{0u};
-		int2  offset{0u};
+		UInt2 size{0u, 0u};
+		Int2  offset{0, 0};
 	};
 
 	struct Viewport // Should map directly to vk::Viewport
 	{
 		constexpr Viewport() = default;
 
-		constexpr Viewport(float2 p_size) : offset(float2::zero), size(p_size), depthBounds(0.0f, 1.0f)
+		constexpr Viewport(Float2 p_size) : offset(0.0f, 0.0f), size(p_size), depthBounds(0.0f, 1.0f)
 		{
 		}
 
-		constexpr Viewport(const Rect &p_rect, float2 p_depth_bounds = float2{0.0f, 1.0f}) : offset(p_rect.offset), size(p_rect.size), depthBounds(p_depth_bounds)
+		constexpr Viewport(const Rect &p_rect, Float2 p_depth_bounds = Float2{0.0f, 1.0f}) : offset(static_cast<f32>(p_rect.offset.x), static_cast<f32>(p_rect.offset.y)),
+																							 size(static_cast<f32>(p_rect.size.x), static_cast<f32>(p_rect.size.y)),
+																							 depthBounds(p_depth_bounds)
 		{
 		}
 
-		float2 offset{float2::zero};
-		float2 size{float2::zero};
-		float2 depthBounds{0.0f, 1.0f}; // Min depth and max depth
+		Float2 offset{0.0f, 0.0f};
+		Float2 size{0.0f, 0.0f};
+		Float2 depthBounds{0.0f, 1.0f}; // Min depth and max depth
 	};
 
-	const XMVECTORI32 vulkanUpDir{.v{0.0f, -1.0f, 0.0f, 1.0f}};
-}
-
-// Incredibly useful for cameras where you want to normalize the change in position without it being infinity... :)
-namespace DirectX
-{
-	inline XMVECTOR XM_CALLCONV XMVector2NormalizeSafe(FXMVECTOR p_vector)
+	inline Vector XM_CALLCONV XMVector2NormalizeSafe(FVector p_vector)
 	{
-		XMVECTOR length{XMVector2LengthSq(p_vector)};
-		XMVECTOR control{XMVectorGreater(length, XMVectorSplatEpsilon())};
-		XMVECTOR normalized{XMVector2Normalize(p_vector)};
+		Vector length{XMVector2LengthSq(p_vector)};
+		Vector control{XMVectorGreater(length, XMVectorSplatEpsilon())};
+		Vector normalized{XMVector2Normalize(p_vector)};
 		return XMVectorSelect(XMVectorZero(), normalized, control);
 	}
 
-	inline XMVECTOR XM_CALLCONV XMVector3NormalizeSafe(FXMVECTOR p_vector)
+	inline Vector XM_CALLCONV XMVector3NormalizeSafe(FVector p_vector)
 	{
-		XMVECTOR length{XMVector3LengthSq(p_vector)};
-		XMVECTOR control{XMVectorGreater(length, XMVectorSplatEpsilon())};
-		XMVECTOR normalized{XMVector3Normalize(p_vector)};
+		Vector length{XMVector3LengthSq(p_vector)};
+		Vector control{XMVectorGreater(length, XMVectorSplatEpsilon())};
+		Vector normalized{XMVector3Normalize(p_vector)};
 		return XMVectorSelect(XMVectorZero(), normalized, control);
 	}
 
-	inline XMVECTOR XM_CALLCONV XMVector4NormalizeSafe(FXMVECTOR p_vector)
+	inline Vector XM_CALLCONV XMVector4NormalizeSafe(FVector p_vector)
 	{
-		XMVECTOR length{XMVector4LengthSq(p_vector)};
-		XMVECTOR control{XMVectorGreater(length, XMVectorSplatEpsilon())};
-		XMVECTOR normalized{XMVector4Normalize(p_vector)};
+		Vector length{XMVector4LengthSq(p_vector)};
+		Vector control{XMVectorGreater(length, XMVectorSplatEpsilon())};
+		Vector normalized{XMVector4Normalize(p_vector)};
 		return XMVectorSelect(XMVectorZero(), normalized, control);
 	}
 }

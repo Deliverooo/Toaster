@@ -1,14 +1,27 @@
 #pragma once
 
 #include "toast_render.hpp"
-#include "toast_gpu/api.hpp"
+#include "toast_gpu/fwd.hpp"
 
-namespace toaster::render
+namespace toaster::gpu
+{
+	struct GPUContext;
+	struct FrameContext;
+	struct AllocationContext;
+	struct UploadContext;
+}
+
+namespace toaster::rnd
 {
 	struct TST_RENDER_API RenderContext
 	{
-		gpu::ResourceDescriptorHeapHandle resourceHeap{nullptr};
-		gpu::SamplerDescriptorHeapHandle  samplerHeap{nullptr};
+		gpu::GPUContext *       gpuCtx;
+		gpu::FrameContext *     frameCtx;
+		gpu::AllocationContext *allocCtx;
+		gpu::UploadContext *    uploadCtx;
+
+		gpu::ResourceDescriptorHeapHandle resourceHeap;
+		gpu::SamplerDescriptorHeapHandle  samplerHeap;
 	};
 
 	struct TST_RENDER_API RenderContextDesc

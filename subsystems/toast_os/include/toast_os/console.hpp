@@ -6,7 +6,6 @@
 namespace toaster::os
 {
 	// Creates a console and redirects all input/output to it
-	TST_OS_API auto createOutputConsole(cstr p_title = "Toaster Debug Output") -> void;
-
-	TST_OS_API auto destroyOutputConsole() -> void;
+	void TST_OS_API output_console_create(cstr p_title);
+	void TST_OS_API output_console_destroy();
 }

@@ -3,7 +3,7 @@
 #include "events/event.hpp"
 #include "toast_gpu/fwd.hpp"
 
-namespace toaster::ke
+namespace toaster::knl
 {
 	struct Application;
 

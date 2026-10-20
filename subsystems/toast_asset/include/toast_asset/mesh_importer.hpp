@@ -8,22 +8,22 @@
 #include "toast_asset.hpp"
 #include "toast_lib/filesystem.hpp"
 
-namespace toaster::asset
+namespace toaster::ast
 {
 	struct TST_ASSET_API RawSubmeshData // Use if you need to generate meshes using an algorithm, then create meshlets
 	{
-		std::vector<render::StaticMeshVertex> vertices;
-		std::vector<uint32>                   indices;
-		uint32                                materialIndex;
+		std::vector<rnd::StaticMeshVertex> vertices;
+		std::vector<uint32>                indices;
+		uint32                             materialIndex;
 	};
 
-	auto TST_ASSET_API generateGeometryData(const RawSubmeshData &        p_submesh_data, std::vector<render::StaticMeshVertex> &p_out_vertices,
-											std::vector<render::Meshlet> &p_out_meshlets, std::vector<uint32> &                  p_out_meshlet_vertices,
-											std::vector<uint8> &          p_out_meshlet_triangles) -> void;
+	auto TST_ASSET_API generateGeometryData(const RawSubmeshData &     p_submesh_data, std::vector<rnd::StaticMeshVertex> &p_out_vertices,
+											std::vector<rnd::Meshlet> &p_out_meshlets, std::vector<uint32> &              p_out_meshlet_vertices,
+											std::vector<uint8> &       p_out_meshlet_triangles) -> void;
 
 	struct TST_ASSET_API TextureImportData
 	{
-		std::optional<filesystem::Path> path;
+		std::optional<std::filesystem::path> path;
 		// TODO: Embedded textures with std::vector<uint8> data
 	};
 
@@ -34,20 +34,20 @@ namespace toaster::asset
 		TextureImportData roughnessMap;
 		TextureImportData metalnessMap;
 
-		tsm::float4 albedoColour;
-		float32     roughness{0.0f};
-		float32     metalness{0.0f};
+		math::Float4 albedoColour;
+		float32      roughness{0.0f};
+		float32      metalness{0.0f};
 
-		render::EMaterialFlags flags{render::EMaterialFlagBits::eBackfaceCulling};
+		rnd::EMaterialFlags flags{rnd::EMaterialFlagBits::eBackfaceCulling};
 	};
 
 	struct TST_ASSET_API MeshImportData
 	{
-		std::vector<render::StaticMeshVertex> vertices;
-		std::vector<render::Meshlet>          meshlets;
-		std::vector<uint32>                   meshletVertices;
-		std::vector<uint8>                    meshletTriangles;
-		std::vector<MaterialImportData>       materials;
+		std::vector<rnd::StaticMeshVertex> vertices;
+		std::vector<rnd::Meshlet>          meshlets;
+		std::vector<uint32>                meshletVertices;
+		std::vector<uint8>                 meshletTriangles;
+		std::vector<MaterialImportData>    materials;
 
 		XMFLOAT4 boundingSphere;
 	};
@@ -55,17 +55,17 @@ namespace toaster::asset
 	class TST_ASSET_API MeshImporter
 	{
 	public:
-		MeshImporter(render::MeshManager *p_mesh_manager, render::MaterialManager *p_material_manager, render::TextureManager *p_texture_manager);
+		MeshImporter(rnd::MeshManager *p_mesh_manager, rnd::MaterialManager *p_material_manager, rnd::TextureManager *p_texture_manager);
 
 		static auto importStaticMeshDataFromFile(const std::filesystem::path &p_path, RefPtr<MeshImportData> &p_out_data) -> void;
 
 		// The callback will probably be used to set material properties just after loading. This does not mean that the GPU uploads have completed, only the mesh parsing has
-		auto asyncLoadStaticMeshFromFile(render::StaticMeshHandle                             p_dst_mesh, const std::filesystem::path &p_path, tf::Executor &p_executor,
-										 const std::function<void(render::StaticMeshHandle)> &p_on_finish_cb = nullptr) -> void;
+		auto asyncLoadStaticMeshFromFile(rnd::StaticMeshHandle                             p_dst_mesh, const std::filesystem::path &p_path, tf::Executor &p_executor,
+										 const std::function<void(rnd::StaticMeshHandle)> &p_on_finish_cb = nullptr) -> void;
 
 	private:
-		NonOwningPtr<render::MeshManager>     m_meshManager{nullptr};
-		NonOwningPtr<render::MaterialManager> m_materialManager{nullptr};
-		NonOwningPtr<render::TextureManager>  m_textureManager{nullptr};
+		rnd::MeshManager *    m_meshManager{nullptr};
+		rnd::MaterialManager *m_materialManager{nullptr};
+		rnd::TextureManager * m_textureManager{nullptr};
 	};
 }

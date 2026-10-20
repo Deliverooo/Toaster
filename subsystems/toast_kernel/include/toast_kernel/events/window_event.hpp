@@ -4,7 +4,7 @@
 
 #include "event.hpp"
 
-namespace toaster::ke
+namespace toaster::knl
 {
 	class TST_KERNEL_API WindowCloseEvent final : public Event
 	{
@@ -17,17 +17,17 @@ namespace toaster::ke
 	class TST_KERNEL_API WindowResizeEvent final : public Event
 	{
 	public:
-		WindowResizeEvent(tsm::uint2 p_size) : m_size(p_size)
+		WindowResizeEvent(math::UInt2 p_size) : m_size(p_size)
 		{
 		}
 
 		EVENT_CLASS_TYPE(eWindowResize)
 
-		[[nodiscard]] auto getSize() const -> tsm::uint2 { return m_size; }
-		[[nodiscard]] auto getAspectRatio() const -> float32 { return m_size.aspect(); }
+		[[nodiscard]] auto getSize() const -> math::UInt2 { return m_size; }
+		[[nodiscard]] auto getAspectRatio() const -> float32 { return static_cast<float32>(m_size.x) / static_cast<float32>(m_size.y); }
 
 	private:
-		tsm::uint2 m_size;
+		math::UInt2 m_size;
 	};
 
 	class TST_KERNEL_API WindowMinimizeEvent final : public Event

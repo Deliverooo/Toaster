@@ -5,16 +5,18 @@
 
 #include <chrono>
 
-namespace toaster::ke
+#include "toast_gpu/api.hpp"
+
+namespace toaster::knl
 {
 	auto application_create(Application *p_out_app, const ApplicationDesc &p_desc) -> void
 	{
 		p_out_app->maxFramesInFlight = p_desc.maxFramesInFlight;
 
-		render::render_context_create(&p_out_app->renderCtx, p_desc.renderCtxDesc);
+		rnd::render_context_create(&p_out_app->renderCtx, p_desc.renderCtxDesc);
 
 		window_init_api();
-		window_create(&p_out_app->window, p_desc.windowDesc);
+		window_create(&p_out_app->window, &p_out_app->renderCtx, p_desc.windowDesc);
 
 		window_set_event_callback_user_data(&p_out_app->window, p_out_app);
 		window_set_event_callback(&p_out_app->window, +[](Event &p_event, void *p_user_data) -> void
@@ -33,8 +35,8 @@ namespace toaster::ke
 
 	auto application_destroy(Application *p_app) -> void
 	{
-		gpu::waitIdle();
-		gpu::upload::pollUploads();
+		gpu::wait_idle(p_app->renderCtx.gpuCtx);
+		gpu::poll_uploads(p_app->renderCtx.uploadCtx);
 
 		for (const auto &layer: p_app->layers)
 		{
@@ -45,7 +47,7 @@ namespace toaster::ke
 
 		window_destroy(&p_app->window);
 
-		render::render_context_destroy(&p_app->renderCtx);
+		rnd::render_context_destroy(&p_app->renderCtx);
 
 		window_shutdown_api();
 	}
@@ -54,7 +56,7 @@ namespace toaster::ke
 	{
 		std::vector<gpu::CommandListHandle> command_lists(p_app->maxFramesInFlight);
 		for (auto &cmd: command_lists)
-			cmd = gpu::getOrCreateCommandList(gpu::EQueueType::eGraphics);
+			cmd = gpu::cmd_list_get_or_create(p_app->renderCtx.gpuCtx, gpu::EQueueType::eGraphics);
 
 		auto last_time{std::chrono::high_resolution_clock::now()};
 		while (p_app->running)
@@ -70,16 +72,16 @@ namespace toaster::ke
 			p_app->deltaTime = elapsed.count();
 			last_time        = current_time;
 
-			gpu::upload::pollUploads();
-			gpu::frame::beginFrame(p_app->frameIndex);
+			gpu::poll_uploads(p_app->renderCtx.uploadCtx);
+			gpu::begin_frame(p_app->renderCtx.frameCtx, p_app->frameIndex);
 
 			gpu::CommandListHandle &cmd{command_lists[p_app->frameIndex]};
-			gpu::resetCommandList(cmd);
+			gpu::cmd_list_reset(p_app->renderCtx.gpuCtx, cmd);
 
-			gpu::openCommandList(cmd);
+			gpu::cmd_list_open(p_app->renderCtx.gpuCtx, cmd);
 			if (!window_begin_frame(&p_app->window, cmd))
 			{
-				gpu::resetCommandList(cmd);
+				gpu::cmd_list_reset(p_app->renderCtx.gpuCtx, cmd);
 				continue;
 			}
 
@@ -100,7 +102,7 @@ namespace toaster::ke
 		}
 
 		for (auto &cmd: command_lists)
-			gpu::freeCommandList(cmd);
+			gpu::cmd_list_free(p_app->renderCtx.gpuCtx, cmd);
 	}
 
 	auto application_close(Application *p_app) -> void
