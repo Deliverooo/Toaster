@@ -827,6 +827,10 @@ namespace toaster::gpu
 
 	#pragma region texture + sampler
 
+	#ifndef NDEBUG
+	auto TST_GPU_API get_num_undefined_textures(GPUContext *p_ctx) -> uint64;
+	#endif
+
 	[[nodiscard]] auto TST_GPU_API texture_create(GPUContext *p_ctx, const TextureDesc &p_desc) -> TextureHandle;
 	auto TST_GPU_API               texture_destroy(GPUContext *p_ctx, TextureHandle p_texture) -> void;
 

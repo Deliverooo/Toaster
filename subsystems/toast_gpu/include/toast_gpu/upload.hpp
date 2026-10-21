@@ -51,7 +51,6 @@ namespace toaster::gpu
 	// Invokes when the state tracker has finished processing all the associated subresources
 	auto TST_GPU_API state_tracker_register_ready_callback(UploadContext *p_ctx, StateTrackerHandle p_state_tracker, StateTrackerReadyFn p_ready_callback) -> void;
 	auto TST_GPU_API state_tracker_is_ready(UploadContext *p_ctx, StateTrackerHandle p_state_tracker) -> bool;
-
 	auto TST_GPU_API state_tracker_wait_for(UploadContext *p_ctx, StateTrackerHandle p_state_tracker) -> void;
 	// Blocks until all pending subresources have completed execution
 

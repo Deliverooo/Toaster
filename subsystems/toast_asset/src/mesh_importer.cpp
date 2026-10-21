@@ -45,7 +45,7 @@ namespace toaster::ast
 	}
 
 	auto generateGeometryData(const RawSubmeshData &p_submesh_data, std::vector<rnd::StaticMeshVertex> &p_out_vertices, std::vector<rnd::Meshlet> &p_out_meshlets,
-							  std::vector<uint32> & p_out_meshlet_vertices, std::vector<uint8> &       p_out_meshlet_triangles) -> void
+							  std::vector<uint32> & p_out_meshlet_vertices, std::vector<uint8> &        p_out_meshlet_triangles) -> void
 	{
 		static constexpr uint64  maxVertices{64u};
 		static constexpr uint64  maxTriangles{128u};
@@ -58,7 +58,7 @@ namespace toaster::ast
 		};
 
 		std::vector<rnd::StaticMeshVertex> optimised_vertices(unique_vertex_count);
-		std::vector<uint32>               optimised_indices(p_submesh_data.indices.size());
+		std::vector<uint32>                optimised_indices(p_submesh_data.indices.size());
 
 		meshopt_remapIndexBuffer(optimised_indices.data(), p_submesh_data.indices.data(), p_submesh_data.indices.size(), remap.data());
 		meshopt_remapVertexBuffer(optimised_vertices.data(), p_submesh_data.vertices.data(), p_submesh_data.vertices.size(), sizeof(rnd::StaticMeshVertex), remap.data());
@@ -128,7 +128,7 @@ namespace toaster::ast
 
 	MeshImporter::MeshImporter(rnd::MeshManager *   p_mesh_manager, rnd::MaterialManager *p_material_manager,
 							   rnd::TextureManager *p_texture_manager) : m_meshManager(p_mesh_manager), m_materialManager(p_material_manager),
-																		m_textureManager(p_texture_manager)
+																		 m_textureManager(p_texture_manager)
 	{
 	}
 
@@ -335,7 +335,7 @@ namespace toaster::ast
 					for (uint32 i{0u}; i < import_data->materials.size(); ++i)
 					{
 						const MaterialImportData &cpu_mat{import_data->materials[i]};
-						rnd::MaterialHandle &      gpu_mat{materials->at(i)};
+						rnd::MaterialHandle &     gpu_mat{materials->at(i)};
 
 						gpu_mat = m_materialManager->createMaterial();
 						m_materialManager->setAlbedoColour(gpu_mat, cpu_mat.albedoColour);

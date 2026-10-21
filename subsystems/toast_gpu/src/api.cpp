@@ -184,6 +184,7 @@ namespace toaster::gpu
 
 	struct GPUContext
 	{
+		bool enableDebugInfo{true};
 		bool usingSwapchain{false}; // From the desc
 
 		uint32 maxConcurrentSwapchainWorkloads{3u};
@@ -700,6 +701,7 @@ namespace toaster::gpu
 	{
 		GPUContext *ctx{new GPUContext{}};
 
+		ctx->enableDebugInfo                 = p_desc.enableDebugInfo;
 		ctx->usingSwapchain                  = p_desc.usingSwapchain;
 		ctx->maxConcurrentSwapchainWorkloads = p_desc.maxConcurrentSwapchainWorkloads;
 
@@ -1171,6 +1173,9 @@ namespace toaster::gpu
 			++i;
 		}
 
+		// I forgot to clear this. I only realised when my RAM maxed out.
+		p_ctx->undefinedTextures.clear();
+
 		mtx_unlock(&p_ctx->undefinedTexturesMutex);
 
 		vk::DependencyInfo dependency_info{};
@@ -1184,7 +1189,8 @@ namespace toaster::gpu
 		command_buffer_alloc_info.level              = vk::CommandBufferLevel::ePrimary;
 		vk::CommandBuffer cmd{p_ctx->logicalDevice.allocateCommandBuffers(command_buffer_alloc_info).front()};
 
-		p_ctx->logicalDevice.setDebugUtilsObjectNameEXT(cmd, "Image memory barrier cmd", FunctionDispatcher::get());
+		if (p_ctx->enableDebugInfo)
+			p_ctx->logicalDevice.setDebugUtilsObjectNameEXT(cmd, "Image memory barrier cmd", FunctionDispatcher::get());
 
 		cmd.begin({vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
 		cmd.pipelineBarrier2(dependency_info);
@@ -1223,7 +1229,8 @@ namespace toaster::gpu
 		command_buffer_alloc_info.level              = p_secondary ? vk::CommandBufferLevel::eSecondary : vk::CommandBufferLevel::ePrimary;
 		vk::CommandBuffer cmd{p_ctx->logicalDevice.allocateCommandBuffers(command_buffer_alloc_info).front()};
 
-		p_ctx->logicalDevice.setDebugUtilsObjectNameEXT(cmd, p_queue_type == EQueueType::eTransfer ? "Transfer cmd" : "Graphics cmd", FunctionDispatcher::get());
+		if (p_ctx->enableDebugInfo)
+			p_ctx->logicalDevice.setDebugUtilsObjectNameEXT(cmd, p_queue_type == EQueueType::eTransfer ? "Transfer cmd" : "Graphics cmd", FunctionDispatcher::get());
 
 		return p_ctx->commandLists.emplace(CommandList{cmd, pool, p_queue_type, false, p_secondary});
 	}
@@ -1802,14 +1809,16 @@ namespace toaster::gpu
 	{
 		CommandList &           cmd{p_ctx->commandLists[p_cmd_list]};
 		ResourceDescriptorHeap &resource_heap{p_ctx->resourceHeaps[p_resource_heap]};
-		cmd.cmd.bindResourceHeapEXT(resource_heap.bindInfo, FunctionDispatcher::get());
+		FunctionDispatcher::get().vkCmdBindResourceHeapEXT(cmd.cmd, reinterpret_cast<const VkBindHeapInfoEXT *>(&resource_heap.bindInfo));
+		// cmd.cmd.bindResourceHeapEXT(resource_heap.bindInfo, FunctionDispatcher::get());
 	}
 
 	auto cmd_bind_sampler_heap(GPUContext *p_ctx, CommandListHandle p_cmd_list, SamplerDescriptorHeapHandle p_sampler_heap) -> void
 	{
 		CommandList &          cmd{p_ctx->commandLists[p_cmd_list]};
 		SamplerDescriptorHeap &sampler_heap{p_ctx->samplerHeaps[p_sampler_heap]};
-		cmd.cmd.bindSamplerHeapEXT(sampler_heap.bindInfo, FunctionDispatcher::get());
+		// cmd.cmd.bindSamplerHeapEXT(sampler_heap.bindInfo, FunctionDispatcher::get());
+		FunctionDispatcher::get().vkCmdBindSamplerHeapEXT(cmd.cmd, reinterpret_cast<const VkBindHeapInfoEXT *>(&sampler_heap.bindInfo));
 	}
 
 	auto cmd_bind_index_buffer(GPUContext *p_ctx, CommandListHandle p_cmd_list, BufferHandle p_index_buffer, EIndexType p_index_type) -> void
@@ -2631,6 +2640,14 @@ namespace toaster::gpu
 		vk::Result res{p_ctx->logicalDevice.getSemaphoreCounterValue(p_ctx->semaphores[p_semaphore].semaphore, &value)};
 		TST_ASSERT_MSG(res == vk::Result::eSuccess, "Failed to query timeline semaphore");
 		return value;
+	}
+
+	auto get_num_undefined_textures(GPUContext *p_ctx) -> uint64
+	{
+		mtx_lock(&p_ctx->undefinedTexturesMutex);
+		const uint64 count{p_ctx->undefinedTextures.size()};
+		mtx_unlock(&p_ctx->undefinedTexturesMutex);
+		return count;
 	}
 
 	auto texture_create(GPUContext *p_ctx, const TextureDesc &p_desc) -> TextureHandle

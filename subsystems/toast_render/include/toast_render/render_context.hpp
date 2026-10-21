@@ -30,6 +30,7 @@ namespace toaster::rnd
 		uint32 maxBufferDescriptors{128u};
 		uint32 maxTextureDescriptors{1028u};
 		uint32 maxSamplerDescriptors{32u};
+		bool   enableDebugInfo{true};
 	};
 
 	auto TST_RENDER_API render_context_create(RenderContext *p_out_render_ctx, const RenderContextDesc &p_desc) -> void;

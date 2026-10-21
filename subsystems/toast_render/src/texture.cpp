@@ -154,6 +154,12 @@ namespace toaster::rnd
 		gpu::state_tracker_wait_for(p_mngr->rndCtx->uploadCtx, texture_data.stateTracker);
 	}
 
+	auto texture_set_state_tracker(TextureManager *p_mngr, TextureHandle p_texture, gpu::StateTrackerHandle p_state_tracker) -> void
+	{
+		Texture &texture_data{p_mngr->textures[p_texture]};
+		texture_data.stateTracker = p_state_tracker;
+	}
+
 	auto texture_get(TextureManager *p_mngr, TextureHandle p_texture) -> Texture *
 	{
 		Texture &texture_data{p_mngr->textures[p_texture]};

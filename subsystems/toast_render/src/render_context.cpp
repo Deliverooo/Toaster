@@ -9,7 +9,7 @@ namespace toaster::rnd
 	auto render_context_create(RenderContext *p_out_render_ctx, const RenderContextDesc &p_desc) -> void
 	{
 		gpu::GPUContextDesc gpu_context_desc{};
-		gpu_context_desc.enableDebugInfo                 = true;
+		gpu_context_desc.enableDebugInfo                 = p_desc.enableDebugInfo;
 		gpu_context_desc.maxConcurrentSwapchainWorkloads = p_desc.maxFramesInFlight;
 		gpu_context_desc.usingSwapchain                  = true;
 		gpu::gpu_ctx_create(gpu_context_desc);

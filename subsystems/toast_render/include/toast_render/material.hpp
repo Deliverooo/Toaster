@@ -37,10 +37,10 @@ namespace toaster::rnd
 	struct TST_RENDER_API Material
 	{
 		MaterialParams params; // Raw parameter data
-		TextureHandle  albedoMap{nullptr};
-		TextureHandle  normalMap{nullptr};
-		TextureHandle  roughnessMap{nullptr};
-		TextureHandle  metalnessMap{nullptr};
+		TextureHandle        albedoMap;
+		TextureHandle        normalMap;
+		TextureHandle        roughnessMap;
+		TextureHandle        metalnessMap;
 	};
 
 	TST_DECLARE_HANDLE(Material);
@@ -60,10 +60,10 @@ namespace toaster::rnd
 		[[nodiscard]] auto tryGetMaterial(MaterialHandle p_handle) const -> const Material * { return m_materials.tryGet(p_handle); }
 
 		auto setAlbedoColour(MaterialHandle p_handle, const math::Float4 &p_colour) -> void;
-		auto setAlbedoMap(MaterialHandle p_handle, TextureHandle p_albedo_map) -> void;
-		auto setNormalMap(MaterialHandle p_handle, TextureHandle p_normal_map) -> void;
-		auto setRoughnessMap(MaterialHandle p_handle, TextureHandle p_roughness_map) -> void;
-		auto setMetalnessMap(MaterialHandle p_handle, TextureHandle p_metalness_map) -> void;
+		auto setAlbedoMap(MaterialHandle p_handle,TextureHandle p_albedo_map) -> void;
+		auto setNormalMap(MaterialHandle p_handle,TextureHandle p_normal_map) -> void;
+		auto setRoughnessMap(MaterialHandle p_handle,TextureHandle p_roughness_map) -> void;
+		auto setMetalnessMap(MaterialHandle p_handle,TextureHandle p_metalness_map) -> void;
 		auto setRoughness(MaterialHandle p_handle, float32 p_roughness) -> void;
 		auto setMetalness(MaterialHandle p_handle, float32 p_metalness) -> void;
 
@@ -104,15 +104,15 @@ namespace toaster::rnd
 			eMetalnessMap
 		};
 
-		std::unordered_map<MaterialHandle, std::unordered_set<EPendingTextureType> > m_pendingMaterialTextureUploads;
 		// List of materials which have textures that are not fully uploaded or created
+		std::unordered_map<MaterialHandle, std::unordered_set<EPendingTextureType> > m_pendingMaterialTextureUploads;
 
 		uint32 m_maxFramesInFlight{3u};
 
-		TextureHandle m_defaultColourMap{nullptr};
-		TextureHandle m_defaultNormalMap{nullptr};
-		TextureHandle m_defaultRoughnessMap{nullptr};
-		TextureHandle m_defaultMetalnessMap{nullptr};
+		TextureHandle m_defaultColourMap;
+		TextureHandle m_defaultNormalMap;
+		TextureHandle m_defaultRoughnessMap;
+		TextureHandle m_defaultMetalnessMap;
 
 		std::mutex m_dirtyMaterialMutex;
 		std::mutex m_textureUploadMutex;

@@ -8,7 +8,7 @@
 
 namespace toaster
 {
-	template<typename TData>
+	template<typename TData, uint64 PageSize = 64u> // 64 Elements, not bytes
 	class Pool
 	{
 	public:
@@ -49,18 +49,24 @@ namespace toaster
 			{
 				id = m_freeIndices.back();
 				m_freeIndices.pop_back();
-				magic = m_entries[id]->magic + 1;
+
+				Entry &entry{_getEntry(id)};
+				magic = entry.magic + 1u;
 			}
 			else
 			{
-				id = m_entries.size();
-				m_entries.resize(id + 1u);
-				m_entries[id] = new Entry{};
+				id = m_totalSlots;
+				m_totalSlots++;
+
+				uint32 required_pages{(id / static_cast<uint32>(PageSize)) + 1u};
+				if (required_pages > m_pages.size())
+					m_pages.push_back(new Entry[PageSize]());
 			}
 
-			m_entries[id]->data  = TData{std::forward<TArgs>(p_args)...};
-			m_entries[id]->magic = magic;
-			m_entries[id]->alive = true;
+			Entry &entry{_getEntry(id)};
+			entry.data  = TData{std::forward<TArgs>(p_args)...};
+			entry.magic = magic;
+			entry.alive = true;
 
 			HandleType out_handle{id, magic};
 			mtx_unlock(&m_mutex);
@@ -79,27 +85,29 @@ namespace toaster
 			}
 
 			uint32 id{p_handle.getId()};
-
-			m_entries[id]->alive = false;
-			++m_entries[id]->magic;
-			m_freeIndices.push_back(id);
-
-			if (m_destructorFn)
-				m_destructorFn(std::addressof(m_entries[id]->data), m_destructorUserData);
+			_destroy(id);
 
 			mtx_unlock(&m_mutex);
 		}
 
 		auto clear() -> void
 		{
-			for (auto &entry: m_entries)
+			mtx_lock(&m_mutex);
+
+			for (uint64 i{0ull}; i < m_totalSlots; ++i)
 			{
-				if (m_destructorFn && entry->alive)
-					m_destructorFn(&entry->data, m_destructorUserData);
-				delete entry;
+				Entry &entry{_getEntry(i)};
+				if (m_destructorFn && entry.alive)
+					m_destructorFn(&entry.data, m_destructorUserData);
 			}
-			m_entries.clear();
-			m_freeIndices.clear();
+
+			for (Entry *page: m_pages)
+				delete[] page;
+			m_pages.clear();
+
+			m_totalSlots = 0ull;
+
+			mtx_unlock(&m_mutex);
 		}
 
 		auto tryGet(HandleType p_handle) -> TData *
@@ -111,7 +119,7 @@ namespace toaster
 				return nullptr;
 			}
 
-			TData *data{std::addressof(m_entries[p_handle.getId()]->data)};
+			TData *data{std::addressof(_getEntry(p_handle.getId()).data)};
 			mtx_unlock(&m_mutex);
 
 			return data;
@@ -126,7 +134,7 @@ namespace toaster
 				return nullptr;
 			}
 
-			const TData *data{std::addressof(m_entries[p_handle.getId()]->data)};
+			const TData *data{std::addressof(_getEntry(p_handle.getId()).data)};
 			mtx_unlock(&m_mutex);
 
 			return data;
@@ -135,7 +143,7 @@ namespace toaster
 		auto operator[](HandleType p_handle) -> TData &
 		{
 			mtx_lock(&m_mutex);
-			TData &data{m_entries[p_handle.getId()]->data};
+			TData &data{_getEntry(p_handle.getId()).data};
 			mtx_unlock(&m_mutex);
 			return data;
 		}
@@ -143,7 +151,7 @@ namespace toaster
 		auto operator[](HandleType p_handle) const -> const TData &
 		{
 			mtx_lock(&m_mutex);
-			TData &data{m_entries[p_handle.getId()]->data};
+			const TData &data{_getEntry(p_handle.getId()).data};
 			mtx_unlock(&m_mutex);
 			return data;
 		}
@@ -160,19 +168,13 @@ namespace toaster
 		{
 			mtx_lock(&m_mutex);
 
-			if (p_id >= m_entries.size())
+			if (p_id >= m_totalSlots)
 			{
 				mtx_unlock(&m_mutex);
-
 				TST_PERMA_ASSERT(false);
 			}
 
-			m_entries[p_id]->alive = false;
-			++m_entries[p_id]->magic;
-			m_freeIndices.push_back(p_id);
-
-			if (m_destructorFn)
-				m_destructorFn(std::addressof(m_entries[p_id]->data), m_destructorUserData);
+			_destroy(p_id);
 
 			mtx_unlock(&m_mutex);
 		}
@@ -182,13 +184,11 @@ namespace toaster
 		{
 			mtx_lock(&m_mutex);
 
-			uint32 i{0u};
-			for (auto &entry: m_entries)
+			for (uint64 i{0ull}; i < m_totalSlots; ++i)
 			{
-				if (entry->alive)
-					p_func(entry->data, i);
-
-				++i;
+				Entry &entry{_getEntry(i)};
+				if (entry.alive)
+					p_func(entry.data, i);
 			}
 
 			mtx_unlock(&m_mutex);
@@ -199,26 +199,17 @@ namespace toaster
 			mtx_lock(&m_mutex);
 
 			uint32 alive_count{0u};
-			for (auto &entry: m_entries)
-				if (entry->alive)
+			for (uint64 i{0ull}; i < m_totalSlots; ++i)
+			{
+				if (_getEntry(i).alive)
 					++alive_count;
-
+			}
 			mtx_unlock(&m_mutex);
 
 			return alive_count;
 		}
 
 	private:
-		auto _isValid(HandleType p_handle) const -> bool
-		{
-			uint32 id{p_handle.getId()};
-
-			if (id >= m_entries.size())
-				return false;
-
-			return m_entries[id]->alive && (m_entries[id]->magic == p_handle.getMagic());
-		}
-
 		struct Entry
 		{
 			TData  data;
@@ -226,12 +217,47 @@ namespace toaster
 			bool   alive{false};
 		};
 
+		auto _getEntry(uint32 p_id) -> Entry &
+		{
+			return m_pages[p_id / static_cast<uint32>(PageSize)][p_id % static_cast<uint32>(PageSize)];
+		}
+
+		auto _getEntry(uint32 p_id) const -> const Entry &
+		{
+			return m_pages[p_id / static_cast<uint32>(PageSize)][p_id % static_cast<uint32>(PageSize)];
+		}
+
+		auto _isValid(HandleType p_handle) const -> bool
+		{
+			uint32 id{p_handle.getId()};
+
+			if (id >= m_totalSlots)
+				return false;
+
+			const Entry &entry{_getEntry(id)};
+			return entry.alive && (entry.magic == p_handle.getMagic());
+		}
+
+		auto _destroy(uint32 p_id) -> void
+		{
+			Entry &entry{_getEntry(p_id)};
+			entry.alive = false;
+			++entry.magic;
+
+			m_freeIndices.push_back(p_id);
+
+			if (m_destructorFn)
+				m_destructorFn(std::addressof(entry.data), m_destructorUserData);
+		}
+
 		mutable mtx_t m_mutex;
 
-		std::vector<Entry *> m_entries;
+		std::vector<Entry *> m_pages;
 		std::vector<uint32>  m_freeIndices;
 
 		DestructorFn m_destructorFn{nullptr};
 		void *       m_destructorUserData{nullptr};
+
+		uint64 m_totalSlots{0ull};
 	};
 }

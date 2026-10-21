@@ -42,6 +42,9 @@ namespace toaster::rnd
 	auto TST_RENDER_API texture_set_data(TextureManager *p_mngr, TextureHandle p_texture, const void *p_data, uint64 p_size) -> void;
 	auto TST_RENDER_API texture_wait_for_upload(TextureManager *p_mngr, TextureHandle p_texture) -> void;
 
+	// You may want to use an already defined state tracker for a texture's upload, if so, remember to use textureSubresourceNoUpload to not create an initial state tracker
+	auto TST_RENDER_API texture_set_state_tracker(TextureManager *p_mngr, TextureHandle p_texture, gpu::StateTrackerHandle p_state_tracker) -> void;
+
 	auto TST_RENDER_API texture_get(TextureManager *p_mngr, TextureHandle p_texture) -> Texture *;
 	auto TST_RENDER_API texture_try_get(TextureManager *p_mngr, TextureHandle p_texture) -> Texture *;
 
