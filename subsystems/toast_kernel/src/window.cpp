@@ -204,7 +204,7 @@ namespace toaster::knl
 		p_window->currentTexture = nullptr;
 	}
 
-	auto window_process_messages(const Window *p_window) -> bool
+	auto window_process_messages(Window *p_window) -> bool
 	{
 		glfwPollEvents();
 		return !glfwWindowShouldClose(p_window->window);

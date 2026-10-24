@@ -63,7 +63,7 @@ namespace toaster::knl
 	auto TST_KERNEL_API window_destroy(Window *p_window) -> void;
 
 	// Returns true if the window should close
-	auto TST_KERNEL_API window_process_messages(const Window *p_window) -> bool;
+	auto TST_KERNEL_API window_process_messages(Window *p_window) -> bool;
 	// returns false if the window has resized and now the current frame needs to be skipped
 	auto TST_KERNEL_API window_check_for_resize(Window *p_window) -> bool;
 

@@ -15,7 +15,13 @@ namespace toaster::rnd
 		gpu::page_allocator_create(m_renderCtx->allocCtx, &m_meshletPager, meshletPageSize, m_renderCtx->resourceHeap);
 		gpu::page_allocator_create(m_renderCtx->allocCtx, &m_meshletVertexPager, meshletVertexPageSize, m_renderCtx->resourceHeap);
 		gpu::page_allocator_create(m_renderCtx->allocCtx, &m_meshletTrianglePager, meshletTrianglePageSize, m_renderCtx->resourceHeap);
-		gpu::page_allocator_create(m_renderCtx->allocCtx, &m_materialIndirectionPager, materialIndirectionPageSize, m_renderCtx->resourceHeap);
+
+		gpu::BufferDesc material_indirection_buffer_desc{};
+		material_indirection_buffer_desc.size       = materialIndirectionBufferSize * sizeof(uint32);
+		material_indirection_buffer_desc.usage      = gpu::EBufferUsageFlagBits::eTransferDst | gpu::EBufferUsageFlagBits::eStorageBuffer;
+		material_indirection_buffer_desc.memoryType = gpu::EMemoryType::eDeviceLocal;
+		m_materialIndirectionBuffer                 = gpu::buffer_create(m_renderCtx->gpuCtx, material_indirection_buffer_desc);
+		m_materialIndirectionBlock                  = gpu::virtual_block_create(m_renderCtx->allocCtx, materialIndirectionBufferSize * sizeof(uint32));
 
 		gpu::BufferDesc static_mesh_metadata_buffer_desc{};
 		static_mesh_metadata_buffer_desc.size       = 1028u * 1028u * sizeof(StaticMeshMetadata); // 28 Mib / ~ 1 million meshes
@@ -38,7 +44,9 @@ namespace toaster::rnd
 				gpu::page_allocator_free_page_allocation(ts->m_renderCtx->allocCtx, &ts->m_meshletPager, &p_data->meshletBufferAllocation);
 				gpu::page_allocator_free_page_allocation(ts->m_renderCtx->allocCtx, &ts->m_meshletVertexPager, &p_data->meshletVertexBufferAllocation);
 				gpu::page_allocator_free_page_allocation(ts->m_renderCtx->allocCtx, &ts->m_meshletTrianglePager, &p_data->meshletTriangleBufferAllocation);
-				gpu::page_allocator_free_page_allocation(ts->m_renderCtx->allocCtx, &ts->m_materialIndirectionPager, &p_data->materialIndirectionBufferAllocation);
+				gpu::virtual_block_free(ts->m_renderCtx->allocCtx, p_data->materialIndirectionBufferAllocation);
+				p_data->materialIndirectionBufferAllocation = nullptr;
+				p_data->materialIndirectionBufferOffset     = 0u;
 			}
 		});
 	}
@@ -51,12 +59,13 @@ namespace toaster::rnd
 		m_staticMeshes.clear();
 
 		gpu::buffer_destroy(m_renderCtx->gpuCtx, m_staticMeshMetadataBuffer);
+		gpu::buffer_destroy(m_renderCtx->gpuCtx, m_materialIndirectionBuffer);
+		gpu::virtual_block_destroy(m_renderCtx->allocCtx, m_materialIndirectionBlock);
 
 		gpu::page_allocator_destroy(m_renderCtx->allocCtx, &m_vertexPager);
 		gpu::page_allocator_destroy(m_renderCtx->allocCtx, &m_meshletPager);
 		gpu::page_allocator_destroy(m_renderCtx->allocCtx, &m_meshletVertexPager);
 		gpu::page_allocator_destroy(m_renderCtx->allocCtx, &m_meshletTrianglePager);
-		gpu::page_allocator_destroy(m_renderCtx->allocCtx, &m_materialIndirectionPager);
 	}
 
 	auto MeshManager::registerStaticMesh() -> StaticMeshHandle
@@ -65,6 +74,10 @@ namespace toaster::rnd
 
 		// Vertex buffer, meshlet buffer, meshlet vertex buffer, meshlet triangle buffer, material indirection buffer and metadata buffer
 		temp_mesh.stateTracker = gpu::state_tracker_register(m_renderCtx->uploadCtx, 6u);
+		gpu::state_tracker_register_ready_callback(m_renderCtx->uploadCtx, temp_mesh.stateTracker, []() -> void
+		{
+			
+		});
 
 		return m_staticMeshes.emplace(std::move(temp_mesh));
 	}
@@ -97,8 +110,10 @@ namespace toaster::rnd
 													  &static_mesh.meshletVertexBufferAllocation);
 			gpu::page_allocator_allocate_across_pages(m_renderCtx->allocCtx, &m_meshletTrianglePager, meshlet_triangle_buffer_size, alignof(uint8),
 													  &static_mesh.meshletTriangleBufferAllocation);
-			gpu::page_allocator_allocate_across_pages(m_renderCtx->allocCtx, &m_materialIndirectionPager, material_indirection_buffer_buffer_size, alignof(uint32),
-													  &static_mesh.materialIndirectionBufferAllocation);
+
+			static_mesh.materialIndirectionBufferAllocation = gpu::virtual_block_allocate(m_renderCtx->allocCtx, m_materialIndirectionBlock,
+																						  material_indirection_buffer_buffer_size, alignof(uint32));
+			static_mesh.materialIndirectionBufferOffset = gpu::virtual_allocation_get_offset(m_renderCtx->allocCtx, static_mesh.materialIndirectionBufferAllocation);
 		}
 
 		#ifndef NDEBUG
@@ -153,13 +168,13 @@ namespace toaster::rnd
 		};
 
 		gpu::upload_data_to_buffer(m_renderCtx->uploadCtx, gpu::BufferUploadDesc{
-									   static_mesh.materialIndirectionBufferAllocation.buffer,
+									   m_materialIndirectionBuffer,
 									   material_indirection_buffer_data.data(),
 									   material_indirection_buffer_buffer_size,
-									   static_mesh.materialIndirectionBufferAllocation.offset
+									   static_mesh.materialIndirectionBufferOffset
 								   }, static_mesh.stateTracker);
 		#ifndef NDEBUG
-		std::println("\tMaterial indirection buffer: Offset: {} | Size: {}", static_mesh.materialIndirectionBufferAllocation.offset,
+		std::println("\tMaterial indirection buffer: Offset: {} | Size: {}", static_mesh.materialIndirectionBufferOffset,
 					 ByteSize{material_indirection_buffer_buffer_size});
 		#endif
 
@@ -177,13 +192,12 @@ namespace toaster::rnd
 		metadata.meshletBufferOffset             = static_cast<uint32>(static_mesh.meshletBufferOffset());
 		metadata.meshletVertexBufferOffset       = static_cast<uint32>(static_mesh.meshletVertexBufferOffset());
 		metadata.meshletTriangleBufferOffset     = static_cast<uint32>(static_mesh.meshletTriangleBufferOffset());
-		metadata.materialIndirectionBufferOffset = static_cast<uint32>(static_mesh.materialIndirectionBufferOffset());
+		metadata.materialIndirectionBufferOffset = static_cast<uint32>(static_mesh.materialIndirectionBufferOffset / sizeof(uint32));
 
-		metadata.vertexBufferPageSlot              = static_cast<uint8>(static_mesh.vertexBufferAllocation.heapSlot);
-		metadata.meshletBufferPageSlot             = static_cast<uint8>(static_mesh.meshletBufferAllocation.heapSlot);
-		metadata.meshletVertexBufferPageSlot       = static_cast<uint8>(static_mesh.meshletVertexBufferAllocation.heapSlot);
-		metadata.meshletTriangleBufferPageSlot     = static_cast<uint8>(static_mesh.meshletTriangleBufferAllocation.heapSlot);
-		metadata.materialIndirectionBufferPageSlot = static_cast<uint8>(static_mesh.materialIndirectionBufferAllocation.heapSlot);
+		metadata.vertexBufferPageSlot          = static_cast<uint8>(static_mesh.vertexBufferAllocation.heapSlot);
+		metadata.meshletBufferPageSlot         = static_cast<uint8>(static_mesh.meshletBufferAllocation.heapSlot);
+		metadata.meshletVertexBufferPageSlot   = static_cast<uint8>(static_mesh.meshletVertexBufferAllocation.heapSlot);
+		metadata.meshletTriangleBufferPageSlot = static_cast<uint8>(static_mesh.meshletTriangleBufferAllocation.heapSlot);
 
 		uint64 metadata_offset{p_handle.getId() * sizeof(StaticMeshMetadata)};
 

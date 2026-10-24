@@ -61,7 +61,7 @@ TST_OS_WINMAIN()
 
 		knl::application_add_layer(&application, &app_layer);
 
-		knl::application_run(&application);
+		knl::application_run(&application, 360.0);
 		knl::application_destroy(&application);
 	}
 

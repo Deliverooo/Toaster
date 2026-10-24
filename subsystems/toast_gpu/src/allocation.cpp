@@ -197,6 +197,16 @@ namespace toaster::gpu
 		}
 	}
 
+	auto page_allocator_get_total_allocated_size(const AllocationContext *p_ctx, const PageAllocator *p_allocator) -> uint64
+	{
+		uint64 total_size{0ull};
+
+		for (const auto &page: p_allocator->pages | std::views::values)
+			total_size += page.size;
+
+		return total_size;
+	}
+
 	auto _page_allocator_insert_page(AllocationContext *p_ctx, PageAllocator *p_allocator) -> void
 	{
 		TST_SCOPED_ATOMIC(p_allocator->nextPageId, next_page_id);

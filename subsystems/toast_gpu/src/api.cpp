@@ -10,10 +10,15 @@
 #include <threads.h>
 
 #define VK_USE_PLATFORM_WIN32_KHR
+#include <chrono>
+#include <fstream>
+#include <print>
 #include <unordered_map>
 #include <vulkan/vulkan.hpp>
 
 #include <vma/vk_mem_alloc.h>
+
+#include "toast_lib/format.hpp"
 
 #undef min
 #undef max
@@ -203,19 +208,19 @@ namespace toaster::gpu
 
 		vk::Device logicalDevice{nullptr};
 
-		QueueFamilyIndices        queueFamilyIndices{};
-		std::array<vk::Queue, 3u> queues;
-		mtx_t                     queueMutexes[3u];
+		QueueFamilyIndices   queueFamilyIndices{};
+		Array<vk::Queue, 3u> queues;
+		mtx_t                queueMutexes[3u];
 
 		#pragma endregion
 
 		VmaAllocator allocator{nullptr};
 
 		TST_REGISTER_RESOURCE_POOL(CommandList, commandLists);
-		mtx_t                                          freeCommandListMutex;
-		std::array<std::vector<CommandListHandle>, 3u> freeCommandLists;   // Free command lists per queue type
-		std::array<std::vector<CommandListHandle>, 3u> freeSecondaryLists; // Free command lists per queue type
-		std::array<vk::CommandPool, 3u>                transientPools;     // Mostly used for allocating command buffers for image layout transitions
+		mtx_t                                     freeCommandListMutex;
+		Array<std::vector<CommandListHandle>, 3u> freeCommandLists;   // Free command lists per queue type
+		Array<std::vector<CommandListHandle>, 3u> freeSecondaryLists; // Free command lists per queue type
+		Array<vk::CommandPool, 3u>                transientPools;     // Mostly used for allocating command buffers for image layout transitions
 
 		TST_REGISTER_RESOURCE_POOL(ResourceDescriptorHeap, resourceHeaps);
 		TST_REGISTER_RESOURCE_POOL(SamplerDescriptorHeap, samplerHeaps);
@@ -825,7 +830,8 @@ namespace toaster::gpu
 			vk::KHRShaderUntypedPointersExtensionName,
 			vk::KHRMaintenance9ExtensionName,
 			vk::KHRUnifiedImageLayoutsExtensionName,
-			vk::EXTFragmentShaderInterlockExtensionName
+			vk::EXTFragmentShaderInterlockExtensionName,
+			vk::EXTMemoryBudgetExtensionName
 		};
 		if (p_desc.usingSwapchain)
 			required_device_extensions.emplace(vk::KHRSwapchainExtensionName);
@@ -1123,6 +1129,26 @@ namespace toaster::gpu
 		mtx_destroy(&p_ctx->undefinedTexturesMutex);
 
 		delete p_ctx;
+	}
+
+	auto gpu_ctx_print_allocation_statistics(const GPUContext *p_ctx) -> void
+	{
+		VmaTotalStatistics stats;
+		vmaCalculateStatistics(p_ctx->allocator, &stats);
+		std::println("Allocation byte size: {}", ByteSize{stats.total.statistics.allocationBytes});
+		std::println("VMA allocated from driver: {}", ByteSize{stats.total.statistics.blockBytes});
+	}
+
+	auto gpu_ctx_dump_allocation_statistics_to_json(const GPUContext *p_ctx, StringView p_path) -> void
+	{
+		char *stats_string{nullptr};
+		vmaBuildStatsString(p_ctx->allocator, &stats_string, true);
+
+		std::ofstream out_stats{p_path.data()};
+		out_stats << stats_string;
+		out_stats.close();
+
+		vmaFreeStatsString(p_ctx->allocator, stats_string);
 	}
 
 	auto wait_idle(GPUContext *p_ctx) -> void
@@ -1591,7 +1617,7 @@ namespace toaster::gpu
 
 		for (uint32 i{1u}; i < dst_texture->desc.mipCount; ++i)
 		{
-			std::array<vk::ImageMemoryBarrier2, 2u> pre_blit_barriers;
+			Array<vk::ImageMemoryBarrier2, 2u> pre_blit_barriers;
 
 			// Src mip
 			pre_blit_barriers[0u]                               = memory_barrier;
@@ -1614,8 +1640,9 @@ namespace toaster::gpu
 			dependency_info.pImageMemoryBarriers    = pre_blit_barriers.data();
 			cmd.cmd.pipelineBarrier2(dependency_info);
 
-			std::array<vk::Offset3D, 2> src_offsets;
-			std::array<vk::Offset3D, 2> dst_offsets;
+			VkImageBlit2 image_blit{};
+			auto &       src_offsets{image_blit.srcOffsets};
+			auto &       dst_offsets{image_blit.dstOffsets};
 
 			src_offsets[0] = vk::Offset3D{0, 0, 0};
 			src_offsets[1] = vk::Offset3D{mip_width, mip_height, 1};
@@ -1626,21 +1653,18 @@ namespace toaster::gpu
 			dst_offsets[0] = vk::Offset3D{0, 0, 0};
 			dst_offsets[1] = vk::Offset3D{next_width, next_height, 1};
 
-			vk::ImageBlit2 image_blit{};
-			image_blit.srcOffsets     = src_offsets;
-			image_blit.dstOffsets     = dst_offsets;
 			image_blit.srcSubresource = vk::ImageSubresourceLayers{image_aspect, i - 1, 0, 1};
 			image_blit.dstSubresource = vk::ImageSubresourceLayers{image_aspect, i, 0, 1};
 
-			vk::BlitImageInfo2 blit_info{};
+			VkBlitImageInfo2 blit_info{};
 			blit_info.srcImage       = dst_texture->image;
 			blit_info.dstImage       = dst_texture->image;
-			blit_info.srcImageLayout = vk::ImageLayout::eGeneral;
-			blit_info.dstImageLayout = vk::ImageLayout::eGeneral;
+			blit_info.srcImageLayout = VK_IMAGE_LAYOUT_GENERAL;
+			blit_info.dstImageLayout = VK_IMAGE_LAYOUT_GENERAL;
 			blit_info.regionCount    = 1u;
 			blit_info.pRegions       = &image_blit;
-			blit_info.filter         = vk::Filter::eLinear;
-			cmd.cmd.blitImage2(blit_info);
+			blit_info.filter         = VK_FILTER_LINEAR;
+			FunctionDispatcher::get().vkCmdBlitImage2(cmd.cmd, &blit_info);
 
 			if (mip_width > 1)
 				mip_width /= 2;
@@ -3021,14 +3045,14 @@ namespace toaster::gpu
 		cmd.cmd.pipelineBarrier2(dependency_info);
 	}
 
-	auto swapchain_submit_and_present(GPUContext *               p_ctx, SwapchainHandle p_swapchain, CommandListHandle p_cmd_list,
+	auto swapchain_submit_and_present(GPUContext *p_ctx, SwapchainHandle p_swapchain, CommandListHandle p_cmd_list,
 									  const SemaphoreSubmitInfo &p_signal_semaphore_info) -> bool
 	{
-		return swapchain_submit_and_present(p_ctx, p_swapchain, p_cmd_list, p_signal_semaphore_info, {});
+		return swapchain_submit_and_present(p_ctx, p_swapchain, p_cmd_list,  p_signal_semaphore_info, {});
 	}
 
-	auto swapchain_submit_and_present(GPUContext *p_ctx, SwapchainHandle p_swapchain, CommandListHandle p_cmd_list, const SemaphoreSubmitInfo &p_signal_semaphore_info,
-									  InitialiserList<const SemaphoreSubmitInfo> p_wait_semaphore_infos) -> bool
+	auto swapchain_submit_and_present(GPUContext *p_ctx, SwapchainHandle p_swapchain, CommandListHandle p_cmd_list,
+									  const SemaphoreSubmitInfo &p_signal_semaphore_info, InitialiserList<const SemaphoreSubmitInfo> p_wait_semaphore_infos) -> bool
 	{
 		Swapchain &  swapchain{p_ctx->swapchains[p_swapchain]};
 		CommandList &cmd{p_ctx->commandLists[p_cmd_list]};

@@ -64,6 +64,9 @@ namespace toaster::gpu
 	auto TST_GPU_API page_allocator_allocate_across_pages(AllocationContext *p_ctx, PageAllocator *p_allocator, uint64 p_size, uint64 p_alignment,
 														  PageAllocation *   p_out_allocation) -> void;
 
+	// Returns the total size of all allocated pages
+	auto TST_GPU_API page_allocator_get_total_allocated_size(const AllocationContext *p_ctx, const PageAllocator *p_allocator) -> uint64;
+
 	// Internals
 	auto TST_GPU_API _page_allocator_insert_page(AllocationContext *p_ctx, PageAllocator *p_allocator) -> void;
 	auto TST_GPU_API _page_allocator_try_allocate(AllocationContext *p_ctx, PageAllocator *p_allocator, Page *p_page, uint64 p_size, uint64 p_alignment,

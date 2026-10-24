@@ -634,6 +634,9 @@ namespace toaster::gpu
 	auto TST_GPU_API gpu_ctx_create(const GPUContextDesc &p_desc) -> GPUContext *;
 	auto TST_GPU_API gpu_ctx_destroy(GPUContext *p_ctx) -> void;
 
+	auto TST_GPU_API gpu_ctx_print_allocation_statistics(const GPUContext *p_ctx) -> void;
+	auto TST_GPU_API gpu_ctx_dump_allocation_statistics_to_json(const GPUContext *p_ctx, StringView p_path) -> void;
+
 	auto TST_GPU_API wait_idle(GPUContext *p_ctx) -> void;
 	auto TST_GPU_API wait_queue_idle(GPUContext *p_ctx, EQueueType p_queue_type) -> void;
 

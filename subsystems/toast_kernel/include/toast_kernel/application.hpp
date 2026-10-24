@@ -29,7 +29,7 @@ namespace toaster::knl
 
 	auto TST_KERNEL_API application_create(Application *p_out_app, const ApplicationDesc &p_desc) -> void;
 	auto TST_KERNEL_API application_destroy(Application *p_app) -> void;
-	auto TST_KERNEL_API application_run(Application *p_app) -> void;
+	auto TST_KERNEL_API application_run(Application *p_app, float64 p_target_fps) -> void;
 
 	auto TST_KERNEL_API application_close(Application *p_app) -> void;
 

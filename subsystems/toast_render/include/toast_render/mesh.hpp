@@ -44,7 +44,6 @@ namespace toaster::rnd
 		uint8 meshletBufferPageSlot{0u};
 		uint8 meshletVertexBufferPageSlot{0u};
 		uint8 meshletTriangleBufferPageSlot{0u};
-		uint8 materialIndirectionBufferPageSlot{0u};
 	};
 
 	struct TST_RENDER_API StaticMesh
@@ -52,11 +51,12 @@ namespace toaster::rnd
 		std::vector<Meshlet>        meshlets;
 		std::vector<MaterialHandle> materials; // The actual materials the meshlets hold indices to
 
-		gpu::PageAllocation vertexBufferAllocation{};
-		gpu::PageAllocation meshletBufferAllocation{};
-		gpu::PageAllocation meshletVertexBufferAllocation{};
-		gpu::PageAllocation meshletTriangleBufferAllocation{};
-		gpu::PageAllocation materialIndirectionBufferAllocation{};
+		gpu::PageAllocation          vertexBufferAllocation{};
+		gpu::PageAllocation          meshletBufferAllocation{};
+		gpu::PageAllocation          meshletVertexBufferAllocation{};
+		gpu::PageAllocation          meshletTriangleBufferAllocation{};
+		gpu::VirtualAllocationHandle materialIndirectionBufferAllocation{nullptr};
+		uint32                       materialIndirectionBufferOffset{0u};
 
 		gpu::StateTrackerHandle stateTracker{nullptr};
 
@@ -66,7 +66,10 @@ namespace toaster::rnd
 		[[nodiscard]] auto meshletBufferOffset() const -> uint64 { return meshletBufferAllocation.offset / sizeof(Meshlet); }
 		[[nodiscard]] auto meshletVertexBufferOffset() const -> uint64 { return meshletVertexBufferAllocation.offset / sizeof(uint32); }
 		[[nodiscard]] auto meshletTriangleBufferOffset() const -> uint64 { return meshletTriangleBufferAllocation.offset / sizeof(uint8); }
-		[[nodiscard]] auto materialIndirectionBufferOffset() const -> uint64 { return materialIndirectionBufferAllocation.offset / sizeof(uint32); }
+	};
+
+	struct TST_RENDER_API Mesh
+	{
 	};
 
 	TST_DECLARE_HANDLE(StaticMesh);
@@ -100,6 +103,20 @@ namespace toaster::rnd
 			return gpu::buffer_get_address(m_renderCtx->gpuCtx, m_staticMeshMetadataBuffer);
 		}
 
+		[[nodiscard]] auto getMaterialIndirectionBufferAddress() const -> gpu::DeviceAddress
+		{
+			return gpu::buffer_get_address(m_renderCtx->gpuCtx, m_materialIndirectionBuffer);
+		}
+
+		auto getTotalVertexAllocatedSize() const -> uint64 { return gpu::page_allocator_get_total_allocated_size(m_renderCtx->allocCtx, &m_vertexPager); }
+		auto getTotalMeshletAllocatedSize() const -> uint64 { return gpu::page_allocator_get_total_allocated_size(m_renderCtx->allocCtx, &m_meshletPager); }
+		auto getTotalMeshletVertexAllocatedSize() const -> uint64 { return gpu::page_allocator_get_total_allocated_size(m_renderCtx->allocCtx, &m_meshletVertexPager); }
+
+		auto getTotalMeshletTriangleAllocatedSize() const -> uint64
+		{
+			return gpu::page_allocator_get_total_allocated_size(m_renderCtx->allocCtx, &m_meshletTrianglePager);
+		}
+
 	private:
 		// Total initial page size of 576 Mib. Unless you are loading the entire planet, pages won't really be added during runtime.
 		// For scale, the Sponza only uses ~60 Mib for its vertex data.
@@ -117,9 +134,11 @@ namespace toaster::rnd
 		gpu::PageAllocator m_meshletVertexPager;
 		gpu::PageAllocator m_meshletTrianglePager;
 
+		static constexpr uint64 materialIndirectionBufferSize{1000u * 1000u}; // (1,000,000 materials)
+		gpu::BufferHandle       m_materialIndirectionBuffer{nullptr};
+		gpu::VirtualBlockHandle m_materialIndirectionBlock{nullptr};
 		// This is more than enough. E.g. Sponza only uses 27-30 materials, which is 30 * sizeof(uint32) = 120 bytes
-		static constexpr uint64 materialIndirectionPageSize{2u * 1024 * 1024u}; // 2 Mib.
-		gpu::PageAllocator      m_materialIndirectionPager;
+		// gpu::PageAllocator      m_materialIndirectionPager;
 
 		gpu::BufferHandle m_staticMeshMetadataBuffer{nullptr}; // Indexed by the mesh handle's id
 

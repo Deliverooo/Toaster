@@ -78,6 +78,10 @@ namespace toaster::knl
 	void input_set_cursor_mode(InputContext *p_input_ctx, ECursorMode p_cursor_mode)
 	{
 		glfwSetInputMode(static_cast<GLFWwindow *>(p_input_ctx->windowCtx), GLFW_CURSOR, GLFW_CURSOR_NORMAL + TST_LIB_ENUM_VAL(p_cursor_mode));
+		if (p_cursor_mode == ECursorMode::eDisabled)
+		{
+			glfwSetInputMode(static_cast<GLFWwindow *>(p_input_ctx->windowCtx), GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
+		}
 		p_input_ctx->currentCursorMode = p_cursor_mode;
 	}
 
@@ -104,18 +108,12 @@ namespace toaster::knl
 
 	math::Float2 input_get_mouse_pos(const InputContext *p_input_ctx)
 	{
-		math::Float2 out_pos;
-		out_pos.x = p_input_ctx->mouseX;
-		out_pos.y = p_input_ctx->mouseY;
-		return out_pos;
+		return {p_input_ctx->mouseX, p_input_ctx->mouseY};
 	}
 
 	math::Float2 input_get_mouse_delta_pos(const InputContext *p_input_ctx)
 	{
-		math::Float2 out_delta_pos;
-		out_delta_pos.x = p_input_ctx->mouseDx;
-		out_delta_pos.y = p_input_ctx->mouseDy;
-		return out_delta_pos;
+		return {p_input_ctx->mouseDx, p_input_ctx->mouseDy};
 	}
 
 	math::Float2 input_get_mouse_scroll(const InputContext *p_input_ctx)

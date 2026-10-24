@@ -8,6 +8,22 @@ namespace toaster::math
 	using f32 = float;
 	using f64 = double;
 
+	struct Double2
+	{
+		constexpr Double2() = default;
+
+		constexpr Double2(f64 p_s) : x(p_s), y(p_s)
+		{
+		}
+
+		constexpr Double2(f64 p_x, f64 p_y) : x(p_x), y(p_y)
+		{
+		}
+
+		f64 x;
+		f64 y;
+	};
+
 	// TODO: Maybe I will create my own SIMD library some day...
 
 	using Float2 = XMFLOAT2;

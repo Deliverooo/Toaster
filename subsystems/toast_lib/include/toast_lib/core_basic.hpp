@@ -5,6 +5,7 @@
 
 #include "initialiser_list.hpp"
 #include "memory.hpp"
+#include "array.hpp"
 #include "ptr.hpp"
 #include "string.hpp"
 #include "bit.h"
