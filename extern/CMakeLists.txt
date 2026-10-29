@@ -1,20 +1,43 @@
-add_subdirectory(stb)
-
 include(FetchContent)
 
-#Mimalloc ---
-set(MI_INSTALL_TOPLEVEL ON CACHE BOOL "" FORCE)
-set(MI_BUILD_STATIC OFF CACHE BOOL "" FORCE)
-set(MI_BUILD_SHARED ON CACHE BOOL "" FORCE)
-set(MI_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-set(MI_WIN_REDIRECT ON CACHE BOOL "" FORCE)
+#rpmalloc ---
 FetchContent_Declare(
-		mimalloc
-		GIT_REPOSITORY https://github.com/microsoft/mimalloc.git
-		GIT_TAG main3
+		rpmalloc
+		GIT_REPOSITORY https://github.com/mjansson/rpmalloc.git
+		GIT_TAG develop
 )
-FetchContent_MakeAvailable(mimalloc)
-#Mimalloc ---
+FetchContent_MakeAvailable(rpmalloc)
+
+add_library(rpmalloc SHARED)
+add_library(rpmalloc::rpmalloc ALIAS rpmalloc)
+
+target_sources(rpmalloc PRIVATE "${rpmalloc_SOURCE_DIR}/rpmalloc/rpmalloc.c")
+target_include_directories(rpmalloc PUBLIC
+		$<BUILD_INTERFACE:${rpmalloc_SOURCE_DIR}>
+		$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
+
+target_compile_definitions(rpmalloc PRIVATE
+		ENABLE_STATISTICS=1
+		ENABLE_ASSERTS=0
+)
+
+set_target_properties(rpmalloc PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
+
+if (TOASTER_INSTALL)
+	install(TARGETS rpmalloc
+			EXPORT ToasterTargets
+			RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+			LIBRARY DESTINATION ${CMAKE_INSTALL_BINDIR}
+			ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+	)
+	install(DIRECTORY ${rpmalloc_SOURCE_DIR}/rpmalloc DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+			PATTERN "*.c" EXCLUDE
+			PATTERN "rpnew.h" EXCLUDE # This can only be included in one source file
+	)
+endif ()
+#rpmalloc ---
+
+add_subdirectory(stb)
 
 #Vulkan Headers ---
 set(VULKAN_HEADERS_ENABLE_MODULE OFF CACHE BOOL "" FORCE)
@@ -26,8 +49,6 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(vulkan_headers)
 #Vulkan Headers ---
-
-message("Vulkan headers install dir: ${vulkan_headers_SOURCE_DIR}")
 
 set(VULKAN_HEADERS_INSTALL_DIR ${vulkan_headers_SOURCE_DIR})
 
@@ -51,10 +72,11 @@ FetchContent_MakeAvailable(volk)
 #Volk ---
 
 #FastGLTF ---
+set(FASTGLTF_ENABLE_INSTALL ON CACHE BOOL "" FORCE)
 FetchContent_Declare(
 		fastgltf
 		GIT_REPOSITORY https://github.com/spnda/fastgltf.git
-		GIT_TAG main
+		GIT_TAG v0.9.1
 )
 FetchContent_MakeAvailable(fastgltf)
 #FastGLTF ---
@@ -79,36 +101,3 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(glfw)
 #GLFW ---
-
-#EnTT ---
-set(ENTT_INSTALL ON CACHE BOOL "" FORCE)
-FetchContent_Declare(
-		entt
-		GIT_REPOSITORY https://github.com/skypjack/entt.git
-		GIT_TAG main
-)
-FetchContent_MakeAvailable(entt)
-#EnTT ---
-
-#Taskflow ---
-set(TF_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-set(TF_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-FetchContent_Declare(
-		taskflow
-		GIT_REPOSITORY https://github.com/taskflow/taskflow.git
-		GIT_TAG master
-)
-FetchContent_MakeAvailable(taskflow)
-#Taskflow ---
-
-##Jolt ---
-#set(JPH_BUILD_SHARED_LIBS ON CACHE BOOL "" FORCE)
-#set(ENABLE_INSTALL ON CACHE BOOL "" FORCE)
-#FetchContent_Declare(
-#		jolt
-#		GIT_REPOSITORY https://github.com/jrouwe/JoltPhysics.git
-#		GIT_TAG master
-#		SOURCE_SUBDIR "Build"
-#)
-#FetchContent_MakeAvailable(jolt)
-##Jolt ---

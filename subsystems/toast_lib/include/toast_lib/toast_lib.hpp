@@ -2,4 +2,4 @@
 
 #define TST_LIB_API
 
-#include <mimalloc.h>
+#include <rpmalloc/rpmalloc.h>

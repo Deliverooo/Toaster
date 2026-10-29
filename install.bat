@@ -18,8 +18,8 @@ echo %PATH%
 
 cmake -B build -S . --install-prefix "C:/Program Files/ToasterSDK/3.0/"
 cmake --build build --config Debug
-cmake --build build --config Release
 cmake --install build --config Debug
+cmake --build build --config Release
 cmake --install build --config Release
 
 pause

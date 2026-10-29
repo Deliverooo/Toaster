@@ -3,13 +3,13 @@ set(SRC
 )
 
 add_library(ToastOS SHARED)
+add_library(Toaster::ToastOS ALIAS ToastOS)
 
-target_include_directories(ToastOS PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-		$<INSTALL_INTERFACE:include>)
+target_include_directories(ToastOS PUBLIC
+		$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+		$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 
 target_sources(ToastOS PRIVATE ${SRC})
-
-add_library(Toaster::ToastOS ALIAS ToastOS)
 
 add_compile_definitions(ToastOS PUBLIC TST_OS_BUILD_DLL)
 add_compile_definitions(ToastOS PRIVATE TST_OS_DLL_EXPORT)
@@ -17,10 +17,9 @@ add_compile_definitions(ToastOS PRIVATE TST_OS_DLL_EXPORT)
 if (TOASTER_INSTALL)
 	install(TARGETS ToastOS
 			EXPORT ToasterTargets
-			RUNTIME DESTINATION bin
-			LIBRARY DESTINATION lib
-			ARCHIVE DESTINATION lib
+			RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+			LIBRARY DESTINATION ${CMAKE_INSTALL_BINDIR}
+			ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
 	)
-	install(DIRECTORY include/ DESTINATION include)
-
+	install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 endif ()

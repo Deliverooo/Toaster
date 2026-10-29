@@ -1,11 +1,7 @@
 #pragma once
 
 #include "toast_lib.hpp"
-
-#ifdef __cplusplus
-extern "C"
-{
-#endif
+#include <cstdlib>
 
 TST_LIB_API void printAssertFailed(const char *p_file, int p_line, const char *p_function, const char *p_expression);
 TST_LIB_API void printAssertFailedMsg(const char *p_file, int p_line, const char *p_function, const char *p_expression, const char *p_message);
@@ -45,7 +41,3 @@ TST_LIB_API void printAssertFailedMsg(const char *p_file, int p_line, const char
 		printAssertFailedMsg(__FILE__, __LINE__, __func__, #__expr, __msg);\
 		abort();\
 		} } while(false)
-
-#ifdef __cplusplus
-}
-#endif

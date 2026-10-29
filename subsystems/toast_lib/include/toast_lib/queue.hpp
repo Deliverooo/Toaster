@@ -2,12 +2,12 @@
 
 #include <queue>
 
-#include "toast_lib.hpp"
+#include "allocator.hpp"
 
 namespace toaster
 {
 	template<typename Type>
-	using Deque = std::deque<Type, mi_stl_allocator<Type>>;
+	using Deque = std::deque<Type, Allocator<Type>>;
 
 	template<typename Type>
 	using Queue = std::queue<Type, Deque<Type>>;

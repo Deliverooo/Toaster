@@ -1,7 +1,7 @@
 #pragma once
 
 #include "system_types.h"
-#include "toast_assert.h"
+#include "toast_assert.hpp"
 #include "vector.hpp"
 
 namespace toaster

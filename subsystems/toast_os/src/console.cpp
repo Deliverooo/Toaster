@@ -21,8 +21,6 @@ namespace toaster::os
 			std::cin.clear();
 
 			std::ios_base::sync_with_stdio();
-
-			printf("Console initialised!\n"); // If I don't print something, there is a chance that subsequent calls to printf will do nothing...
 		}
 		else
 		{

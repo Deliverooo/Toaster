@@ -2,10 +2,10 @@
 
 #include <vector>
 
-#include "toast_lib.hpp"
+#include "allocator.hpp"
 
 namespace toaster
 {
 	template<typename Type>
-	using Vector = std::vector<Type, mi_stl_allocator<Type>>;
+	using Vector = std::vector<Type, Allocator<Type>>;
 }

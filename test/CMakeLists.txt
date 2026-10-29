@@ -5,13 +5,10 @@ set(SRC
 add_executable(toaster_test WIN32 ${SRC})
 
 target_link_libraries(toaster_test PRIVATE
-
 		Toaster::ToastLib
 		Toaster::ToastOS
 		Toaster::ToastKernel
-		#		Toaster::ToastAsset
-		#		Toaster::ToastScene
-		#		Taskflow::Taskflow
+		Toaster::ToastAsset
 )
 
 find_package(Vulkan REQUIRED COMPONENTS dxc glslangValidator shaderc_combined SPIRV-Tools)

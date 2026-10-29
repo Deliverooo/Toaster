@@ -6,6 +6,6 @@
 #include "initialiser_list.hpp"
 #include "string.hpp"
 #include "system_types.h"
-#include "toast_assert.h"
+#include "toast_assert.hpp"
 #include "util_defines.h"
 #include "vector.hpp"

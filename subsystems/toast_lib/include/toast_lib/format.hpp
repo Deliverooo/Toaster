@@ -2,8 +2,7 @@
 
 #include <format>
 
-#include "toast_lib.hpp"
-#include "system_types.h"
+#include "array.hpp"
 
 namespace toaster
 {
@@ -24,8 +23,8 @@ struct std::formatter<toaster::ByteSize>
 
 	auto format(const toaster::ByteSize &p_byte_size, std::format_context &p_ctx) const
 	{
-		constexpr std::array<std::string_view, 6u> decimal_units{"B", "KB", "MB", "GB", "TB", "PB"};
-		constexpr std::array<std::string_view, 6u> binary_units{"B", "KiB", "MiB", "GiB", "TiB", "PiB"};
+		constexpr toaster::Array<std::string_view, 6u> decimal_units{"B", "KB", "MB", "GB", "TB", "PB"};
+		constexpr toaster::Array<std::string_view, 6u> binary_units{"B", "KiB", "MiB", "GiB", "TiB", "PiB"};
 
 		const float64 base{p_byte_size.base2Units ? 1024.0 : 1000.0};
 		const auto &  units{p_byte_size.base2Units ? binary_units : decimal_units};

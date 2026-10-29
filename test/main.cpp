@@ -7,7 +7,7 @@
 #include <toast_gpu/api.hpp>
 #include <toast_gpu/upload.hpp>
 
-#include "toast_render/texture.hpp"
+#include <toast_render/texture.hpp>
 
 using namespace toaster;
 
@@ -18,6 +18,23 @@ TST_OS_WINMAIN()
 {
 	os::output_console_create("Toaster Test Debug Output");
 
+	rpmalloc_interface_t malloc_interface{};
+	malloc_interface.error_callback = +[](CString p_message) -> void
+	{
+		printf("rpmalloc Error: %s\n", p_message);
+	};
+	rpmalloc_initialize(&malloc_interface);
+
+	{
+		Vector<int32> vector;
+		vector.emplace_back(0);
+		vector.emplace_back(1);
+		vector.emplace_back(2);
+		vector.emplace_back(3);
+		vector.emplace_back(4);
+	}
+
+	#if 1
 	{
 		knl::ApplicationDesc app_desc{};
 		app_desc.maxFramesInFlight = 3u;
@@ -29,7 +46,7 @@ TST_OS_WINMAIN()
 
 		rnd::RenderContextDesc &render_ctx_desc{app_desc.renderCtxDesc};
 		render_ctx_desc.maxFramesInFlight = 3u;
-		render_ctx_desc.enableDebugInfo   = true;
+		render_ctx_desc.enableDebugInfo   = false;
 
 		knl::Application application{};
 		knl::application_create(&application, app_desc);
@@ -128,7 +145,7 @@ TST_OS_WINMAIN()
 				layer->pixelShader               = gpu::shader_create(gpu_ctx, pixel_shader_desc);
 			}
 
-			mi_stats_print(nullptr);
+			rpmalloc_dump_statistics(stdout);
 		};
 		app_layer.destroyFn = +[](knl::Application *p_app, void *p_layer) mutable -> void
 		{
@@ -216,6 +233,10 @@ TST_OS_WINMAIN()
 		knl::application_run(&application, UINT32_MAX);
 		knl::application_destroy(&application);
 	}
+
+	#endif
+
+	rpmalloc_finalize();
 
 	os::output_console_destroy();
 

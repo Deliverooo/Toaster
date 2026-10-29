@@ -1294,13 +1294,66 @@ namespace toaster::gpu
 		vma_vulkan_functions.vkGetMemoryWin32HandleKHR               = vkGetMemoryWin32HandleKHR;
 		vma_vulkan_functions.vkGetPhysicalDeviceProperties2KHR       = vkGetPhysicalDeviceProperties2KHR;
 
+		static PFN_vkAllocationFunction allocate_cb{
+			+[](void *p_user_data, size_t p_size, size_t p_alignment, VkSystemAllocationScope p_allocation_scope) -> void *
+			{
+				(void) p_user_data;
+				(void) p_allocation_scope;
+
+				if (p_alignment < alignof(std::max_align_t))
+					p_alignment = alignof(std::max_align_t);
+
+				return rpaligned_alloc(p_alignment, p_size);
+			}
+		};
+
+		static PFN_vkReallocationFunction reallocate_cb{
+			+[](void *p_user_data, void *p_original, size_t p_size, size_t p_alignment, VkSystemAllocationScope p_allocation_scope) -> void *
+			{
+				(void) p_user_data;
+				(void) p_allocation_scope;
+
+				if (!p_original)
+					return allocate_cb(p_user_data, p_size, p_alignment, p_allocation_scope);
+
+				if (p_size == 0ull)
+				{
+					rpfree(p_original);
+					return nullptr;
+				}
+
+				if (p_alignment < alignof(std::max_align_t))
+					p_alignment = alignof(std::max_align_t);
+
+				return rpaligned_realloc(p_original, p_alignment, p_size, 0ull, 0u);
+			}
+		};
+
+		static PFN_vkFreeFunction free_cb{
+			+[](void *p_user_data, void *p_memory) -> void
+			{
+				(void) p_user_data;
+				if (!p_memory)
+					return;
+
+				rpfree(p_memory);
+			}
+		};
+
+		VkAllocationCallbacks allocation_callbacks{};
+		allocation_callbacks.pUserData       = nullptr;
+		allocation_callbacks.pfnAllocation   = allocate_cb;
+		allocation_callbacks.pfnReallocation = reallocate_cb;
+		allocation_callbacks.pfnFree         = free_cb;
+
 		VmaAllocatorCreateInfo allocator_create_info{};
-		allocator_create_info.instance         = ctx->vulkanInstance;
-		allocator_create_info.physicalDevice   = ctx->physicalDevice;
-		allocator_create_info.device           = ctx->logicalDevice;
-		allocator_create_info.vulkanApiVersion = VK_API_VERSION_1_4;
-		allocator_create_info.flags            = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
-		allocator_create_info.pVulkanFunctions = &vma_vulkan_functions;
+		allocator_create_info.instance             = ctx->vulkanInstance;
+		allocator_create_info.physicalDevice       = ctx->physicalDevice;
+		allocator_create_info.device               = ctx->logicalDevice;
+		allocator_create_info.vulkanApiVersion     = VK_API_VERSION_1_4;
+		allocator_create_info.flags                = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
+		allocator_create_info.pVulkanFunctions     = &vma_vulkan_functions;
+		allocator_create_info.pAllocationCallbacks = &allocation_callbacks;
 
 		vmaCreateAllocator(&allocator_create_info, &ctx->allocator);
 

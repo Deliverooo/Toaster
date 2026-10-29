@@ -1,10 +1,11 @@
 #pragma once
 
 #include <unordered_map>
-#include "toast_lib.hpp"
+
+#include "allocator.hpp"
 
 namespace toaster
 {
 	template<typename TKey, typename TValue>
-	using UnorderedMap = std::unordered_map<TKey, TValue, std::hash<TKey>, std::equal_to<>, mi_stl_allocator<std::pair<const TKey, TValue> > >;
+	using UnorderedMap = std::unordered_map<TKey, TValue, std::hash<TKey>, std::equal_to<>, Allocator<std::pair<const TKey, TValue> > >;
 }

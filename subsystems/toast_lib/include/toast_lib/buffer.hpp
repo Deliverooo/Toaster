@@ -1,7 +1,9 @@
 #pragma once
 
 #include "system_types.h"
-#include "toast_assert.h"
+#include "toast_assert.hpp"
+
+#include <memory.h>
 
 namespace toaster
 {

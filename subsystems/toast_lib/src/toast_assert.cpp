@@ -1,4 +1,4 @@
-#include "toast_lib/toast_assert.h"
+#include "toast_lib/toast_assert.hpp"
 #include <Windows.h>
 
 #include <stdio.h>
