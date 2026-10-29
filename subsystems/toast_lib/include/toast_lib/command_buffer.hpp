@@ -1,9 +1,6 @@
 #pragma once
 
 #include "buffer.hpp"
-#include <concepts>
-
-#include "memory.hpp"
 
 namespace toaster
 {
@@ -34,11 +31,11 @@ namespace toaster
 				buffer += sizeof(Invoker);
 
 				Destructor destructor{nullptr};
-				std::memcpy(&destructor, buffer, sizeof(Destructor));
+				mi_memcpy(&destructor, buffer, sizeof(Destructor));
 				buffer += sizeof(Destructor);
 
 				uint32 payload_size{0u};
-				std::memcpy(&payload_size, buffer, sizeof(uint32));
+				mi_memcpy(&payload_size, buffer, sizeof(uint32));
 				buffer += sizeof(uint32);
 
 				void *payload{buffer};
@@ -124,14 +121,14 @@ namespace toaster
 				}
 			};
 
-			std::memcpy(m_ptr, &invoker, sizeof(Invoker));
+			mi_memcpy(m_ptr, &invoker, sizeof(Invoker));
 			m_ptr += sizeof(Invoker);
 
-			std::memcpy(m_ptr, &destructor, sizeof(Destructor));
+			mi_memcpy(m_ptr, &destructor, sizeof(Destructor));
 			m_ptr += sizeof(Destructor);
 
 			const uint32 payload_size{sizeof(DecayedFunc)};
-			std::memcpy(m_ptr, &payload_size, sizeof(uint32));
+			mi_memcpy(m_ptr, &payload_size, sizeof(uint32));
 			m_ptr += sizeof(uint32);
 
 			::new(static_cast<void *>(m_ptr)) DecayedFunc{std::forward<TFunc>(p_func)};
@@ -152,15 +149,15 @@ namespace toaster
 				buffer = static_cast<uint8 *>(aligned_ptr);
 
 				Invoker invoker{nullptr};
-				std::memcpy(&invoker, buffer, sizeof(Invoker));
+				mi_memcpy(&invoker, buffer, sizeof(Invoker));
 				buffer += sizeof(Invoker);
 
 				Destructor destructor{nullptr};
-				std::memcpy(&destructor, buffer, sizeof(Destructor));
+				mi_memcpy(&destructor, buffer, sizeof(Destructor));
 				buffer += sizeof(Destructor);
 
 				uint32 payload_size{0u};
-				std::memcpy(&payload_size, buffer, sizeof(uint32));
+				mi_memcpy(&payload_size, buffer, sizeof(uint32));
 				buffer += sizeof(uint32);
 
 				void *payload{buffer};

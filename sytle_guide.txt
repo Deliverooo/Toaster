@@ -10,3 +10,7 @@ Ok, so here is my style guide.
 . everything should be under the master toaster namespace, with each 'subsystem' having it's own nested namespace abbreviation
 . The code should be classless and stateless (no global or implicit state)
 . Enums are always declared as enum classes (not an actual class, so it doesn't count) and they should be prefixed with E. Then, the enumeration values are prefixed with e
+
+Notes to stop stupid errors:
+. Never use reinterpret cast to type punn. Even if the memory layouts look identical, they probably are not...
+. Always remember to put the required pipeline barriers in place to stop weird flickering errors that scale with the screen size. (Ts is niche)

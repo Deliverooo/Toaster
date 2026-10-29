@@ -1,9 +1,13 @@
 #include "toast_render/texture.hpp"
+#include "toast_render/render_context.hpp"
 
-#include <ranges>
+#include "toast_lib/pool.hpp"
 
+#include "toast_gpu/api.hpp"
 #include "toast_gpu/frame.hpp"
 #include "toast_gpu/upload.hpp"
+
+#include <ranges>
 
 namespace toaster::rnd
 {
@@ -11,35 +15,33 @@ namespace toaster::rnd
 	{
 		RenderContext *rndCtx{nullptr};
 
-		Pool<Texture>              textures;
-		std::vector<TextureHandle> pendingMipmapGenerations;
+		Pool<Texture>         textures;
+		Vector<TextureHandle> finishedTextureUploads;
 	};
 
 	auto texture_mngr_create(RenderContext *p_render_ctx) -> TextureManager *
 	{
-		auto mngr{new TextureManager{}};
+		const auto mngr{new TextureManager{}};
 
 		mngr->rndCtx = p_render_ctx;
 
 		mngr->textures.setDestructorUserData(mngr);
 		mngr->textures.setDestructorFn(+[](Texture *p_data, void *p_user_data) -> void
 		{
-			auto               ts{static_cast<TextureManager *>(p_user_data)};
-			gpu::FrameContext *frame_ctx{ts->rndCtx->frameCtx};
+			const auto         mngr{static_cast<TextureManager *>(p_user_data)};
+			gpu::FrameContext *frame_ctx{mngr->rndCtx->frameCtx};
 
 			if (p_data->texture)
 				gpu::defer_texture_deletion(frame_ctx, p_data->texture);
 
 			if (p_data->shaderReadHeapSlot != UINT32_MAX)
-				gpu::defer_texture_heap_slot_freeing(frame_ctx, ts->rndCtx->resourceHeap, p_data->shaderReadHeapSlot);
+				gpu::defer_texture_heap_slot_freeing(frame_ctx, mngr->rndCtx->resourceHeap, p_data->shaderReadHeapSlot);
 			if (p_data->storageHeapSlot != UINT32_MAX)
-				gpu::defer_texture_heap_slot_freeing(frame_ctx, ts->rndCtx->resourceHeap, p_data->storageHeapSlot);
+				gpu::defer_texture_heap_slot_freeing(frame_ctx, mngr->rndCtx->resourceHeap, p_data->storageHeapSlot);
 
-			for (const auto &slot: p_data->perMipStorageHeapSlots | std::views::values)
-			{
-				if (slot != UINT32_MAX)
-					gpu::defer_texture_heap_slot_freeing(frame_ctx, ts->rndCtx->resourceHeap, slot);
-			}
+			for (const uint32 slot: p_data->perMipStorageHeapSlots | std::views::filter(+[](const uint32 p_slot) -> bool { return p_slot != UINT32_MAX; }))
+				gpu::defer_texture_heap_slot_freeing(frame_ctx, mngr->rndCtx->resourceHeap, slot);
+			p_data->perMipStorageHeapSlots.fill(UINT32_MAX);
 		});
 
 		return mngr;
@@ -52,38 +54,43 @@ namespace toaster::rnd
 
 		p_mngr->textures.clear();
 		p_mngr->rndCtx = nullptr;
-		p_mngr->pendingMipmapGenerations.clear();
+		p_mngr->finishedTextureUploads.clear();
 
 		delete p_mngr;
 	}
 
 	auto texture_mngr_poll_uploads(TextureManager *p_mngr, gpu::CommandListHandle p_cmd) -> void
 	{
-		if (p_mngr->pendingMipmapGenerations.empty())
+		if (p_mngr->finishedTextureUploads.empty())
 			return;
 
-		for (const auto handle: p_mngr->pendingMipmapGenerations)
+		for (const auto handle: p_mngr->finishedTextureUploads)
 		{
-			Texture &texture{p_mngr->textures[handle]};
-			gpu::cmd_generate_mipmaps(p_mngr->rndCtx->gpuCtx, p_cmd, texture.texture);
+			const Texture *texture{p_mngr->textures.tryGet(handle)};
+			if (texture && gpu::texture_get_desc(p_mngr->rndCtx->gpuCtx, p_mngr->textures[handle].texture).mipCount > 1u)
+				gpu::cmd_generate_mipmaps(p_mngr->rndCtx->gpuCtx, p_cmd, texture->texture);
 		}
-		p_mngr->pendingMipmapGenerations.clear();
+
+		p_mngr->finishedTextureUploads.clear();
 	}
 
 	auto texture_register(TextureManager *p_mngr, uint32 p_state_tracker_expected_subresources) -> TextureHandle
 	{
 		Texture temp_texture{};
+		temp_texture.perMipStorageHeapSlots.fill(UINT32_MAX);
 
 		if (p_state_tracker_expected_subresources > 0u)
 			temp_texture.stateTracker = gpu::state_tracker_register(p_mngr->rndCtx->uploadCtx, p_state_tracker_expected_subresources);
 
 		TextureHandle out_handle{p_mngr->textures.emplace(temp_texture)};
-
-		gpu::state_tracker_register_ready_callback(p_mngr->rndCtx->uploadCtx, temp_texture.stateTracker, [p_mngr, out_handle]() -> void
+		if (p_state_tracker_expected_subresources > 0u)
 		{
-			if (gpu::texture_get_desc(p_mngr->rndCtx->gpuCtx, p_mngr->textures[out_handle].texture).mipCount > 1u)
-				p_mngr->pendingMipmapGenerations.push_back(out_handle);
-		});
+			gpu::state_tracker_register_ready_callback(p_mngr->rndCtx->uploadCtx, temp_texture.stateTracker, [p_mngr, out_handle]() -> void
+			{
+				if (p_mngr->textures.isValid(out_handle))
+					p_mngr->finishedTextureUploads.push_back(out_handle);
+			});
+		}
 
 		return out_handle;
 	}
@@ -91,6 +98,7 @@ namespace toaster::rnd
 	auto texture_create(TextureManager *p_mngr, const gpu::TextureDesc &p_desc, uint32 p_state_tracker_expected_subresources) -> TextureHandle
 	{
 		Texture texture_data{};
+		texture_data.perMipStorageHeapSlots.fill(UINT32_MAX);
 
 		texture_data.texture = gpu::texture_create(p_mngr->rndCtx->gpuCtx, p_desc);
 
@@ -110,7 +118,17 @@ namespace toaster::rnd
 		if (p_state_tracker_expected_subresources > 0u)
 			texture_data.stateTracker = gpu::state_tracker_register(p_mngr->rndCtx->uploadCtx, p_state_tracker_expected_subresources);
 
-		return p_mngr->textures.emplace(std::move(texture_data));
+		TextureHandle out_handle{p_mngr->textures.emplace(texture_data)};
+		if (p_state_tracker_expected_subresources > 0u)
+		{
+			gpu::state_tracker_register_ready_callback(p_mngr->rndCtx->uploadCtx, texture_data.stateTracker, [p_mngr, out_handle]() -> void
+			{
+				if (p_mngr->textures.isValid(out_handle))
+					p_mngr->finishedTextureUploads.push_back(out_handle);
+			});
+		}
+
+		return out_handle;
 	}
 
 	auto texture_create_into(TextureManager *p_mngr, TextureHandle p_handle, const gpu::TextureDesc &p_desc) -> void
@@ -176,10 +194,10 @@ namespace toaster::rnd
 	{
 		Texture &texture_data{p_mngr->textures[p_texture]};
 
-		if (texture_data.perMipStorageHeapSlots.contains(p_mip))
-			return texture_data.perMipStorageHeapSlots.at(p_mip);
-
 		uint32 &slot{texture_data.perMipStorageHeapSlots[p_mip]};
+		if (slot != UINT32_MAX)
+			return slot;
+
 		slot = gpu::resource_descriptor_heap_alloc_texture_slot(p_mngr->rndCtx->gpuCtx, p_mngr->rndCtx->resourceHeap);
 		gpu::resource_descriptor_heap_write_texture(p_mngr->rndCtx->gpuCtx, p_mngr->rndCtx->resourceHeap, slot, texture_data.texture, true, p_mip);
 

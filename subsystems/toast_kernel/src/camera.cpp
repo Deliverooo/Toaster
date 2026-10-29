@@ -1,7 +1,8 @@
 #include "toast_kernel/camera.hpp"
-
 #include <cmath>
-#include <toast_math/math_vector.hpp>
+
+#undef near
+#undef far
 
 namespace toaster::knl
 {
@@ -17,7 +18,7 @@ namespace toaster::knl
 		auto front{getCameraForward()};
 		auto right{getCameraRight()};
 
-		XMVECTOR delta_position{XMVectorZero()};
+		math::Vector delta_position{XMVectorZero()};
 
 		if (input_is_key_down(p_input_ctx, EKeyCode::eW))
 			delta_position += front;
@@ -58,18 +59,18 @@ namespace toaster::knl
 		_calcProjection();
 	}
 
-	auto Camera::getFrustumPlanes() const -> std::array<XMVECTOR, 6u>
+	auto Camera::getFrustumPlanes() const -> Array<math::Vector, 6u>
 	{
-		XMMATRIX clip_matrix{XMMatrixTranspose(getViewMatrix() * getProjectionMatrix())};
+		math::Matrix clip_matrix{XMMatrixTranspose(getViewMatrix() * getProjectionMatrix())};
 
-		XMVECTOR left{clip_matrix.r[3u] + clip_matrix.r[0u]};
-		XMVECTOR right{clip_matrix.r[3u] - clip_matrix.r[0u]};
-		XMVECTOR bottom{clip_matrix.r[3u] + clip_matrix.r[1u]};
-		XMVECTOR top{clip_matrix.r[3u] - clip_matrix.r[1u]};
-		XMVECTOR near{clip_matrix.r[2u]};
-		XMVECTOR far{clip_matrix.r[3u] - clip_matrix.r[2u]};
+		math::Vector left{clip_matrix.r[3u] + clip_matrix.r[0u]};
+		math::Vector right{clip_matrix.r[3u] - clip_matrix.r[0u]};
+		math::Vector bottom{clip_matrix.r[3u] + clip_matrix.r[1u]};
+		math::Vector top{clip_matrix.r[3u] - clip_matrix.r[1u]};
+		math::Vector near{clip_matrix.r[2u]};
+		math::Vector far{clip_matrix.r[3u] - clip_matrix.r[2u]};
 
-		std::array<XMVECTOR, 6u> simd_planes{left, right, bottom, top, near, far};
+		Array<math::Vector, 6u> simd_planes{left, right, bottom, top, near, far};
 
 		for (uint32 i{0u}; i < 6u; ++i)
 			simd_planes[i] = XMPlaneNormalize(simd_planes[i]);
@@ -79,8 +80,8 @@ namespace toaster::knl
 
 	auto Camera::_calcProjection() -> void
 	{
-		float32  cot_half_fov{1.0f / std::tanf(XMConvertToRadians(m_fov) / 2.0f)};
-		XMMATRIX proj{
+		float32      cot_half_fov{1.0f / std::tanf(XMConvertToRadians(m_fov) / 2.0f)};
+		math::Matrix proj{
 			XMMatrixSet(cot_half_fov / m_aspect, 0.0f, 0.0f, 0.0f, 0.0f, cot_half_fov, 0.0f, 0.0f, 0.0f, 0.0f, (m_zNear + m_zFar) / (m_zFar - m_zNear),
 						(-2.0f * m_zNear * m_zFar) / (m_zFar - m_zNear), 0.0f, 0.0f, 1.0f, 0.0f)
 		};

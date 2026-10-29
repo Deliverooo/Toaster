@@ -1,7 +1,6 @@
 #pragma once
 
-#include <DirectXMath.h>
-using namespace DirectX; // This is probably the only socially acceptable 'using namespace' to do
+#include "toast_math.hpp"
 
 namespace toaster::math
 {
@@ -81,7 +80,7 @@ namespace toaster::math
 		Float2 depthBounds{0.0f, 1.0f}; // Min depth and max depth
 	};
 
-	inline Vector XM_CALLCONV XMVector2NormalizeSafe(FVector p_vector)
+	inline Vector TST_MATH_CALLCONV XMVector2NormalizeSafe(FVector p_vector)
 	{
 		Vector length{XMVector2LengthSq(p_vector)};
 		Vector control{XMVectorGreater(length, XMVectorSplatEpsilon())};
@@ -89,7 +88,7 @@ namespace toaster::math
 		return XMVectorSelect(XMVectorZero(), normalized, control);
 	}
 
-	inline Vector XM_CALLCONV XMVector3NormalizeSafe(FVector p_vector)
+	inline Vector TST_MATH_CALLCONV XMVector3NormalizeSafe(FVector p_vector)
 	{
 		Vector length{XMVector3LengthSq(p_vector)};
 		Vector control{XMVectorGreater(length, XMVectorSplatEpsilon())};
@@ -97,7 +96,7 @@ namespace toaster::math
 		return XMVectorSelect(XMVectorZero(), normalized, control);
 	}
 
-	inline Vector XM_CALLCONV XMVector4NormalizeSafe(FVector p_vector)
+	inline Vector TST_MATH_CALLCONV XMVector4NormalizeSafe(FVector p_vector)
 	{
 		Vector length{XMVector4LengthSq(p_vector)};
 		Vector control{XMVectorGreater(length, XMVectorSplatEpsilon())};

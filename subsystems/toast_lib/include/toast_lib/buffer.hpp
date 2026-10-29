@@ -1,7 +1,5 @@
 #pragma once
 
-#include <memory>
-
 #include "system_types.h"
 #include "toast_assert.h"
 
@@ -26,7 +24,7 @@ namespace toaster
 		{
 			DataBuffer buffer;
 			buffer.allocate(p_other.m_size);
-			std::memcpy(buffer.m_data, p_other.m_data, p_other.m_size);
+			memcpy(buffer.m_data, p_other.m_data, p_other.m_size);
 			return buffer;
 		}
 
@@ -35,7 +33,7 @@ namespace toaster
 			DataBuffer buffer;
 			buffer.allocate(p_size);
 			if (p_size)
-				std::memcpy(buffer.m_data, p_data, p_size);
+				memcpy(buffer.m_data, p_data, p_size);
 			return buffer;
 		}
 
@@ -79,7 +77,7 @@ namespace toaster
 		auto zeroInitialize() -> void
 		{
 			if (m_data)
-				std::memset(m_data, 0, m_size);
+				memset(m_data,0u, m_size);
 		}
 
 		template<typename Type>
@@ -98,20 +96,20 @@ namespace toaster
 		{
 			TST_ASSERT_MSG(p_offset + p_size <= m_size, "Buffer overflow!");
 			const auto buffer = new uint8[p_size];
-			std::memcpy(buffer, static_cast<uint8 *>(m_data) + p_offset, p_size);
+			memcpy(buffer, static_cast<uint8 *>(m_data) + p_offset, p_size);
 			return buffer;
 		}
 
 		template<typename Type>
 		auto writeType(const Type &p_data, uint64 p_offset = 0u) -> void
 		{
-			std::memcpy(static_cast<uint8 *>(m_data) + p_offset, reinterpret_cast<const void *>(&p_data), sizeof(Type));
+			memcpy(static_cast<uint8 *>(m_data) + p_offset, reinterpret_cast<const void *>(&p_data), sizeof(Type));
 		}
 
 		auto write(DataBuffer p_buffer, uint64 p_offset = 0u) -> void
 		{
 			TST_ASSERT_MSG(p_offset + p_buffer.m_size <= m_size, "Buffer overflow!");
-			std::memcpy(static_cast<uint8 *>(m_data) + p_offset, p_buffer.m_data, p_buffer.m_size);
+			memcpy(static_cast<uint8 *>(m_data) + p_offset, p_buffer.m_data, p_buffer.m_size);
 		}
 
 		auto write(const void *p_data, uint64 p_size, uint64 p_offset = 0u) -> void

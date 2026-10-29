@@ -1,11 +1,10 @@
 #include "toast_gpu/allocation.hpp"
-#include "toast_gpu/allocation.hpp"
-
-#include <ranges>
+#include "toast_gpu/api.hpp"
 
 #include "toast_lib/pool.hpp"
 
-#include <vma/vk_mem_alloc.h>
+#include <ranges>
+#include <vk_mem_alloc.h>
 
 namespace toaster::gpu
 {
@@ -32,7 +31,7 @@ namespace toaster::gpu
 
 	auto allocation_ctx_create(GPUContext *p_gpu_ctx) -> AllocationContext *
 	{
-		AllocationContext *ctx{new AllocationContext{}};
+		const auto ctx{new AllocationContext{}};
 
 		ctx->gpuCtx = p_gpu_ctx;
 
@@ -44,7 +43,8 @@ namespace toaster::gpu
 		ctx->virtualAllocations.setDestructorUserData(ctx);
 		ctx->virtualAllocations.setDestructorFn(+[](VirtualAllocation *p_data, void *p_ctx) -> void
 		{
-			auto ctx{static_cast<AllocationContext *>(p_ctx)};
+			const auto ctx{static_cast<AllocationContext *>(p_ctx)};
+
 			if (const VirtualBlock *block{ctx->virtualBlocks.tryGet(p_data->block)})
 				vmaVirtualFree(block->block, p_data->allocation);
 			else
@@ -123,8 +123,11 @@ namespace toaster::gpu
 	{
 		TST_ASSERT(p_ctx->gpuCtx);
 
-		p_out_allocator->resourceHeap = p_resource_heap;
-		p_out_allocator->pageSize     = p_page_size;
+		mtx_init(&p_out_allocator->freeListMtx, mtx_plain);
+
+		p_out_allocator->pageIdAllocator = {64u};
+		p_out_allocator->resourceHeap    = p_resource_heap;
+		p_out_allocator->pageSize        = p_page_size;
 		_page_allocator_insert_page(p_ctx, p_out_allocator); // Insert the default page
 	}
 
@@ -132,33 +135,33 @@ namespace toaster::gpu
 	{
 		TST_ASSERT(p_ctx->gpuCtx);
 
-		for (auto &page: p_allocator->pages | std::views::values)
+		for (auto &page: p_allocator->pages)
 			_page_allocator_destroy_page(p_ctx, p_allocator, &page);
 		p_allocator->pages.clear();
 
-		p_allocator->resourceHeap = nullptr;
-		p_allocator->pageSize     = 0u;
-		p_allocator->nextPageId   = 0u;
-		p_allocator->activePageId = 0u;
+		mtx_destroy(&p_allocator->freeListMtx);
+
+		p_allocator->resourceHeap    = nullptr;
+		p_allocator->pageSize        = 0u;
+		p_allocator->pageIdAllocator = {};
+		p_allocator->activePageId    = 0u;
 	}
 
 	auto page_allocator_free_page_allocation(AllocationContext *p_ctx, PageAllocator *p_allocator, PageAllocation *p_allocation) -> void
 	{
 		TST_ASSERT(p_ctx->gpuCtx);
 
-		auto page_it{p_allocator->pages.find(p_allocation->pageId)};
-		if (page_it != p_allocator->pages.end())
-		{
-			virtual_block_free(p_ctx, p_allocation->allocation);
-			TST_SCOPED_ATOMIC(page_it->second.activeAllocations, active_allocations);
-			--active_allocations;
+		auto &page{p_allocator->pages[p_allocation->pageId]};
 
-			if (active_allocations.load() == 0u && page_it->first != p_allocator->activePageId)
-			{
-				_page_allocator_destroy_page(p_ctx, p_allocator, &page_it->second);
-				p_allocator->pages.erase(page_it);
-			}
+		virtual_block_free(p_ctx, p_allocation->allocation);
+		TST_SCOPED_ATOMIC(page.activeAllocations, active_allocations);
+		--active_allocations;
+
+		if (active_allocations.load() == 0u && p_allocation->pageId != p_allocator->activePageId)
+		{
+			_page_allocator_destroy_page(p_ctx, p_allocator, &page);
 		}
+
 		p_allocation->buffer     = nullptr;
 		p_allocation->allocation = nullptr;
 		p_allocation->offset     = 0u;
@@ -171,27 +174,29 @@ namespace toaster::gpu
 	{
 		TST_ASSERT(p_ctx->gpuCtx);
 
-		if (_page_allocator_try_allocate(p_ctx, p_allocator, &p_allocator->pages[p_allocator->activePageId], p_size, p_alignment, p_out_allocation))
+		if (_page_allocator_try_allocate(p_ctx, &p_allocator->pages[p_allocator->activePageId], p_size, p_alignment, p_out_allocation))
 			return;
 
-		for (auto &page: p_allocator->pages | std::views::values)
+		for (auto &page: p_allocator->pages)
 		{
-			if (_page_allocator_try_allocate(p_ctx, p_allocator, &page, p_size, p_alignment, p_out_allocation))
+			if (_page_allocator_try_allocate(p_ctx, &page, p_size, p_alignment, p_out_allocation))
 				return;
 		}
 
 		if (p_size > p_allocator->pageSize) // Create a dedicated allocation
 		{
-			TST_SCOPED_ATOMIC(p_allocator->nextPageId, next_page_id);
-			uint32 page_id{++next_page_id};
-			p_allocator->pages[page_id] = _page_allocator_create_page(p_ctx, p_allocator, p_size, page_id);
-			if (!_page_allocator_try_allocate(p_ctx, p_allocator, &p_allocator->pages[page_id], p_size, p_alignment, p_out_allocation))
+			mtx_lock(&p_allocator->freeListMtx);
+			const uint32 page_id{p_allocator->pageIdAllocator.allocSlot()};
+			mtx_unlock(&p_allocator->freeListMtx);
+
+			p_allocator->pages.push_back(_page_allocator_create_page(p_ctx, p_allocator, p_size, page_id));
+			if (!_page_allocator_try_allocate(p_ctx, &p_allocator->pages[page_id], p_size, p_alignment, p_out_allocation))
 				TST_PERMA_ASSERT(false);
 			return;
 		}
 
 		_page_allocator_insert_page(p_ctx, p_allocator);
-		if (!_page_allocator_try_allocate(p_ctx, p_allocator, &p_allocator->pages[p_allocator->activePageId], p_size, p_alignment, p_out_allocation))
+		if (!_page_allocator_try_allocate(p_ctx, &p_allocator->pages[p_allocator->activePageId], p_size, p_alignment, p_out_allocation))
 		{
 			TST_PERMA_ASSERT(false);
 		}
@@ -201,7 +206,7 @@ namespace toaster::gpu
 	{
 		uint64 total_size{0ull};
 
-		for (const auto &page: p_allocator->pages | std::views::values)
+		for (const auto &page: p_allocator->pages)
 			total_size += page.size;
 
 		return total_size;
@@ -209,14 +214,14 @@ namespace toaster::gpu
 
 	auto _page_allocator_insert_page(AllocationContext *p_ctx, PageAllocator *p_allocator) -> void
 	{
-		TST_SCOPED_ATOMIC(p_allocator->nextPageId, next_page_id);
-		uint32 page_id{++next_page_id};
-		p_allocator->pages[page_id] = _page_allocator_create_page(p_ctx, p_allocator, p_allocator->pageSize, page_id);
-		p_allocator->activePageId   = page_id;
+		mtx_lock(&p_allocator->freeListMtx);
+		const uint32 page_id{p_allocator->pageIdAllocator.allocSlot()};
+		mtx_unlock(&p_allocator->freeListMtx);
+		p_allocator->pages.push_back(_page_allocator_create_page(p_ctx, p_allocator, p_allocator->pageSize, page_id));
+		p_allocator->activePageId = page_id;
 	}
 
-	auto _page_allocator_try_allocate(AllocationContext *p_ctx, PageAllocator *p_allocator, Page *p_page, uint64 p_size, uint64 p_alignment,
-									  PageAllocation *   p_out_allocation) -> bool
+	auto _page_allocator_try_allocate(AllocationContext *p_ctx, Page *p_page, uint64 p_size, uint64 p_alignment, PageAllocation *p_out_allocation) -> bool
 	{
 		p_out_allocation->allocation = virtual_block_allocate(p_ctx, p_page->block, p_size, p_alignment);
 		if (p_out_allocation->allocation)
@@ -234,7 +239,7 @@ namespace toaster::gpu
 		return false;
 	}
 
-	auto _page_allocator_create_page(AllocationContext *p_ctx, PageAllocator *p_allocator, uint64 p_size, uint32 p_id) -> Page
+	Page _page_allocator_create_page(AllocationContext *p_ctx, const PageAllocator *p_allocator, uint64 p_size, uint32 p_id)
 	{
 		Page page{};
 		page.size = p_size;
@@ -259,5 +264,9 @@ namespace toaster::gpu
 		virtual_block_destroy(p_ctx, p_page->block);
 		buffer_destroy(p_ctx->gpuCtx, p_page->buffer);
 		resource_descriptor_heap_free_buffer_slot(p_ctx->gpuCtx, p_allocator->resourceHeap, p_page->heapSlot);
+
+		mtx_lock(&p_allocator->freeListMtx);
+		p_allocator->pageIdAllocator.freeSlot(p_page->id);
+		mtx_unlock(&p_allocator->freeListMtx);
 	}
 }

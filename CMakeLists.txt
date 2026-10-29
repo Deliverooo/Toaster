@@ -1,7 +1,5 @@
 cmake_minimum_required(VERSION 3.30)
 
-set(CMAKE_DEBUG_POSTFIX "d")
-
 set(CMAKE_C_STANDARD 23)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -10,13 +8,7 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin")
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin")
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib")
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
+
 # Prevent in-source builds
 if (${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR})
 	message(FATAL_ERROR "In-source builds are not allowed. Please create a separate build directory.")
@@ -25,15 +17,6 @@ endif ()
 # Project definition
 project(Toaster LANGUAGES C CXX)
 
-find_package(Vulkan REQUIRED COMPONENTS dxc glslangValidator shaderc_combined SPIRV-Tools)
-
-if (NOT ${Vulkan_FOUND} OR NOT ${Vulkan_glslangValidator_FOUND} OR NOT ${Vulkan_shaderc_combined_FOUND} OR NOT ${Vulkan_SPIRV-Tools_FOUND})
-	message(FATAL_ERROR "Vulkan enabled as a graphics backend, but cannot be found or cannot find required components!")
-	message(FATAL_ERROR "Try (re)installing the Vulkan SDK and checking that the shader components are selected")
-else ()
-	message(NOTICE "Found Vulkan :)")
-endif ()
-
 # these are added to later on.
 set(C_WARNINGS)
 set(CXX_WARNINGS)
@@ -41,34 +24,7 @@ set(CXX_WARNINGS)
 if (CMAKE_C_COMPILER_ID STREQUAL "MSVC")
 	set(_WARNINGS
 			# warning level:
-			"/W3"
-			"/w34062"  # switch statement contains 'default' but no 'case' labels
-			"/w34100"  # 'identifier' : unreferenced formal parameter
-			"/w34115"  # 'type' : named type definition in parentheses
-			"/w34189"  # local variable is initialized but not referenced
-			# see https://docs.microsoft.com/en-us/cpp/error-messages/compiler-warnings/c5038?view=vs-2017
-			"/w35038"  # order of initialization in c++ constructors
-			# disable:
-			"/wd4018"  # signed/unsigned mismatch
-			"/wd4146"  # unary minus operator applied to unsigned type, result still unsigned
-			"/wd4065"  # switch statement contains 'default' but no 'case' labels
-			"/wd4127"  # conditional expression is constant
-			"/wd4181"  # qualifier applied to reference type; ignored
-			"/wd4200"  # zero-sized array in struct/union
-			"/wd4244"  # conversion from 'type1' to 'type2', possible loss of data
-			"/wd4267"  # conversion from 'size_t' to 'type', possible loss of data
-			"/wd4305"  # truncation from 'type1' to 'type2'
-			"/wd4800"  # forcing value to bool 'true' or 'false'
-			"/wd4828"  # The file contains a character that is illegal
-			"/wd4996"  # identifier was declared deprecated
-			"/wd4661"  # no suitable definition provided for explicit template instantiation request
-			"/wd4848"  # 'no_unique_address' is a vendor extension in C++17
-			"/wd4251"
-			# errors:
-			"/we4013"  # 'function' undefined; assuming extern returning int
-			"/we4133"  # incompatible pointer types
-			"/we4431"  # missing type specifier - int assumed
-			"/we4033"  # 'function' must return a value
+#			"/W3"
 	)
 	string(REPLACE ";" " " _WARNINGS "${_WARNINGS}")
 	set(C_WARNINGS "${_WARNINGS}")
@@ -83,12 +39,25 @@ endif ()
 #set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(CMAKE_C_FLAGS "${C_WARNINGS} ${CMAKE_C_FLAGS}")
-#set(CMAKE_CXX_FLAGS "${CXX_WARNINGS} ${CMAKE_CXX_FLAGS}")
 
 option(TOASTER_INSTALL "Generate install targets for toaster" ON)
 option(TOASTER_BUILD_SHARED_LIBS "Generate install targets for toaster" ON)
 
+add_compile_definitions(VK_USE_PLATFORM_WIN32_KHR)
+add_compile_definitions(NOMINMAX)
+
 add_subdirectory(extern)
+
+set(CMAKE_DEBUG_POSTFIX "d")
+
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin")
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin")
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
+
 add_subdirectory(subsystems)
 
 if (TOASTER_INSTALL)

@@ -1,9 +1,7 @@
 #pragma once
 
-#include <array>
 #include "input.hpp"
 #include "toast_kernel.hpp"
-#include "toast_math/math_vector.hpp"
 
 namespace toaster::knl
 {
@@ -17,8 +15,8 @@ namespace toaster::knl
 		math::Float4x4 proj;
 		math::Float4x4 invProj;
 
-		XMFLOAT4 position;
-		XMFLOAT4 frustumPlanes[6u];
+		math::Float4 position;
+		math::Float4 frustumPlanes[6u];
 	};
 
 	class TST_KERNEL_API Camera
@@ -30,29 +28,29 @@ namespace toaster::knl
 		auto onUpdate(const InputContext *p_input_ctx, float32 p_dt) -> void;
 		auto onResize(float32 p_aspect) -> void;
 
-		auto XM_CALLCONV getViewMatrix() const -> XMMATRIX { return XMMatrixLookToLH(XMLoadFloat3(&m_position), getCameraForward(), unitUpDir); }
-		auto XM_CALLCONV getProjectionMatrix() const -> XMMATRIX { return XMLoadFloat4x4(&m_projectionMatrix); }
+		auto TST_MATH_CALLCONV getViewMatrix() const -> math::Matrix { return XMMatrixLookToLH(XMLoadFloat3(&m_position), getCameraForward(), unitUpDir); }
+		auto TST_MATH_CALLCONV getProjectionMatrix() const -> math::Matrix { return XMLoadFloat4x4(&m_projectionMatrix); }
 
-		auto XM_CALLCONV getRotationMatrix() const -> XMMATRIX
+		auto TST_MATH_CALLCONV getRotationMatrix() const -> math::Matrix
 		{
 			return XMMatrixRotationRollPitchYaw(XMConvertToRadians(m_pitch), -XMConvertToRadians(m_yaw), 0.0f);
 		}
 
 		// Rotates the unit direction vectors by the camera's rotation matrix :)
-		auto XM_CALLCONV getCameraForward() const -> XMVECTOR { return XMVector3Transform(unitForwardDir, getRotationMatrix()); }
-		auto XM_CALLCONV getCameraRight() const -> XMVECTOR { return XMVector3Transform(unitRightDir, getRotationMatrix()); }
-		auto XM_CALLCONV getCameraUp() const -> XMVECTOR { return XMVector3Transform(unitUpDir, getRotationMatrix()); }
+		auto TST_MATH_CALLCONV getCameraForward() const -> math::Vector { return XMVector3Transform(unitForwardDir, getRotationMatrix()); }
+		auto TST_MATH_CALLCONV getCameraRight() const -> math::Vector { return XMVector3Transform(unitRightDir, getRotationMatrix()); }
+		auto TST_MATH_CALLCONV getCameraUp() const -> math::Vector { return XMVector3Transform(unitUpDir, getRotationMatrix()); }
 
-		auto XM_CALLCONV getPosition() const -> XMVECTOR { return XMLoadFloat3(&m_position); }
+		auto TST_MATH_CALLCONV getPosition() const -> math::Vector { return XMLoadFloat3(&m_position); }
 
-		[[nodiscard]] auto XM_CALLCONV getFrustumPlanes() const -> std::array<XMVECTOR, 6u>;
+		[[nodiscard]] auto TST_MATH_CALLCONV getFrustumPlanes() const -> Array<math::Vector, 6u>;
 
 	private:
 		auto _calcProjection() -> void;
 
 		math::Float4x4 m_projectionMatrix;
 
-		XMFLOAT3 m_position{0.0f, 2.0f, -2.0f};
+		math::Float3 m_position{0.0f, 2.0f, -2.0f};
 
 		float32 m_yaw{0.0f};
 		float32 m_pitch{0.0f};

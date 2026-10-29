@@ -1,7 +1,6 @@
 #pragma once
 
 #include "input.hpp"
-#include "events/event.hpp"
 #include "toast_gpu/fwd.hpp"
 
 struct GLFWwindow;
@@ -13,6 +12,9 @@ namespace toaster::rnd
 
 namespace toaster::knl
 {
+	class Event;
+	using EventCallbackFn = void(*)(Event &, void *);
+
 	struct TST_KERNEL_API WindowDesc
 	{
 		math::UInt2 size;

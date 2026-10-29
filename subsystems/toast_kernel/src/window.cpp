@@ -1,16 +1,15 @@
 #include "toast_kernel/window.hpp"
+#include "toast_kernel/events/key_event.hpp"
+#include "toast_kernel/events/window_event.hpp"
+#include "toast_render/render_context.hpp"
+
+#include "toast_gpu/api.hpp"
+#include "toast_gpu/frame.hpp"
 
 #include <GLFW/glfw3.h>
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <dwmapi.h>
-#include <string>
 #include <GLFW/glfw3native.h>
-
-#include "toast_gpu/api.hpp"
-#include "toast_gpu/frame.hpp"
-#include "toast_kernel/events/key_event.hpp"
-#include "toast_kernel/events/window_event.hpp"
-#include "toast_render/render_context.hpp"
 
 #ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
 #define DWMWA_USE_IMMERSIVE_DARK_MODE 20
@@ -107,8 +106,8 @@ namespace toaster::knl
 				data->inputCtx.mouseY     = static_cast<float32>(p_ypos);
 				data->inputCtx.firstMouse = false;
 			}
-			data->inputCtx.mouseDx = static_cast<float32>(p_xpos) - data->inputCtx.mouseX;
-			data->inputCtx.mouseDy = data->inputCtx.mouseY - static_cast<float32>(p_ypos);
+			data->inputCtx.mouseDx += static_cast<float32>(p_xpos) - data->inputCtx.mouseX;
+			data->inputCtx.mouseDy += data->inputCtx.mouseY - static_cast<float32>(p_ypos);
 
 			data->inputCtx.mouseX = static_cast<float32>(p_xpos);
 			data->inputCtx.mouseY = static_cast<float32>(p_ypos);
@@ -118,8 +117,8 @@ namespace toaster::knl
 		{
 			TST_GET_CALLBACK_DATA();
 
-			data->inputCtx.scrollX = static_cast<float32>(p_x_offset);
-			data->inputCtx.scrollY = static_cast<float32>(p_y_offset);
+			data->inputCtx.scrollX += static_cast<float32>(p_x_offset);
+			data->inputCtx.scrollY += static_cast<float32>(p_y_offset);
 		});
 
 		glfwSetCursorEnterCallback(p_out_window->window, +[](GLFWwindow *p_window, int32 p_entered) noexcept -> void
@@ -145,7 +144,7 @@ namespace toaster::knl
 		{
 			TST_GET_CALLBACK_DATA();
 
-			std::vector<std::string> filepaths{static_cast<std::vector<std::string>::size_type>(p_path_count)};
+			Vector<String> filepaths(p_path_count);
 			for (uint32 i{0u}; i < p_path_count; ++i)
 				filepaths[i] = p_paths[i];
 
@@ -206,6 +205,8 @@ namespace toaster::knl
 
 	auto window_process_messages(Window *p_window) -> bool
 	{
+		gpu::swapchain_set_frame_marker(p_window->renderCtx->gpuCtx, p_window->swapchain, gpu::EFrameMarker::eInputSample);
+
 		glfwPollEvents();
 		return !glfwWindowShouldClose(p_window->window);
 	}
@@ -261,8 +262,13 @@ namespace toaster::knl
 
 	auto window_submit_and_present(Window *p_window, gpu::CommandListHandle p_cmd) -> void
 	{
+		gpu::swapchain_set_frame_marker(p_window->renderCtx->gpuCtx, p_window->swapchain, gpu::EFrameMarker::eRendersubmitEnd);
+		gpu::swapchain_set_frame_marker(p_window->renderCtx->gpuCtx, p_window->swapchain, gpu::EFrameMarker::ePresentStart);
+
 		const bool success{gpu::submit_and_present(p_window->renderCtx->frameCtx, p_window->swapchain, p_cmd)};
 		TST_PERMA_ASSERT(success);
+
+		gpu::swapchain_set_frame_marker(p_window->renderCtx->gpuCtx, p_window->swapchain, gpu::EFrameMarker::ePresentEnd);
 
 		// Set the current key states to the previous ones
 		input_update(&p_window->cbData.inputCtx);

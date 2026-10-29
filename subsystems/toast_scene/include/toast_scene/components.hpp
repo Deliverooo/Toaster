@@ -1,7 +1,15 @@
 #pragma once
 
 #include "toast_scene.hpp"
-#include "toast_render/mesh.hpp"
+#include "toast_math/math_vector.hpp"
+
+namespace toaster::rnd
+{
+	struct StaticMesh;
+	TST_DECLARE_HANDLE(StaticMesh);
+
+	using TransformID = uint32;
+}
 
 namespace toaster::scn
 {
@@ -56,6 +64,6 @@ namespace toaster::scn
 
 	struct TST_SCENE_API GPUTransformComponent
 	{
-		uint32 transformId{UINT32_MAX};
+		rnd::TransformID transformId{UINT32_MAX};
 	};
 }

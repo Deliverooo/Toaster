@@ -1,17 +1,12 @@
 #pragma once
 
 #include <optional>
-#include <vector>
-
 #include "toast_math/math_vector.hpp"
 
 #include "fwd.hpp"
 
 namespace toaster::gpu
 {
-	using DeviceAddress = uintptr;
-	constexpr DeviceAddress nullGpuPtr{0u};
-
 	#pragma region descriptor heap
 
 	struct TST_GPU_API ResourceDescriptorHeapDesc
@@ -28,7 +23,7 @@ namespace toaster::gpu
 
 	#pragma endregion
 
-	#pragma region semaphore
+	#pragma region synchronisation
 
 	struct TST_GPU_API SemaphoreSubmitInfo
 	{
@@ -36,14 +31,24 @@ namespace toaster::gpu
 		uint64          value{0u};
 	};
 
-	#pragma endregion
-
-	#pragma region misc / idk
-
 	enum class EQueueType : uint8
 	{
-		eGraphics, eCompute, eTransfer
+		eGraphics = 0u,
+		eCompute  = 1u,
+		eTransfer = 2u,
+		eMax      = 3u
 	};
+
+	inline CString to_string(EQueueType p_queue_type)
+	{
+		switch (p_queue_type)
+		{
+			case EQueueType::eGraphics: return "Graphics";
+			case EQueueType::eCompute: return "Compute";
+			case EQueueType::eTransfer: return "Transfer";
+			default: return "Unknown";
+		}
+	}
 
 	enum class EAccessFlagBits : uint32
 	{
@@ -108,11 +113,13 @@ namespace toaster::gpu
 
 	TST_LIB_SPECIALISE_FLAGS(EPipelineStageFlagBits, EPipelineStageFlags);
 
+	constexpr uint64 c_wholeSize{~0ull}; // This means use the actual full size of the object
+
 	struct TST_GPU_API BufferMemoryBarrier
 	{
 		BufferHandle buffer{nullptr};
-		uint64       offset{0u};
-		uint64       size{0u};
+		uint64       offset{0ull};
+		uint64       size{c_wholeSize};
 
 		EAccessFlags srcAccessMask{0u};
 		EAccessFlags dstAccessMask{0u};
@@ -142,6 +149,23 @@ namespace toaster::gpu
 		EQueueType srcQueue{EQueueType::eGraphics};
 		EQueueType dstQueue{EQueueType::eGraphics};
 	};
+
+	enum class EFrameMarker : uint8
+	{
+		eSimulationStart,
+		eSimulationEnd,
+		eRendersubmitStart,
+		eRendersubmitEnd,
+		ePresentStart,
+		ePresentEnd,
+		eInputSample,
+		eTriggerFlash,
+		eOutOfBandRendersubmitStart,
+		eOutOfBandRendersubmitEnd,
+		eOutOfBandPresentStart,
+		eOutOfBandPresentEnd
+	};
+
 	#pragma endregion
 
 	#pragma region buffer
@@ -443,9 +467,10 @@ namespace toaster::gpu
 	{
 		math::Rect renderArea{};
 
-		std::vector<RenderingAttachmentInfo>   colourAttachments;
+		Vector<RenderingAttachmentInfo>        colourAttachments;
 		std::optional<RenderingAttachmentInfo> depthAttachment{std::nullopt};
 		std::optional<RenderingAttachmentInfo> stencilAttachment{std::nullopt};
+		bool                                   useSecondaryCommandBuffers{false};
 	};
 
 	enum class EPrimitiveTopology : uint8
@@ -504,7 +529,7 @@ namespace toaster::gpu
 
 	TST_LIB_SPECIALISE_FLAGS(EColourComponentFlagBits, EColourComponentFlags);
 
-	enum class EBlendFactor
+	enum class EBlendFactor : uint8
 	{
 		eZero,
 		eOne,
@@ -527,7 +552,7 @@ namespace toaster::gpu
 		eOneMinusSrc1Alpha
 	};
 
-	enum class EBlendOp
+	enum class EBlendOp : uint8
 	{
 		eAdd,
 		eSubtract,
@@ -601,10 +626,10 @@ namespace toaster::gpu
 		const uint32 *code{nullptr};
 		uint64        codeSizeWords{0u};
 
-		EShaderStageFlagBits stage{EShaderStageFlagBits::eNone};
 		EShaderStageFlags    nextStage{EShaderStageFlagBits::eNone}; // The bitset of possible next stages
+		EShaderStageFlagBits stage{EShaderStageFlagBits::eNone};
 
-		bool task{false};
+		bool noTaskShader{false};
 	};
 
 	#pragma endregion
@@ -614,9 +639,9 @@ namespace toaster::gpu
 		ResourceDescriptorHeapHandle resourceHeap{nullptr};
 		SamplerDescriptorHeapHandle  samplerHeap{nullptr};
 
-		std::vector<EFormat> colourAttachmentFormats;
-		EFormat              depthAttachmentFormat{EFormat::eUndefined};
-		EFormat              stencilAttachmentFormat{EFormat::eUndefined};
+		Vector<EFormat> colourAttachmentFormats;
+		EFormat         depthAttachmentFormat{EFormat::eUndefined};
+		EFormat         stencilAttachmentFormat{EFormat::eUndefined};
 
 		ESampleCount samples{ESampleCount::e1};
 	};
@@ -637,8 +662,8 @@ namespace toaster::gpu
 	auto TST_GPU_API gpu_ctx_print_allocation_statistics(const GPUContext *p_ctx) -> void;
 	auto TST_GPU_API gpu_ctx_dump_allocation_statistics_to_json(const GPUContext *p_ctx, StringView p_path) -> void;
 
-	auto TST_GPU_API wait_idle(GPUContext *p_ctx) -> void;
-	auto TST_GPU_API wait_queue_idle(GPUContext *p_ctx, EQueueType p_queue_type) -> void;
+	auto TST_GPU_API wait_idle(const GPUContext *p_ctx) -> void;
+	auto TST_GPU_API wait_queue_idle(const GPUContext *p_ctx, EQueueType p_queue_type) -> void;
 
 	#pragma region command list
 
@@ -711,8 +736,8 @@ namespace toaster::gpu
 	auto TST_GPU_API cmd_bind_index_buffer(GPUContext *p_ctx, CommandListHandle p_cmd_list, BufferHandle p_index_buffer, EIndexType p_index_type) -> void;
 
 	auto TST_GPU_API cmd_set_primitive_topology(GPUContext *p_ctx, CommandListHandle p_cmd_list, EPrimitiveTopology p_primitive_topology) -> void;
-	auto TST_GPU_API cmd_set_primitive_restart(GPUContext *p_ctx, CommandListHandle p_cmd_list, bool p_enable, uint32 p_index = UINT32_MAX) -> void;
 	// This should be false 99% of the time
+	auto TST_GPU_API cmd_set_primitive_restart(GPUContext *p_ctx, CommandListHandle p_cmd_list, bool p_enable, uint32 p_index = UINT32_MAX) -> void;
 
 	auto TST_GPU_API cmd_set_viewport(GPUContext *p_ctx, CommandListHandle p_cmd_list, const math::Viewport &p_viewport) -> void;
 	auto TST_GPU_API cmd_set_scissor(GPUContext *p_ctx, CommandListHandle p_cmd_list, const math::Rect &p_scissor_rect) -> void;
@@ -782,7 +807,7 @@ namespace toaster::gpu
 	auto TST_GPU_API resource_descriptor_heap_write_texture(GPUContext *p_ctx, ResourceDescriptorHeapHandle p_resource_heap, uint32 p_heap_slot, TextureHandle p_texture,
 															bool        p_storage, uint32                   p_mip = UINT32_MAX) -> void;
 	auto TST_GPU_API sampler_descriptor_heap_write_sampler(GPUContext *  p_ctx, SamplerDescriptorHeapHandle p_sampler_heap, uint32 p_heap_slot,
-														   SamplerHandle p_sampler) -> void;
+														   const SamplerDesc&  p_sampler_desc) -> void;
 
 	#pragma endregion
 
@@ -828,7 +853,7 @@ namespace toaster::gpu
 
 	#pragma endregion
 
-	#pragma region texture + sampler
+	#pragma region texture
 
 	#ifndef NDEBUG
 	auto TST_GPU_API get_num_undefined_textures(GPUContext *p_ctx) -> uint64;
@@ -839,16 +864,16 @@ namespace toaster::gpu
 
 	[[nodiscard]] auto TST_GPU_API texture_get_desc(GPUContext *p_ctx, TextureHandle p_texture) -> const TextureDesc &;
 
-	// Samplers are completely useless, as you technically only need the desc. They are only here for aesthetic purposes
-	[[nodiscard]] auto TST_GPU_API sampler_create(GPUContext *p_ctx, const SamplerDesc &p_desc) -> SamplerHandle;
-	auto TST_GPU_API               sampler_destroy(GPUContext *p_ctx, SamplerHandle p_sampler) -> void;
-
 	#pragma endregion
 
 	#pragma region swapchain
 
 	[[nodiscard]] auto TST_GPU_API swapchain_create(GPUContext *p_ctx, SurfaceHandle p_surface, math::UInt2 p_initial_extent) -> SwapchainHandle;
 	auto TST_GPU_API               swapchain_destroy(GPUContext *p_ctx, SwapchainHandle p_swapchain) -> void;
+
+	auto TST_GPU_API swapchain_set_max_framerate(GPUContext *p_ctx, SwapchainHandle p_swapchain, uint32 p_framerate = UINT32_MAX) -> void; // UINT32_MAX = uncapped
+	auto TST_GPU_API swapchain_wait_for_framerate(GPUContext *p_ctx, SwapchainHandle p_swapchain) -> void;
+	auto TST_GPU_API swapchain_set_frame_marker(GPUContext *p_ctx, SwapchainHandle p_swapchain, EFrameMarker p_marker) -> void;
 
 	// Returns true if successful, false otherwise. Use this to skip rendering if unsuccessful and retry
 	auto TST_GPU_API swapchain_resize(GPUContext *p_ctx, SwapchainHandle p_swapchain, math::UInt2 p_extent) -> bool; // Resize is identical to 'Recreate'...

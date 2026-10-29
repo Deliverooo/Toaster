@@ -1,6 +1,7 @@
 #pragma once
 
 #include "system_types.h"
+#include <compare>
 
 namespace toaster
 {

@@ -2,8 +2,7 @@
 
 #include "system_types.h"
 #include "toast_assert.h"
-
-#include <vector>
+#include "vector.hpp"
 
 namespace toaster
 {
@@ -53,18 +52,21 @@ namespace toaster
 				return slot;
 			}
 
-			TST_PERMA_ASSERT_MSG(m_nextFreeIndex < m_capacity, "Allocation capacity reached!");
+			TST_ASSERT_MSG(m_nextFreeIndex < m_capacity, "Allocation capacity reached!");
 			return m_nextFreeIndex++;
 		}
 
 		auto freeSlot(TSlotType p_slot) -> void
 		{
+			TST_ASSERT_MSG(p_slot < m_capacity, "Invalid slot!");
 			m_recycledSlots.emplace_back(p_slot);
 		}
 
+		auto capacity() const -> TSlotType { return m_capacity; }
+
 	private:
-		TSlotType              m_capacity;
-		TSlotType              m_nextFreeIndex{0u};
-		std::vector<TSlotType> m_recycledSlots;
+		TSlotType         m_capacity;
+		TSlotType         m_nextFreeIndex{0u};
+		Vector<TSlotType> m_recycledSlots;
 	};
 }

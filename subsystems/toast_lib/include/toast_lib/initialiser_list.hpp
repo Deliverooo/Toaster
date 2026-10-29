@@ -7,9 +7,6 @@
 
 namespace toaster
 {
-	// template<typename Type>
-	// using InitialiserList = std::initializer_list<Type>;
-
 	template<typename Type>
 	class InitialiserList
 	{

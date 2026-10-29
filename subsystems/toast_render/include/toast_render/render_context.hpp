@@ -22,6 +22,8 @@ namespace toaster::rnd
 
 		gpu::ResourceDescriptorHeapHandle resourceHeap;
 		gpu::SamplerDescriptorHeapHandle  samplerHeap;
+		
+		uint32 maxFramesInFlight;
 	};
 
 	struct TST_RENDER_API RenderContextDesc

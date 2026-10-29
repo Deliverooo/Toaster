@@ -1,25 +1,27 @@
 #pragma once
 
-#include <mutex>
-#include <unordered_map>
+#include "toast_render.hpp"
+#include "toast_gpu/fwd.hpp"
 
-#include "render_context.hpp"
-#include "toast_gpu/api.hpp"
-#include "toast_gpu/upload.hpp"
-#include "toast_lib/pool.hpp"
+namespace toaster::gpu
+{
+	struct TextureDesc;
+}
 
 namespace toaster::rnd
 {
+	struct RenderContext;
+
+	constexpr uint32 c_maxTextureMipHeapSlots{16u}; // 2^16 = 65536... I don't think you will ever have a texture bigger than this...
+
 	struct TST_RENDER_API Texture
 	{
-		gpu::TextureHandle texture{nullptr};
-
-		uint32 shaderReadHeapSlot{UINT32_MAX};
-		uint32 storageHeapSlot{UINT32_MAX};
-
-		std::unordered_map<uint32, uint32> perMipStorageHeapSlots;
-
+		gpu::TextureHandle      texture{nullptr};
 		gpu::StateTrackerHandle stateTracker{nullptr};
+
+		uint32                                  shaderReadHeapSlot{UINT32_MAX};
+		uint32                                  storageHeapSlot{UINT32_MAX};
+		Array<uint32, c_maxTextureMipHeapSlots> perMipStorageHeapSlots;
 	};
 
 	TST_DECLARE_HANDLE(Texture);

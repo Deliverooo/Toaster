@@ -24,7 +24,8 @@ namespace toaster
 		constexpr auto data() -> Type * { return _data; }
 		constexpr auto data() const -> const Type * { return _data; }
 
-		[[nodiscard]] constexpr auto size() const -> uint64 { return Size; }
+		constexpr auto size() const -> uint64 { return Size; }
+		constexpr auto size_bytes() const -> uint64 { return Size * sizeof(Type); }
 
 		constexpr auto fill(const Type &p_element) -> void
 		{
@@ -34,19 +35,13 @@ namespace toaster
 
 		constexpr auto operator[](uint64 p_index) -> Type &
 		{
-			// if consteval
-			// {
-				// static_assert(p_index < Size && "Index out of bounds");
-			// }
+			TST_ASSERT_MSG(p_index < Size, "Index out of bounds");
 			return _data[p_index];
 		}
 
 		constexpr auto operator[](uint64 p_index) const -> const Type &
 		{
-			// if consteval
-			// {
-				// static_assert(p_index < Size && "Index out of bounds");
-			// }
+			TST_ASSERT_MSG(p_index < Size, "Index out of bounds");
 			return _data[p_index];
 		}
 

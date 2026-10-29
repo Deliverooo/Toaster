@@ -1,18 +1,11 @@
 #include "toast_kernel/application.hpp"
+#include "toast_kernel/events/event.hpp"
 
+#include "toast_gpu/api.hpp"
 #include "toast_gpu/frame.hpp"
 #include "toast_gpu/upload.hpp"
 
 #include <chrono>
-#include <thread>
-
-#include <Windows.h>
-#include <timeapi.h>
-#pragma comment(lib, "winmm.lib")
-
-#include "toast_gpu/api.hpp"
-
-#include <GLFW/glfw3.h>
 
 namespace toaster::knl
 {
@@ -59,20 +52,18 @@ namespace toaster::knl
 		window_shutdown_api();
 	}
 
-	auto application_run(Application *p_app, float64 p_target_fps) -> void
+	auto application_run(Application *p_app, uint32 p_target_fps) -> void
 	{
-		std::vector<gpu::CommandListHandle> command_lists(p_app->maxFramesInFlight);
+		Vector<gpu::CommandListHandle> command_lists(p_app->maxFramesInFlight);
 		for (auto &cmd: command_lists)
 			cmd = gpu::cmd_list_get_or_create(p_app->renderCtx.gpuCtx, gpu::EQueueType::eGraphics);
 
-		timeBeginPeriod(1u);
-		std::chrono::duration<float64, std::nano> target_frame_duration{1'000'000'000.0 / (p_target_fps - 3.0)};
-
 		auto last_time{std::chrono::steady_clock::now()};
-		auto frame_start_time{std::chrono::steady_clock::now()};
-
+		gpu::swapchain_set_max_framerate(p_app->renderCtx.gpuCtx, p_app->window.swapchain, p_target_fps);
 		while (p_app->running)
 		{
+			gpu::swapchain_wait_for_framerate(p_app->renderCtx.gpuCtx, p_app->window.swapchain);
+
 			if (!window_process_messages(&p_app->window)) // glfwPollEvents. returns !glfwWindowShouldClose(...);
 				break;
 
@@ -99,10 +90,19 @@ namespace toaster::knl
 
 			if (!window_is_minimised(&p_app->window))
 			{
+				gpu::swapchain_set_frame_marker(p_app->renderCtx.gpuCtx, p_app->window.swapchain, gpu::EFrameMarker::eSimulationStart);
 				for (auto &layer: p_app->layers)
 				{
 					if (layer.onUpdateFn)
 						layer.onUpdateFn(p_app, layer.userData, p_app->deltaTime);
+				}
+				gpu::swapchain_set_frame_marker(p_app->renderCtx.gpuCtx, p_app->window.swapchain, gpu::EFrameMarker::eSimulationEnd);
+			}
+			gpu::swapchain_set_frame_marker(p_app->renderCtx.gpuCtx, p_app->window.swapchain, gpu::EFrameMarker::eRendersubmitStart);
+			if (!window_is_minimised(&p_app->window))
+			{
+				for (auto &layer: p_app->layers)
+				{
 					if (layer.onRenderFn)
 						layer.onRenderFn(p_app, layer.userData, cmd);
 				}
@@ -110,28 +110,7 @@ namespace toaster::knl
 
 			window_submit_and_present(&p_app->window, cmd); // also updates the input states
 			p_app->frameIndex = (p_app->frameIndex + 1u) % p_app->maxFramesInFlight;
-
-			auto loop_end_time{std::chrono::steady_clock::now()};
-			auto time_spent{loop_end_time - frame_start_time};
-
-			if (time_spent < target_frame_duration)
-			{
-				const auto                          time_to_wait{target_frame_duration - time_spent};
-				constexpr std::chrono::microseconds sleep_buffer{1500};
-
-				if (time_to_wait > sleep_buffer)
-					std::this_thread::sleep_for(time_to_wait - sleep_buffer);
-
-				while (std::chrono::steady_clock::now() - frame_start_time < target_frame_duration)
-				{
-					_mm_pause();
-				}
-			}
-
-			frame_start_time = std::chrono::steady_clock::now();
 		}
-
-		timeEndPeriod(1u);
 
 		for (auto &cmd: command_lists)
 			gpu::cmd_list_free(p_app->renderCtx.gpuCtx, cmd);

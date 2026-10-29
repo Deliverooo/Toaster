@@ -1,7 +1,5 @@
 #pragma once
 
-#include <vector>
-
 #include "layer.hpp"
 #include "window.hpp"
 #include "toast_render/render_context.hpp"
@@ -10,7 +8,7 @@ namespace toaster::knl
 {
 	struct TST_KERNEL_API Application
 	{
-		std::vector<AppLayer> layers;
+		Vector<AppLayer> layers;
 		rnd::RenderContext    renderCtx{};
 		Window                window{};
 
@@ -29,7 +27,7 @@ namespace toaster::knl
 
 	auto TST_KERNEL_API application_create(Application *p_out_app, const ApplicationDesc &p_desc) -> void;
 	auto TST_KERNEL_API application_destroy(Application *p_app) -> void;
-	auto TST_KERNEL_API application_run(Application *p_app, float64 p_target_fps) -> void;
+	auto TST_KERNEL_API application_run(Application *p_app, uint32 p_target_fps) -> void;
 
 	auto TST_KERNEL_API application_close(Application *p_app) -> void;
 

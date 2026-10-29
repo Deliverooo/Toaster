@@ -1,6 +1,7 @@
 #include "toast_render/render_context.hpp"
 
 #include "toast_gpu/allocation.hpp"
+#include "toast_gpu/api.hpp"
 #include "toast_gpu/frame.hpp"
 #include "toast_gpu/upload.hpp"
 
@@ -21,6 +22,8 @@ namespace toaster::rnd
 
 		p_out_render_ctx->resourceHeap = gpu::resource_descriptor_heap_create(p_out_render_ctx->gpuCtx, {p_desc.maxBufferDescriptors, p_desc.maxTextureDescriptors});
 		p_out_render_ctx->samplerHeap  = gpu::sampler_descriptor_heap_create(p_out_render_ctx->gpuCtx, {p_desc.maxSamplerDescriptors});
+
+		p_out_render_ctx->maxFramesInFlight = p_desc.maxFramesInFlight;
 	}
 
 	auto render_context_destroy(RenderContext *p_render_ctx) -> void

@@ -6,26 +6,22 @@ set(GPU_SRC
 		${CMAKE_CURRENT_SOURCE_DIR}/src/allocation.cpp
 )
 
-if (TOASTER_BUILD_SHARED_LIBS)
-	add_library(ToastGPU SHARED)
-else ()
-	add_library(ToastGPU STATIC)
-endif ()
+add_library(ToastGPU SHARED)
 
 target_include_directories(ToastGPU PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
 		$<INSTALL_INTERFACE:include>)
 
 target_sources(ToastGPU PRIVATE ${GPU_SRC})
-target_link_libraries(ToastGPU PUBLIC Toaster::ToastLib Toaster::ToastMath Vulkan::Vulkan)
+target_link_libraries(ToastGPU PUBLIC Toaster::ToastLib Toaster::ToastMath)
+target_link_libraries(ToastGPU PRIVATE Vulkan::Headers volk::volk VulkanMemoryAllocator)
 
-target_include_directories(ToastGPU PRIVATE "$ENV{VULKAN_SDK}/Include")
+add_compile_definitions(ToastGPU PRIVATE VK_NO_PROTOTYPES)
+add_compile_definitions(ToastGPU PRIVATE VK_USE_PLATFORM_WIN32_KHR)
 
 add_library(Toaster::ToastGPU ALIAS ToastGPU)
 
-if (TOASTER_BUILD_SHARED_LIBS)
-	add_compile_definitions(ToastGPU PUBLIC TST_GPU_BUILD_DLL)
-	add_compile_definitions(ToastGPU PRIVATE TST_GPU_DLL_EXPORT)
-endif ()
+add_compile_definitions(ToastGPU PUBLIC TST_GPU_BUILD_DLL)
+add_compile_definitions(ToastGPU PRIVATE TST_GPU_DLL_EXPORT)
 
 if (TOASTER_INSTALL)
 	install(TARGETS ToastGPU
@@ -35,5 +31,4 @@ if (TOASTER_INSTALL)
 			ARCHIVE DESTINATION lib
 	)
 	install(DIRECTORY include/ DESTINATION include)
-
 endif ()

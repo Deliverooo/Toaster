@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <cstdio>
+#include <iostream>
 
 namespace toaster::os
 {
@@ -13,6 +14,15 @@ namespace toaster::os
 			freopen_s(&fp, "CONOUT$", "w", stdout);
 			freopen_s(&fp, "CONOUT$", "w", stderr);
 			freopen_s(&fp, "CONIN$", "r", stdin);
+
+			std::cout.clear();
+			std::clog.clear();
+			std::cerr.clear();
+			std::cin.clear();
+
+			std::ios_base::sync_with_stdio();
+
+			printf("Console initialised!\n"); // If I don't print something, there is a chance that subsequent calls to printf will do nothing...
 		}
 		else
 		{

@@ -1,8 +1,7 @@
 #pragma once
 
-#include <vector>
-
 #include "event.hpp"
+#include "toast_lib/vector.hpp"
 
 namespace toaster::knl
 {
@@ -63,15 +62,15 @@ namespace toaster::knl
 	class TST_KERNEL_API WindowFileDropEvent final : public Event
 	{
 	public:
-		WindowFileDropEvent(const std::vector<String> &p_filepaths) : m_filepaths(p_filepaths)
+		WindowFileDropEvent(const Vector<String> &p_filepaths) : m_filepaths(p_filepaths)
 		{
 		}
 
 		EVENT_CLASS_TYPE(eWindowFileDrop)
 
-		[[nodiscard]] auto getFilepaths() const -> const std::vector<String> & { return m_filepaths; }
+		[[nodiscard]] auto getFilepaths() const -> const Vector<String> & { return m_filepaths; }
 
 	private:
-		std::vector<String> m_filepaths;
+		Vector<String> m_filepaths;
 	};
 }

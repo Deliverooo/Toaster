@@ -76,7 +76,7 @@ layout (descriptor_heap, scalar) readonly buffer VertexBuffer { Vertex vertices[
 layout (descriptor_heap, scalar) readonly buffer MeshletBuffer { Meshlet meshlets[]; } meshletPages[];
 layout (descriptor_heap, scalar) readonly buffer MeshletVertexBuffer { uint32 vertices[]; } meshletVertexPages[];
 layout (descriptor_heap, scalar) readonly buffer MeshletTriangleBuffer { uint8 indices[]; } meshletTrianglePages[];
-layout (descriptor_heap, scalar) readonly buffer MaterialIndirectionBuffer { uint32 materials[]; } materialIndirectionPages[];
+layout (buffer_reference, scalar) readonly buffer MaterialIndirectionBuffer { uint32 materials[]; };
 
 struct MeshMetadata
 {
@@ -94,7 +94,6 @@ struct MeshMetadata
     uint8 meshletBufferPageId;
     uint8 meshletVertexBufferPageId;
     uint8 meshletTriangleBufferPageId;
-    uint8 materialIndirectionBufferPageId;
 };
 
 layout (buffer_reference, scalar) readonly buffer MeshMetadataBuffer { MeshMetadata metadata[]; };
@@ -127,6 +126,9 @@ layout (descriptor_heap) uniform sampler samplerHeap[];
 
 #define TST_MATERIAL_FLAGS_BACKFACE_CULLING_BIT TST_BIT(0u)
 #define TST_MATERIAL_FLAGS_BACKFACE_TRANSPARENT_BIT TST_BIT(1u)
+#define TST_MATERIAL_FLAGS_NO_NORMAL_MAP_BIT TST_BIT(2u)
+#define TST_MATERIAL_FLAGS_NO_ROUGHNESS_MAP_BIT TST_BIT(3u)
+#define TST_MATERIAL_FLAGS_NO_METALNESS_MAP_BIT TST_BIT(4u)
 
 struct Material
 {
@@ -140,3 +142,83 @@ struct Material
     uint8 flags;
 };
 layout (buffer_reference, scalar) readonly buffer MaterialBuffer { Material materials[]; };
+
+struct PointLight
+{
+    float3 position;
+    float3 colour;
+};
+layout (buffer_reference, scalar) readonly buffer PointLightBuffer { PointLight pointLights[]; };
+
+#define OEX_OIT_LAYER_COUNT 2u
+
+struct OITFragment
+{
+    uint32 colour;
+    float depth;
+};
+
+struct OITPixel
+{
+    uint32 count;
+    OITFragment fragments[OEX_OIT_LAYER_COUNT];
+};
+
+layout (buffer_reference, scalar) coherent buffer OITStorage { OITPixel pixels[]; };
+
+struct PBRGlobals
+{
+    vec3 normal;
+    vec3 view;
+    float nDotV;
+
+    float3 f0;
+    float4 albedo;
+    float roughness;
+    float metalness;
+};
+
+PBRGlobals glob;
+
+float distributionGGX(vec3 p_normal, vec3 p_halfway, float p_roughness)
+{
+    float a = p_roughness * p_roughness;
+    float a_squared = a * a;
+    float n_dot_h = max(dot(p_normal, p_halfway), 0.0);
+    float n_dot_h_squared = n_dot_h * n_dot_h;
+
+    float numerator = a_squared;
+    float denominator = (n_dot_h_squared * (a_squared - 1.0) + 1.0);
+    denominator = PI * denominator * denominator;
+
+    return numerator / denominator;
+}
+
+float geometrySchlickGGX(float p_n_dot_v, float p_roughness)
+{
+    float r = (p_roughness + 1.0f);
+    float k = (r * r) / 8.0f;
+
+    float numerator = p_n_dot_v;
+    float denominator = p_n_dot_v * (1.0f - k) + k;
+
+    return numerator / denominator;
+}
+
+float geometrySmith(float p_n_dot_v, float p_n_dot_l, float p_roughness)
+{
+    float ggx2 = geometrySchlickGGX(p_n_dot_v, p_roughness);
+    float ggx1 = geometrySchlickGGX(p_n_dot_l, p_roughness);
+
+    return ggx1 * ggx2;
+}
+
+float3 fresnelSchlick(float3 p_f0, float p_cos_theta)
+{
+    return p_f0 + (1.0f - p_f0) * pow(clamp(1.0f - p_cos_theta, 0.0f, 1.0f), 5.0f);
+}
+
+float3 fresnelSchlickRoughness(float p_cos_theta, float3 p_f0, float p_roughness)
+{
+    return p_f0 + (max(float3(1.0f - p_roughness), p_f0) - p_f0) * pow(clamp(1.0f - p_cos_theta, 0.0f, 1.0f), 5.0f);
+}

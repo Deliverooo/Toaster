@@ -2,14 +2,14 @@ set(RENDER_SRC
 		${CMAKE_CURRENT_SOURCE_DIR}/src/scene.cpp
 )
 
-add_library(ToastScene STATIC)  # Scene has to be static
+add_library(ToastScene STATIC)
 
 target_include_directories(ToastScene PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
 		$<INSTALL_INTERFACE:include>)
 
 target_sources(ToastScene PRIVATE ${RENDER_SRC})
 
-target_link_libraries(ToastScene PUBLIC Toaster::ToastAsset Toaster::ToastRender EnTT::EnTT)
+target_link_libraries(ToastScene PUBLIC Toaster::ToastRender EnTT::EnTT)
 
 add_library(Toaster::ToastScene ALIAS ToastScene)
 

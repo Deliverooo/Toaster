@@ -2,54 +2,18 @@
 
 #include "toast_lib.hpp"
 
-#include <string>
 #include <string_view>
+#include <xstring>
 
 namespace toaster
 {
 	using CString  = const char *;
 	using CWString = const wchar_t *;
 
-	using String     = std::string;
+	using String     = std::basic_string<char, std::char_traits<char>, mi_stl_allocator<char> >;
 	using StringView = std::string_view;
-	using WString    = std::wstring;
-	using U8String   = std::u8string;
-	using U16String  = std::u16string;
-	using U32String  = std::u32string;
-
-	template<typename Type> requires std::is_arithmetic_v<Type>
-	auto to_string(Type p_val) -> String
-	{
-		return std::to_string(p_val);
-	}
-
-	template<typename Type> requires std::is_arithmetic_v<Type>
-	auto to_wstring(Type p_val) -> WString
-	{
-		return std::to_wstring(p_val);
-	}
-
-	template<typename Type> requires std::is_arithmetic_v<Type>
-	auto to_u8string(Type p_val) -> U8String
-	{
-		std::string ret = std::to_string(p_val);
-		return U8String{ret.begin(), ret.end()};
-	}
-
-	template<typename Type> requires std::is_arithmetic_v<Type>
-	auto to_u16string(Type p_val) -> U16String
-	{
-		std::string ret = std::to_string(p_val);
-		return U16String{ret.begin(), ret.end()};
-	}
-
-	template<typename Type> requires std::is_arithmetic_v<Type>
-	auto to_u32string(Type p_val) -> U32String
-	{
-		std::string ret = std::to_string(p_val);
-		return U32String{ret.begin(), ret.end()};
-	}
-
-	TST_LIB_API WString convertUtf8ToWide(const String &p_string);
-	TST_LIB_API String  convertWideToUtf8(const WString &p_string);
+	using WString    = std::basic_string<wchar_t, std::char_traits<wchar_t>, mi_stl_allocator<wchar_t> >;
+	using U8String   = std::basic_string<char8_t, std::char_traits<char8_t>, mi_stl_allocator<char8_t> >;
+	using U16String  = std::basic_string<char16_t, std::char_traits<char16_t>, mi_stl_allocator<char16_t> >;
+	using U32String  = std::basic_string<char32_t, std::char_traits<char32_t>, mi_stl_allocator<char32_t> >;
 }

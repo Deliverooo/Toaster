@@ -1,10 +1,11 @@
 #pragma once
 
-#include "events/event.hpp"
+#include "toast_kernel.hpp"
 #include "toast_gpu/fwd.hpp"
 
 namespace toaster::knl
 {
+	class Event;
 	struct Application;
 
 	struct TST_KERNEL_API AppLayer

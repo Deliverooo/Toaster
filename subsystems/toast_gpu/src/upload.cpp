@@ -1,22 +1,21 @@
 #include "toast_gpu/upload.hpp"
 
-#include <algorithm>
-#include <queue>
+#include <ranges>
 #include <threads.h>
-#include <thread>
-#include <unordered_map>
-#include <unordered_set>
 
 #include "toast_gpu/allocation.hpp"
+#include "toast_gpu/api.hpp"
 #include "toast_lib/atomic.hpp"
+#include "toast_lib/map.hpp"
 #include "toast_lib/pool.hpp"
+#include "toast_lib/queue.hpp"
 
 namespace toaster::gpu
 {
 	struct StateTracker
 	{
 		mtx_t                    ticketMutex;
-		std::vector<uint64>      timelineTickets;
+		Vector<uint64>           timelineTickets;
 		StateTrackerReadyFn      readyCb{nullptr};
 		TST_ALIGN_ATOMIC(uint32) pendingSubresources{0u};
 	};
@@ -55,16 +54,15 @@ namespace toaster::gpu
 		math::UInt3          extent{0u, 0u, 0u};
 		math::Int3           offset{0, 0, 0};
 		uint64               size{0u};
-		uint64               dstOffset{0u};
+		uint64               dstOffset{0ull};
 		uint64               handle{0u};
 		EType                type{EType::eBuffer};
 	};
 
 	struct LiveUploadBatch
 	{
-		std::vector<UploadPageAllocation> allocations;
-		uint64                            timelineValue{0u};
-		// TODO: With dynamic paged allocation, I would like to have it so if an upload is too big, it will create a dedicated staging buffer and then free that here as well
+		Vector<UploadPageAllocation> allocations;
+		uint64                       timelineValue{0u};
 	};
 
 	struct UploadContext
@@ -75,29 +73,29 @@ namespace toaster::gpu
 		SemaphoreHandle     transferTimelineSemaphore{nullptr};
 		std::atomic<uint64> transferTimelineCounter{0u};
 
-		uint32                                  nextPageId{0u};
-		uint32                                  activePageId{0u};
-		std::unordered_map<uint32, StagingPage> stagingPages;
+		uint32                            nextPageId{0u};
+		uint32                            activePageId{0u};
+		UnorderedMap<uint32, StagingPage> stagingPages;
 
 		Pool<StateTracker> stateTrackers;
 
-		uint32                         maxAllocationCommandLists{3u};
-		std::vector<CommandListHandle> commandLists;
-		std::vector<uint64>            uploadTimeline;
+		uint32                    maxAllocationCommandLists{3u};
+		Vector<CommandListHandle> commandLists;
+		Vector<uint64>            uploadTimeline;
 
-		std::thread             uploadThread;
-		std::atomic_bool        threadRunning{true};
-		std::condition_variable cv;
+		thrd_t           uploadThrd;
+		std::atomic_bool threadRunning{true};
+		cnd_t            cnd;
 
-		std::mutex pageMutex;
-		std::mutex uploadMutex;
-		std::mutex batchMutex;
+		mtx_t pageMtx;
+		mtx_t uploadMtx;
+		mtx_t batchMtx;
 
-		std::queue<UploadTask>       taskQueue;
-		std::vector<LiveUploadBatch> liveBatches;
+		Queue<UploadTask>       taskQueue;
+		Vector<LiveUploadBatch> liveBatches;
 	};
 
-	static auto createPage(UploadContext *p_ctx, uint64 p_size, uint32 p_id) -> StagingPage
+	static auto createPage(const UploadContext *p_ctx, uint64 p_size, uint32 p_id) -> StagingPage
 	{
 		StagingPage page{};
 		page.size = p_size;
@@ -115,13 +113,13 @@ namespace toaster::gpu
 		return page;
 	}
 
-	static auto destroyPage(UploadContext *p_ctx, StagingPage &p_page) -> void
+	static auto destroyPage(const UploadContext *p_ctx, StagingPage &p_page) -> void
 	{
 		virtual_block_destroy(p_ctx->allocCtx, p_page.block);
 		buffer_destroy(p_ctx->gpuCtx, p_page.buffer);
 	}
 
-	static auto tryAllocate(UploadContext *p_ctx, StagingPage &p_page, uint64 p_size, uint64 p_alignment, UploadPageAllocation &p_out_allocation) -> bool
+	static auto tryAllocate(const UploadContext *p_ctx, StagingPage &p_page, uint64 p_size, uint64 p_alignment, UploadPageAllocation &p_out_allocation) -> bool
 	{
 		p_out_allocation.allocation = virtual_block_allocate(p_ctx->allocCtx, p_page.block, p_size, p_alignment);
 		if (p_out_allocation.allocation)
@@ -139,7 +137,7 @@ namespace toaster::gpu
 		return false;
 	}
 
-	static auto freeUploadPageAllocation(UploadContext *p_ctx, StagingPage &p_page, const UploadPageAllocation &p_allocation) -> void
+	static auto freeUploadPageAllocation(const UploadContext *p_ctx, StagingPage &p_page, const UploadPageAllocation &p_allocation) -> void
 	{
 		virtual_block_free(p_ctx->allocCtx, p_allocation.allocation);
 		TST_SCOPED_ATOMIC(p_page.activeAllocations, active_allocations);
@@ -148,31 +146,39 @@ namespace toaster::gpu
 
 	static auto insertPage(UploadContext *p_ctx) -> void
 	{
-		uint32 page_id{++p_ctx->nextPageId};
+		const uint32 page_id{++p_ctx->nextPageId};
 		p_ctx->stagingPages[page_id] = createPage(p_ctx, page_size, page_id);
 		p_ctx->activePageId          = page_id;
 	}
 
 	static auto allocateAcrossPages(UploadContext *p_ctx, uint64 p_size, UploadPageAllocation &p_out_allocation) -> void
 	{
-		std::scoped_lock<std::mutex> page_lock{p_ctx->pageMutex};
+		mtx_lock(&p_ctx->pageMtx);
 
 		if (tryAllocate(p_ctx, p_ctx->stagingPages[p_ctx->activePageId], p_size, 16u, p_out_allocation))
+		{
+			mtx_unlock(&p_ctx->pageMtx);
 			return;
+		}
 
-		for (auto &[page_id,page]: p_ctx->stagingPages)
+		for (auto &page: p_ctx->stagingPages | std::views::values)
 		{
 			if (tryAllocate(p_ctx, page, p_size, 16u, p_out_allocation))
+			{
+				mtx_unlock(&p_ctx->pageMtx);
 				return;
+			}
 		}
 
 		if (p_size > page_size)
 		{
-			uint32 page_id{++p_ctx->nextPageId};
+			const uint32 page_id{++p_ctx->nextPageId};
 			p_ctx->stagingPages[page_id] = createPage(p_ctx, p_size, page_id);
 
 			if (!tryAllocate(p_ctx, p_ctx->stagingPages[page_id], p_size, 16u, p_out_allocation))
 				TST_PERMA_ASSERT(false);
+
+			mtx_unlock(&p_ctx->pageMtx);
 			return;
 		}
 
@@ -181,13 +187,14 @@ namespace toaster::gpu
 		{
 			TST_PERMA_ASSERT(false);
 		}
+
+		mtx_unlock(&p_ctx->pageMtx);
 	}
 
-	static auto executeBatchSubmission(UploadContext *p_ctx, const std::vector<UploadTask> &p_tasks, uint32 p_cmd_index) -> void
+	static auto executeBatchSubmission(UploadContext *p_ctx, const Vector<UploadTask> &p_tasks, uint32 p_cmd_index) -> void
 	{
-		uint64 current_value{semaphore_get_value(p_ctx->gpuCtx, p_ctx->transferTimelineSemaphore)};
-
-		CommandListHandle cmd{p_ctx->commandLists[p_cmd_index]};
+		const uint64            current_value{semaphore_get_value(p_ctx->gpuCtx, p_ctx->transferTimelineSemaphore)};
+		const CommandListHandle cmd{p_ctx->commandLists[p_cmd_index]};
 
 		if (current_value < p_ctx->uploadTimeline[p_cmd_index])
 			semaphore_wait_n(p_ctx->gpuCtx, p_ctx->transferTimelineSemaphore, p_ctx->uploadTimeline[p_cmd_index]);
@@ -197,9 +204,6 @@ namespace toaster::gpu
 
 		LiveUploadBatch live_batch{};
 
-		// std::vector<ImageMemoryBarrier>  image_barriers;
-		// std::vector<BufferMemoryBarrier> buffer_barriers;
-
 		for (const auto &task: p_tasks)
 		{
 			live_batch.allocations.push_back(task.stagingAllocation);
@@ -208,26 +212,21 @@ namespace toaster::gpu
 			{
 				case UploadTask::EType::eBuffer:
 				{
-					BufferHandle handle{static_cast<BufferHandle>(task.handle)};
+					const auto handle{static_cast<BufferHandle>(task.handle)};
 					TST_ASSERT(handle.valid());
 
 					cmd_copy_buffer(p_ctx->gpuCtx, cmd, task.stagingAllocation.buffer, handle, task.size, task.stagingAllocation.offset, task.dstOffset);
-
-					// auto &release_barrier{buffer_barriers.emplace_back()};
 
 					break;
 				}
 
 				case UploadTask::EType::eTexture:
 				{
-					TextureHandle handle{static_cast<TextureHandle>(task.handle)};
+					const auto handle{static_cast<TextureHandle>(task.handle)};
 					TST_ASSERT(handle.valid());
 
 					cmd_copy_buffer_to_texture(p_ctx->gpuCtx, cmd, task.stagingAllocation.buffer, handle, task.stagingAllocation.offset, 0u, 0u, 1u, task.extent,
 											   task.offset);
-
-					// auto &release_barrier{image_barriers.emplace_back()};
-
 					break;
 				}
 			}
@@ -235,7 +234,7 @@ namespace toaster::gpu
 
 		cmd_list_close(p_ctx->gpuCtx, cmd);
 
-		uint64 target_signal_value{_acquire_transfer_timeline_counter_value(p_ctx)};
+		const uint64 target_signal_value{_acquire_transfer_timeline_counter_value(p_ctx)};
 		p_ctx->uploadTimeline[p_cmd_index] = target_signal_value;
 		live_batch.timelineValue           = target_signal_value;
 
@@ -253,50 +252,64 @@ namespace toaster::gpu
 			(void) --pending_subresources;
 		}
 
-		{
-			std::scoped_lock<std::mutex> lock{p_ctx->batchMutex};
-			p_ctx->liveBatches.push_back(live_batch);
-		}
+		mtx_lock(&p_ctx->batchMtx);
+		p_ctx->liveBatches.push_back(live_batch);
+		mtx_unlock(&p_ctx->batchMtx);
 	}
 
-	static auto transferMain(UploadContext *p_ctx) -> void
+	static auto __cdecl upload_main(void *p_arg) -> int32
 	{
+		const auto ctx{static_cast<UploadContext *>(p_arg)};
+
 		uint32 cmd_index{0u};
 
-		while (p_ctx->threadRunning)
+		while (ctx->threadRunning)
 		{
-			std::vector<UploadTask> batch_tasks;
+			Vector<UploadTask> batch_tasks;
 
 			{
-				std::unique_lock<std::mutex> lock{p_ctx->uploadMutex};
-				p_ctx->cv.wait(lock, [p_ctx]() -> bool { return !p_ctx->taskQueue.empty() || !p_ctx->threadRunning.load(); });
-				if (p_ctx->taskQueue.empty() && !p_ctx->threadRunning.load())
-					break;
+				mtx_lock(&ctx->uploadMtx);
+				while (ctx->taskQueue.empty() && ctx->threadRunning.load())
+					cnd_wait(&ctx->cnd, &ctx->uploadMtx);
 
-				while (!p_ctx->taskQueue.empty())
+				if (ctx->taskQueue.empty() && !ctx->threadRunning.load())
 				{
-					batch_tasks.push_back(p_ctx->taskQueue.front());
-					p_ctx->taskQueue.pop();
+					mtx_unlock(&ctx->uploadMtx);
+					break;
 				}
+
+				while (!ctx->taskQueue.empty())
+				{
+					batch_tasks.push_back(ctx->taskQueue.front());
+					ctx->taskQueue.pop();
+				}
+				mtx_unlock(&ctx->uploadMtx);
 			}
 
 			if (!batch_tasks.empty())
 			{
-				executeBatchSubmission(p_ctx, batch_tasks, cmd_index);
-				cmd_index = (cmd_index + 1u) % p_ctx->maxAllocationCommandLists;
+				executeBatchSubmission(ctx, batch_tasks, cmd_index);
+				cmd_index = (cmd_index + 1u) % ctx->maxAllocationCommandLists;
 			}
 		}
+
+		return 67;
 	}
 
 	auto upload_ctx_create(GPUContext *p_gpu_ctx, AllocationContext *p_alloc_ctx, const UploadContextDesc &p_desc) -> UploadContext *
 	{
-		UploadContext *ctx{new UploadContext{}};
+		const auto ctx{new UploadContext{}};
 
 		ctx->gpuCtx   = p_gpu_ctx;
 		ctx->allocCtx = p_alloc_ctx;
 
-		ctx->transferTimelineSemaphore = semaphore_create(p_gpu_ctx);
+		mtx_init(&ctx->pageMtx, mtx_plain);
+		mtx_init(&ctx->uploadMtx, mtx_plain);
+		mtx_init(&ctx->batchMtx, mtx_plain);
 
+		cnd_init(&ctx->cnd);
+
+		ctx->transferTimelineSemaphore = semaphore_create(p_gpu_ctx);
 		ctx->maxAllocationCommandLists = p_desc.maxAllocationCommandLists;
 
 		insertPage(ctx); // Default page
@@ -317,7 +330,11 @@ namespace toaster::gpu
 			p_data->readyCb             = nullptr;
 		});
 
-		ctx->uploadThread = std::thread(&transferMain, ctx);
+		if (thrd_create(&ctx->uploadThrd, upload_main, ctx) != thrd_success)
+		{
+			TST_PERMA_ASSERT_MSG(false, "Failed to create upload thread!");
+			return nullptr;
+		}
 
 		return ctx;
 	}
@@ -325,16 +342,26 @@ namespace toaster::gpu
 	auto upload_ctx_destroy(UploadContext *p_ctx) -> void
 	{
 		p_ctx->threadRunning.store(false);
-		p_ctx->cv.notify_one();
-		if (p_ctx->uploadThread.joinable())
-			p_ctx->uploadThread.join();
+		cnd_signal(&p_ctx->cnd);
+
+		int32 _res;
+		thrd_join(p_ctx->uploadThrd, &_res);
+		if (_res != 67)
+		{
+			TST_PERMA_ASSERT_MSG(false, "Thread failed to join");
+		}
+		cnd_destroy(&p_ctx->cnd);
 
 		p_ctx->stateTrackers.clear();
 
-		for (auto &[id, page]: p_ctx->stagingPages)
+		for (auto &page: p_ctx->stagingPages | std::views::values)
 			destroyPage(p_ctx, page);
 
 		semaphore_destroy(p_ctx->gpuCtx, p_ctx->transferTimelineSemaphore);
+
+		mtx_destroy(&p_ctx->batchMtx);
+		mtx_destroy(&p_ctx->uploadMtx);
+		mtx_destroy(&p_ctx->pageMtx);
 
 		delete p_ctx;
 	}
@@ -354,9 +381,11 @@ namespace toaster::gpu
 		tracker->readyCb = p_ready_callback;
 	}
 
-	auto state_tracker_is_ready(UploadContext *p_ctx, StateTrackerHandle p_state_tracker) -> bool
+	auto state_tracker_is_ready(const UploadContext *p_ctx, StateTrackerHandle p_state_tracker) -> bool
 	{
-		if (p_ctx->stateTrackers.isValid(p_state_tracker)) // If the state tracker is valid, it means that it has not completed all of it's operations
+		// Nullptr means the state tracker is null. Therefore, it is technically not 'ready'
+		// If the state tracker is valid, it means that it has not completed all of its operations
+		if (p_state_tracker == nullptr || p_ctx->stateTrackers.isValid(p_state_tracker))
 			return false;
 		return true;
 	}
@@ -368,26 +397,26 @@ namespace toaster::gpu
 
 		while (true)
 		{
-			uint64 current_value{semaphore_get_value(p_ctx->gpuCtx, p_ctx->transferTimelineSemaphore)};
+			const uint64 current_value{semaphore_get_value(p_ctx->gpuCtx, p_ctx->transferTimelineSemaphore)};
 
 			bool all_finished{true};
 
-			{
-				mtx_lock(&tracker->ticketMutex);
-				// If the tracker has no timeline tickets, it indicates that worker threads have not yet begun an upload on it
-				if (tracker->timelineTickets.empty())
-					all_finished = false;
+			mtx_lock(&tracker->ticketMutex);
 
-				for (const uint64 ticket: tracker->timelineTickets)
+			// If the tracker has no timeline tickets, it indicates that worker threads have not yet begun an upload on it
+			if (tracker->timelineTickets.empty())
+				all_finished = false;
+
+			for (const uint64 ticket: tracker->timelineTickets)
+			{
+				if (current_value < ticket)
 				{
-					if (current_value < ticket)
-					{
-						all_finished = false;
-						break;
-					}
+					all_finished = false;
+					break;
 				}
-				mtx_unlock(&tracker->ticketMutex);
 			}
+			mtx_unlock(&tracker->ticketMutex);
+
 			TST_SCOPED_ATOMIC(tracker->pendingSubresources, pending_subresources);
 			if (all_finished && pending_subresources.load() == 0u)
 			{
@@ -403,11 +432,11 @@ namespace toaster::gpu
 
 	auto poll_uploads(UploadContext *p_ctx) -> void
 	{
-		uint64 current_value{semaphore_get_value(p_ctx->gpuCtx, p_ctx->transferTimelineSemaphore)};
+		const uint64 current_value{semaphore_get_value(p_ctx->gpuCtx, p_ctx->transferTimelineSemaphore)};
 
 		{
-			std::scoped_lock<std::mutex> batch_lock{p_ctx->batchMutex}; // Locks so multiple threads cannot call ts at once
-			std::scoped_lock<std::mutex> page_lock{p_ctx->pageMutex};
+			mtx_lock(&p_ctx->batchMtx);
+			mtx_lock(&p_ctx->pageMtx);
 
 			for (auto it{p_ctx->liveBatches.begin()}; it != p_ctx->liveBatches.end();)
 			{
@@ -434,9 +463,11 @@ namespace toaster::gpu
 				else
 					++it;
 			}
+			mtx_unlock(&p_ctx->pageMtx);
+			mtx_unlock(&p_ctx->batchMtx);
 		}
 
-		std::vector<uint32> indices_to_remove;
+		Vector<uint32> indices_to_remove;
 		p_ctx->stateTrackers.forEachAlive([&indices_to_remove, current_value](StateTracker &p_data, uint32 p_index) -> void
 		{
 			bool all_finished{true};
@@ -487,11 +518,10 @@ namespace toaster::gpu
 		upload_task.handle       = static_cast<uint64>(p_upload_desc.dstBuffer);
 		upload_task.type         = UploadTask::EType::eBuffer;
 
-		{
-			std::unique_lock<std::mutex> lock{p_ctx->uploadMutex};
-			p_ctx->taskQueue.push(upload_task);
-			p_ctx->cv.notify_one();
-		}
+		mtx_lock(&p_ctx->uploadMtx);
+		p_ctx->taskQueue.push(upload_task);
+		cnd_signal(&p_ctx->cnd);
+		mtx_unlock(&p_ctx->uploadMtx);
 	}
 
 	auto upload_data_to_texture(UploadContext *p_ctx, const TextureUploadDesc &p_upload_desc, StateTrackerHandle p_state_tracker) -> void
@@ -510,14 +540,13 @@ namespace toaster::gpu
 		upload_task.handle       = static_cast<uint64>(p_upload_desc.dstTexture);
 		upload_task.type         = UploadTask::EType::eTexture;
 
-		{
-			std::unique_lock<std::mutex> lock{p_ctx->uploadMutex};
-			p_ctx->taskQueue.push(upload_task);
-			p_ctx->cv.notify_one();
-		}
+		mtx_lock(&p_ctx->uploadMtx);
+		p_ctx->taskQueue.push(upload_task);
+		cnd_signal(&p_ctx->cnd);
+		mtx_unlock(&p_ctx->uploadMtx);
 	}
 
-	auto _get_transfer_timeline_semaphore(UploadContext *p_ctx) -> SemaphoreHandle
+	auto _get_transfer_timeline_semaphore(const UploadContext *p_ctx) -> SemaphoreHandle
 	{
 		return p_ctx->transferTimelineSemaphore;
 	}
@@ -527,7 +556,7 @@ namespace toaster::gpu
 		return ++p_ctx->transferTimelineCounter; // Pre inc
 	}
 
-	auto _get_transfer_timeline_counter_value(UploadContext *p_ctx) -> uint64
+	auto _get_transfer_timeline_counter_value(const UploadContext *p_ctx) -> uint64
 	{
 		return p_ctx->transferTimelineCounter.load();
 	}

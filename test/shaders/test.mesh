@@ -1,0 +1,45 @@
+#version 460
+#define __MESH__
+
+#extension GL_GOOGLE_include_directive: require
+#include "common.glsl"
+
+layout (push_constant) uniform PushData
+{
+    float2 screenResolution;
+    uint32 textureHeapId;
+    uint32 samplerHeapId;
+} pcs;
+
+layout (local_size_x = 3u, local_size_y = 1u, local_size_z = 1u) in;
+layout (triangles, max_vertices = 3u, max_primitives = 1u) out;
+
+const float2 triangle_vertices[3u] = { float2(-1.0f, -1.0f), float2(-1.0f, 3.0f), float2(3.0f, -1.0f) };
+
+layout (location = 0u) out MSOut {
+    float2 position;
+    float2 texCoord;
+} ms_out[];
+
+void main()
+{
+    uint32 thread_id = gl_LocalInvocationID.x;
+    if (thread_id == 0u)
+    {
+        SetMeshOutputsEXT(3u, 1u);
+    }
+    barrier();
+
+    float2 vertex_pos = triangle_vertices[thread_id];
+    float2 uv = vertex_pos * 0.5f + 0.5f;
+
+    ms_out[thread_id].position = vertex_pos;
+    ms_out[thread_id].texCoord = uv;
+
+    gl_MeshVerticesEXT[thread_id].gl_Position = float4(vertex_pos, 1.0f, 1.0f);
+
+    if (thread_id == 0u)
+    {
+        gl_PrimitiveTriangleIndicesEXT[0u] = uint3(0u, 1u, 2u);
+    }
+}

@@ -1,14 +1,16 @@
 #pragma once
 
-#include <unordered_set>
-
-#include "texture.hpp"
+#include "toast_render.hpp"
 #include "toast_gpu/allocation.hpp"
-
-#define falsity false // Is it a Verity?!
+#include "toast_math/math_vector.hpp"
 
 namespace toaster::rnd
 {
+	struct RenderContext;
+	struct Texture;
+	TST_DECLARE_HANDLE(Texture);
+	struct TextureManager;
+
 	enum class EMaterialFlagBits : uint8
 	{
 		eBackfaceCulling = TST_LIB_BIT(0u),
@@ -37,84 +39,42 @@ namespace toaster::rnd
 	struct TST_RENDER_API Material
 	{
 		MaterialParams params; // Raw parameter data
-		TextureHandle        albedoMap;
-		TextureHandle        normalMap;
-		TextureHandle        roughnessMap;
-		TextureHandle        metalnessMap;
+		TextureHandle  albedoMap;
+		TextureHandle  normalMap;
+		TextureHandle  roughnessMap;
+		TextureHandle  metalnessMap;
 	};
 
 	TST_DECLARE_HANDLE(Material);
 
-	class TST_RENDER_API MaterialManager
-	{
-	public:
-		MaterialManager(RenderContext *p_render_ctx, TextureManager *p_texture_mngr, uint32 p_max_materials, uint32 p_max_frames_in_flight = 3u);
-		~MaterialManager();
+	struct MaterialManager;
 
-		[[nodiscard]] auto createMaterial() -> MaterialHandle;
-		auto               destroyMaterial(MaterialHandle p_handle) -> void;
+	auto TST_RENDER_API material_mngr_create(RenderContext *p_render_ctx, TextureManager *p_texture_mngr, uint32 p_max_materials) -> MaterialManager *;
+	auto TST_RENDER_API material_mngr_destroy(MaterialManager *p_mngr) -> void;
+	auto TST_RENDER_API material_mngr_poll_pending_textures(MaterialManager *p_mngr) -> void;
+	auto TST_RENDER_API material_mngr_update_dirty_materials(MaterialManager *p_mngr, uint32 p_frame_index) -> void;
+	auto TST_RENDER_API material_mngr_get_material_buffer_address(MaterialManager *p_mngr, uint32 p_frame_index) -> gpu::DeviceAddress;
+	auto TST_RENDER_API material_mngr_get_default_colour_map(MaterialManager *p_mngr) -> TextureHandle;
+	auto TST_RENDER_API material_mngr_get_default_normal_map(MaterialManager *p_mngr) -> TextureHandle;
+	auto TST_RENDER_API material_mngr_get_default_roughness_map(MaterialManager *p_mngr) -> TextureHandle;
+	auto TST_RENDER_API material_mngr_get_default_metalness_map(MaterialManager *p_mngr) -> TextureHandle;
 
-		[[nodiscard]] auto getMaterial(MaterialHandle p_handle) -> Material & { return m_materials[p_handle]; }
-		[[nodiscard]] auto getMaterial(MaterialHandle p_handle) const -> const Material & { return m_materials[p_handle]; }
-		[[nodiscard]] auto tryGetMaterial(MaterialHandle p_handle) -> Material * { return m_materials.tryGet(p_handle); }
-		[[nodiscard]] auto tryGetMaterial(MaterialHandle p_handle) const -> const Material * { return m_materials.tryGet(p_handle); }
+	auto TST_RENDER_API material_create(MaterialManager *p_mngr) -> MaterialHandle;
+	auto TST_RENDER_API material_destroy(MaterialManager *p_mngr, MaterialHandle p_material) -> void;
 
-		auto setAlbedoColour(MaterialHandle p_handle, const math::Float4 &p_colour) -> void;
-		auto setAlbedoMap(MaterialHandle p_handle,TextureHandle p_albedo_map) -> void;
-		auto setNormalMap(MaterialHandle p_handle,TextureHandle p_normal_map) -> void;
-		auto setRoughnessMap(MaterialHandle p_handle,TextureHandle p_roughness_map) -> void;
-		auto setMetalnessMap(MaterialHandle p_handle,TextureHandle p_metalness_map) -> void;
-		auto setRoughness(MaterialHandle p_handle, float32 p_roughness) -> void;
-		auto setMetalness(MaterialHandle p_handle, float32 p_metalness) -> void;
+	auto TST_RENDER_API material_get(MaterialManager *p_mngr, MaterialHandle p_material) -> Material *;
+	auto TST_RENDER_API material_get(const MaterialManager *p_mngr, MaterialHandle p_material) -> const Material *;
+	auto TST_RENDER_API material_try_get(MaterialManager *p_mngr, MaterialHandle p_material) -> Material *;
+	auto TST_RENDER_API material_try_get(const MaterialManager *p_mngr, MaterialHandle p_material) -> const Material *;
 
-		auto setMaterialFlags(MaterialHandle p_handle, EMaterialFlags p_flags, bool p_enable) -> void;
-		auto setBackfaceCulling(MaterialHandle p_handle, bool p_enable) -> void;
-		auto setIsTransparent(MaterialHandle p_handle, bool p_is_transparent) -> void;
-		auto setHasNormalMap(MaterialHandle p_handle, bool p_has_normal_map) -> void;
-		auto setHasRoughnessMap(MaterialHandle p_handle, bool p_has_roughness_map) -> void;
-		auto setHasMetalnessMap(MaterialHandle p_handle, bool p_has_metalness_map) -> void;
+	auto TST_RENDER_API material_set_albedo_colour(MaterialManager *p_mngr, MaterialHandle p_material, const math::Float4 &p_colour) -> void;
+	auto TST_RENDER_API material_set_albedo_map(MaterialManager *p_mngr, MaterialHandle p_material, TextureHandle p_albedo_map) -> void;
+	auto TST_RENDER_API material_set_normal_map(MaterialManager *p_mngr, MaterialHandle p_material, TextureHandle p_normal_map) -> void;
+	auto TST_RENDER_API material_set_roughness_map(MaterialManager *p_mngr, MaterialHandle p_material, TextureHandle p_roughness_map) -> void;
+	auto TST_RENDER_API material_set_metalness_map(MaterialManager *p_mngr, MaterialHandle p_material, TextureHandle p_metalness_map) -> void;
+	auto TST_RENDER_API material_set_roughness(MaterialManager *p_mngr, MaterialHandle p_material, float32 p_roughness) -> void;
+	auto TST_RENDER_API material_set_metalness(MaterialManager *p_mngr, MaterialHandle p_material, float32 p_metalness) -> void;
+	auto TST_RENDER_API material_set_flags(MaterialManager *p_mngr, MaterialHandle p_material, EMaterialFlags p_flags, bool p_enable) -> void;
 
-		auto pollMaterialTextureUploads() -> void;
-
-		auto updateDirtyMaterials(uint32 p_frame_index) -> void;
-		auto markMaterialDirty(MaterialHandle p_handle) -> void;
-
-		[[nodiscard]] auto getMaterialBufferAddress(uint32 p_frame_index) const -> gpu::DeviceAddress { return m_bdas[p_frame_index]; }
-
-		[[nodiscard]] auto getDefaultColourMap() const -> TextureHandle { return m_defaultColourMap; }
-		[[nodiscard]] auto getDefaultNormalMap() const -> TextureHandle { return m_defaultNormalMap; }
-		[[nodiscard]] auto getDefaultRoughnessMap() const -> TextureHandle { return m_defaultRoughnessMap; }
-		[[nodiscard]] auto getDefaultMetalnessMap() const -> TextureHandle { return m_defaultMetalnessMap; }
-
-	private:
-		RenderContext * m_renderCtx{nullptr};
-		TextureManager *m_textureMngr{nullptr};
-
-		Pool<Material> m_materials;
-
-		std::vector<gpu::DeviceAddress>                  m_bdas;
-		std::vector<gpu::BufferHandle>                   m_materialSSBOs;
-		std::vector<std::unordered_set<MaterialHandle> > m_dirtyMaterials; // Per frame
-
-		enum class EPendingTextureType : uint8
-		{
-			eAlbedoMap,
-			eNormalMap,
-			eRoughnessMap,
-			eMetalnessMap
-		};
-
-		// List of materials which have textures that are not fully uploaded or created
-		std::unordered_map<MaterialHandle, std::unordered_set<EPendingTextureType> > m_pendingMaterialTextureUploads;
-
-		uint32 m_maxFramesInFlight{3u};
-
-		TextureHandle m_defaultColourMap;
-		TextureHandle m_defaultNormalMap;
-		TextureHandle m_defaultRoughnessMap;
-		TextureHandle m_defaultMetalnessMap;
-
-		std::mutex m_dirtyMaterialMutex;
-		std::mutex m_textureUploadMutex;
-	};
+	auto TST_RENDER_API material_mark_dirty(MaterialManager *p_mngr, MaterialHandle p_material) -> void;
 }

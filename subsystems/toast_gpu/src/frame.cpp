@@ -35,10 +35,10 @@ namespace toaster::gpu
 
 		SemaphoreHandle      graphicsTimelineSemaphore{nullptr};
 		std::atomic_uint64_t graphicsTimelineCounter{0u};
-		std::vector<uint64>  graphicsTimelineValues;
+		Vector<uint64>       graphicsTimelineValues;
 
-		std::vector<DeferredDeletion> deferredDeletions;
-		mtx_t                         deferredDeletionMutex;
+		Vector<DeferredDeletion> deferredDeletions;
+		mtx_t                    deferredDeletionMutex;
 	};
 
 	static auto delete_deferred_deletion(FrameContext *p_ctx, DeferredDeletion &p_dd) -> void
