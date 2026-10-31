@@ -1,7 +1,9 @@
 #include "toast_gpu/upload.hpp"
 
+#include <algorithm>
 #include <ranges>
 #include <threads.h>
+#include <variant>
 
 #include "toast_gpu/allocation.hpp"
 #include "toast_gpu/api.hpp"
@@ -9,6 +11,7 @@
 #include "toast_lib/map.hpp"
 #include "toast_lib/pool.hpp"
 #include "toast_lib/queue.hpp"
+#include "toast_lib/set.hpp"
 
 namespace toaster::gpu
 {
@@ -17,7 +20,7 @@ namespace toaster::gpu
 		mtx_t                    ticketMutex;
 		Vector<uint64>           timelineTickets;
 		StateTrackerReadyFn      readyCb{nullptr};
-		TST_ALIGN_ATOMIC(uint32) pendingSubresources{0u};
+		TST_ALIGN_ATOMIC(uint32) pendingUploads{0u};
 	};
 
 	static constexpr uint64 page_size{72u * 1024u * 1024u};
@@ -42,21 +45,35 @@ namespace toaster::gpu
 		uint32                  pageId{0u};
 	};
 
+	struct BufferUploadTask
+	{
+		BufferHandle dstBuffer{nullptr};
+		uint64       size{0ull};
+		uint64       dstOffset{0ull};
+	};
+
+	// "Standard" boilerplate for visiting variants
+	template<class... Ts>
+	struct overloaded : Ts...
+	{
+		using Ts::operator()...;
+	};
+
+	template<class... Ts>
+	overloaded(Ts...) -> overloaded<Ts...>;
+
+	struct TextureUploadTask
+	{
+		TextureHandle                   dstTexture{nullptr};
+		Vector<BufferTextureCopyRegion> uploadRegions;
+	};
+
 	struct UploadTask
 	{
-		enum class EType : uint8
-		{
-			eBuffer, eTexture
-		};
-
 		UploadPageAllocation stagingAllocation{};
 		StateTrackerHandle   stateTracker{nullptr};
-		math::UInt3          extent{0u, 0u, 0u};
-		math::Int3           offset{0, 0, 0};
-		uint64               size{0u};
-		uint64               dstOffset{0ull};
-		uint64               handle{0u};
-		EType                type{EType::eBuffer};
+
+		std::variant<BufferUploadTask, TextureUploadTask> task;
 	};
 
 	struct LiveUploadBatch
@@ -77,7 +94,9 @@ namespace toaster::gpu
 		uint32                            activePageId{0u};
 		UnorderedMap<uint32, StagingPage> stagingPages;
 
-		Pool<StateTracker> stateTrackers;
+		FixedPool<StateTracker, 32u, 32u> stateTrackers; // 1024
+		UnorderedSet<StateTrackerHandle>  aliveStateTrackers;
+		mtx_t                             aliveStateTrackerMtx;
 
 		uint32                    maxAllocationCommandLists{3u};
 		Vector<CommandListHandle> commandLists;
@@ -208,28 +227,19 @@ namespace toaster::gpu
 		{
 			live_batch.allocations.push_back(task.stagingAllocation);
 
-			switch (task.type)
-			{
-				case UploadTask::EType::eBuffer:
-				{
-					const auto handle{static_cast<BufferHandle>(task.handle)};
-					TST_ASSERT(handle.valid());
-
-					cmd_copy_buffer(p_ctx->gpuCtx, cmd, task.stagingAllocation.buffer, handle, task.size, task.stagingAllocation.offset, task.dstOffset);
-
-					break;
-				}
-
-				case UploadTask::EType::eTexture:
-				{
-					const auto handle{static_cast<TextureHandle>(task.handle)};
-					TST_ASSERT(handle.valid());
-
-					cmd_copy_buffer_to_texture(p_ctx->gpuCtx, cmd, task.stagingAllocation.buffer, handle, task.stagingAllocation.offset, 0u, 0u, 1u, task.extent,
-											   task.offset);
-					break;
-				}
-			}
+			std::visit(overloaded{
+						   [&task, p_ctx, cmd](const BufferUploadTask &p_buffer_task) -> void
+						   {
+							   TST_ASSERT(p_buffer_task.dstBuffer.valid());
+							   cmd_copy_buffer(p_ctx->gpuCtx, cmd, task.stagingAllocation.buffer, p_buffer_task.dstBuffer, p_buffer_task.size,
+											   task.stagingAllocation.offset, p_buffer_task.dstBuffer);
+						   },
+						   [&task, p_ctx, cmd](const TextureUploadTask &p_texture_task) -> void
+						   {
+							   TST_ASSERT(p_texture_task.dstTexture.valid());
+							   cmd_copy_buffer_to_texture(p_ctx->gpuCtx, cmd, task.stagingAllocation.buffer, p_texture_task.dstTexture, p_texture_task.uploadRegions);
+						   }
+					   }, task.task);
 		}
 
 		cmd_list_close(p_ctx->gpuCtx, cmd);
@@ -248,8 +258,8 @@ namespace toaster::gpu
 			tracker.timelineTickets.push_back(target_signal_value);
 			mtx_unlock(&tracker.ticketMutex);
 
-			TST_SCOPED_ATOMIC(tracker.pendingSubresources, pending_subresources);
-			(void) --pending_subresources;
+			TST_SCOPED_ATOMIC(tracker.pendingUploads, pending_uploads);
+			(void) --pending_uploads;
 		}
 
 		mtx_lock(&p_ctx->batchMtx);
@@ -303,6 +313,7 @@ namespace toaster::gpu
 		ctx->gpuCtx   = p_gpu_ctx;
 		ctx->allocCtx = p_alloc_ctx;
 
+		mtx_init(&ctx->aliveStateTrackerMtx, mtx_plain);
 		mtx_init(&ctx->pageMtx, mtx_plain);
 		mtx_init(&ctx->uploadMtx, mtx_plain);
 		mtx_init(&ctx->batchMtx, mtx_plain);
@@ -319,15 +330,15 @@ namespace toaster::gpu
 		for (uint32 i{0u}; i < ctx->maxAllocationCommandLists; ++i)
 		{
 			ctx->uploadTimeline[i] = 0u;
-			ctx->commandLists[i]   = cmd_list_get_or_create(p_gpu_ctx, EQueueType::eTransfer);
+			ctx->commandLists[i]   = cmd_list_create(p_gpu_ctx, EQueueType::eTransfer);
 		}
 
 		ctx->stateTrackers.setDestructorFn(+[](StateTracker *p_data, void *) -> void
 		{
 			mtx_destroy(&p_data->ticketMutex);
 			p_data->timelineTickets.clear();
-			p_data->pendingSubresources = 0u;
-			p_data->readyCb             = nullptr;
+			p_data->pendingUploads = 0u;
+			p_data->readyCb        = nullptr;
 		});
 
 		if (thrd_create(&ctx->uploadThrd, upload_main, ctx) != thrd_success)
@@ -353,6 +364,7 @@ namespace toaster::gpu
 		cnd_destroy(&p_ctx->cnd);
 
 		p_ctx->stateTrackers.clear();
+		p_ctx->aliveStateTrackers.clear(); // They are now all dead
 
 		for (auto &page: p_ctx->stagingPages | std::views::values)
 			destroyPage(p_ctx, page);
@@ -362,38 +374,44 @@ namespace toaster::gpu
 		mtx_destroy(&p_ctx->batchMtx);
 		mtx_destroy(&p_ctx->uploadMtx);
 		mtx_destroy(&p_ctx->pageMtx);
+		mtx_destroy(&p_ctx->aliveStateTrackerMtx);
 
 		delete p_ctx;
 	}
 
-	auto state_tracker_register(UploadContext *p_ctx, uint32 p_expected_subresources) -> StateTrackerHandle
+	auto state_tracker_register(UploadContext *p_ctx, uint32 p_expected_uploads) -> StateTrackerHandle
 	{
 		StateTracker state_tracker{};
 		mtx_init(&state_tracker.ticketMutex, mtx_plain);
-		state_tracker.pendingSubresources = p_expected_subresources;
-		return p_ctx->stateTrackers.emplace(std::move(state_tracker));
+		state_tracker.pendingUploads = p_expected_uploads;
+		StateTrackerHandle out_handle{p_ctx->stateTrackers.emplace(std::move(state_tracker))};
+
+		mtx_lock(&p_ctx->aliveStateTrackerMtx);
+		p_ctx->aliveStateTrackers.insert(out_handle);
+		mtx_unlock(&p_ctx->aliveStateTrackerMtx);
+
+		return out_handle;
 	}
 
 	auto state_tracker_register_ready_callback(UploadContext *p_ctx, StateTrackerHandle p_state_tracker, StateTrackerReadyFn p_ready_callback) -> void
 	{
-		StateTracker *tracker{p_ctx->stateTrackers.tryGet(p_state_tracker)};
+		StateTracker *tracker{p_ctx->stateTrackers.try_get(p_state_tracker)};
 		TST_ASSERT_MSG(tracker, "State tracker does not exist or is already completed");
 		tracker->readyCb = p_ready_callback;
 	}
 
 	auto state_tracker_is_ready(const UploadContext *p_ctx, StateTrackerHandle p_state_tracker) -> bool
 	{
-		// Nullptr means the state tracker is null. Therefore, it is technically not 'ready'
+		TST_ASSERT_MSG(p_state_tracker, "State tracker is nullptr, so it is not ready!");
 		// If the state tracker is valid, it means that it has not completed all of its operations
-		if (p_state_tracker == nullptr || p_ctx->stateTrackers.isValid(p_state_tracker))
-			return false;
-		return true;
+		return !p_ctx->stateTrackers.is_valid(p_state_tracker);
 	}
 
 	auto state_tracker_wait_for(UploadContext *p_ctx, StateTrackerHandle p_state_tracker) -> void
 	{
-		StateTracker *tracker{p_ctx->stateTrackers.tryGet(p_state_tracker)};
-		TST_ASSERT_MSG(tracker, "State tracker does not exist or is already completed");
+		StateTracker *tracker{p_ctx->stateTrackers.try_get(p_state_tracker)};
+		if (!tracker)
+			return;
 
 		while (true)
 		{
@@ -406,24 +424,25 @@ namespace toaster::gpu
 			// If the tracker has no timeline tickets, it indicates that worker threads have not yet begun an upload on it
 			if (tracker->timelineTickets.empty())
 				all_finished = false;
-
-			for (const uint64 ticket: tracker->timelineTickets)
+			else
 			{
-				if (current_value < ticket)
-				{
-					all_finished = false;
-					break;
-				}
+				// If any of the timeline tickets are greater than the current value, we are not "all finished"
+				all_finished = !std::ranges::any_of(tracker->timelineTickets, [current_value](const uint64 p_ticket)-> bool { return current_value < p_ticket; });
 			}
+
 			mtx_unlock(&tracker->ticketMutex);
 
-			TST_SCOPED_ATOMIC(tracker->pendingSubresources, pending_subresources);
-			if (all_finished && pending_subresources.load() == 0u)
+			TST_SCOPED_ATOMIC(tracker->pendingUploads, pending_uploads);
+			if (all_finished && pending_uploads.load() == 0u)
 			{
 				if (tracker->readyCb)
 					tracker->readyCb();
 
 				p_ctx->stateTrackers.destroy(p_state_tracker);
+
+				mtx_lock(&p_ctx->aliveStateTrackerMtx);
+				p_ctx->aliveStateTrackers.erase(p_state_tracker);
+				mtx_unlock(&p_ctx->aliveStateTrackerMtx);
 
 				break;
 			}
@@ -434,89 +453,87 @@ namespace toaster::gpu
 	{
 		const uint64 current_value{semaphore_get_value(p_ctx->gpuCtx, p_ctx->transferTimelineSemaphore)};
 
+		mtx_lock(&p_ctx->batchMtx);
+		mtx_lock(&p_ctx->pageMtx);
+
+		for (auto it{p_ctx->liveBatches.begin()}; it != p_ctx->liveBatches.end();)
 		{
-			mtx_lock(&p_ctx->batchMtx);
-			mtx_lock(&p_ctx->pageMtx);
-
-			for (auto it{p_ctx->liveBatches.begin()}; it != p_ctx->liveBatches.end();)
+			if (current_value >= it->timelineValue)
 			{
-				if (current_value >= it->timelineValue)
+				for (const auto &alloc: it->allocations)
 				{
-					for (const auto &alloc: it->allocations)
+					auto page_it{p_ctx->stagingPages.find(alloc.pageId)};
+					if (page_it != p_ctx->stagingPages.end())
 					{
-						auto page_it{p_ctx->stagingPages.find(alloc.pageId)};
-						if (page_it != p_ctx->stagingPages.end())
-						{
-							freeUploadPageAllocation(p_ctx, page_it->second, alloc);
-							TST_SCOPED_ATOMIC(page_it->second.activeAllocations, active_allocations);
+						freeUploadPageAllocation(p_ctx, page_it->second, alloc);
+						TST_SCOPED_ATOMIC(page_it->second.activeAllocations, active_allocations);
 
-							if (active_allocations.load() == 0u && page_it->first != p_ctx->activePageId)
-							{
-								destroyPage(p_ctx, page_it->second);
-								p_ctx->stagingPages.erase(page_it);
-							}
+						if (active_allocations.load() == 0u && page_it->first != p_ctx->activePageId)
+						{
+							destroyPage(p_ctx, page_it->second);
+							p_ctx->stagingPages.erase(page_it);
 						}
 					}
-
-					it = p_ctx->liveBatches.erase(it);
 				}
-				else
-					++it;
-			}
-			mtx_unlock(&p_ctx->pageMtx);
-			mtx_unlock(&p_ctx->batchMtx);
-		}
 
-		Vector<uint32> indices_to_remove;
-		p_ctx->stateTrackers.forEachAlive([&indices_to_remove, current_value](StateTracker &p_data, uint32 p_index) -> void
+				it = p_ctx->liveBatches.erase(it);
+			}
+			else
+				++it;
+		}
+		mtx_unlock(&p_ctx->pageMtx);
+		mtx_unlock(&p_ctx->batchMtx);
+
+		Vector<StateTrackerHandle> handles_to_remove;
+
+		mtx_lock(&p_ctx->aliveStateTrackerMtx);
+		for (auto it{p_ctx->aliveStateTrackers.begin()}; it != p_ctx->aliveStateTrackers.end();)
 		{
+			StateTracker &data{p_ctx->stateTrackers[*it]};
+
 			bool all_finished{true};
 
+			mtx_lock(&data.ticketMutex);
+			// If the tracker has no timeline tickets, it indicates that worker threads have not yet begun an upload on it
+			if (data.timelineTickets.empty())
+				all_finished = false;
+			else
 			{
-				mtx_lock(&p_data.ticketMutex);
-				// If the tracker has no timeline tickets, it indicates that worker threads have not yet begun an upload on it
-				if (p_data.timelineTickets.empty())
-					all_finished = false;
-
-				for (const uint64 ticket: p_data.timelineTickets)
-				{
-					if (current_value < ticket)
-					{
-						all_finished = false;
-						break;
-					}
-				}
-				mtx_unlock(&p_data.ticketMutex);
+				// If any of the timeline tickets are greater than the current value, we are not "all finished"
+				all_finished = !std::ranges::any_of(data.timelineTickets, [current_value](const uint64 p_ticket)-> bool { return current_value < p_ticket; });
 			}
 
-			TST_SCOPED_ATOMIC(p_data.pendingSubresources, pending_subresources);
-			if (all_finished && pending_subresources.load() == 0u)
+			mtx_unlock(&data.ticketMutex);
+
+			TST_SCOPED_ATOMIC(data.pendingUploads, pending_uploads);
+			if (all_finished && pending_uploads.load() == 0u)
 			{
-				if (p_data.readyCb)
-					p_data.readyCb();
+				if (data.readyCb)
+					data.readyCb();
 
-				indices_to_remove.push_back(p_index); // The state tracker is ready, so it can be destroyed
+				handles_to_remove.push_back(*it); // The state tracker is ready, so it can be destroyed
+				it = p_ctx->aliveStateTrackers.erase(it);
 			}
-		});
+			else
+				++it;
+		}
+		mtx_unlock(&p_ctx->aliveStateTrackerMtx);
 
-		for (const auto index: indices_to_remove)
-			p_ctx->stateTrackers.removeAt(index);
+		if (!handles_to_remove.empty())
+			p_ctx->stateTrackers.destroy_n(handles_to_remove);
 	}
 
-	auto upload_data_to_buffer(UploadContext *p_ctx, const BufferUploadDesc &p_upload_desc, StateTrackerHandle p_state_tracker) -> void
+	auto upload_data_to_buffer(UploadContext *p_ctx, BufferHandle p_dst_buffer, const BufferUploadDesc &p_upload_desc, StateTrackerHandle p_state_tracker) -> void
 	{
-		TST_ASSERT(p_ctx->stateTrackers.isValid(p_state_tracker));
+		TST_PERMA_ASSERT_MSG(p_ctx->stateTrackers.is_valid(p_state_tracker), "Attempted to upload data to buffer using invalid state tracker");
 
 		UploadTask upload_task{};
 		allocateAcrossPages(p_ctx, p_upload_desc.size, upload_task.stagingAllocation);
 
 		std::memcpy(upload_task.stagingAllocation.mapped, p_upload_desc.data, p_upload_desc.size);
 
-		upload_task.dstOffset    = p_upload_desc.dstOffset;
+		upload_task.task.emplace<BufferUploadTask>(p_dst_buffer, p_upload_desc.size, p_upload_desc.dstOffset);
 		upload_task.stateTracker = p_state_tracker;
-		upload_task.size         = p_upload_desc.size;
-		upload_task.handle       = static_cast<uint64>(p_upload_desc.dstBuffer);
-		upload_task.type         = UploadTask::EType::eBuffer;
 
 		mtx_lock(&p_ctx->uploadMtx);
 		p_ctx->taskQueue.push(upload_task);
@@ -524,21 +541,21 @@ namespace toaster::gpu
 		mtx_unlock(&p_ctx->uploadMtx);
 	}
 
-	auto upload_data_to_texture(UploadContext *p_ctx, const TextureUploadDesc &p_upload_desc, StateTrackerHandle p_state_tracker) -> void
+	auto upload_data_to_texture(UploadContext *p_ctx, TextureHandle p_dst_texture, const TextureUploadDesc &p_upload_desc, StateTrackerHandle p_state_tracker) -> void
 	{
-		TST_ASSERT(p_ctx->stateTrackers.isValid(p_state_tracker));
+		TST_PERMA_ASSERT_MSG(p_ctx->stateTrackers.is_valid(p_state_tracker), "Attempted to upload data to texture using invalid state tracker");
 
 		UploadTask upload_task{};
 		allocateAcrossPages(p_ctx, p_upload_desc.size, upload_task.stagingAllocation);
 
 		std::memcpy(upload_task.stagingAllocation.mapped, p_upload_desc.data, p_upload_desc.size);
 
-		upload_task.extent       = p_upload_desc.extent;
-		upload_task.offset       = p_upload_desc.offset;
+		Vector<BufferTextureCopyRegion> regions;
+		regions.assign_range(p_upload_desc.uploadRegions);
+		for (auto &region: regions)
+			region.bufferOffset += upload_task.stagingAllocation.offset; // The offset has to be relative to the staging allocation
+		upload_task.task.emplace<TextureUploadTask>(p_dst_texture, std::move(regions));
 		upload_task.stateTracker = p_state_tracker;
-		upload_task.size         = p_upload_desc.size;
-		upload_task.handle       = static_cast<uint64>(p_upload_desc.dstTexture);
-		upload_task.type         = UploadTask::EType::eTexture;
 
 		mtx_lock(&p_ctx->uploadMtx);
 		p_ctx->taskQueue.push(upload_task);

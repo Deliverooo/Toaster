@@ -15,5 +15,5 @@
 
 namespace toaster::rnd
 {
-	TST_LIB_DECLARE_FLAGS_FOR_NAMESPACE()
+	TST_DECLARE_FLAGS_FOR_NAMESPACE()
 }

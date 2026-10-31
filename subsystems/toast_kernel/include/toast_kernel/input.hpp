@@ -160,11 +160,11 @@ namespace toaster::knl
 	{
 		void *windowCtx; // GLFWwindow*
 
-		TST_LIB_BITSET(currentKeyStates, TST_LIB_ENUM_VAL(EKeyCode::eLast));
-		TST_LIB_BITSET(previousKeyStates, TST_LIB_ENUM_VAL(EKeyCode::eLast));
+		TST_BITSET(currentKeyStates, TST_ENUM_VAL(EKeyCode::eLast));
+		TST_BITSET(previousKeyStates, TST_ENUM_VAL(EKeyCode::eLast));
 
-		TST_LIB_BITSET(currentMouseStates, TST_LIB_ENUM_VAL(EMouseButton::eLast));
-		TST_LIB_BITSET(previousMouseStates, TST_LIB_ENUM_VAL(EMouseButton::eLast));
+		TST_BITSET(currentMouseStates, TST_ENUM_VAL(EMouseButton::eLast));
+		TST_BITSET(previousMouseStates, TST_ENUM_VAL(EMouseButton::eLast));
 
 		float32 mouseX;
 		float32 mouseY;

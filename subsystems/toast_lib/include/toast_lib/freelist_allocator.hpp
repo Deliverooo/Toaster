@@ -20,8 +20,8 @@ namespace toaster
 		FreelistAllocator(const FreelistAllocator &)            = delete;
 		FreelistAllocator &operator=(const FreelistAllocator &) = delete;
 
-		FreelistAllocator(FreelistAllocator &&p_other) noexcept : m_capacity(p_other.m_capacity), m_nextFreeIndex(p_other.m_nextFreeIndex),
-																  m_recycledSlots(std::move(p_other.m_recycledSlots))
+		FreelistAllocator(FreelistAllocator &&p_other) noexcept : m_recycledSlots(std::move(p_other.m_recycledSlots)), m_capacity(p_other.m_capacity),
+																  m_nextFreeIndex(p_other.m_nextFreeIndex)
 		{
 			p_other.m_capacity      = 0u;
 			p_other.m_nextFreeIndex = 0u;
@@ -65,8 +65,8 @@ namespace toaster
 		auto capacity() const -> TSlotType { return m_capacity; }
 
 	private:
+		Vector<TSlotType> m_recycledSlots;
 		TSlotType         m_capacity;
 		TSlotType         m_nextFreeIndex{0u};
-		Vector<TSlotType> m_recycledSlots;
 	};
 }

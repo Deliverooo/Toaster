@@ -12,12 +12,8 @@
 
 #include "toast_lib/core_basic.hpp"
 #include "toast_lib/enum.hpp"
-#include "toast_lib/handle.hpp"
-
-#define TST_GPU_DECLARE_GPU_HANDLE(__type) struct __type;\
-		using __type##Handle = Handle<__type>
 
 namespace toaster::gpu
 {
-	TST_LIB_DECLARE_FLAGS_FOR_NAMESPACE()
+	TST_DECLARE_FLAGS_FOR_NAMESPACE()
 }

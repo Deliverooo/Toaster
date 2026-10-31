@@ -1,6 +1,9 @@
 #pragma once
 
 #include <functional>
+#include <span>
+
+#include "api.hpp"
 #include "fwd.hpp"
 #include "toast_math/math_vector.hpp"
 
@@ -15,22 +18,18 @@ namespace toaster::gpu
 
 	struct TST_GPU_API BufferUploadDesc
 	{
-		BufferHandle dstBuffer{nullptr};
-		const void * data{nullptr};
-		uint64       size{0u};
-		uint64       dstOffset{0u};
+		const void *data{nullptr};
+		uint64      size{0u};
+		uint64      dstOffset{0u};
 	};
 
 	struct TST_GPU_API TextureUploadDesc
 	{
-		TextureHandle dstTexture{nullptr};
-		const void *  data{nullptr};
-		uint64        size{0u};
-		math::UInt3   extent{0u, 0u, 0u}; // If zero, uses the texture's actual size
-		math::Int3    offset{0, 0, 0};
-		uint32        mipLevel{0u};
-		uint32        baseLayer{0u};
-		uint32        layerCount{1u};
+		const void *data{nullptr};
+		uint64      size{0u};
+
+		// The buffer offset in here must be < size
+		InitialiserList<const BufferTextureCopyRegion> uploadRegions;
 	};
 
 	// Must be called after gpu_ctx_create(...)
@@ -39,20 +38,22 @@ namespace toaster::gpu
 	auto TST_GPU_API upload_ctx_destroy(UploadContext *p_ctx) -> void;
 
 	// State trackers are automatically destroyed upon completion.
-	// p_expected_subresources are the number of transfer operations that need to complete before the state tracker is destroyed
-	auto TST_GPU_API state_tracker_register(UploadContext *p_ctx, uint32 p_expected_subresources) -> StateTrackerHandle;
+	// p_expected_uploads are the number of transfer operations that need to complete before the state tracker is destroyed
+	auto TST_GPU_API state_tracker_register(UploadContext *p_ctx, uint32 p_expected_uploads) -> StateTrackerHandle;
 
-	// Invokes when the state tracker has finished processing all the associated subresources
+	// Invokes when the state tracker has finished processing all the associated uploads
 	auto TST_GPU_API state_tracker_register_ready_callback(UploadContext *p_ctx, StateTrackerHandle p_state_tracker, StateTrackerReadyFn p_ready_callback) -> void;
 	// If the state tracker has been destroyed, then it is considered 'ready'
 	auto TST_GPU_API state_tracker_is_ready(const UploadContext *p_ctx, StateTrackerHandle p_state_tracker) -> bool;
-	// Blocks until all pending subresources have completed execution
+	// Blocks until all pending uploads have completed execution
 	auto TST_GPU_API state_tracker_wait_for(UploadContext *p_ctx, StateTrackerHandle p_state_tracker) -> void;
 
 	auto TST_GPU_API poll_uploads(UploadContext *p_ctx) -> void; // Destroys any completed state trackers and cleans up staging memory if needed
 
-	auto TST_GPU_API upload_data_to_buffer(UploadContext *p_ctx, const BufferUploadDesc &p_upload_desc, StateTrackerHandle p_state_tracker) -> void;
-	auto TST_GPU_API upload_data_to_texture(UploadContext *p_ctx, const TextureUploadDesc &p_upload_desc, StateTrackerHandle p_state_tracker) -> void;
+	auto TST_GPU_API upload_data_to_buffer(UploadContext *    p_ctx, BufferHandle p_dst_buffer, const BufferUploadDesc &p_upload_desc,
+										   StateTrackerHandle p_state_tracker) -> void;
+	auto TST_GPU_API upload_data_to_texture(UploadContext *    p_ctx, TextureHandle p_dst_texture, const TextureUploadDesc &p_upload_desc,
+											StateTrackerHandle p_state_tracker) -> void;
 
 	// You should not really be calling these, but here...
 	[[nodiscard]] auto TST_GPU_API _get_transfer_timeline_semaphore(const UploadContext *p_ctx) -> SemaphoreHandle;

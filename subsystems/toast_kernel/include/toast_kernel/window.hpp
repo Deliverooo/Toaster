@@ -24,10 +24,10 @@ namespace toaster::knl
 
 	enum class EWindowStateFlagBits : uint8
 	{
-		eResized = TST_LIB_BIT(0u), eMinimised = TST_LIB_BIT(1u), eMaximised = TST_LIB_BIT(2u)
+		eResized = TST_BIT(0u), eMinimised = TST_BIT(1u), eMaximised = TST_BIT(2u)
 	};
 
-	TST_LIB_SPECIALISE_FLAGS(EWindowStateFlagBits, EWindowStateFlags);
+	TST_SPECIALISE_FLAGS(EWindowStateFlagBits, EWindowStateFlags);
 
 	// The exact data that is passed as a user data pointer to the wnd proc
 	struct TST_KERNEL_API _WindowCallbackData

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "system_types.h"
 #include <compare>
+#include "system_types.h"
 
 namespace toaster
 {
@@ -9,15 +9,15 @@ namespace toaster
 	template<typename Type>
 	struct Handle
 	{
-		uint64 handle{0u};
+		uint64 handle{0ull};
 
 		constexpr Handle() = default;
 
-		constexpr Handle(uint32 p_id, uint32 p_magic) : handle(static_cast<uint64>(p_id) | (static_cast<uint64>(p_magic) << 32ui64))
+		constexpr Handle(uint32 p_id, uint32 p_magic) : handle(static_cast<uint64>(p_id) | (static_cast<uint64>(p_magic) << 32ull))
 		{
 		}
 
-		constexpr Handle(nulltype) : handle(0u) // This makes it look better
+		constexpr Handle(nulltype) : handle(0ull) // This makes it look better
 		{
 		}
 
@@ -25,10 +25,10 @@ namespace toaster
 		{
 		}
 
-		[[nodiscard]] constexpr auto getId() const -> uint32 { return static_cast<uint32>(handle & 0xFFFFFFFFui64); }
-		[[nodiscard]] constexpr auto getMagic() const -> uint32 { return static_cast<uint32>((handle >> 32ui64) & 0xFFFFFFFFui64); }
+		[[nodiscard]] constexpr auto getId() const -> uint32 { return static_cast<uint32>(handle & 0xFFFFFFFFull); }
+		[[nodiscard]] constexpr auto getMagic() const -> uint32 { return static_cast<uint32>((handle >> 32ull) & 0xFFFFFFFFull); }
 
-		[[nodiscard]] constexpr auto valid() const -> bool { return getMagic() != 0ui32; } // Only checks if the handle itself is valid, not that the pool thinks it is
+		[[nodiscard]] constexpr auto valid() const -> bool { return getMagic() != 0ull; } // Only checks if the handle itself is valid, not that the pool thinks it is
 
 		auto operator<=>(const Handle &) const = default; // I need to be able to run algorithms on ts
 
@@ -38,6 +38,7 @@ namespace toaster
 }
 
 #define TST_DECLARE_HANDLE(__tag) \
+struct __tag;\
 using __tag##Handle = ::toaster::Handle<__tag>
 
 template<typename Tag>

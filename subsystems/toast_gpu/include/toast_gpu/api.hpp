@@ -1,6 +1,8 @@
 #pragma once
 
 #include <optional>
+#include <span>
+
 #include "toast_math/math_vector.hpp"
 
 #include "fwd.hpp"
@@ -52,66 +54,66 @@ namespace toaster::gpu
 
 	enum class EAccessFlagBits : uint32
 	{
-		eNone                        = TST_LIB_BIT(0u),
-		eIndirectCommandRead         = TST_LIB_BIT(1u),
-		eIndexRead                   = TST_LIB_BIT(2u),
-		eVertexAttributeRead         = TST_LIB_BIT(3u),
-		eUniformRead                 = TST_LIB_BIT(4u),
-		eInputAttachmentRead         = TST_LIB_BIT(5u),
-		eShaderRead                  = TST_LIB_BIT(6u),
-		eShaderWrite                 = TST_LIB_BIT(7u),
-		eColorAttachmentRead         = TST_LIB_BIT(8u),
-		eColorAttachmentWrite        = TST_LIB_BIT(9u),
-		eDepthStencilAttachmentRead  = TST_LIB_BIT(10u),
-		eDepthStencilAttachmentWrite = TST_LIB_BIT(11u),
-		eTransferRead                = TST_LIB_BIT(12u),
-		eTransferWrite               = TST_LIB_BIT(13u),
-		eHostRead                    = TST_LIB_BIT(14u),
-		eHostWrite                   = TST_LIB_BIT(15u),
-		eMemoryRead                  = TST_LIB_BIT(16u),
-		eMemoryWrite                 = TST_LIB_BIT(17u),
-		eShaderSampledRead           = TST_LIB_BIT(18u),
-		eShaderStorageRead           = TST_LIB_BIT(19u),
-		eShaderStorageWrite          = TST_LIB_BIT(20u),
-		eSamplerHeapRead             = TST_LIB_BIT(21u),
-		eResourceHeapRead            = TST_LIB_BIT(22u)
+		eNone                        = TST_BIT(0u),
+		eIndirectCommandRead         = TST_BIT(1u),
+		eIndexRead                   = TST_BIT(2u),
+		eVertexAttributeRead         = TST_BIT(3u),
+		eUniformRead                 = TST_BIT(4u),
+		eInputAttachmentRead         = TST_BIT(5u),
+		eShaderRead                  = TST_BIT(6u),
+		eShaderWrite                 = TST_BIT(7u),
+		eColorAttachmentRead         = TST_BIT(8u),
+		eColorAttachmentWrite        = TST_BIT(9u),
+		eDepthStencilAttachmentRead  = TST_BIT(10u),
+		eDepthStencilAttachmentWrite = TST_BIT(11u),
+		eTransferRead                = TST_BIT(12u),
+		eTransferWrite               = TST_BIT(13u),
+		eHostRead                    = TST_BIT(14u),
+		eHostWrite                   = TST_BIT(15u),
+		eMemoryRead                  = TST_BIT(16u),
+		eMemoryWrite                 = TST_BIT(17u),
+		eShaderSampledRead           = TST_BIT(18u),
+		eShaderStorageRead           = TST_BIT(19u),
+		eShaderStorageWrite          = TST_BIT(20u),
+		eSamplerHeapRead             = TST_BIT(21u),
+		eResourceHeapRead            = TST_BIT(22u)
 	};
 
-	TST_LIB_SPECIALISE_FLAGS(EAccessFlagBits, EAccessFlags);
+	TST_SPECIALISE_FLAGS(EAccessFlagBits, EAccessFlags);
 
 	enum class EPipelineStageFlagBits : uint32
 	{
-		eNone                         = TST_LIB_BIT(0u),
-		eTopOfPipe                    = TST_LIB_BIT(1u),
-		eDrawIndirect                 = TST_LIB_BIT(2u),
-		eVertexInput                  = TST_LIB_BIT(3u),
-		eVertexShader                 = TST_LIB_BIT(4u),
-		eTessellationControlShader    = TST_LIB_BIT(5u),
-		eTessellationEvaluationShader = TST_LIB_BIT(6u),
-		eGeometryShader               = TST_LIB_BIT(7u),
-		eFragmentShader               = TST_LIB_BIT(8u),
-		eEarlyFragmentTests           = TST_LIB_BIT(9u),
-		eLateFragmentTests            = TST_LIB_BIT(10u),
-		eColorAttachmentOutput        = TST_LIB_BIT(11u),
-		eComputeShader                = TST_LIB_BIT(12u),
-		eAllTransfer                  = TST_LIB_BIT(13u),
-		eTransfer                     = TST_LIB_BIT(14u),
-		eBottomOfPipe                 = TST_LIB_BIT(15u),
-		eHost                         = TST_LIB_BIT(16u),
-		eAllGraphics                  = TST_LIB_BIT(17u),
-		eAllCommands                  = TST_LIB_BIT(18u),
-		eCopy                         = TST_LIB_BIT(19u),
-		eResolve                      = TST_LIB_BIT(20u),
-		eBlit                         = TST_LIB_BIT(21u),
-		eClear                        = TST_LIB_BIT(22u),
-		eIndexInput                   = TST_LIB_BIT(23u),
-		eVertexAttributeInput         = TST_LIB_BIT(24u),
-		ePreRasterizationShaders      = TST_LIB_BIT(25u),
-		eTaskShader                   = TST_LIB_BIT(26u),
-		eMeshShader                   = TST_LIB_BIT(27u)
+		eNone                         = TST_BIT(0u),
+		eTopOfPipe                    = TST_BIT(1u),
+		eDrawIndirect                 = TST_BIT(2u),
+		eVertexInput                  = TST_BIT(3u),
+		eVertexShader                 = TST_BIT(4u),
+		eTessellationControlShader    = TST_BIT(5u),
+		eTessellationEvaluationShader = TST_BIT(6u),
+		eGeometryShader               = TST_BIT(7u),
+		eFragmentShader               = TST_BIT(8u),
+		eEarlyFragmentTests           = TST_BIT(9u),
+		eLateFragmentTests            = TST_BIT(10u),
+		eColorAttachmentOutput        = TST_BIT(11u),
+		eComputeShader                = TST_BIT(12u),
+		eAllTransfer                  = TST_BIT(13u),
+		eTransfer                     = TST_BIT(14u),
+		eBottomOfPipe                 = TST_BIT(15u),
+		eHost                         = TST_BIT(16u),
+		eAllGraphics                  = TST_BIT(17u),
+		eAllCommands                  = TST_BIT(18u),
+		eCopy                         = TST_BIT(19u),
+		eResolve                      = TST_BIT(20u),
+		eBlit                         = TST_BIT(21u),
+		eClear                        = TST_BIT(22u),
+		eIndexInput                   = TST_BIT(23u),
+		eVertexAttributeInput         = TST_BIT(24u),
+		ePreRasterizationShaders      = TST_BIT(25u),
+		eTaskShader                   = TST_BIT(26u),
+		eMeshShader                   = TST_BIT(27u)
 	};
 
-	TST_LIB_SPECIALISE_FLAGS(EPipelineStageFlagBits, EPipelineStageFlags);
+	TST_SPECIALISE_FLAGS(EPipelineStageFlagBits, EPipelineStageFlags);
 
 	constexpr uint64 c_wholeSize{~0ull}; // This means use the actual full size of the object
 
@@ -178,16 +180,16 @@ namespace toaster::gpu
 	enum class EBufferUsageFlagBits : uint8
 	{
 		eNone           = 0u,
-		eTransferSrc    = TST_LIB_BIT(0u),
-		eTransferDst    = TST_LIB_BIT(1u),
-		eVertexBuffer   = TST_LIB_BIT(2u),
-		eIndexBuffer    = TST_LIB_BIT(3u),
-		eIndirectBuffer = TST_LIB_BIT(4u),
-		eUniformBuffer  = TST_LIB_BIT(5u),
-		eStorageBuffer  = TST_LIB_BIT(6u)
+		eTransferSrc    = TST_BIT(0u),
+		eTransferDst    = TST_BIT(1u),
+		eVertexBuffer   = TST_BIT(2u),
+		eIndexBuffer    = TST_BIT(3u),
+		eIndirectBuffer = TST_BIT(4u),
+		eUniformBuffer  = TST_BIT(5u),
+		eStorageBuffer  = TST_BIT(6u)
 	};
 
-	TST_LIB_SPECIALISE_FLAGS(EBufferUsageFlagBits, EBufferUsageFlags);
+	TST_SPECIALISE_FLAGS(EBufferUsageFlagBits, EBufferUsageFlags);
 
 	struct TST_GPU_API BufferDesc
 	{
@@ -309,16 +311,16 @@ namespace toaster::gpu
 	enum class ETextureUsageFlagBits : uint8
 	{
 		eNone                   = 0u,
-		eTransferSrc            = TST_LIB_BIT(0u),
-		eTransferDst            = TST_LIB_BIT(1u),
-		eSampled                = TST_LIB_BIT(2u),
-		eStorage                = TST_LIB_BIT(3u),
-		eColourAttachment       = TST_LIB_BIT(4u),
-		eDepthStencilAttachment = TST_LIB_BIT(5u),
-		eTransient              = TST_LIB_BIT(6u)
+		eTransferSrc            = TST_BIT(0u),
+		eTransferDst            = TST_BIT(1u),
+		eSampled                = TST_BIT(2u),
+		eStorage                = TST_BIT(3u),
+		eColourAttachment       = TST_BIT(4u),
+		eDepthStencilAttachment = TST_BIT(5u),
+		eTransient              = TST_BIT(6u)
 	};
 
-	TST_LIB_SPECIALISE_FLAGS(ETextureUsageFlagBits, ETextureUsageFlags);
+	TST_SPECIALISE_FLAGS(ETextureUsageFlagBits, ETextureUsageFlags);
 
 	struct TST_GPU_API TextureDesc
 	{
@@ -330,6 +332,8 @@ namespace toaster::gpu
 		EFormat            format{EFormat::eUndefined};
 		ETextureUsageFlags usage{ETextureUsageFlagBits::eNone};
 	};
+
+	constexpr uint32 c_all_mip_levels{UINT32_MAX};
 
 	#pragma endregion
 
@@ -520,14 +524,14 @@ namespace toaster::gpu
 
 	enum class EColourComponentFlagBits : uint8
 	{
-		eR   = TST_LIB_BIT(0u),
-		eG   = TST_LIB_BIT(1u),
-		eB   = TST_LIB_BIT(2u),
-		eA   = TST_LIB_BIT(3u),
+		eR   = TST_BIT(0u),
+		eG   = TST_BIT(1u),
+		eB   = TST_BIT(2u),
+		eA   = TST_BIT(3u),
 		eAll = eR | eG | eB | eA
 	};
 
-	TST_LIB_SPECIALISE_FLAGS(EColourComponentFlagBits, EColourComponentFlags);
+	TST_SPECIALISE_FLAGS(EColourComponentFlagBits, EColourComponentFlags);
 
 	enum class EBlendFactor : uint8
 	{
@@ -607,17 +611,17 @@ namespace toaster::gpu
 	enum class EShaderStageFlagBits : uint8
 	{
 		eNone        = 0u,
-		eVertex      = TST_LIB_BIT(0u),
-		ePixel       = TST_LIB_BIT(1u),
-		eCompute     = TST_LIB_BIT(2u),
-		eGeometry    = TST_LIB_BIT(3u),
-		eTessControl = TST_LIB_BIT(4u),
-		eTessEval    = TST_LIB_BIT(5u),
-		eTask        = TST_LIB_BIT(6u),
-		eMesh        = TST_LIB_BIT(7u)
+		eVertex      = TST_BIT(0u),
+		ePixel       = TST_BIT(1u),
+		eCompute     = TST_BIT(2u),
+		eGeometry    = TST_BIT(3u),
+		eTessControl = TST_BIT(4u),
+		eTessEval    = TST_BIT(5u),
+		eTask        = TST_BIT(6u),
+		eMesh        = TST_BIT(7u)
 	};
 
-	TST_LIB_SPECIALISE_FLAGS(EShaderStageFlagBits, EShaderStageFlags);
+	TST_SPECIALISE_FLAGS(EShaderStageFlagBits, EShaderStageFlags);
 
 	struct TST_GPU_API ShaderDesc
 	{
@@ -630,6 +634,26 @@ namespace toaster::gpu
 		EShaderStageFlagBits stage{EShaderStageFlagBits::eNone};
 
 		bool noTaskShader{false};
+	};
+
+	#pragma endregion
+
+	#pragma region transfer command
+
+	struct TST_GPU_API TextureSubresource
+	{
+		uint32 mipLevel{0u};
+		uint32 baseLayer{0u};
+		uint32 layerCount{1u};
+	};
+
+	struct TST_GPU_API BufferTextureCopyRegion
+	{
+		uint64     bufferOffset{0ull};
+		math::Int3 textureOffset{0, 0, 0};
+		// If any of the components in textureExtent are 0, it will use the actual extent for that dimension from the texture's internal desc
+		math::UInt3        textureExtent{0u, 0u, 0u};
+		TextureSubresource textureSubresource{};
 	};
 
 	#pragma endregion
@@ -668,7 +692,9 @@ namespace toaster::gpu
 	#pragma region command list
 
 	// If there is a command list in the free pool, returns that. Else returns a new one
-	[[nodiscard]] auto TST_GPU_API cmd_list_get_or_create(GPUContext *p_ctx, EQueueType p_queue_type, bool p_secondary = false) -> CommandListHandle;
+	[[nodiscard]] auto TST_GPU_API cmd_list_create(GPUContext *p_ctx, EQueueType p_queue_type, bool p_secondary = false) -> CommandListHandle;
+	// The allocated command lists are completely independent of eachother and don't share a pool, this function is just here to make batch creation more efficient.
+	auto TST_GPU_API cmd_list_create_n(GPUContext *p_ctx, std::span<CommandListHandle> p_out_cmd_lists, EQueueType p_queue_type, bool p_secondary = false) -> void;
 
 	auto TST_GPU_API cmd_list_open(GPUContext *p_ctx, CommandListHandle p_cmd_list, const CommandListInheritanceInfo *p_inheritance_info = nullptr) -> void;
 	auto TST_GPU_API cmd_list_close(GPUContext *p_ctx, CommandListHandle p_cmd_list) -> void;
@@ -704,10 +730,8 @@ namespace toaster::gpu
 	auto TST_GPU_API cmd_copy_buffer(GPUContext *p_ctx, CommandListHandle  p_cmd_list, BufferHandle p_src_buffer, BufferHandle p_dst_buffer, uint64 p_size,
 									 uint64      p_src_offset = 0u, uint64 p_dst_offset = 0u) -> void;
 
-	// If the texture's layout is undefined, this will insert a memory barrier
-	auto TST_GPU_API cmd_copy_buffer_to_texture(GPUContext *p_ctx, CommandListHandle      p_cmd_list, BufferHandle p_src_buffer, TextureHandle p_dst_texture,
-												uint64      p_src_offset = 0u, uint32     p_mip_level = 0u, uint32 p_base_layer = 0u, uint32   p_layer_count = 1u,
-												math::UInt3 p_extent     = {}, math::Int3 p_offset    = {}) -> void;
+	auto TST_GPU_API cmd_copy_buffer_to_texture(GPUContext *p_ctx, CommandListHandle p_cmd_list, BufferHandle p_src_buffer, TextureHandle p_dst_texture,
+												InitialiserList<const BufferTextureCopyRegion> p_copy_regions) -> void;
 
 	auto TST_GPU_API cmd_fill_buffer(GPUContext *p_ctx, CommandListHandle p_cmd_list, BufferHandle p_buffer, uint64 p_dst_offset, uint64 p_size, uint32 p_data) -> void;
 
@@ -796,18 +820,29 @@ namespace toaster::gpu
 
 	[[nodiscard]] auto TST_GPU_API resource_descriptor_heap_alloc_buffer_slot(GPUContext *p_ctx, ResourceDescriptorHeapHandle p_resource_heap) -> uint32;
 	[[nodiscard]] auto TST_GPU_API resource_descriptor_heap_alloc_texture_slot(GPUContext *p_ctx, ResourceDescriptorHeapHandle p_resource_heap) -> uint32;
+	auto TST_GPU_API               resource_descriptor_heap_alloc_texture_slots(GPUContext *      p_ctx, ResourceDescriptorHeapHandle p_resource_heap,
+																				std::span<uint32> p_out_heap_slots) -> void;
 	[[nodiscard]] auto TST_GPU_API sampler_descriptor_heap_alloc_sampler_slot(GPUContext *p_ctx, SamplerDescriptorHeapHandle p_sampler_heap) -> uint32;
 
 	auto TST_GPU_API resource_descriptor_heap_free_buffer_slot(GPUContext *p_ctx, ResourceDescriptorHeapHandle p_resource_heap, uint32 p_heap_slot) -> void;
 	auto TST_GPU_API resource_descriptor_heap_free_texture_slot(GPUContext *p_ctx, ResourceDescriptorHeapHandle p_resource_heap, uint32 p_heap_slot) -> void;
+	auto TST_GPU_API resource_descriptor_heap_free_texture_slots(GPUContext *                  p_ctx, ResourceDescriptorHeapHandle p_resource_heap,
+																 InitialiserList<const uint32> p_heap_slots) -> void;
 	auto TST_GPU_API sampler_descriptor_heap_free_sampler_slot(GPUContext *p_ctx, SamplerDescriptorHeapHandle p_sampler_heap, uint32 p_heap_slot) -> void;
 
 	auto TST_GPU_API resource_descriptor_heap_write_buffer(GPUContext * p_ctx, ResourceDescriptorHeapHandle p_resource_heap, uint32 p_heap_slot,
 														   BufferHandle p_buffer) -> void;
+
 	auto TST_GPU_API resource_descriptor_heap_write_texture(GPUContext *p_ctx, ResourceDescriptorHeapHandle p_resource_heap, uint32 p_heap_slot, TextureHandle p_texture,
-															bool        p_storage, uint32                   p_mip = UINT32_MAX) -> void;
-	auto TST_GPU_API sampler_descriptor_heap_write_sampler(GPUContext *  p_ctx, SamplerDescriptorHeapHandle p_sampler_heap, uint32 p_heap_slot,
-														   const SamplerDesc&  p_sampler_desc) -> void;
+															bool        p_storage, uint32                   p_mip = c_all_mip_levels) -> void;
+
+	// Set p_mip_levels to c_all_mip_levels to access the entire texture's mip levels
+	auto TST_GPU_API resource_descriptor_heap_write_textures(GPUContext *p_ctx, ResourceDescriptorHeapHandle p_resource_heap, InitialiserList<const uint32> p_heap_slots,
+															 InitialiserList<const TextureHandle> p_textures, InitialiserList<const bool> p_storage,
+															 InitialiserList<const uint32> p_mip_levels) -> void;
+
+	auto TST_GPU_API sampler_descriptor_heap_write_sampler(GPUContext *       p_ctx, SamplerDescriptorHeapHandle p_sampler_heap, uint32 p_heap_slot,
+														   const SamplerDesc &p_sampler_desc) -> void;
 
 	#pragma endregion
 
@@ -860,7 +895,15 @@ namespace toaster::gpu
 	#endif
 
 	[[nodiscard]] auto TST_GPU_API texture_create(GPUContext *p_ctx, const TextureDesc &p_desc) -> TextureHandle;
-	auto TST_GPU_API               texture_destroy(GPUContext *p_ctx, TextureHandle p_texture) -> void;
+	auto TST_GPU_API               texture_create_n(GPUContext *p_ctx, InitialiserList<const TextureDesc> p_descs, std::span<TextureHandle> p_out_textures) -> void;
+
+	auto TST_GPU_API texture_destroy(GPUContext *p_ctx, TextureHandle p_texture) -> void;
+	// Register a texture (just returns a unique handle) no gpu logic will be executed.
+	// This is useful for multithreaded loading where you want to target a specific texture, but you have not yet created it...
+	[[nodiscard]] auto TST_GPU_API texture_register_null(GPUContext *p_ctx) -> TextureHandle;
+	// This can only validly be called at some point after texture_register_null. This process is essentially just a deferred creation and is useful.
+	// Secretly, texture_create(...) is actually just texture_register_null(...) followed by texture_create_into(...)!
+	auto TST_GPU_API texture_create_into(GPUContext *p_ctx, TextureHandle p_dst_texture, const TextureDesc &p_desc) -> void;
 
 	[[nodiscard]] auto TST_GPU_API texture_get_desc(GPUContext *p_ctx, TextureHandle p_texture) -> const TextureDesc &;
 

@@ -1,6 +1,5 @@
 #include "toast_render/material.hpp"
 #include "toast_render/render_context.hpp"
-#include "toast_render/texture.hpp"
 
 #include "toast_lib/map.hpp"
 #include "toast_lib/pool.hpp"
@@ -16,46 +15,36 @@ namespace toaster::rnd
 {
 	struct MaterialManager
 	{
-		RenderContext * rndCtx{nullptr};
-		TextureManager *textureMngr{nullptr};
+		RenderContext *rndCtx{nullptr};
 
-		Pool<Material> materials;
+		static constexpr uint32                                                       c_materialPageSize{64u};
+		FixedPool<Material, c_materialPageSize, c_max_materials / c_materialPageSize> materials;
 
 		Vector<gpu::DeviceAddress>            bdas;
 		Vector<gpu::BufferHandle>             materialSSBOs;
 		Vector<UnorderedSet<MaterialHandle> > dirtyMaterials; // Per frame
 
-		enum class EPendingTextureType : uint8
-		{
-			eAlbedoMap,
-			eNormalMap,
-			eRoughnessMap,
-			eMetalnessMap
-		};
-
 		// List of materials which have textures that are not fully uploaded or created
-		UnorderedMap<MaterialHandle, UnorderedSet<EPendingTextureType> > pendingMaterialTextureUploads;
+		UnorderedMap<MaterialHandle, UnorderedSet<EMaterialTextureType> > pendingMaterialTextureUploads;
 
-		TextureHandle defaultColourMap;
-		TextureHandle defaultNormalMap;
-		TextureHandle defaultRoughnessMap;
-		TextureHandle defaultMetalnessMap;
+		Array<gpu::TextureHandle, c_max_material_textures> defaultTextures;
+		Array<uint32, c_max_material_textures>             defaultTextureHeapSlots;
 
 		mtx_t dirtyMaterialMtx;
 		mtx_t textureUploadMtx;
 	};
 
-	auto material_mngr_create(RenderContext *p_render_ctx, TextureManager *p_texture_mngr, uint32 p_max_materials) -> MaterialManager *
+	auto material_mngr_create(RenderContext *p_render_ctx, uint32 p_max_materials) -> MaterialManager *
 	{
 		const auto mngr{new MaterialManager{}};
 
-		mngr->rndCtx      = p_render_ctx;
-		mngr->textureMngr = p_texture_mngr;
+		mngr->rndCtx = p_render_ctx;
 
 		mtx_init(&mngr->dirtyMaterialMtx, mtx_plain);
 		mtx_init(&mngr->textureUploadMtx, mtx_plain);
 
-		gpu::GPUContext *gpu_ctx{p_render_ctx->gpuCtx};
+		gpu::GPUContext *   gpu_ctx{p_render_ctx->gpuCtx};
+		gpu::UploadContext *upload_ctx{p_render_ctx->uploadCtx};
 
 		gpu::BufferDesc material_buffer_desc{};
 		material_buffer_desc.size       = sizeof(MaterialParams) * p_max_materials;
@@ -75,74 +64,66 @@ namespace toaster::rnd
 		// Helps by batching default uploads into one state to be tracked and waited on
 		const gpu::StateTrackerHandle default_resource_state_tracker{gpu::state_tracker_register(p_render_ctx->uploadCtx, 4u)};
 
+		gpu::TextureDesc default_texture_desc{};
+		default_texture_desc.extent      = {1u, 1u, 1u};
+		default_texture_desc.mipCount    = 1u;
+		default_texture_desc.layerCount  = 1u;
+		default_texture_desc.type        = gpu::ETextureType::e2D;
+		default_texture_desc.sampleCount = gpu::ESampleCount::e1;
+		default_texture_desc.usage       = gpu::ETextureUsageFlagBits::eTransferDst | gpu::ETextureUsageFlagBits::eSampled;
+
+		gpu::BufferTextureCopyRegion copy_region{};
+		copy_region.bufferOffset       = 0ull;
+		copy_region.textureOffset      = {0, 0, 0};
+		copy_region.textureExtent      = {0u, 0u, 0u};
+		copy_region.textureSubresource = gpu::TextureSubresource{0u, 0u, 1u};
+
+		gpu::TextureUploadDesc upload_desc{};
+		upload_desc.uploadRegions = copy_region;
+
+		Array<gpu::EFormat, c_max_material_textures> default_texture_formats{
+			gpu::EFormat::eR8G8B8A8Srgb,
+			gpu::EFormat::eR8G8B8A8Unorm,
+			gpu::EFormat::eR8Unorm,
+			gpu::EFormat::eR8Unorm
+		};
+
+		constexpr uint32 colour_data{0xFFFFFFFF};
+		constexpr uint32 normal_data{0xFFFF0000};
+		constexpr uint8  roughness_data{0xFF};
+		constexpr uint8  metalness_data{0x00};
+
+		Array<const void *, c_max_material_textures> default_texture_upload_datas{&colour_data, &normal_data, &roughness_data, &metalness_data};
+		// I don't want to mess anything up
+		Array<uint32, c_max_material_textures> default_texture_upload_sizes{
+			sizeof(decltype(colour_data)),
+			sizeof(decltype(normal_data)),
+			sizeof(decltype(roughness_data)),
+			sizeof(decltype(metalness_data))
+		};
+
+		const gpu::ResourceDescriptorHeapHandle resource_heap{p_render_ctx->resourceHeap};
+
+		for (uint8 i{0u}; i < c_max_material_textures; ++i)
 		{
-			gpu::TextureDesc colour_texture_desc{};
-			colour_texture_desc.extent      = {1u, 1u, 1u};
-			colour_texture_desc.mipCount    = 1u;
-			colour_texture_desc.layerCount  = 1u;
-			colour_texture_desc.type        = gpu::ETextureType::e2D;
-			colour_texture_desc.sampleCount = gpu::ESampleCount::e1;
-			colour_texture_desc.format      = gpu::EFormat::eR8G8B8A8Srgb;
-			colour_texture_desc.usage       = gpu::ETextureUsageFlagBits::eTransferDst | gpu::ETextureUsageFlagBits::eSampled;
-			mngr->defaultColourMap          = texture_create(mngr->textureMngr, colour_texture_desc, textureSubresourceNoUpload);
+			default_texture_desc.format = default_texture_formats[i];
 
-			// Use the batch state tracker
-			texture_set_state_tracker(mngr->textureMngr, mngr->defaultColourMap, default_resource_state_tracker);
+			const gpu::TextureHandle texture{gpu::texture_create(gpu_ctx, default_texture_desc)};
+			mngr->defaultTextures[i] = texture;
 
-			uint32 colour_data{0xFFFFFFFF};
-			texture_set_data(mngr->textureMngr, mngr->defaultColourMap, &colour_data, sizeof(uint32));
+			upload_desc.data = default_texture_upload_datas[i];
+			upload_desc.size = static_cast<uint64>(default_texture_upload_sizes[i]);
+
+			gpu::upload_data_to_texture(upload_ctx, texture, upload_desc, default_resource_state_tracker);
 		}
-		{
-			gpu::TextureDesc normal_texture_desc{};
-			normal_texture_desc.extent      = {1u, 1u, 1u};
-			normal_texture_desc.mipCount    = 1u;
-			normal_texture_desc.layerCount  = 1u;
-			normal_texture_desc.type        = gpu::ETextureType::e2D;
-			normal_texture_desc.sampleCount = gpu::ESampleCount::e1;
-			normal_texture_desc.format      = gpu::EFormat::eR8G8B8A8Unorm;
-			normal_texture_desc.usage       = gpu::ETextureUsageFlagBits::eTransferDst | gpu::ETextureUsageFlagBits::eSampled;
-			mngr->defaultNormalMap          = texture_create(mngr->textureMngr, normal_texture_desc, textureSubresourceNoUpload);
 
-			// Use the batch state tracker
-			texture_set_state_tracker(mngr->textureMngr, mngr->defaultNormalMap, default_resource_state_tracker);
-
-			uint32 normal_data{0xFFFF0000};
-			texture_set_data(mngr->textureMngr, mngr->defaultNormalMap, &normal_data, sizeof(uint32));
-		}
-		{
-			gpu::TextureDesc roughness_texture_desc{};
-			roughness_texture_desc.extent      = {1u, 1u, 1u};
-			roughness_texture_desc.mipCount    = 1u;
-			roughness_texture_desc.layerCount  = 1u;
-			roughness_texture_desc.type        = gpu::ETextureType::e2D;
-			roughness_texture_desc.sampleCount = gpu::ESampleCount::e1;
-			roughness_texture_desc.format      = gpu::EFormat::eR8Unorm;
-			roughness_texture_desc.usage       = gpu::ETextureUsageFlagBits::eTransferDst | gpu::ETextureUsageFlagBits::eSampled;
-			mngr->defaultRoughnessMap          = texture_create(mngr->textureMngr, roughness_texture_desc, textureSubresourceNoUpload);
-
-			// Use the batch state tracker
-			texture_set_state_tracker(mngr->textureMngr, mngr->defaultRoughnessMap, default_resource_state_tracker);
-
-			uint8 roughness_data{0xFF};
-			texture_set_data(mngr->textureMngr, mngr->defaultRoughnessMap, &roughness_data, sizeof(uint8));
-		}
-		{
-			gpu::TextureDesc metalness_texture_desc{};
-			metalness_texture_desc.extent      = {1u, 1u, 1u};
-			metalness_texture_desc.mipCount    = 1u;
-			metalness_texture_desc.layerCount  = 1u;
-			metalness_texture_desc.type        = gpu::ETextureType::e2D;
-			metalness_texture_desc.sampleCount = gpu::ESampleCount::e1;
-			metalness_texture_desc.format      = gpu::EFormat::eR8Unorm;
-			metalness_texture_desc.usage       = gpu::ETextureUsageFlagBits::eTransferDst | gpu::ETextureUsageFlagBits::eSampled;
-			mngr->defaultMetalnessMap          = texture_create(mngr->textureMngr, metalness_texture_desc, textureSubresourceNoUpload);
-
-			// Use the batch state tracker
-			texture_set_state_tracker(mngr->textureMngr, mngr->defaultMetalnessMap, default_resource_state_tracker);
-
-			uint8 metalness_data{0x00};
-			texture_set_data(mngr->textureMngr, mngr->defaultMetalnessMap, &metalness_data, sizeof(uint8));
-		}
+		gpu::resource_descriptor_heap_alloc_texture_slots(gpu_ctx, resource_heap, mngr->defaultTextureHeapSlots);
+		gpu::resource_descriptor_heap_write_textures(gpu_ctx, resource_heap, mngr->defaultTextureHeapSlots, mngr->defaultTextures, {false, false, false, false}, {
+														 gpu::c_all_mip_levels,
+														 gpu::c_all_mip_levels,
+														 gpu::c_all_mip_levels,
+														 gpu::c_all_mip_levels
+													 });
 
 		gpu::state_tracker_wait_for(p_render_ctx->uploadCtx, default_resource_state_tracker);
 
@@ -151,10 +132,19 @@ namespace toaster::rnd
 
 	auto material_mngr_destroy(MaterialManager *p_mngr) -> void
 	{
+		RenderContext *                         render_ctx{p_mngr->rndCtx};
+		gpu::GPUContext *                       gpu_ctx{render_ctx->gpuCtx};
+		gpu::FrameContext *                     frame_ctx{render_ctx->frameCtx};
+		const gpu::ResourceDescriptorHeapHandle resource_heap{render_ctx->resourceHeap};
+
 		for (const auto ssbo: p_mngr->materialSSBOs)
-			gpu::defer_buffer_deletion(p_mngr->rndCtx->frameCtx, ssbo);
+			gpu::defer_buffer_deletion(frame_ctx, ssbo);
 
 		p_mngr->materials.clear();
+
+		gpu::resource_descriptor_heap_free_texture_slots(gpu_ctx, resource_heap, p_mngr->defaultTextureHeapSlots);
+
+		// gpu::texture_(gpu_ctx, p_mngr->defaultTextures);
 
 		mtx_destroy(&p_mngr->textureUploadMtx);
 		mtx_destroy(&p_mngr->dirtyMaterialMtx);
@@ -177,59 +167,18 @@ namespace toaster::rnd
 			bool need_update{false};
 			for (auto type_it{types.begin()}; type_it != types.end();)
 			{
-				if (*type_it == MaterialManager::EPendingTextureType::eAlbedoMap)
+				const uint8 texture_index{TST_UT(*type_it)};
+
+				// If the state tracker was removed, the texture should be considered "ready"
+				const gpu::StateTrackerHandle state_tracker{mat.stateTrackers[texture_index]};
+				if (!state_tracker || gpu::state_tracker_is_ready(p_mngr->rndCtx->uploadCtx, state_tracker))
 				{
-					const Texture *               albedo_map{texture_get(p_mngr->textureMngr, mat.albedoMap)};
-					const gpu::StateTrackerHandle state_tracker{albedo_map->stateTracker};
-					// If the state tracker was removed, the texture should be considered "ready"
-					if (!state_tracker || gpu::state_tracker_is_ready(p_mngr->rndCtx->uploadCtx, state_tracker))
-					{
-						mat.params.albedoMapHeapSlot = albedo_map->shaderReadHeapSlot;
-						need_update                  = true;
-						type_it                      = types.erase(type_it);
-						continue;
-					}
+					mat.params.heapSlots[texture_index] = mat.shaderReadHeapSlots[texture_index];
+					need_update                         = true;
+					type_it                             = types.erase(type_it);
 				}
-				else if (*type_it == MaterialManager::EPendingTextureType::eNormalMap)
-				{
-					const Texture *               normal_map{texture_get(p_mngr->textureMngr, mat.normalMap)};
-					const gpu::StateTrackerHandle state_tracker{normal_map->stateTracker};
-					// If the state tracker was removed, the texture should be considered "ready"
-					if (!state_tracker || gpu::state_tracker_is_ready(p_mngr->rndCtx->uploadCtx, state_tracker))
-					{
-						mat.params.normalMapHeapSlot = normal_map->shaderReadHeapSlot;
-						need_update                  = true;
-						type_it                      = types.erase(type_it);
-						continue;
-					}
-				}
-				else if (*type_it == MaterialManager::EPendingTextureType::eRoughnessMap)
-				{
-					const Texture *               roughness_map{texture_get(p_mngr->textureMngr, mat.roughnessMap)};
-					const gpu::StateTrackerHandle state_tracker{roughness_map->stateTracker};
-					// If the state tracker was removed, the texture should be considered "ready"
-					if (!state_tracker || gpu::state_tracker_is_ready(p_mngr->rndCtx->uploadCtx, state_tracker))
-					{
-						mat.params.roughnessMapHeapSlot = roughness_map->shaderReadHeapSlot;
-						need_update                     = true;
-						type_it                         = types.erase(type_it);
-						continue;
-					}
-				}
-				else if (*type_it == MaterialManager::EPendingTextureType::eMetalnessMap)
-				{
-					const Texture *               metalness_map{texture_get(p_mngr->textureMngr, mat.metalnessMap)};
-					const gpu::StateTrackerHandle state_tracker{metalness_map->stateTracker};
-					// If the state tracker was removed, the texture should be considered "ready"
-					if (!state_tracker || gpu::state_tracker_is_ready(p_mngr->rndCtx->uploadCtx, state_tracker))
-					{
-						mat.params.metalnessMapHeapSlot = metalness_map->shaderReadHeapSlot;
-						need_update                     = true;
-						type_it                         = types.erase(type_it);
-						continue;
-					}
-				}
-				++type_it;
+				else
+					++type_it;
 			}
 
 			if (need_update)
@@ -255,7 +204,7 @@ namespace toaster::rnd
 
 		for (auto handle: dirty_list)
 		{
-			const Material *material{p_mngr->materials.tryGet(handle)}; // The material may have been destroyed prior to calling this function
+			const Material *material{p_mngr->materials.try_get(handle)}; // The material may have been destroyed prior to calling this function
 			if (!material)
 				continue;
 
@@ -267,44 +216,31 @@ namespace toaster::rnd
 		mtx_unlock(&p_mngr->dirtyMaterialMtx);
 	}
 
-	auto material_mngr_get_material_buffer_address(MaterialManager *p_mngr, uint32 p_frame_index) -> gpu::DeviceAddress
+	auto material_mngr_get_material_buffer_address(const MaterialManager *p_mngr, uint32 p_frame_index) -> gpu::DeviceAddress
 	{
 		return p_mngr->bdas[p_frame_index];
 	}
 
-	auto material_mngr_get_default_colour_map(MaterialManager *p_mngr) -> TextureHandle
+	auto material_mngr_get_default_texture(MaterialManager *p_mngr, EMaterialTextureType p_type) -> MaterialTexture
 	{
-		return p_mngr->defaultColourMap;
-	}
-
-	auto material_mngr_get_default_normal_map(MaterialManager *p_mngr) -> TextureHandle
-	{
-		return p_mngr->defaultNormalMap;
-	}
-
-	auto material_mngr_get_default_roughness_map(MaterialManager *p_mngr) -> TextureHandle
-	{
-		return p_mngr->defaultRoughnessMap;
-	}
-
-	auto material_mngr_get_default_metalness_map(MaterialManager *p_mngr) -> TextureHandle
-	{
-		return p_mngr->defaultMetalnessMap;
+		const gpu::TextureHandle texture{p_mngr->defaultTextures[TST_UT(p_type)]};
+		const uint32             heap_slot{p_mngr->defaultTextureHeapSlots[TST_UT(p_type)]};
+		return MaterialTexture{texture, nullptr, heap_slot};
 	}
 
 	auto material_create(MaterialManager *p_mngr) -> MaterialHandle
 	{
+		// Initialise the material with all default textures
 		Material material{};
-		material.albedoMap                   = p_mngr->defaultColourMap;
-		material.normalMap                   = p_mngr->defaultNormalMap;
-		material.params.albedoMapHeapSlot    = texture_get(p_mngr->textureMngr, p_mngr->defaultColourMap)->shaderReadHeapSlot;
-		material.params.normalMapHeapSlot    = texture_get(p_mngr->textureMngr, p_mngr->defaultNormalMap)->shaderReadHeapSlot;
-		material.params.roughnessMapHeapSlot = texture_get(p_mngr->textureMngr, p_mngr->defaultRoughnessMap)->shaderReadHeapSlot;
-		material.params.metalnessMapHeapSlot = texture_get(p_mngr->textureMngr, p_mngr->defaultMetalnessMap)->shaderReadHeapSlot;
-		material.params.roughness            = 0.0f;
-		material.params.metalness            = 0.0f;
-		material.params.flags                = EMaterialFlagBits::eBackfaceCulling | EMaterialFlagBits::eNoNormalMap | EMaterialFlagBits::eNoRoughnessMap |
-											   EMaterialFlagBits::eNoMetalnessMap;
+		material.textures            = p_mngr->defaultTextures;
+		material.shaderReadHeapSlots = p_mngr->defaultTextureHeapSlots;
+		material.params.heapSlots    = p_mngr->defaultTextureHeapSlots;
+		material.stateTrackers.fill(nullptr);
+
+		material.params.roughness = 0.0f;
+		material.params.metalness = 0.0f;
+		material.params.flags     = EMaterialFlagBits::eBackfaceCulling | EMaterialFlagBits::eNoNormalMap | EMaterialFlagBits::eNoRoughnessMap |
+									EMaterialFlagBits::eNoMetalnessMap;
 
 		const MaterialHandle out_handle{p_mngr->materials.emplace(material)};
 		material_mark_dirty(p_mngr, out_handle);
@@ -329,12 +265,12 @@ namespace toaster::rnd
 
 	auto material_try_get(MaterialManager *p_mngr, MaterialHandle p_material) -> Material *
 	{
-		return p_mngr->materials.tryGet(p_material);
+		return p_mngr->materials.try_get(p_material);
 	}
 
 	auto material_try_get(const MaterialManager *p_mngr, MaterialHandle p_material) -> const Material *
 	{
-		return p_mngr->materials.tryGet(p_material);
+		return p_mngr->materials.try_get(p_material);
 	}
 
 	auto material_set_albedo_colour(MaterialManager *p_mngr, MaterialHandle p_material, const math::Float4 &p_colour) -> void
@@ -344,102 +280,51 @@ namespace toaster::rnd
 		material_mark_dirty(p_mngr, p_material);
 	}
 
-	auto material_set_albedo_map(MaterialManager *p_mngr, MaterialHandle p_material, TextureHandle p_albedo_map) -> void
+	auto material_set_texture(MaterialManager *p_mngr, MaterialHandle p_material, EMaterialTextureType p_type, const MaterialTexture &p_texture) -> void
 	{
 		Material &material{p_mngr->materials[p_material]};
 
-		material.albedoMap = p_albedo_map;
+		switch (p_type)
+		{
+			case EMaterialTextureType::eNormalMap:
+			{
+				material.params.flags &= ~EMaterialFlagBits::eNoNormalMap;
+				break;
+			}
+			case EMaterialTextureType::eRoughnessMap:
+			{
+				material.params.flags &= ~EMaterialFlagBits::eNoRoughnessMap;
+				break;
+			}
+			case EMaterialTextureType::eMetalnessMap:
+			{
+				material.params.flags &= ~EMaterialFlagBits::eNoMetalnessMap;
+				break;
+			}
 
-		const Texture *albedo_map{texture_get(p_mngr->textureMngr, p_albedo_map)};
+			default: break;
+		}
 
-		const gpu::StateTrackerHandle state_tracker{albedo_map->stateTracker};
+		const uint8 texture_index{TST_UT(p_type)};
+		material.textures[texture_index]            = p_texture.texture;
+		material.stateTrackers[texture_index]       = p_texture.stateTracker;
+		material.shaderReadHeapSlots[texture_index] = p_texture.shaderReadHeapSlot;
 
 		// If there is no state tracker, the texture should be considered "ready"
+		const gpu::StateTrackerHandle state_tracker{p_texture.stateTracker};
 		if (state_tracker && !gpu::state_tracker_is_ready(p_mngr->rndCtx->uploadCtx, state_tracker))
 		{
 			mtx_lock(&p_mngr->textureUploadMtx);
-			p_mngr->pendingMaterialTextureUploads[p_material].insert(MaterialManager::EPendingTextureType::eAlbedoMap);
+			p_mngr->pendingMaterialTextureUploads[p_material].insert(p_type);
 			mtx_unlock(&p_mngr->textureUploadMtx);
 
-			material.params.albedoMapHeapSlot = texture_get(p_mngr->textureMngr, p_mngr->defaultColourMap)->shaderReadHeapSlot;
+			material.params.heapSlots[texture_index] = p_mngr->defaultTextureHeapSlots[texture_index];
 		}
 		else
-			material.params.albedoMapHeapSlot = albedo_map->shaderReadHeapSlot;
-
-		material_mark_dirty(p_mngr, p_material);
-	}
-
-	auto material_set_normal_map(MaterialManager *p_mngr, MaterialHandle p_material, TextureHandle p_normal_map) -> void
-	{
-		Material &material{p_mngr->materials[p_material]};
-
-		material.params.flags &= ~EMaterialFlagBits::eNoNormalMap;
-		material.normalMap    = p_normal_map;
-
-		const Texture *normal_map{texture_get(p_mngr->textureMngr, p_normal_map)};
-
-		const gpu::StateTrackerHandle state_tracker{normal_map->stateTracker};
-		// If there is no state tracker, the texture should be considered "ready"
-		if (state_tracker && !gpu::state_tracker_is_ready(p_mngr->rndCtx->uploadCtx, state_tracker))
 		{
-			mtx_lock(&p_mngr->textureUploadMtx);
-			p_mngr->pendingMaterialTextureUploads[p_material].insert(MaterialManager::EPendingTextureType::eNormalMap);
-			mtx_unlock(&p_mngr->textureUploadMtx);
-
-			material.params.normalMapHeapSlot = texture_get(p_mngr->textureMngr, p_mngr->defaultNormalMap)->shaderReadHeapSlot;
+			TST_ASSERT_MSG(p_texture.shaderReadHeapSlot != UINT32_MAX, "Invalid heap slot");
+			material.params.heapSlots[texture_index] = p_texture.shaderReadHeapSlot;
 		}
-		else
-			material.params.normalMapHeapSlot = normal_map->shaderReadHeapSlot;
-
-		material_mark_dirty(p_mngr, p_material);
-	}
-
-	auto material_set_roughness_map(MaterialManager *p_mngr, MaterialHandle p_material, TextureHandle p_roughness_map) -> void
-	{
-		Material &material{p_mngr->materials[p_material]};
-
-		material.params.flags &= ~EMaterialFlagBits::eNoRoughnessMap;
-		material.roughnessMap = p_roughness_map;
-
-		const Texture *roughness_map{texture_get(p_mngr->textureMngr, p_roughness_map)};
-
-		const gpu::StateTrackerHandle state_tracker{roughness_map->stateTracker};
-		// If there is no state tracker, the texture should be considered "ready"
-		if (state_tracker && !gpu::state_tracker_is_ready(p_mngr->rndCtx->uploadCtx, state_tracker))
-		{
-			mtx_lock(&p_mngr->textureUploadMtx);
-			p_mngr->pendingMaterialTextureUploads[p_material].insert(MaterialManager::EPendingTextureType::eRoughnessMap);
-			mtx_unlock(&p_mngr->textureUploadMtx);
-
-			material.params.roughnessMapHeapSlot = texture_get(p_mngr->textureMngr, p_mngr->defaultRoughnessMap)->shaderReadHeapSlot;
-		}
-		else
-			material.params.roughnessMapHeapSlot = roughness_map->shaderReadHeapSlot;
-
-		material_mark_dirty(p_mngr, p_material);
-	}
-
-	auto material_set_metalness_map(MaterialManager *p_mngr, MaterialHandle p_material, TextureHandle p_metalness_map) -> void
-	{
-		Material &material{p_mngr->materials[p_material]};
-
-		material.params.flags &= ~EMaterialFlagBits::eNoMetalnessMap;
-		material.metalnessMap = p_metalness_map;
-
-		const Texture *metalness_map{texture_get(p_mngr->textureMngr, p_metalness_map)};
-
-		const gpu::StateTrackerHandle state_tracker{metalness_map->stateTracker};
-		// If there is no state tracker, the texture should be considered "ready"
-		if (state_tracker && !gpu::state_tracker_is_ready(p_mngr->rndCtx->uploadCtx, state_tracker))
-		{
-			mtx_lock(&p_mngr->textureUploadMtx);
-			p_mngr->pendingMaterialTextureUploads[p_material].insert(MaterialManager::EPendingTextureType::eMetalnessMap);
-			mtx_unlock(&p_mngr->textureUploadMtx);
-
-			material.params.metalnessMapHeapSlot = texture_get(p_mngr->textureMngr, p_mngr->defaultMetalnessMap)->shaderReadHeapSlot;
-		}
-		else
-			material.params.metalnessMapHeapSlot = metalness_map->shaderReadHeapSlot;
 
 		material_mark_dirty(p_mngr, p_material);
 	}

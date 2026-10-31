@@ -24,9 +24,9 @@ namespace toaster::gpu
 
 	struct AllocationContext
 	{
-		GPUContext *            gpuCtx{nullptr};
-		Pool<VirtualBlock>      virtualBlocks;
-		Pool<VirtualAllocation> virtualAllocations;
+		GPUContext *                 gpuCtx{nullptr};
+		FixedPool<VirtualBlock>      virtualBlocks;
+		FixedPool<VirtualAllocation> virtualAllocations;
 	};
 
 	auto allocation_ctx_create(GPUContext *p_gpu_ctx) -> AllocationContext *
@@ -45,7 +45,7 @@ namespace toaster::gpu
 		{
 			const auto ctx{static_cast<AllocationContext *>(p_ctx)};
 
-			if (const VirtualBlock *block{ctx->virtualBlocks.tryGet(p_data->block)})
+			if (const VirtualBlock *block{ctx->virtualBlocks.try_get(p_data->block)})
 				vmaVirtualFree(block->block, p_data->allocation);
 			else
 			{
@@ -87,15 +87,14 @@ namespace toaster::gpu
 	{
 		VirtualBlock &block{p_ctx->virtualBlocks[p_virtual_block]};
 
-		VmaVirtualAllocation allocation{nullptr};
-
-		uint64 allocation_offset{0u};
-
 		VmaVirtualAllocationCreateInfo virtual_allocation_create_info{};
 		virtual_allocation_create_info.size      = p_size;
 		virtual_allocation_create_info.alignment = p_alignment;
 
-		VkResult result{vmaVirtualAllocate(block.block, &virtual_allocation_create_info, &allocation, &allocation_offset)};
+		VmaVirtualAllocation allocation;
+		uint64               allocation_offset;
+
+		const VkResult result{vmaVirtualAllocate(block.block, &virtual_allocation_create_info, &allocation, &allocation_offset)};
 		if (result != VK_SUCCESS)
 			return nullptr;
 

@@ -7,7 +7,18 @@
 #include <toast_gpu/api.hpp>
 #include <toast_gpu/upload.hpp>
 
-#include <toast_render/texture.hpp>
+#include "toast_lib/pool.hpp"
+#include "toast_render/mesh.hpp"
+
+#include <print>
+#include <thread>
+
+#include "toast_render/material.hpp"
+
+namespace toaster::rnd
+{
+	struct MeshManager;
+}
 
 using namespace toaster;
 
@@ -25,16 +36,8 @@ TST_OS_WINMAIN()
 	};
 	rpmalloc_initialize(&malloc_interface);
 
-	{
-		Vector<int32> vector;
-		vector.emplace_back(0);
-		vector.emplace_back(1);
-		vector.emplace_back(2);
-		vector.emplace_back(3);
-		vector.emplace_back(4);
-	}
-
 	#if 1
+
 	{
 		knl::ApplicationDesc app_desc{};
 		app_desc.maxFramesInFlight = 3u;
@@ -51,10 +54,17 @@ TST_OS_WINMAIN()
 		knl::Application application{};
 		knl::application_create(&application, app_desc);
 
+		struct RenderTexture
+		{
+			gpu::TextureHandle      texture{nullptr};
+			gpu::StateTrackerHandle stateTracker{nullptr};
+			uint32                  shaderReadHeapSlot;
+		};
+
 		struct TestLayer
 		{
-			rnd::TextureManager *textureMngr;
-			rnd::TextureHandle   testTexture;
+			rnd::MeshManager *meshMngr;
+			RenderTexture     testTexture;
 
 			gpu::ShaderHandle meshShader;
 			gpu::ShaderHandle pixelShader;
@@ -74,41 +84,41 @@ TST_OS_WINMAIN()
 			gpu::GPUContext *   gpu_ctx{render_ctx->gpuCtx};
 			gpu::UploadContext *upload_ctx{render_ctx->uploadCtx};
 
-			layer->textureMngr = rnd::texture_mngr_create(render_ctx);
+			layer->meshMngr = rnd::mesh_mngr_create(render_ctx);
 
 			gpu::TextureDesc texture_desc{};
-			texture_desc.extent      = {10u, 10u, 1u};
-			texture_desc.format      = gpu::EFormat::eR8G8B8A8Srgb;
-			texture_desc.layerCount  = 1u;
-			texture_desc.sampleCount = gpu::ESampleCount::e1;
+			texture_desc.extent        = {10u, 10u, 1u};
+			texture_desc.format        = gpu::EFormat::eR8G8B8A8Srgb;
+			texture_desc.layerCount    = 1u;
+			texture_desc.sampleCount   = gpu::ESampleCount::e1;
+			texture_desc.mipCount      = 1u;
+			texture_desc.type          = gpu::ETextureType::e2D;
+			texture_desc.usage         = gpu::ETextureUsageFlagBits::eSampled | gpu::ETextureUsageFlagBits::eTransferDst | gpu::ETextureUsageFlagBits::eTransferSrc;
+			layer->testTexture.texture = gpu::texture_create(gpu_ctx, texture_desc);
 
-			gpu::TextureUploadDesc upload_desc{};
-			texture_desc.mipCount = 4u;
-			texture_desc.type     = gpu::ETextureType::e2D;
-			texture_desc.usage    = gpu::ETextureUsageFlagBits::eSampled | gpu::ETextureUsageFlagBits::eTransferDst | gpu::ETextureUsageFlagBits::eTransferSrc;
-			layer->testTexture    = rnd::texture_create(layer->textureMngr, texture_desc, 1u);
+			layer->testTexture.shaderReadHeapSlot = gpu::resource_descriptor_heap_alloc_texture_slot(gpu_ctx, render_ctx->resourceHeap);
+			gpu::resource_descriptor_heap_write_texture(gpu_ctx, render_ctx->resourceHeap, layer->testTexture.shaderReadHeapSlot, layer->testTexture.texture, false);
 
-			rnd::Texture *texture{rnd::texture_get(layer->textureMngr, layer->testTexture)};
+			layer->testTexture.stateTracker = gpu::state_tracker_register(upload_ctx, 1u);
 
 			Array<uint32, 10u * 10u> data;
 			for (uint32 i{0u}; i < 10u; ++i)
-			{
 				for (uint32 j{0u}; j < 10u; ++j)
-				{
 					data[i * 10u + j] = (uint32) rand();
-				}
-			}
 
-			upload_desc.dstTexture = texture->texture;
-			upload_desc.data       = data.data();
-			upload_desc.size       = data.size_bytes();
-			upload_desc.extent     = {0u, 0u, 0u};
-			upload_desc.offset     = {0u, 0u, 0u};
-			upload_desc.mipLevel   = 0u;
-			upload_desc.baseLayer  = 0u;
-			upload_desc.layerCount = 1u;
-			gpu::upload_data_to_texture(upload_ctx, upload_desc, texture->stateTracker);
-			gpu::state_tracker_wait_for(upload_ctx, texture->stateTracker);
+			gpu::BufferTextureCopyRegion copy_region{};
+			copy_region.bufferOffset       = 0ull;
+			copy_region.textureOffset      = {0, 0, 0};
+			copy_region.textureExtent      = {0u, 0u, 0u};
+			copy_region.textureSubresource = gpu::TextureSubresource{0u, 0u, 1u};
+
+			gpu::TextureUploadDesc upload_desc{};
+			upload_desc.uploadRegions = copy_region;
+			upload_desc.data          = data.data();
+			upload_desc.size          = data.size_bytes();
+
+			gpu::upload_data_to_texture(upload_ctx, layer->testTexture.texture, upload_desc, layer->testTexture.stateTracker);
+			gpu::state_tracker_wait_for(upload_ctx, layer->testTexture.stateTracker);
 
 			layer->samplerHeapId = gpu::sampler_descriptor_heap_alloc_sampler_slot(gpu_ctx, render_ctx->samplerHeap);
 
@@ -160,8 +170,10 @@ TST_OS_WINMAIN()
 
 			gpu::sampler_descriptor_heap_free_sampler_slot(gpu_ctx, render_ctx->samplerHeap, layer->samplerHeapId);
 
-			rnd::texture_destroy(layer->textureMngr, layer->testTexture);
-			rnd::texture_mngr_destroy(layer->textureMngr);
+			gpu::texture_destroy(gpu_ctx, layer->testTexture.texture);
+			gpu::resource_descriptor_heap_free_texture_slot(gpu_ctx, render_ctx->resourceHeap, layer->testTexture.shaderReadHeapSlot);
+
+			rnd::mesh_mngr_destroy(layer->meshMngr);
 		};
 		app_layer.onUpdateFn = +[](knl::Application *p_app, void *p_layer, float32 p_dt) mutable -> void
 		{
@@ -169,8 +181,6 @@ TST_OS_WINMAIN()
 		app_layer.onRenderFn = +[](knl::Application *p_app, void *p_layer, gpu::CommandListHandle p_cmd) mutable -> void
 		{
 			auto layer{static_cast<TestLayer *>(p_layer)};
-
-			rnd::texture_mngr_poll_uploads(layer->textureMngr, p_cmd);
 
 			const uint32             frame_index{p_app->frameIndex};
 			const gpu::TextureHandle render_tex{p_app->window.currentTexture};
@@ -219,7 +229,7 @@ TST_OS_WINMAIN()
 			};
 			PushData push_data{};
 			push_data.screenResolution = {static_cast<float32>(rendering_info.renderArea.size.x), static_cast<float32>(rendering_info.renderArea.size.y)};
-			push_data.textureHeapId    = rnd::texture_get(layer->textureMngr, layer->testTexture)->shaderReadHeapSlot;
+			push_data.textureHeapId    = layer->testTexture.shaderReadHeapSlot;
 			push_data.samplerHeapId    = layer->samplerHeapId;
 			gpu::cmd_push_data(gpu_ctx, p_cmd, push_data);
 
@@ -230,7 +240,7 @@ TST_OS_WINMAIN()
 
 		knl::application_add_layer(&application, &app_layer);
 
-		knl::application_run(&application, UINT32_MAX);
+		knl::application_run(&application, 360u);
 		knl::application_destroy(&application);
 	}
 
@@ -238,6 +248,7 @@ TST_OS_WINMAIN()
 
 	rpmalloc_finalize();
 
+	// std::cin.get();
 	os::output_console_destroy();
 
 	return 0;

@@ -38,36 +38,36 @@ namespace toaster::knl
 
 	bool input_is_key_down(const InputContext *p_input_ctx, EKeyCode p_key_code)
 	{
-		return TST_LIB_BIT_TEST(p_input_ctx->currentKeyStates, TST_LIB_ENUM_VAL(p_key_code));
+		return TST_BIT_TEST(p_input_ctx->currentKeyStates, TST_ENUM_VAL(p_key_code));
 	}
 
 	bool input_is_key_pressed(const InputContext *p_input_ctx, EKeyCode p_key_code)
 	{
-		return TST_LIB_BIT_TEST(p_input_ctx->currentKeyStates, TST_LIB_ENUM_VAL(p_key_code)) && !TST_LIB_BIT_TEST(p_input_ctx->previousKeyStates,
-																												  TST_LIB_ENUM_VAL(p_key_code));
+		return TST_BIT_TEST(p_input_ctx->currentKeyStates, TST_ENUM_VAL(p_key_code)) && !TST_BIT_TEST(p_input_ctx->previousKeyStates,
+																												  TST_ENUM_VAL(p_key_code));
 	}
 
 	bool input_is_key_released(const InputContext *p_input_ctx, EKeyCode p_key_code)
 	{
-		return !TST_LIB_BIT_TEST(p_input_ctx->currentKeyStates, TST_LIB_ENUM_VAL(p_key_code)) && TST_LIB_BIT_TEST(p_input_ctx->previousKeyStates,
-																												  TST_LIB_ENUM_VAL(p_key_code));
+		return !TST_BIT_TEST(p_input_ctx->currentKeyStates, TST_ENUM_VAL(p_key_code)) && TST_BIT_TEST(p_input_ctx->previousKeyStates,
+																												  TST_ENUM_VAL(p_key_code));
 	}
 
 	bool input_is_mouse_button_down(const InputContext *p_input_ctx, EMouseButton p_button)
 	{
-		return TST_LIB_BIT_TEST(p_input_ctx->currentMouseStates, TST_LIB_ENUM_VAL(p_button));
+		return TST_BIT_TEST(p_input_ctx->currentMouseStates, TST_ENUM_VAL(p_button));
 	}
 
 	bool input_is_mouse_button_pressed(const InputContext *p_input_ctx, EMouseButton p_button)
 	{
-		return TST_LIB_BIT_TEST(p_input_ctx->currentMouseStates, TST_LIB_ENUM_VAL(p_button)) && !TST_LIB_BIT_TEST(p_input_ctx->previousMouseStates,
-																												  TST_LIB_ENUM_VAL(p_button));
+		return TST_BIT_TEST(p_input_ctx->currentMouseStates, TST_ENUM_VAL(p_button)) && !TST_BIT_TEST(p_input_ctx->previousMouseStates,
+																												  TST_ENUM_VAL(p_button));
 	}
 
 	bool input_is_mouse_button_released(const InputContext *p_input_ctx, EMouseButton p_button)
 	{
-		return !TST_LIB_BIT_TEST(p_input_ctx->currentMouseStates, TST_LIB_ENUM_VAL(p_button)) && TST_LIB_BIT_TEST(p_input_ctx->previousMouseStates,
-																												  TST_LIB_ENUM_VAL(p_button));
+		return !TST_BIT_TEST(p_input_ctx->currentMouseStates, TST_ENUM_VAL(p_button)) && TST_BIT_TEST(p_input_ctx->previousMouseStates,
+																												  TST_ENUM_VAL(p_button));
 	}
 
 	ECursorMode input_get_cursor_mode(const InputContext *p_input_ctx)
@@ -77,7 +77,7 @@ namespace toaster::knl
 
 	void input_set_cursor_mode(InputContext *p_input_ctx, ECursorMode p_cursor_mode)
 	{
-		glfwSetInputMode(static_cast<GLFWwindow *>(p_input_ctx->windowCtx), GLFW_CURSOR, GLFW_CURSOR_NORMAL + TST_LIB_ENUM_VAL(p_cursor_mode));
+		glfwSetInputMode(static_cast<GLFWwindow *>(p_input_ctx->windowCtx), GLFW_CURSOR, GLFW_CURSOR_NORMAL + TST_ENUM_VAL(p_cursor_mode));
 		if (p_cursor_mode == ECursorMode::eDisabled)
 		{
 			glfwSetInputMode(static_cast<GLFWwindow *>(p_input_ctx->windowCtx), GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
@@ -87,8 +87,8 @@ namespace toaster::knl
 
 	void input_update(InputContext *p_input_ctx)
 	{
-		memcpy(&p_input_ctx->previousKeyStates, p_input_ctx->currentKeyStates, TST_LIB_BITSET_SIZE(TST_LIB_ENUM_VAL(EKeyCode::eLast)));
-		memcpy(&p_input_ctx->previousMouseStates, p_input_ctx->currentMouseStates, TST_LIB_BITSET_SIZE(TST_LIB_ENUM_VAL(EMouseButton::eLast)));
+		memcpy(&p_input_ctx->previousKeyStates, p_input_ctx->currentKeyStates, TST_BITSET_SIZE(TST_ENUM_VAL(EKeyCode::eLast)));
+		memcpy(&p_input_ctx->previousMouseStates, p_input_ctx->currentMouseStates, TST_BITSET_SIZE(TST_ENUM_VAL(EMouseButton::eLast)));
 
 		p_input_ctx->mouseDx = 0.0f;
 		p_input_ctx->mouseDy = 0.0f;
@@ -99,11 +99,11 @@ namespace toaster::knl
 
 	void input_clear_states(InputContext *p_input_ctx)
 	{
-		TST_LIB_BITSET_RESET(p_input_ctx->currentKeyStates, TST_LIB_ENUM_VAL(EKeyCode::eLast));
-		TST_LIB_BITSET_RESET(p_input_ctx->previousKeyStates, TST_LIB_ENUM_VAL(EKeyCode::eLast));
+		TST_BITSET_RESET(p_input_ctx->currentKeyStates, TST_ENUM_VAL(EKeyCode::eLast));
+		TST_BITSET_RESET(p_input_ctx->previousKeyStates, TST_ENUM_VAL(EKeyCode::eLast));
 
-		TST_LIB_BITSET_RESET(p_input_ctx->currentMouseStates, TST_LIB_ENUM_VAL(EMouseButton::eLast));
-		TST_LIB_BITSET_RESET(p_input_ctx->previousMouseStates, TST_LIB_ENUM_VAL(EMouseButton::eLast));
+		TST_BITSET_RESET(p_input_ctx->currentMouseStates, TST_ENUM_VAL(EMouseButton::eLast));
+		TST_BITSET_RESET(p_input_ctx->previousMouseStates, TST_ENUM_VAL(EMouseButton::eLast));
 	}
 
 	math::Float2 input_get_mouse_pos(const InputContext *p_input_ctx)

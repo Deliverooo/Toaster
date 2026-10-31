@@ -86,6 +86,7 @@ namespace toaster::gpu
 
 		bool open{false};
 		bool secondary{false};
+		bool ownsPool{true};
 	};
 
 	struct Semaphore
@@ -104,15 +105,25 @@ namespace toaster::gpu
 		EBufferUsageFlags usageFlags{0u};
 	};
 
+	enum class EInternalTextureFlagBits : uint8
+	{
+		// True if the texture has been null registered and not created into
+		eNullRegistered = TST_BIT(0u),
+		// True if the texture is actually a swapchain image
+		// Used to know whether the texture owns it's image and should create/destroy it
+		eSwapchainImage = TST_BIT(1u)
+	};
+
+	TST_SPECIALISE_FLAGS(EInternalTextureFlagBits, EInternalTextureFlags);
+
 	struct Texture
 	{
 		VkImage       image{nullptr};
 		VkImageView   imageView{nullptr}; // Not necessary unless the texture is a render target
 		VmaAllocation allocation{nullptr};
 
-		TextureDesc desc; // Useful
-
-		bool isSwapchainImage{false}; // Used to know whether the texture owns it's image and should create/destroy it
+		TextureDesc           desc{}; // Useful
+		EInternalTextureFlags flags{0u};
 	};
 
 	struct Surface
@@ -168,31 +179,33 @@ namespace toaster::gpu
 
 		VkDevice logicalDevice{nullptr};
 
-		QueueFamilyIndices                                 queueFamilyIndices{};
-		Array<VkQueue, TST_LIB_ENUM_VAL(EQueueType::eMax)> queues;
-		mtx_t                                              queueMutexes[TST_LIB_ENUM_VAL(EQueueType::eMax)];
+		QueueFamilyIndices                             queueFamilyIndices{};
+		Array<VkQueue, TST_ENUM_VAL(EQueueType::eMax)> queues;
+		mtx_t                                          queueMutexes[TST_ENUM_VAL(EQueueType::eMax)];
 
 		VmaAllocator allocator{nullptr};
 
-		TST_REGISTER_RESOURCE_POOL(CommandList, commandLists);
-		mtx_t                                                                freeCommandListMutex;
-		Array<Vector<CommandListHandle>, TST_LIB_ENUM_VAL(EQueueType::eMax)> freeCommandLists; // Free command lists per queue type
-		Array<Vector<CommandListHandle>, TST_LIB_ENUM_VAL(EQueueType::eMax)> freeSecondaryLists; // Free command lists per queue type
-		Array<VkCommandPool, TST_LIB_ENUM_VAL(EQueueType::eMax)>             transientPools; // Mostly used for allocating command buffers for image layout transitions
+		FixedPool<CommandList, 32u, 32u> commandLists; // 1024
+
+		mtx_t                                                            freeCommandListMutex;
+		Array<Vector<CommandListHandle>, TST_ENUM_VAL(EQueueType::eMax)> freeCommandLists;   // Free command lists per queue type
+		Array<Vector<CommandListHandle>, TST_ENUM_VAL(EQueueType::eMax)> freeSecondaryLists; // Free command lists per queue type
+		Array<VkCommandPool, TST_ENUM_VAL(EQueueType::eMax)>             transientPools;     // Mostly used for allocating command buffers for image layout transitions
 
 		// The page size should be 1 because you will only ever have one of each type of heap
-		Pool<ResourceDescriptorHeap, 1u> resourceHeaps;
-		Pool<SamplerDescriptorHeap, 1u>  samplerHeaps;
+		FixedPool<ResourceDescriptorHeap, 1u, 2u> resourceHeaps; // 2
+		FixedPool<SamplerDescriptorHeap, 1u, 2u>  samplerHeaps;  // 2
 
-		TST_REGISTER_RESOURCE_POOL(Texture, textures);
-		UnorderedSet<TextureHandle> undefinedTextures; // All the textures that are in the undefined format and are awaiting a layout transition
-		mtx_t                       undefinedTexturesMutex;
+		FixedPool<Texture, 64u, 64u> textures;          // 4096
+		UnorderedSet<TextureHandle>  undefinedTextures; // All the textures that are in the undefined format and are awaiting a layout transition
+		mtx_t                        undefinedTexturesMutex;
 
-		TST_REGISTER_RESOURCE_POOL(Semaphore, semaphores);
-		TST_REGISTER_RESOURCE_POOL(Buffer, buffers);
-		TST_REGISTER_RESOURCE_POOL(Surface, surfaces);
-		TST_REGISTER_RESOURCE_POOL(Swapchain, swapchains);
-		TST_REGISTER_RESOURCE_POOL(Shader, shaders);
+		// These numbers are chosen completely arbitrarily...
+		FixedPool<Semaphore, 32u, 32u> semaphores; // 1024
+		FixedPool<Buffer, 32u, 32u>    buffers;    // 1024
+		FixedPool<Surface, 16u, 2u>    surfaces;   // 32
+		FixedPool<Swapchain, 1u, 2u>   swapchains; // 2
+		FixedPool<Shader, 32u, 16u>    shaders;    // 512
 	};
 
 	// static APIImpl *p_ctx{nullptr};
@@ -915,7 +928,7 @@ namespace toaster::gpu
 		ctx->usingSwapchain                  = p_desc.usingSwapchain;
 		ctx->maxConcurrentSwapchainWorkloads = p_desc.maxConcurrentSwapchainWorkloads;
 
-		for (uint32 i{0u}; i < TST_LIB_ENUM_VAL(EQueueType::eMax); ++i)
+		for (uint32 i{0u}; i < TST_ENUM_VAL(EQueueType::eMax); ++i)
 			mtx_init(&ctx->queueMutexes[i], mtx_plain);
 		mtx_init(&ctx->freeCommandListMutex, mtx_plain);
 		mtx_init(&ctx->undefinedTexturesMutex, mtx_plain);
@@ -1238,16 +1251,16 @@ namespace toaster::gpu
 		// TST_GPU_VK_CHECK_RESULT_MSG(vkCreateDevice(ctx->physicalDevice, &logical_device_create_info, nullptr, &ctx->logicalDevice), "Failed to create logical device");
 
 		// Graphics queue
-		vkGetDeviceQueue(ctx->logicalDevice, ctx->queueFamilyIndices.graphics, 0u, &ctx->queues[TST_LIB_ENUM_VAL(EQueueType::eGraphics)]);
+		vkGetDeviceQueue(ctx->logicalDevice, ctx->queueFamilyIndices.graphics, 0u, &ctx->queues[TST_ENUM_VAL(EQueueType::eGraphics)]);
 
 		// Not the compute queue
-		ctx->queues[TST_LIB_ENUM_VAL(EQueueType::eCompute)] = nullptr; // TODO: More queues
+		ctx->queues[TST_ENUM_VAL(EQueueType::eCompute)] = nullptr; // TODO: More queues
 
 		// Transfer queue
 		uint32 transfer_queue_index{(ctx->queueFamilyIndices.transfer == ctx->queueFamilyIndices.graphics) ? 1u : 0u};
-		vkGetDeviceQueue(ctx->logicalDevice, ctx->queueFamilyIndices.transfer, transfer_queue_index, &ctx->queues[TST_LIB_ENUM_VAL(EQueueType::eTransfer)]);
+		vkGetDeviceQueue(ctx->logicalDevice, ctx->queueFamilyIndices.transfer, transfer_queue_index, &ctx->queues[TST_ENUM_VAL(EQueueType::eTransfer)]);
 
-		for (uint32 queue_index{0u}; queue_index < TST_LIB_ENUM_VAL(EQueueType::eMax); ++queue_index)
+		for (uint32 queue_index{0u}; queue_index < TST_ENUM_VAL(EQueueType::eMax); ++queue_index)
 		{
 			VkCommandPoolCreateInfo command_pool_create_info{};
 			command_pool_create_info.sType            = STYPE(COMMAND_POOL_CREATE_INFO);
@@ -1426,10 +1439,11 @@ namespace toaster::gpu
 		{
 			const auto ctx{static_cast<GPUContext *>(p_ctx)};
 
+			// If the texture has not been created into, these other members will be nullptr anyway
 			if (p_data->imageView)
 				vkDestroyImageView(ctx->logicalDevice, p_data->imageView, nullptr);
 
-			if (!p_data->isSwapchainImage)
+			if (!(p_data->flags & EInternalTextureFlagBits::eSwapchainImage))
 				vmaDestroyImage(ctx->allocator, p_data->image, p_data->allocation);
 
 			p_data->image      = nullptr;
@@ -1500,14 +1514,14 @@ namespace toaster::gpu
 		p_ctx->semaphores.clear();
 		p_ctx->commandLists.clear();
 
-		for (uint32 queue_index{0u}; queue_index < TST_LIB_ENUM_VAL(EQueueType::eMax); ++queue_index)
+		for (uint32 queue_index{0u}; queue_index < TST_ENUM_VAL(EQueueType::eMax); ++queue_index)
 			vkDestroyCommandPool(p_ctx->logicalDevice, p_ctx->transientPools[queue_index], nullptr);
 
 		vmaDestroyAllocator(p_ctx->allocator);
 		vkDestroyDevice(p_ctx->logicalDevice, nullptr);
 		vkDestroyInstance(p_ctx->vulkanInstance, nullptr);
 
-		for (uint32 i{0u}; i < TST_LIB_ENUM_VAL(EQueueType::eMax); ++i)
+		for (uint32 i{0u}; i < TST_ENUM_VAL(EQueueType::eMax); ++i)
 			mtx_destroy(&p_ctx->queueMutexes[i]);
 		mtx_destroy(&p_ctx->freeCommandListMutex);
 		mtx_destroy(&p_ctx->undefinedTexturesMutex);
@@ -1550,7 +1564,7 @@ namespace toaster::gpu
 	{
 		mtx_lock(&p_ctx->undefinedTexturesMutex);
 
-		if (p_ctx->undefinedTextures.empty() || p_queue_type == EQueueType::eTransfer) // Transfer queues cannot perform layout transitions
+		if (p_ctx->undefinedTextures.empty()) // CORRECTION: Transfer queues can perform layout transitions...
 		{
 			mtx_unlock(&p_ctx->undefinedTexturesMutex);
 			return nullptr;
@@ -1559,11 +1573,10 @@ namespace toaster::gpu
 		Vector<VkImageMemoryBarrier2> image_memory_barriers(p_ctx->undefinedTextures.size());
 
 		// unordered sets can't be indexed normally
-		uint32 i{0u};
-		for (const auto undef_tex: p_ctx->undefinedTextures)
+		for (const auto [i, undef_tex]: std::views::enumerate(p_ctx->undefinedTextures))
 		{
-			const Texture &    texture{p_ctx->textures[undef_tex]};
-			const TextureDesc &desc{texture.desc};
+			const Texture *    texture{p_ctx->textures.try_get(undef_tex)};
+			const TextureDesc &desc{texture->desc};
 
 			VkImageMemoryBarrier2 &barrier{image_memory_barriers[i]};
 			barrier.sType               = STYPE(IMAGE_MEMORY_BARRIER_2);
@@ -1576,7 +1589,7 @@ namespace toaster::gpu
 			barrier.newLayout           = VK_IMAGE_LAYOUT_GENERAL;
 			barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 			barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			barrier.image               = texture.image;
+			barrier.image               = texture->image;
 
 			VkImageSubresourceRange &subresource_range{barrier.subresourceRange};
 			subresource_range.aspectMask     = get_vk_image_aspect_mask(desc.format);
@@ -1584,8 +1597,6 @@ namespace toaster::gpu
 			subresource_range.levelCount     = desc.mipCount;
 			subresource_range.baseArrayLayer = 0u;
 			subresource_range.layerCount     = desc.layerCount;
-
-			++i;
 		}
 
 		// I forgot to clear this. I only realised when my RAM maxed out.
@@ -1639,7 +1650,7 @@ namespace toaster::gpu
 		return command_buffer;
 	}
 
-	auto cmd_list_get_or_create(GPUContext *p_ctx, EQueueType p_queue_type, bool p_secondary) -> CommandListHandle
+	auto cmd_list_create(GPUContext *p_ctx, EQueueType p_queue_type, bool p_secondary) -> CommandListHandle
 	{
 		mtx_lock(&p_ctx->freeCommandListMutex);
 
@@ -1687,6 +1698,84 @@ namespace toaster::gpu
 		}
 
 		return p_ctx->commandLists.emplace(CommandList{command_buffer, command_pool, p_queue_type, false, p_secondary});
+	}
+
+	auto cmd_list_create_n(GPUContext *p_ctx, std::span<CommandListHandle> p_out_cmd_lists, EQueueType p_queue_type, bool p_secondary) -> void
+	{
+		const uint32 count{static_cast<uint32>(p_out_cmd_lists.size())};
+
+		mtx_lock(&p_ctx->freeCommandListMutex);
+
+		auto &       free_lists{p_secondary ? p_ctx->freeSecondaryLists[static_cast<uint32>(p_queue_type)] : p_ctx->freeCommandLists[static_cast<uint32>(p_queue_type)]};
+		const uint32 free_list_size{static_cast<uint32>(free_lists.size())};
+
+		// If there are a number of free command lists greater than or equal to the count, return them
+		if (free_list_size >= count)
+		{
+			for (CommandListHandle &cmd: p_out_cmd_lists)
+			{
+				cmd = free_lists.back();
+				free_lists.pop_back();
+			}
+
+			mtx_unlock(&p_ctx->freeCommandListMutex);
+			return;
+		}
+
+		// If the number of free lists is smaller than the required count, drain the free lists and then allocate the remaining ones
+		for (uint32 i{0u}; i < free_list_size; ++i)
+		{
+			p_out_cmd_lists[i] = free_lists.back();
+			free_lists.pop_back();
+		}
+
+		// The number of command lists that still need to be allocated
+		const uint32 remaining_allocation_count{count - free_list_size};
+
+		mtx_unlock(&p_ctx->freeCommandListMutex);
+
+		VkCommandPoolCreateInfo command_pool_create_info{};
+		command_pool_create_info.sType            = STYPE(COMMAND_POOL_CREATE_INFO);
+		command_pool_create_info.pNext            = nullptr;
+		command_pool_create_info.queueFamilyIndex = p_ctx->queueFamilyIndices.get(p_queue_type);
+
+		VkCommandBufferAllocateInfo command_buffer_alloc_info{};
+		command_buffer_alloc_info.sType              = STYPE(COMMAND_BUFFER_ALLOCATE_INFO);
+		command_buffer_alloc_info.pNext              = nullptr;
+		command_buffer_alloc_info.commandBufferCount = 1u; // One pool per command buffer
+		command_buffer_alloc_info.level              = p_secondary ? VK_COMMAND_BUFFER_LEVEL_SECONDARY : VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+
+		Vector<VkCommandPool>   command_pools(remaining_allocation_count);
+		Vector<VkCommandBuffer> command_buffers(remaining_allocation_count);
+		for (uint32 i{0u}; i < remaining_allocation_count; ++i)
+		{
+			VkCommandPool &command_pool{command_pools[i]};
+			TST_GPU_VK_CHECK_RESULT_MSG_DEBUG(vkCreateCommandPool(p_ctx->logicalDevice, &command_pool_create_info, nullptr, &command_pool),
+											  "Failed to create command pool");
+
+			command_buffer_alloc_info.commandPool = command_pool;
+
+			VkCommandBuffer &command_buffer{command_buffers[i]};
+			TST_GPU_VK_CHECK_RESULT_MSG_DEBUG(vkAllocateCommandBuffers(p_ctx->logicalDevice, &command_buffer_alloc_info, &command_buffer),
+											  "Failed to allocate command buffer");
+
+			if (p_ctx->enableDebugInfo)
+			{
+				VkDebugUtilsObjectNameInfoEXT debug_object_name_info{};
+				debug_object_name_info.sType        = STYPE(DEBUG_UTILS_OBJECT_NAME_INFO_EXT);
+				debug_object_name_info.pNext        = nullptr;
+				debug_object_name_info.objectHandle = reinterpret_cast<uint64>(command_buffer);
+				debug_object_name_info.objectType   = VK_OBJECT_TYPE_COMMAND_BUFFER;
+				debug_object_name_info.pObjectName  = to_string(p_queue_type);
+				vkSetDebugUtilsObjectNameEXT(p_ctx->logicalDevice, &debug_object_name_info);
+			}
+		}
+
+		std::span<CommandListHandle> remaining_lists{p_out_cmd_lists.begin() + free_list_size, p_out_cmd_lists.end()};
+		p_ctx->commandLists.emplace_n_fn(remaining_lists, [&command_buffers, &command_pools, p_queue_type, p_secondary](uint32 p_index) -> CommandList
+		{
+			return CommandList{command_buffers[p_index], command_pools[p_index], p_queue_type, false, p_secondary};
+		});
 	}
 
 	auto cmd_list_open(GPUContext *p_ctx, CommandListHandle p_cmd_list, const CommandListInheritanceInfo *p_inheritance_info) -> void
@@ -1827,7 +1916,7 @@ namespace toaster::gpu
 		Vector<VkSemaphoreSubmitInfo> wait_infos(p_wait_semaphore_infos.size());
 		for (const auto &[i, wait_info]: std::views::enumerate(p_wait_semaphore_infos))
 		{
-			const VkSemaphore semaphore{p_ctx->semaphores[wait_info.semaphore].semaphore};
+			const VkSemaphore semaphore{p_ctx->semaphores.try_get(wait_info.semaphore)->semaphore};
 
 			auto &dst_wait_info{wait_infos[i]};
 			dst_wait_info.sType     = STYPE(SEMAPHORE_SUBMIT_INFO);
@@ -1839,7 +1928,7 @@ namespace toaster::gpu
 		Vector<VkSemaphoreSubmitInfo> signal_infos(p_signal_semaphore_infos.size());
 		for (const auto &[i, signal_info]: std::views::enumerate(p_signal_semaphore_infos))
 		{
-			const VkSemaphore semaphore{p_ctx->semaphores[signal_info.semaphore].semaphore};
+			const VkSemaphore semaphore{p_ctx->semaphores.try_get(signal_info.semaphore)->semaphore};
 
 			auto &dst_signal_info{signal_infos[i]};
 			dst_signal_info.sType     = STYPE(SEMAPHORE_SUBMIT_INFO);
@@ -1893,83 +1982,52 @@ namespace toaster::gpu
 		vkCmdCopyBuffer2(cmd.cmd, &copy_buffer_info);
 	}
 
-	auto cmd_copy_buffer_to_texture(GPUContext *p_ctx, CommandListHandle p_cmd_list, BufferHandle p_src_buffer, TextureHandle p_dst_texture, uint64 p_src_offset,
-									uint32      p_mip_level, uint32      p_base_layer, uint32     p_layer_count, math::UInt3  p_extent, math::Int3  p_offset) -> void
+	auto cmd_copy_buffer_to_texture(GPUContext *p_ctx, CommandListHandle p_cmd_list, BufferHandle p_src_buffer, TextureHandle p_dst_texture,
+									InitialiserList<const BufferTextureCopyRegion> p_copy_regions) -> void
 	{
 		CommandList &cmd{p_ctx->commandLists[p_cmd_list]};
-		TST_ASSERT(cmd.open);
 
 		Buffer & src_buffer{p_ctx->buffers[p_src_buffer]};
-		Texture *dst_texture{p_ctx->textures.tryGet(p_dst_texture)};
+		Texture &dst_texture{p_ctx->textures[p_dst_texture]};
 
-		TST_ASSERT_MSG(dst_texture->desc.usage & ETextureUsageFlagBits::eTransferDst, "Texture was not created with the usage of transfer dst");
-		TST_ASSERT_MSG(p_mip_level < dst_texture->desc.mipCount, "Texture mip level is out of range");
-		TST_ASSERT_MSG(p_base_layer + p_layer_count <= dst_texture->desc.layerCount, "Texture layer range is out of range");
+		const TextureDesc &texture_desc{dst_texture.desc};
+		TST_ASSERT_MSG(texture_desc.usage & ETextureUsageFlagBits::eTransferDst, "Texture was not created with the usage of transfer dst");
 
-		if (p_extent.x == 0u)
-			p_extent.x = (dst_texture->desc.extent.x >> p_mip_level) ? (dst_texture->desc.extent.x >> p_mip_level) : 1u;
-		if (p_extent.y == 0u)
-			p_extent.y = (dst_texture->desc.extent.y >> p_mip_level) ? (dst_texture->desc.extent.y >> p_mip_level) : 1u;
-		if (p_extent.z == 0u)
-			p_extent.z = (dst_texture->desc.extent.z >> p_mip_level) ? (dst_texture->desc.extent.z >> p_mip_level) : 1u;
+		const VkImageAspectFlags aspect_mask{get_vk_image_aspect_mask(texture_desc.format)};
 
-		mtx_lock(&p_ctx->undefinedTexturesMutex);
-
-		auto undefined_it{std::ranges::find(p_ctx->undefinedTextures, p_dst_texture)};
-		if (undefined_it != p_ctx->undefinedTextures.end())
+		Vector<VkBufferImageCopy2> copy_regions(p_copy_regions.size());
+		for (auto &&[i, copy_region]: std::views::enumerate(copy_regions))
 		{
-			VkImageMemoryBarrier2 barrier{};
-			barrier.sType               = STYPE(IMAGE_MEMORY_BARRIER_2);
-			barrier.pNext               = nullptr;
-			barrier.srcStageMask        = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
-			barrier.dstStageMask        = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-			barrier.srcAccessMask       = VK_ACCESS_2_NONE;
-			barrier.dstAccessMask       = VK_ACCESS_2_TRANSFER_WRITE_BIT;
-			barrier.oldLayout           = VK_IMAGE_LAYOUT_UNDEFINED;
-			barrier.newLayout           = VK_IMAGE_LAYOUT_GENERAL;
-			barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			barrier.image               = dst_texture->image;
+			const auto &src_region{p_copy_regions[i]};
 
-			VkImageSubresourceRange &subresource_range{barrier.subresourceRange};
-			subresource_range.aspectMask     = get_vk_image_aspect_mask(dst_texture->desc.format);
-			subresource_range.baseMipLevel   = 0u;
-			subresource_range.levelCount     = dst_texture->desc.mipCount;
-			subresource_range.baseArrayLayer = 0u;
-			subresource_range.layerCount     = dst_texture->desc.layerCount; // TODO: More options
+			// Use the actual extent if the region's extent is 0
+			const VkExtent3D image_extent{
+				src_region.textureExtent.x == 0u ? texture_desc.extent.x : src_region.textureExtent.x,
+				src_region.textureExtent.y == 0u ? texture_desc.extent.y : src_region.textureExtent.y,
+				src_region.textureExtent.z == 0u ? texture_desc.extent.z : src_region.textureExtent.z
+			};
 
-			VkDependencyInfo dependency_info{};
-			dependency_info.sType                    = STYPE(DEPENDENCY_INFO);
-			dependency_info.pNext                    = nullptr;
-			dependency_info.imageMemoryBarrierCount  = 1u;
-			dependency_info.pImageMemoryBarriers     = &barrier;
-			dependency_info.memoryBarrierCount       = 0u;
-			dependency_info.bufferMemoryBarrierCount = 0u;
-
-			vkCmdPipelineBarrier2(cmd.cmd, &dependency_info);
-
-			undefined_it = p_ctx->undefinedTextures.erase(undefined_it);
+			copy_region.sType             = STYPE(BUFFER_IMAGE_COPY_2);
+			copy_region.pNext             = nullptr;
+			copy_region.bufferOffset      = src_region.bufferOffset;
+			copy_region.bufferRowLength   = 0u;
+			copy_region.bufferImageHeight = 0u;
+			copy_region.imageOffset       = VkOffset3D{src_region.textureOffset.x, src_region.textureOffset.y, src_region.textureOffset.z};
+			copy_region.imageExtent       = image_extent;
+			VkImageSubresourceLayers &image_subresource{copy_region.imageSubresource};
+			image_subresource.aspectMask     = aspect_mask;
+			image_subresource.mipLevel       = src_region.textureSubresource.mipLevel;
+			image_subresource.baseArrayLayer = src_region.textureSubresource.baseLayer;
+			image_subresource.layerCount     = src_region.textureSubresource.layerCount;
 		}
-
-		mtx_unlock(&p_ctx->undefinedTexturesMutex);
-
-		VkBufferImageCopy2 copy_region{};
-		copy_region.sType             = STYPE(BUFFER_IMAGE_COPY_2);
-		copy_region.pNext             = nullptr;
-		copy_region.bufferOffset      = p_src_offset;
-		copy_region.bufferRowLength   = 0u; // TODO: More options for advanced copy operations
-		copy_region.bufferImageHeight = 0u;
-		copy_region.imageSubresource  = VkImageSubresourceLayers{get_vk_image_aspect_mask(dst_texture->desc.format), p_mip_level, p_base_layer, p_layer_count};
-		copy_region.imageOffset       = VkOffset3D{p_offset.x, p_offset.y, p_offset.z};
-		copy_region.imageExtent       = VkExtent3D{p_extent.x, p_extent.y, p_extent.z};
 
 		VkCopyBufferToImageInfo2 copy_buffer_to_image_info{};
 		copy_buffer_to_image_info.sType          = STYPE(COPY_BUFFER_TO_IMAGE_INFO_2);
 		copy_buffer_to_image_info.pNext          = nullptr;
-		copy_buffer_to_image_info.regionCount    = 1u;
-		copy_buffer_to_image_info.pRegions       = &copy_region;
+		copy_buffer_to_image_info.regionCount    = copy_regions.size();
+		copy_buffer_to_image_info.pRegions       = copy_regions.data();
 		copy_buffer_to_image_info.srcBuffer      = src_buffer.buffer;
-		copy_buffer_to_image_info.dstImage       = dst_texture->image;
+		copy_buffer_to_image_info.dstImage       = dst_texture.image;
 		copy_buffer_to_image_info.dstImageLayout = VK_IMAGE_LAYOUT_GENERAL; // Thank you VK_KHR_unified_image_layouts :)
 
 		vkCmdCopyBufferToImage2(cmd.cmd, &copy_buffer_to_image_info);
@@ -2017,12 +2075,12 @@ namespace toaster::gpu
 		for (auto &&[i, barrier]: std::views::enumerate(image_barriers))
 		{
 			const auto &   src_barrier{p_texture_memory_barriers[i]};
-			const Texture &texture{p_ctx->textures[src_barrier.texture]};
+			const Texture *texture{p_ctx->textures.try_get(src_barrier.texture)};
 
 			barrier.sType = STYPE(IMAGE_MEMORY_BARRIER_2);
 			barrier.pNext = nullptr;
 
-			barrier.image = texture.image;
+			barrier.image = texture->image;
 
 			barrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
 			barrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
@@ -2033,11 +2091,11 @@ namespace toaster::gpu
 			barrier.srcAccessMask = get_vk_access_flags(src_barrier.srcAccessMask);
 			barrier.dstAccessMask = get_vk_access_flags(src_barrier.dstAccessMask);
 
-			barrier.subresourceRange.aspectMask     = get_vk_image_aspect_mask(texture.desc.format);
+			barrier.subresourceRange.aspectMask     = get_vk_image_aspect_mask(texture->desc.format);
 			barrier.subresourceRange.baseArrayLayer = src_barrier.baseArrayLayer;
 			barrier.subresourceRange.baseMipLevel   = src_barrier.baseMip;
-			barrier.subresourceRange.layerCount     = (src_barrier.layerCount == UINT32_MAX) ? texture.desc.layerCount : src_barrier.layerCount;
-			barrier.subresourceRange.levelCount     = (src_barrier.mipCount == UINT32_MAX) ? texture.desc.mipCount : src_barrier.mipCount;
+			barrier.subresourceRange.layerCount     = (src_barrier.layerCount == UINT32_MAX) ? texture->desc.layerCount : src_barrier.layerCount;
+			barrier.subresourceRange.levelCount     = (src_barrier.mipCount == UINT32_MAX) ? texture->desc.mipCount : src_barrier.mipCount;
 
 			barrier.srcQueueFamilyIndex = p_ctx->queueFamilyIndices.get(src_barrier.srcQueue);
 			barrier.dstQueueFamilyIndex = p_ctx->queueFamilyIndices.get(src_barrier.dstQueue);
@@ -2060,7 +2118,7 @@ namespace toaster::gpu
 		CommandList &cmd{p_ctx->commandLists[p_cmd_list]};
 		TST_ASSERT(cmd.open);
 
-		Texture *dst_texture{p_ctx->textures.tryGet(p_texture)};
+		Texture *dst_texture{p_ctx->textures.try_get(p_texture)};
 		TST_PERMA_ASSERT(dst_texture);
 		TST_ASSERT_MSG(dst_texture->desc.mipCount > 1u, "Texture does not contain mip levels to generate");
 		TST_ASSERT_MSG(dst_texture->desc.usage & ETextureUsageFlagBits::eTransferSrc, "Texture was not created with the usage of transfer src");
@@ -2198,7 +2256,7 @@ namespace toaster::gpu
 		for (auto &&[i, attachment]: std::views::enumerate(colour_attachments))
 		{
 			auto &         src_attachment{p_rendering_info.colourAttachments[i]};
-			const Texture *render_target{p_ctx->textures.tryGet(src_attachment.renderTarget)};
+			const Texture *render_target{p_ctx->textures.try_get(src_attachment.renderTarget)};
 			TST_ASSERT(render_target);
 
 			attachment.sType = STYPE(RENDERING_ATTACHMENT_INFO);
@@ -2211,11 +2269,10 @@ namespace toaster::gpu
 			attachment.storeOp    = get_vk_store_op(src_attachment.usageOp);
 			attachment.clearValue = *reinterpret_cast<const VkClearValue *>(&src_attachment.clearValue); // They should have the same memory layout
 
-			if (p_ctx->textures.isValid(src_attachment.resolveTarget))
+			if (p_ctx->textures.is_valid(src_attachment.resolveTarget))
 			{
-				const Texture *resolve_render_target{p_ctx->textures.tryGet(src_attachment.resolveTarget)};
-				TST_ASSERT(resolve_render_target);
-				attachment.resolveImageView   = resolve_render_target->imageView;
+				const Texture &resolve_render_target{p_ctx->textures[src_attachment.resolveTarget]};
+				attachment.resolveImageView   = resolve_render_target.imageView;
 				attachment.resolveImageLayout = VK_IMAGE_LAYOUT_GENERAL;
 				attachment.resolveMode        = get_vk_resolve_mode(src_attachment.resolveMode);
 			}
@@ -2225,7 +2282,7 @@ namespace toaster::gpu
 		if (p_rendering_info.depthAttachment.has_value())
 		{
 			auto &         src_attachment{p_rendering_info.depthAttachment.value()};
-			const Texture *render_target{p_ctx->textures.tryGet(src_attachment.renderTarget)};
+			const Texture *render_target{p_ctx->textures.try_get(src_attachment.renderTarget)};
 			TST_ASSERT(render_target);
 
 			depth_attachment.sType = STYPE(RENDERING_ATTACHMENT_INFO);
@@ -2238,11 +2295,10 @@ namespace toaster::gpu
 			depth_attachment.storeOp    = get_vk_store_op(src_attachment.usageOp);
 			depth_attachment.clearValue = *reinterpret_cast<const VkClearValue *>(&src_attachment.clearValue); // They should have the same memory layout
 
-			if (p_ctx->textures.isValid(src_attachment.resolveTarget))
+			if (p_ctx->textures.is_valid(src_attachment.resolveTarget))
 			{
-				const Texture *resolve_render_target{p_ctx->textures.tryGet(src_attachment.resolveTarget)};
-				TST_ASSERT(resolve_render_target);
-				depth_attachment.resolveImageView   = resolve_render_target->imageView;
+				const Texture &resolve_render_target{p_ctx->textures[src_attachment.resolveTarget]};
+				depth_attachment.resolveImageView   = resolve_render_target.imageView;
 				depth_attachment.resolveImageLayout = VK_IMAGE_LAYOUT_GENERAL;
 				depth_attachment.resolveMode        = get_vk_resolve_mode(src_attachment.resolveMode);
 			}
@@ -2252,7 +2308,7 @@ namespace toaster::gpu
 		if (p_rendering_info.stencilAttachment.has_value())
 		{
 			auto &         src_attachment{p_rendering_info.stencilAttachment.value()};
-			const Texture *render_target{p_ctx->textures.tryGet(src_attachment.renderTarget)};
+			const Texture *render_target{p_ctx->textures.try_get(src_attachment.renderTarget)};
 			TST_ASSERT(render_target);
 
 			depth_attachment.sType = STYPE(RENDERING_ATTACHMENT_INFO);
@@ -2265,11 +2321,10 @@ namespace toaster::gpu
 			stencil_attachment.storeOp    = get_vk_store_op(src_attachment.usageOp);
 			stencil_attachment.clearValue = *reinterpret_cast<const VkClearValue *>(&src_attachment.clearValue); // They should have the same memory layout
 
-			if (p_ctx->textures.isValid(src_attachment.resolveTarget))
+			if (p_ctx->textures.is_valid(src_attachment.resolveTarget))
 			{
-				const Texture *resolve_render_target{p_ctx->textures.tryGet(src_attachment.resolveTarget)};
-				TST_ASSERT(resolve_render_target);
-				stencil_attachment.resolveImageView   = resolve_render_target->imageView;
+				const Texture &resolve_render_target{p_ctx->textures[src_attachment.resolveTarget]};
+				stencil_attachment.resolveImageView   = resolve_render_target.imageView;
 				stencil_attachment.resolveImageLayout = VK_IMAGE_LAYOUT_GENERAL;
 				stencil_attachment.resolveMode        = get_vk_resolve_mode(src_attachment.resolveMode);
 			}
@@ -2367,7 +2422,7 @@ namespace toaster::gpu
 	auto cmd_bind_index_buffer(GPUContext *p_ctx, CommandListHandle p_cmd_list, BufferHandle p_index_buffer, EIndexType p_index_type) -> void
 	{
 		CommandList & cmd{p_ctx->commandLists[p_cmd_list]};
-		const Buffer *index_buffer{p_ctx->buffers.tryGet(p_index_buffer)};
+		const Buffer *index_buffer{p_ctx->buffers.try_get(p_index_buffer)};
 		TST_ASSERT_MSG(index_buffer, "Index buffer cannot be null");
 
 		// TODO: Maybe I should actually support the traditional vertex input pipeline as well...
@@ -2607,16 +2662,14 @@ namespace toaster::gpu
 		vkCmdDispatch(cmd.cmd, p_work_groups_x, p_work_groups_y, p_work_groups_z);
 	}
 
-	static auto get_texture_base_heap_slot(GPUContext *p_ctx, ResourceDescriptorHeapHandle p_resource_heap, uint32 p_heap_slot) -> uint32
+	static auto get_texture_base_heap_slot(const ResourceDescriptorHeap &p_resource_heap, uint32 p_heap_slot) -> uint32
 	{
-		ResourceDescriptorHeap &resource_heap{p_ctx->resourceHeaps[p_resource_heap]};
-		return p_heap_slot + (resource_heap.imageSegmentOffset / resource_heap.imageDescriptorSize);
+		return p_heap_slot + (p_resource_heap.imageSegmentOffset / p_resource_heap.imageDescriptorSize);
 	}
 
-	static auto get_segment_relative_texture_heap_slot(GPUContext *p_ctx, ResourceDescriptorHeapHandle p_resource_heap, uint32 p_heap_slot) -> uint32
+	static auto get_segment_relative_texture_heap_slot(const ResourceDescriptorHeap &p_resource_heap, uint32 p_heap_slot) -> uint32
 	{
-		ResourceDescriptorHeap &resource_heap{p_ctx->resourceHeaps[p_resource_heap]};
-		return p_heap_slot - (resource_heap.imageSegmentOffset / resource_heap.imageDescriptorSize);
+		return p_heap_slot - (p_resource_heap.imageSegmentOffset / p_resource_heap.imageDescriptorSize);
 	}
 
 	auto resource_descriptor_heap_create(GPUContext *p_ctx, const ResourceDescriptorHeapDesc &p_desc) -> ResourceDescriptorHeapHandle
@@ -2762,7 +2815,17 @@ namespace toaster::gpu
 		const uint32 slot{resource_heap.imageSlotAllocator.allocSlot()};
 		mtx_unlock(&resource_heap.imageSlotMutex);
 
-		return get_texture_base_heap_slot(p_ctx, p_resource_heap, slot);
+		return get_texture_base_heap_slot(resource_heap, slot);
+	}
+
+	auto resource_descriptor_heap_alloc_texture_slots(GPUContext *p_ctx, ResourceDescriptorHeapHandle p_resource_heap, std::span<uint32> p_out_heap_slots) -> void
+	{
+		ResourceDescriptorHeap &resource_heap{p_ctx->resourceHeaps[p_resource_heap]};
+
+		mtx_lock(&resource_heap.imageSlotMutex);
+		for (uint32 &slot: p_out_heap_slots)
+			slot = get_texture_base_heap_slot(resource_heap, resource_heap.imageSlotAllocator.allocSlot());
+		mtx_unlock(&resource_heap.imageSlotMutex);
 	}
 
 	auto sampler_descriptor_heap_alloc_sampler_slot(GPUContext *p_ctx, SamplerDescriptorHeapHandle p_sampler_heap) -> uint32
@@ -2787,22 +2850,21 @@ namespace toaster::gpu
 
 	auto resource_descriptor_heap_free_texture_slot(GPUContext *p_ctx, ResourceDescriptorHeapHandle p_resource_heap, uint32 p_heap_slot) -> void
 	{
-		ResourceDescriptorHeap *resource_heap{p_ctx->resourceHeaps.tryGet(p_resource_heap)};
-		TST_ASSERT_MSG(resource_heap, "Resource heap is not valid");
+		ResourceDescriptorHeap &resource_heap{p_ctx->resourceHeaps[p_resource_heap]};
 
-		TST_ASSERT(p_heap_slot != UINT32_MAX);
-		const uint32 real_heap_slot{get_segment_relative_texture_heap_slot(p_ctx, p_resource_heap, p_heap_slot)};
-		TST_ASSERT(real_heap_slot != UINT32_MAX);
+		mtx_lock(&resource_heap.imageSlotMutex);
+		resource_heap.imageSlotAllocator.freeSlot(get_segment_relative_texture_heap_slot(resource_heap, p_heap_slot));
+		mtx_unlock(&resource_heap.imageSlotMutex);
+	}
 
-		if (real_heap_slot > resource_heap->imageSlotAllocator.capacity())
-		{
-			std::printf("Heap slot is: %u", real_heap_slot);
-			TST_PERMA_ASSERT_MSG(false, "Heap slot out of bounds!");
-		}
+	auto resource_descriptor_heap_free_texture_slots(GPUContext *p_ctx, ResourceDescriptorHeapHandle p_resource_heap, InitialiserList<const uint32> p_heap_slots) -> void
+	{
+		ResourceDescriptorHeap &resource_heap{p_ctx->resourceHeaps[p_resource_heap]};
 
-		mtx_lock(&resource_heap->imageSlotMutex);
-		resource_heap->imageSlotAllocator.freeSlot(real_heap_slot);
-		mtx_unlock(&resource_heap->imageSlotMutex);
+		mtx_lock(&resource_heap.imageSlotMutex);
+		for (const uint32 slot: p_heap_slots)
+			resource_heap.imageSlotAllocator.freeSlot(get_segment_relative_texture_heap_slot(resource_heap, slot));
+		mtx_unlock(&resource_heap.imageSlotMutex);
 	}
 
 	auto sampler_descriptor_heap_free_sampler_slot(GPUContext *p_ctx, SamplerDescriptorHeapHandle p_sampler_heap, uint32 p_heap_slot) -> void
@@ -2849,7 +2911,7 @@ namespace toaster::gpu
 	{
 		ResourceDescriptorHeap &resource_heap{p_ctx->resourceHeaps[p_resource_heap]};
 
-		Texture *texture{p_ctx->textures.tryGet(p_texture)};
+		Texture *texture{p_ctx->textures.try_get(p_texture)};
 		TST_ASSERT(texture);
 
 		const VkImageViewType image_view_type{get_vk_image_view_type(texture->desc.type)};
@@ -2875,7 +2937,7 @@ namespace toaster::gpu
 		subresource_range.baseArrayLayer = 0u;
 		subresource_range.layerCount     = texture->desc.layerCount;
 
-		const uint32 real_heap_slot{get_segment_relative_texture_heap_slot(p_ctx, p_resource_heap, p_heap_slot)};
+		const uint32 real_heap_slot{get_segment_relative_texture_heap_slot(resource_heap, p_heap_slot)};
 
 		VkHostAddressRangeEXT host_range{};
 		host_range.address = reinterpret_cast<void *>(reinterpret_cast<uint64>(resource_heap.mappedHeapMemory) + resource_heap.imageSegmentOffset + static_cast<uint64>(
@@ -2896,6 +2958,75 @@ namespace toaster::gpu
 		resource_info.data.pImage = &image_info;
 		resource_info.type        = descriptor_type;
 		vkWriteResourceDescriptorsEXT(p_ctx->logicalDevice, 1u, &resource_info, &host_range);
+	}
+
+	auto resource_descriptor_heap_write_textures(GPUContext *p_ctx, ResourceDescriptorHeapHandle p_resource_heap, InitialiserList<const uint32> p_heap_slots,
+												 InitialiserList<const TextureHandle> p_textures, InitialiserList<const bool> p_storage,
+												 InitialiserList<const uint32> p_mip_levels) -> void
+	{
+		ResourceDescriptorHeap &resource_heap{p_ctx->resourceHeaps[p_resource_heap]};
+		TST_ASSERT(p_heap_slots.size() == p_textures.size() == p_storage.size() == p_mip_levels.size());
+
+		const uint32 texture_count{p_heap_slots.size()};
+
+		Vector<VkHostAddressRangeEXT>       host_ranges(texture_count);
+		Vector<VkImageViewCreateInfo>       image_view_create_infos(texture_count);
+		Vector<VkImageDescriptorInfoEXT>    image_infos(texture_count);
+		Vector<VkResourceDescriptorInfoEXT> resource_infos(texture_count);
+
+		for (uint32 i{0u}; i < texture_count; ++i)
+		{
+			const Texture &    texture{p_ctx->textures[p_textures[i]]};
+			const TextureDesc &desc{texture.desc};
+
+			const VkImageViewType image_view_type{get_vk_image_view_type(desc.type)};
+			const VkFormat        image_format{get_vk_format(desc.format)};
+
+			const uint32 mip_level{p_mip_levels[i]};
+
+			VkImageViewCreateInfo &image_view_create_info{image_view_create_infos[i]};
+			image_view_create_info.sType      = STYPE(IMAGE_VIEW_CREATE_INFO);
+			image_view_create_info.pNext      = nullptr;
+			image_view_create_info.image      = texture.image;
+			image_view_create_info.viewType   = image_view_type;
+			image_view_create_info.format     = image_format;
+			image_view_create_info.components = VkComponentMapping{
+				VK_COMPONENT_SWIZZLE_IDENTITY,
+				VK_COMPONENT_SWIZZLE_IDENTITY,
+				VK_COMPONENT_SWIZZLE_IDENTITY,
+				VK_COMPONENT_SWIZZLE_IDENTITY
+			};
+			VkImageSubresourceRange &subresource_range{image_view_create_info.subresourceRange};
+			subresource_range.aspectMask     = get_vk_image_aspect_mask(desc.format);
+			subresource_range.baseMipLevel   = (mip_level == c_all_mip_levels) ? 0u : mip_level;
+			subresource_range.levelCount     = (mip_level == c_all_mip_levels) ? desc.mipCount : 1u;
+			subresource_range.baseArrayLayer = 0u;
+			subresource_range.layerCount     = desc.layerCount;
+
+			const uint32 real_heap_slot{get_segment_relative_texture_heap_slot(resource_heap, p_heap_slots[i])};
+
+			VkHostAddressRangeEXT &host_range{host_ranges[i]};
+			host_range.address = reinterpret_cast<void *>(reinterpret_cast<uint64>(resource_heap.mappedHeapMemory) + resource_heap.imageSegmentOffset + static_cast<
+															  uint64>(real_heap_slot) * resource_heap.imageDescriptorSize);
+			host_range.size = resource_heap.imageDescriptorSize;
+
+			VkImageDescriptorInfoEXT &image_info{image_infos[i]};
+			image_info.sType  = STYPE(IMAGE_DESCRIPTOR_INFO_EXT);
+			image_info.pNext  = nullptr;
+			image_info.pView  = &image_view_create_info;
+			image_info.layout = VK_IMAGE_LAYOUT_GENERAL;
+
+			const bool             is_storage{p_storage[i]};
+			const VkDescriptorType descriptor_type{is_storage ? VK_DESCRIPTOR_TYPE_STORAGE_IMAGE : VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE};
+
+			VkResourceDescriptorInfoEXT &resource_info{resource_infos[i]};
+			resource_info.sType       = STYPE(RESOURCE_DESCRIPTOR_INFO_EXT);
+			resource_info.pNext       = nullptr;
+			resource_info.data.pImage = &image_info;
+			resource_info.type        = descriptor_type;
+		}
+
+		vkWriteResourceDescriptorsEXT(p_ctx->logicalDevice, texture_count, resource_infos.data(), host_ranges.data());
 	}
 
 	auto sampler_descriptor_heap_write_sampler(GPUContext *       p_ctx, SamplerDescriptorHeapHandle p_sampler_heap, uint32 p_heap_slot,
@@ -3069,7 +3200,7 @@ namespace toaster::gpu
 
 		Vector<VkSemaphore> semaphores(p_semaphores.size());
 		for (uint64 i{0u}; i < p_semaphores.size(); ++i)
-			semaphores[i] = p_ctx->semaphores[p_semaphores[i]].semaphore;
+			semaphores[i] = p_ctx->semaphores.try_get(p_semaphores[i])->semaphore;
 
 		VkSemaphoreWaitInfo wait_info{};
 		wait_info.sType          = STYPE(SEMAPHORE_WAIT_INFO);
@@ -3083,10 +3214,11 @@ namespace toaster::gpu
 
 	auto semaphore_get_value(GPUContext *p_ctx, SemaphoreHandle p_semaphore) -> uint64
 	{
-		VkSemaphore semaphore{p_ctx->semaphores[p_semaphore].semaphore};
+		Semaphore *semaphore{p_ctx->semaphores.try_get(p_semaphore)};
+		TST_ASSERT(semaphore);
 
 		uint64 value;
-		TST_GPU_VK_CHECK_RESULT_MSG(vkGetSemaphoreCounterValue(p_ctx->logicalDevice, semaphore, &value), "Failed to get semaphore counter value");
+		TST_GPU_VK_CHECK_RESULT_MSG(vkGetSemaphoreCounterValue(p_ctx->logicalDevice, semaphore->semaphore, &value), "Failed to get semaphore counter value");
 
 		return value;
 	}
@@ -3101,6 +3233,37 @@ namespace toaster::gpu
 
 	auto texture_create(GPUContext *p_ctx, const TextureDesc &p_desc) -> TextureHandle
 	{
+		const TextureHandle out_handle{texture_register_null(p_ctx)};
+		texture_create_into(p_ctx, out_handle, p_desc);
+		return out_handle;
+	}
+
+	auto texture_create_n(GPUContext *p_ctx, InitialiserList<const TextureDesc> p_descs, std::span<TextureHandle> p_out_textures) -> void
+	{
+		// TODO:
+	}
+
+	auto texture_destroy(GPUContext *p_ctx, TextureHandle p_texture) -> void
+	{
+		p_ctx->textures.destroy(p_texture);
+
+		mtx_lock(&p_ctx->undefinedTexturesMutex);
+		p_ctx->undefinedTextures.erase(p_texture);
+		mtx_unlock(&p_ctx->undefinedTexturesMutex);
+	}
+
+	auto texture_register_null(GPUContext *p_ctx) -> TextureHandle
+	{
+		return p_ctx->textures.emplace(Texture{nullptr, nullptr, nullptr, TextureDesc{}, EInternalTextureFlagBits::eNullRegistered});
+	}
+
+	auto texture_create_into(GPUContext *p_ctx, TextureHandle p_dst_texture, const TextureDesc &p_desc) -> void
+	{
+		Texture &texture{p_ctx->textures[p_dst_texture]};
+		TST_PERMA_ASSERT_MSG((texture.flags & EInternalTextureFlagBits::eNullRegistered), "Attempted to create into a texture that already 'exists'");
+
+		texture.desc = p_desc;
+
 		const VkImageType           image_type{get_vk_image_type(p_desc.type)};
 		const VkImageViewType       image_view_type{get_vk_image_view_type(p_desc.type)};
 		const VkImageCreateFlags    image_create_flags{p_desc.type == ETextureType::eCube ? VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT : 0u};
@@ -3134,14 +3297,10 @@ namespace toaster::gpu
 			image_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 		}
 
-		VkImage       image{nullptr};
-		VkImageView   image_view{nullptr};
-		VmaAllocation allocation{nullptr};
-
 		VmaAllocationCreateInfo allocation_create_info{};
 		allocation_create_info.usage = VMA_MEMORY_USAGE_AUTO;
 
-		vmaCreateImage(p_ctx->allocator, &image_create_info, &allocation_create_info, &image, &allocation, nullptr);
+		vmaCreateImage(p_ctx->allocator, &image_create_info, &allocation_create_info, &texture.image, &texture.allocation, nullptr);
 
 		// If the texture is a render target, it needs an image view
 		if (p_desc.usage & ETextureUsageFlagBits::eColourAttachment || p_desc.usage & ETextureUsageFlagBits::eDepthStencilAttachment)
@@ -3149,7 +3308,7 @@ namespace toaster::gpu
 			VkImageViewCreateInfo image_view_create_info{};
 			image_view_create_info.sType      = STYPE(IMAGE_VIEW_CREATE_INFO);
 			image_view_create_info.pNext      = nullptr;
-			image_view_create_info.image      = image;
+			image_view_create_info.image      = texture.image;
 			image_view_create_info.viewType   = image_view_type;
 			image_view_create_info.format     = image_format;
 			image_view_create_info.components = VkComponentMapping{
@@ -3165,31 +3324,22 @@ namespace toaster::gpu
 			subresource_range.baseArrayLayer = 0u;
 			subresource_range.layerCount     = p_desc.layerCount;
 
-			TST_GPU_VK_CHECK_RESULT_MSG(vkCreateImageView(p_ctx->logicalDevice, &image_view_create_info, nullptr, &image_view), "Failed to create texture's image view");
+			TST_GPU_VK_CHECK_RESULT_MSG(vkCreateImageView(p_ctx->logicalDevice, &image_view_create_info, nullptr, &texture.imageView),
+										"Failed to create texture's image view");
 		}
 
-		const TextureHandle out_texture{p_ctx->textures.emplace(Texture{image, image_view, allocation, p_desc, false})};
+		// Remove the null registered flag because the texture is now valid for use
+		texture.flags &= ~EInternalTextureFlagBits::eNullRegistered;
 
 		mtx_lock(&p_ctx->undefinedTexturesMutex);
-		p_ctx->undefinedTextures.insert(out_texture);
-		mtx_unlock(&p_ctx->undefinedTexturesMutex);
-
-		return out_texture;
-	}
-
-	auto texture_destroy(GPUContext *p_ctx, TextureHandle p_texture) -> void
-	{
-		p_ctx->textures.destroy(p_texture);
-
-		mtx_lock(&p_ctx->undefinedTexturesMutex);
-		p_ctx->undefinedTextures.erase(p_texture);
+		p_ctx->undefinedTextures.insert(p_dst_texture);
 		mtx_unlock(&p_ctx->undefinedTexturesMutex);
 	}
 
 	auto texture_get_desc(GPUContext *p_ctx, TextureHandle p_texture) -> const TextureDesc &
 	{
-		const Texture &texture{p_ctx->textures[p_texture]};
-		return texture.desc;
+		const Texture *texture{p_ctx->textures.try_get(p_texture)};
+		return texture->desc;
 	}
 
 	static auto create_swapchain_objects(GPUContext *p_ctx, Swapchain &p_swapchain, math::UInt2 p_extent, VkSwapchainKHR p_old_swapchain = nullptr) -> bool
@@ -3351,7 +3501,7 @@ namespace toaster::gpu
 				get_tst_format(p_swapchain.surfaceFormat.format),
 				ETextureUsageFlagBits::eNone
 			};
-			p_swapchain.attachments[i] = p_ctx->textures.emplace(Texture{swapchain_image, image_view, nullptr, fake_desc, true});
+			p_swapchain.attachments[i] = p_ctx->textures.emplace(Texture{swapchain_image, image_view, nullptr, fake_desc, EInternalTextureFlagBits::eSwapchainImage});
 		}
 
 		p_swapchain.renderFinishedSemaphores.resize(swapchain_image_count);
@@ -3435,7 +3585,7 @@ namespace toaster::gpu
 	auto swapchain_wait_for_framerate(GPUContext *p_ctx, SwapchainHandle p_swapchain) -> void
 	{
 		Swapchain &swapchain{p_ctx->swapchains[p_swapchain]};
-		Semaphore &latency_semaphore{p_ctx->semaphores[swapchain.latencySemaphore]};
+		Semaphore &latency_semaphore{*p_ctx->semaphores.try_get(swapchain.latencySemaphore)};
 
 		VkLatencySleepInfoNV sleep_info{};
 		sleep_info.sType           = STYPE(LATENCY_SLEEP_INFO_NV);
@@ -3487,12 +3637,12 @@ namespace toaster::gpu
 		CommandList &cmd{p_ctx->commandLists[p_cmd_list]};
 		TST_ASSERT(cmd.open);
 
-		Texture &attachment{p_ctx->textures[p_attachment_texture]};
+		Texture *attachment{p_ctx->textures.try_get(p_attachment_texture)};
 
 		VkImageMemoryBarrier2 undefined_to_general{};
 		undefined_to_general.sType               = STYPE(IMAGE_MEMORY_BARRIER_2);
 		undefined_to_general.pNext               = nullptr;
-		undefined_to_general.image               = attachment.image;
+		undefined_to_general.image               = attachment->image;
 		undefined_to_general.srcAccessMask       = VK_ACCESS_2_NONE;
 		undefined_to_general.dstAccessMask       = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
 		undefined_to_general.srcStageMask        = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
@@ -3532,12 +3682,12 @@ namespace toaster::gpu
 		CommandList &cmd{p_ctx->commandLists[p_cmd_list]};
 		TST_ASSERT(cmd.open);
 
-		Texture &colour_attachment{p_ctx->textures[swapchain.attachments[swapchain.imageIndex]]};
+		Texture *colour_attachment{p_ctx->textures.try_get(swapchain.attachments[swapchain.imageIndex])};
 
 		VkImageMemoryBarrier2 general_to_present_src{};
 		general_to_present_src.sType               = STYPE(IMAGE_MEMORY_BARRIER_2);
 		general_to_present_src.pNext               = nullptr;
-		general_to_present_src.image               = colour_attachment.image;
+		general_to_present_src.image               = colour_attachment->image;
 		general_to_present_src.srcAccessMask       = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
 		general_to_present_src.dstAccessMask       = VK_ACCESS_2_NONE;
 		general_to_present_src.srcStageMask        = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
@@ -3581,7 +3731,7 @@ namespace toaster::gpu
 			VkSemaphoreSubmitInfo &wait_info{wait_infos.emplace_back()};
 			wait_info.sType       = STYPE(SEMAPHORE_SUBMIT_INFO);
 			wait_info.pNext       = nullptr;
-			wait_info.semaphore   = p_ctx->semaphores[wait.semaphore].semaphore;
+			wait_info.semaphore   = p_ctx->semaphores.try_get(wait.semaphore)->semaphore;
 			wait_info.value       = wait.value; // Timeline semaphore
 			wait_info.stageMask   = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
 			wait_info.deviceIndex = 0u;
@@ -3605,7 +3755,7 @@ namespace toaster::gpu
 			VkSemaphoreSubmitInfo &custom_submit_info{signal_infos.emplace_back()};
 			custom_submit_info.sType       = STYPE(SEMAPHORE_SUBMIT_INFO);
 			custom_submit_info.pNext       = nullptr;
-			custom_submit_info.semaphore   = p_ctx->semaphores[p_signal_semaphore_info.semaphore].semaphore;
+			custom_submit_info.semaphore   = p_ctx->semaphores.try_get(p_signal_semaphore_info.semaphore)->semaphore;
 			custom_submit_info.value       = p_signal_semaphore_info.value; // Timeline semaphore
 			custom_submit_info.stageMask   = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
 			custom_submit_info.deviceIndex = 0u;

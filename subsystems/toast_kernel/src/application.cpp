@@ -54,15 +54,16 @@ namespace toaster::knl
 
 	auto application_run(Application *p_app, uint32 p_target_fps) -> void
 	{
+		gpu::GPUContext* gpu_ctx{p_app->renderCtx.gpuCtx};
+
 		Vector<gpu::CommandListHandle> command_lists(p_app->maxFramesInFlight);
-		for (auto &cmd: command_lists)
-			cmd = gpu::cmd_list_get_or_create(p_app->renderCtx.gpuCtx, gpu::EQueueType::eGraphics);
+		gpu::cmd_list_create_n(gpu_ctx, command_lists, gpu::EQueueType::eGraphics, false);
 
 		auto last_time{std::chrono::steady_clock::now()};
-		gpu::swapchain_set_max_framerate(p_app->renderCtx.gpuCtx, p_app->window.swapchain, p_target_fps);
+		gpu::swapchain_set_max_framerate(gpu_ctx, p_app->window.swapchain, p_target_fps);
 		while (p_app->running)
 		{
-			gpu::swapchain_wait_for_framerate(p_app->renderCtx.gpuCtx, p_app->window.swapchain);
+			gpu::swapchain_wait_for_framerate(gpu_ctx, p_app->window.swapchain);
 
 			if (!window_process_messages(&p_app->window)) // glfwPollEvents. returns !glfwWindowShouldClose(...);
 				break;
@@ -79,26 +80,26 @@ namespace toaster::knl
 			last_time        = current_time;
 
 			gpu::CommandListHandle &cmd{command_lists[p_app->frameIndex]};
-			gpu::cmd_list_reset(p_app->renderCtx.gpuCtx, cmd);
-			gpu::cmd_list_open(p_app->renderCtx.gpuCtx, cmd);
+			gpu::cmd_list_reset(gpu_ctx, cmd);
+			gpu::cmd_list_open(gpu_ctx, cmd);
 
 			if (!window_begin_frame(&p_app->window, cmd)) // Attempts to acquire the image
 			{
-				gpu::cmd_list_reset(p_app->renderCtx.gpuCtx, cmd);
+				gpu::cmd_list_reset(gpu_ctx, cmd);
 				continue;
 			}
 
 			if (!window_is_minimised(&p_app->window))
 			{
-				gpu::swapchain_set_frame_marker(p_app->renderCtx.gpuCtx, p_app->window.swapchain, gpu::EFrameMarker::eSimulationStart);
+				gpu::swapchain_set_frame_marker(gpu_ctx, p_app->window.swapchain, gpu::EFrameMarker::eSimulationStart);
 				for (auto &layer: p_app->layers)
 				{
 					if (layer.onUpdateFn)
 						layer.onUpdateFn(p_app, layer.userData, p_app->deltaTime);
 				}
-				gpu::swapchain_set_frame_marker(p_app->renderCtx.gpuCtx, p_app->window.swapchain, gpu::EFrameMarker::eSimulationEnd);
+				gpu::swapchain_set_frame_marker(gpu_ctx, p_app->window.swapchain, gpu::EFrameMarker::eSimulationEnd);
 			}
-			gpu::swapchain_set_frame_marker(p_app->renderCtx.gpuCtx, p_app->window.swapchain, gpu::EFrameMarker::eRendersubmitStart);
+			gpu::swapchain_set_frame_marker(gpu_ctx, p_app->window.swapchain, gpu::EFrameMarker::eRendersubmitStart);
 			if (!window_is_minimised(&p_app->window))
 			{
 				for (auto &layer: p_app->layers)
@@ -113,7 +114,7 @@ namespace toaster::knl
 		}
 
 		for (auto &cmd: command_lists)
-			gpu::cmd_list_free(p_app->renderCtx.gpuCtx, cmd);
+			gpu::cmd_list_free(gpu_ctx, cmd);
 	}
 
 	auto application_close(Application *p_app) -> void

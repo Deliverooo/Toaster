@@ -8,21 +8,22 @@ namespace toaster::gpu
 	constexpr DeviceAddress nullGpuPtr{0u};
 
 	struct GPUContext;
-	TST_GPU_DECLARE_GPU_HANDLE(CommandList);
-	TST_GPU_DECLARE_GPU_HANDLE(ResourceDescriptorHeap);
-	TST_GPU_DECLARE_GPU_HANDLE(SamplerDescriptorHeap);
-	TST_GPU_DECLARE_GPU_HANDLE(Semaphore);
-	TST_GPU_DECLARE_GPU_HANDLE(Buffer);
-	TST_GPU_DECLARE_GPU_HANDLE(Texture);
-	TST_GPU_DECLARE_GPU_HANDLE(Sampler);
-	TST_GPU_DECLARE_GPU_HANDLE(Surface);
-	TST_GPU_DECLARE_GPU_HANDLE(Swapchain);
-	TST_GPU_DECLARE_GPU_HANDLE(Shader);
+
+	TST_DECLARE_HANDLE(CommandList);
+	TST_DECLARE_HANDLE(ResourceDescriptorHeap);
+	TST_DECLARE_HANDLE(SamplerDescriptorHeap);
+	TST_DECLARE_HANDLE(Semaphore);
+	TST_DECLARE_HANDLE(Buffer);
+	TST_DECLARE_HANDLE(Texture);
+	TST_DECLARE_HANDLE(Sampler);
+	TST_DECLARE_HANDLE(Surface);
+	TST_DECLARE_HANDLE(Swapchain);
+	TST_DECLARE_HANDLE(Shader);
 
 	struct AllocationContext;
-	TST_GPU_DECLARE_GPU_HANDLE(VirtualBlock);
-	TST_GPU_DECLARE_GPU_HANDLE(VirtualAllocation);
+	TST_DECLARE_HANDLE(VirtualBlock);
+	TST_DECLARE_HANDLE(VirtualAllocation);
 
 	struct UploadContext;
-	TST_GPU_DECLARE_GPU_HANDLE(StateTracker);
+	TST_DECLARE_HANDLE(StateTracker);
 }

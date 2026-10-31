@@ -5,7 +5,7 @@
 #include <type_traits>
 
 // Use once per namespace to declare flags
-#define TST_LIB_DECLARE_FLAGS_FOR_NAMESPACE()\
+#define TST_DECLARE_FLAGS_FOR_NAMESPACE()\
 	\
 	template<typename TBitType> requires std::is_integral_v<std::underlying_type_t<TBitType>>\
 	class Flags\
@@ -57,7 +57,10 @@
 	template<typename TBitType> requires FlagOperations<TBitType>::defined\
 	constexpr Flags<TBitType> operator~(TBitType p_bit) noexcept { return ~Flags<TBitType>{p_bit}; }
 
-#define TST_LIB_SPECIALISE_FLAGS(__bit_type, __name) template<> struct FlagOperations<__bit_type> { static constexpr bool defined{true}; };\
+#define TST_SPECIALISE_FLAGS(__bit_type, __name) template<> struct FlagOperations<__bit_type> { static constexpr bool defined{true}; };\
 	using __name = Flags<__bit_type>
 
-#define TST_LIB_ENUM_VAL(__enum) static_cast<std::underlying_type_t<decltype(__enum)>>(__enum)
+#define TST_ENUM_VAL(__enum) static_cast<std::underlying_type_t<decltype(__enum)>>(__enum)
+
+// Underlying type. Decay is used to remove cv qualifiers as well as references
+#define TST_UT(__val) static_cast<std::underlying_type_t<std::decay_t<decltype(__val)>>>(__val)

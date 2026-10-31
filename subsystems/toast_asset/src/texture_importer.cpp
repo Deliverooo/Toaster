@@ -6,6 +6,7 @@
 
 #include "toast_gpu/api.hpp"
 #include "toast_gpu/upload.hpp"
+#include "toast_render/render_context.hpp"
 
 #undef min
 #undef max
@@ -62,8 +63,8 @@ namespace toaster::ast
 		return image_data;
 	}
 
-	auto texture_load_from_file(rnd::TextureHandle p_dst_texture, rnd::TextureManager *p_texture_manager, const std::filesystem::path &p_path,
-								gpu::EFormat       p_desired_format) -> void
+	auto texture_load_from_file(const rnd::RenderContext *p_render_ctx, gpu::TextureHandle p_dst_texture, uint32 p_dst_heap_slot, gpu::StateTrackerHandle p_dst_state_tracker,
+								const std::filesystem::path &p_path, gpu::EFormat p_desired_format) -> void
 	{
 		gpu::TextureDesc texture_desc{};
 		texture_desc.usage    = gpu::ETextureUsageFlagBits::eTransferSrc | gpu::ETextureUsageFlagBits::eTransferDst | gpu::ETextureUsageFlagBits::eSampled;
@@ -73,8 +74,24 @@ namespace toaster::ast
 		DataBuffer image_data{texture_load_into_buffer(p_path.string(), texture_desc.format, texture_desc.extent.x, texture_desc.extent.y)};
 		texture_desc.mipCount = static_cast<uint32>(std::floor(std::log2(std::max(texture_desc.extent.x, texture_desc.extent.y)))) + 1u;
 
-		rnd::texture_create_into(p_texture_manager, p_dst_texture, texture_desc);
-		rnd::texture_set_data(p_texture_manager, p_dst_texture, image_data.data(), image_data.size());
+		gpu::GPUContext *                       gpu_ctx{p_render_ctx->gpuCtx};
+		gpu::UploadContext *                    upload_ctx{p_render_ctx->uploadCtx};
+		const gpu::ResourceDescriptorHeapHandle resource_heap{p_render_ctx->resourceHeap};
+
+		gpu::resource_descriptor_heap_write_texture(gpu_ctx, resource_heap, p_dst_heap_slot, p_dst_texture, false);
+		gpu::texture_create_into(gpu_ctx, p_dst_texture, texture_desc);
+
+		gpu::BufferTextureCopyRegion copy_region{};
+		copy_region.bufferOffset       = 0ull;
+		copy_region.textureOffset      = {0, 0, 0};
+		copy_region.textureExtent      = {0u, 0u, 0u};
+		copy_region.textureSubresource = gpu::TextureSubresource{0u, 0u, 1u};
+
+		gpu::TextureUploadDesc upload_desc{};
+		upload_desc.uploadRegions = copy_region;
+		upload_desc.data          = image_data.data();
+		upload_desc.size          = image_data.size();
+		gpu::upload_data_to_texture(upload_ctx, p_dst_texture, upload_desc, p_dst_state_tracker);
 
 		image_data.release();
 	}

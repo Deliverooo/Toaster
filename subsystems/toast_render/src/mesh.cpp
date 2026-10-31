@@ -36,7 +36,7 @@ namespace toaster::rnd
 
 		gpu::BufferHandle staticMeshMetadataBuffer{nullptr}; // Indexed by the mesh handle's id
 
-		Pool<StaticMesh> staticMeshes;
+		FixedPool<StaticMesh, 32u, 32u> staticMeshes; // 1024
 	};
 
 	auto mesh_mngr_create(RenderContext *p_render_ctx) -> MeshManager *
@@ -90,7 +90,7 @@ namespace toaster::rnd
 				gpu::page_allocator_free_page_allocation(mngr->rndCtx->allocCtx, &mngr->meshletTrianglePager, &p_data->meshletTriangleBufferAllocation);
 			if (p_data->materialIndirectionBufferAllocation)
 				gpu::virtual_block_free(mngr->rndCtx->allocCtx, p_data->materialIndirectionBufferAllocation);
-			
+
 			p_data->materialIndirectionBufferAllocation = nullptr;
 			p_data->materialIndirectionBufferOffset     = 0u;
 
@@ -180,29 +180,25 @@ namespace toaster::rnd
 
 		mtx_unlock(&p_mngr->pageMtx);
 
-		gpu::upload_data_to_buffer(upload_ctx, gpu::BufferUploadDesc{
-									   static_mesh.vertexBufferAllocation.buffer,
+		gpu::upload_data_to_buffer(upload_ctx, static_mesh.vertexBufferAllocation.buffer, gpu::BufferUploadDesc{
 									   p_geometry_data.vertices.data(),
 									   vertex_buffer_size,
 									   static_mesh.vertexBufferAllocation.offset
 								   }, static_mesh.stateTracker);
 
-		gpu::upload_data_to_buffer(upload_ctx, gpu::BufferUploadDesc{
-									   static_mesh.meshletBufferAllocation.buffer,
+		gpu::upload_data_to_buffer(upload_ctx, static_mesh.meshletBufferAllocation.buffer, gpu::BufferUploadDesc{
 									   p_geometry_data.meshlets.data(),
 									   meshlet_buffer_size,
 									   static_mesh.meshletBufferAllocation.offset
 								   }, static_mesh.stateTracker);
 
-		gpu::upload_data_to_buffer(upload_ctx, gpu::BufferUploadDesc{
-									   static_mesh.meshletVertexBufferAllocation.buffer,
+		gpu::upload_data_to_buffer(upload_ctx, static_mesh.meshletVertexBufferAllocation.buffer, gpu::BufferUploadDesc{
 									   p_geometry_data.meshletVertices.data(),
 									   meshlet_vertex_buffer_size,
 									   static_mesh.meshletVertexBufferAllocation.offset
 								   }, static_mesh.stateTracker);
 
-		gpu::upload_data_to_buffer(upload_ctx, gpu::BufferUploadDesc{
-									   static_mesh.meshletTriangleBufferAllocation.buffer,
+		gpu::upload_data_to_buffer(upload_ctx, static_mesh.meshletTriangleBufferAllocation.buffer, gpu::BufferUploadDesc{
 									   p_geometry_data.meshletIndices.data(),
 									   meshlet_triangle_buffer_size,
 									   static_mesh.meshletTriangleBufferAllocation.offset
@@ -213,8 +209,7 @@ namespace toaster::rnd
 			static_mesh.materials | std::views::transform([](const MaterialHandle p_handle) -> uint32 { return p_handle.getId(); }) | std::ranges::to<Vector<uint32> >()
 		};
 
-		gpu::upload_data_to_buffer(upload_ctx, gpu::BufferUploadDesc{
-									   p_mngr->materialIndirectionBuffer,
+		gpu::upload_data_to_buffer(upload_ctx, p_mngr->materialIndirectionBuffer, gpu::BufferUploadDesc{
 									   material_indirection_buffer_data.data(),
 									   material_indirection_buffer_buffer_size,
 									   static_mesh.materialIndirectionBufferOffset
@@ -237,7 +232,7 @@ namespace toaster::rnd
 
 		uint64 metadata_offset{p_static_mesh.getId() * sizeof(StaticMeshMetadata)};
 
-		gpu::upload_data_to_buffer(upload_ctx, gpu::BufferUploadDesc{p_mngr->staticMeshMetadataBuffer, &metadata, sizeof(StaticMeshMetadata), metadata_offset},
+		gpu::upload_data_to_buffer(upload_ctx, p_mngr->staticMeshMetadataBuffer, gpu::BufferUploadDesc{&metadata, sizeof(StaticMeshMetadata), metadata_offset},
 								   static_mesh.stateTracker);
 	}
 
@@ -271,11 +266,11 @@ namespace toaster::rnd
 
 	auto static_mesh_try_get(const MeshManager *p_mngr, StaticMeshHandle p_static_mesh) -> const StaticMesh *
 	{
-		return p_mngr->staticMeshes.tryGet(p_static_mesh);
+		return p_mngr->staticMeshes.try_get(p_static_mesh);
 	}
 
 	auto static_mesh_try_get(MeshManager *p_mngr, StaticMeshHandle p_static_mesh) -> StaticMesh *
 	{
-		return p_mngr->staticMeshes.tryGet(p_static_mesh);
+		return p_mngr->staticMeshes.try_get(p_static_mesh);
 	}
 }

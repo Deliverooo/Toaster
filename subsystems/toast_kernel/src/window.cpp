@@ -69,12 +69,12 @@ namespace toaster::knl
 
 			if (p_action == GLFW_PRESS)
 			{
-				TST_LIB_BIT_SET(data->inputCtx.currentKeyStates, static_cast<uint32>(keycode));
+				TST_BIT_SET(data->inputCtx.currentKeyStates, static_cast<uint32>(keycode));
 				TST_DISPATCH_EVENT(KeyPressEvent, keycode);
 			}
 			else if (p_action == GLFW_RELEASE)
 			{
-				TST_LIB_BIT_CLEAR(data->inputCtx.currentKeyStates, static_cast<uint32>(keycode));
+				TST_BIT_CLEAR(data->inputCtx.currentKeyStates, static_cast<uint32>(keycode));
 				TST_DISPATCH_EVENT(KeyReleaseEvent, keycode);
 			}
 		});
@@ -86,12 +86,12 @@ namespace toaster::knl
 
 			if (p_action == GLFW_PRESS)
 			{
-				TST_LIB_BIT_SET(data->inputCtx.currentMouseStates, static_cast<uint32>(button));
+				TST_BIT_SET(data->inputCtx.currentMouseStates, static_cast<uint32>(button));
 				// TST_DISPATCH_EVENT(MouseButtonPressEvent, button);
 			}
 			else if (p_action == GLFW_RELEASE)
 			{
-				TST_LIB_BIT_CLEAR(data->inputCtx.currentMouseStates, static_cast<uint32>(button));
+				TST_BIT_CLEAR(data->inputCtx.currentMouseStates, static_cast<uint32>(button));
 				// TST_DISPATCH_EVENT(MouseButtonReleaseEvent, button);
 			}
 		});
