@@ -124,9 +124,9 @@ namespace toaster::gpu
 
 		mtx_init(&p_out_allocator->freeListMtx, mtx_plain);
 
-		p_out_allocator->pageIdAllocator = {64u};
-		p_out_allocator->resourceHeap    = p_resource_heap;
-		p_out_allocator->pageSize        = p_page_size;
+		freelist_allocator_create(p_out_allocator->pageIdAllocator, 64u);
+		p_out_allocator->resourceHeap = p_resource_heap;
+		p_out_allocator->pageSize     = p_page_size;
 		_page_allocator_insert_page(p_ctx, p_out_allocator); // Insert the default page
 	}
 
@@ -185,7 +185,7 @@ namespace toaster::gpu
 		if (p_size > p_allocator->pageSize) // Create a dedicated allocation
 		{
 			mtx_lock(&p_allocator->freeListMtx);
-			const uint32 page_id{p_allocator->pageIdAllocator.allocSlot()};
+			const uint32 page_id{freelist_allocator_alloc_slot(p_allocator->pageIdAllocator)};
 			mtx_unlock(&p_allocator->freeListMtx);
 
 			p_allocator->pages.push_back(_page_allocator_create_page(p_ctx, p_allocator, p_size, page_id));
@@ -214,7 +214,7 @@ namespace toaster::gpu
 	auto _page_allocator_insert_page(AllocationContext *p_ctx, PageAllocator *p_allocator) -> void
 	{
 		mtx_lock(&p_allocator->freeListMtx);
-		const uint32 page_id{p_allocator->pageIdAllocator.allocSlot()};
+		const uint32 page_id{freelist_allocator_alloc_slot(p_allocator->pageIdAllocator)};
 		mtx_unlock(&p_allocator->freeListMtx);
 		p_allocator->pages.push_back(_page_allocator_create_page(p_ctx, p_allocator, p_allocator->pageSize, page_id));
 		p_allocator->activePageId = page_id;
@@ -265,7 +265,7 @@ namespace toaster::gpu
 		resource_descriptor_heap_free_buffer_slot(p_ctx->gpuCtx, p_allocator->resourceHeap, p_page->heapSlot);
 
 		mtx_lock(&p_allocator->freeListMtx);
-		p_allocator->pageIdAllocator.freeSlot(p_page->id);
+		freelist_allocator_free_slot(p_allocator->pageIdAllocator, p_page->id);
 		mtx_unlock(&p_allocator->freeListMtx);
 	}
 }

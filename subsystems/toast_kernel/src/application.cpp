@@ -61,7 +61,7 @@ namespace toaster::knl
 		for (uint32 i{0u}; i < p_app->maxFramesInFlight; ++i)
 		{
 			command_allocators[i] = gpu::cmd_allocator_create(gpu_ctx, gpu::EQueueType::eGraphics);
-			gpu::cmd_list_allocate_n(gpu_ctx, std::span<gpu::CommandListHandle>{&command_lists[i], 1ull}, command_allocators[i]);
+			gpu::cmd_list_allocate_n(gpu_ctx, command_allocators[i], std::span<gpu::CommandListHandle>{&command_lists[i], 1ull});
 		}
 
 		auto last_time{std::chrono::steady_clock::now()};

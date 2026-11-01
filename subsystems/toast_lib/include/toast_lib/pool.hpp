@@ -337,7 +337,7 @@ namespace toaster
 			}
 
 			const uint32 next_magic{((metadata_value & c_magicMask) + 1u) & c_magicMask}; // Increment the magic
-			slot.metadata.metadata.store(next_magic, std::memory_order_release); // Ignore the alive mask because the slot is now dead
+			slot.metadata.metadata.store(next_magic, std::memory_order_release);          // Ignore the alive mask because the slot is now dead
 
 			auto data{reinterpret_cast<TData *>(&slot.storage)};
 			if (m_destructorFn)
@@ -378,7 +378,7 @@ namespace toaster
 					continue;
 
 				const uint32 next_magic{((metadata_value & c_magicMask) + 1u) & c_magicMask}; // Increment the magic
-				slot.metadata.metadata.store(next_magic, std::memory_order_release); // Ignore the alive mask because the slot is now dead
+				slot.metadata.metadata.store(next_magic, std::memory_order_release);          // Ignore the alive mask because the slot is now dead
 
 				auto data{reinterpret_cast<TData *>(&slot.storage)};
 				if (m_destructorFn)

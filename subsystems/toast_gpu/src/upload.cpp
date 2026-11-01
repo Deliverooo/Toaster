@@ -333,7 +333,7 @@ namespace toaster::gpu
 		{
 			ctx->uploadTimeline[i]    = 0u;
 			ctx->commandAllocators[i] = cmd_allocator_create(p_gpu_ctx, EQueueType::eTransfer);
-			cmd_list_allocate_n(p_gpu_ctx, std::span<CommandListHandle>{&ctx->commandLists[i], 1ull}, ctx->commandAllocators[i], false);
+			cmd_list_allocate_n(p_gpu_ctx, ctx->commandAllocators[i], std::span<CommandListHandle>{&ctx->commandLists[i], 1ull}, false);
 		}
 
 		ctx->stateTrackers.setDestructorFn(+[](StateTracker *p_data, void *) -> void

@@ -3,9 +3,8 @@
 #include <optional>
 #include <span>
 
-#include "toast_math/math_vector.hpp"
-
 #include "fwd.hpp"
+#include "toast_math/math_vector.hpp"
 
 namespace toaster::gpu
 {
@@ -700,7 +699,7 @@ namespace toaster::gpu
 	// Resets the command list. Check out this image for when it is appropriate to call this: https://docs.vulkan.org/spec/latest/_images/commandbuffer_lifecycle.svg
 	auto TST_GPU_API cmd_allocator_reset(GPUContext *p_ctx, CommandAllocatorHandle p_cmd_allocator) -> void;
 
-	auto TST_GPU_API cmd_list_allocate_n(GPUContext *p_ctx, std::span<CommandListHandle> p_out_cmd_lists, CommandAllocatorHandle p_cmd_allocator,
+	auto TST_GPU_API cmd_list_allocate_n(GPUContext *p_ctx, CommandAllocatorHandle p_cmd_allocator, std::span<CommandListHandle> p_out_cmd_lists,
 										 bool        p_secondary = false) -> void;
 
 	// Don't worry, this doesn't actually 'free' the command list. It just returns it to the allocator's free list, so when cmd_list_create is called, it is able to be returned
@@ -827,42 +826,58 @@ namespace toaster::gpu
 	auto TST_GPU_API sampler_descriptor_heap_destroy(GPUContext *p_ctx, SamplerDescriptorHeapHandle p_sampler_heap) -> void;
 
 	[[nodiscard]] auto TST_GPU_API resource_descriptor_heap_alloc_buffer_slot(GPUContext *p_ctx, ResourceDescriptorHeapHandle p_resource_heap) -> uint32;
+	auto TST_GPU_API               resource_descriptor_heap_alloc_buffer_slots(GPUContext *      p_ctx, ResourceDescriptorHeapHandle p_resource_heap,
+																			   std::span<uint32> p_out_heap_slots) -> void;
 	[[nodiscard]] auto TST_GPU_API resource_descriptor_heap_alloc_texture_slot(GPUContext *p_ctx, ResourceDescriptorHeapHandle p_resource_heap) -> uint32;
 	auto TST_GPU_API               resource_descriptor_heap_alloc_texture_slots(GPUContext *      p_ctx, ResourceDescriptorHeapHandle p_resource_heap,
 																				std::span<uint32> p_out_heap_slots) -> void;
 	[[nodiscard]] auto TST_GPU_API sampler_descriptor_heap_alloc_sampler_slot(GPUContext *p_ctx, SamplerDescriptorHeapHandle p_sampler_heap) -> uint32;
+	auto TST_GPU_API               sampler_descriptor_heap_alloc_sampler_slots(GPUContext *      p_ctx, SamplerDescriptorHeapHandle p_sampler_heap,
+																			   std::span<uint32> p_out_heap_slots) -> void;
 
 	auto TST_GPU_API resource_descriptor_heap_free_buffer_slot(GPUContext *p_ctx, ResourceDescriptorHeapHandle p_resource_heap, uint32 p_heap_slot) -> void;
+	auto TST_GPU_API resource_descriptor_heap_free_buffer_slots(GPUContext *                  p_ctx, ResourceDescriptorHeapHandle p_resource_heap,
+																InitialiserList<const uint32> p_heap_slots) -> void;
 	auto TST_GPU_API resource_descriptor_heap_free_texture_slot(GPUContext *p_ctx, ResourceDescriptorHeapHandle p_resource_heap, uint32 p_heap_slot) -> void;
 	auto TST_GPU_API resource_descriptor_heap_free_texture_slots(GPUContext *                  p_ctx, ResourceDescriptorHeapHandle p_resource_heap,
 																 InitialiserList<const uint32> p_heap_slots) -> void;
 	auto TST_GPU_API sampler_descriptor_heap_free_sampler_slot(GPUContext *p_ctx, SamplerDescriptorHeapHandle p_sampler_heap, uint32 p_heap_slot) -> void;
+	auto TST_GPU_API sampler_descriptor_heap_free_sampler_slots(GPUContext *                  p_ctx, SamplerDescriptorHeapHandle p_sampler_heap,
+																InitialiserList<const uint32> p_heap_slots) -> void;
 
-	auto TST_GPU_API resource_descriptor_heap_write_buffer(GPUContext * p_ctx, ResourceDescriptorHeapHandle p_resource_heap, uint32 p_heap_slot,
+	auto TST_GPU_API resource_descriptor_heap_write_buffer(GPUContext *p_ctx, ResourceDescriptorHeapHandle p_resource_heap, uint32 p_heap_slot,
 														   BufferHandle p_buffer) -> void;
-
-	auto TST_GPU_API resource_descriptor_heap_write_texture(GPUContext *p_ctx, ResourceDescriptorHeapHandle p_resource_heap, uint32 p_heap_slot, TextureHandle p_texture,
-															bool        p_storage, uint32                   p_mip = c_allMipLevels) -> void;
-
+	auto TST_GPU_API resource_descriptor_heap_write_buffers(GPUContext *p_ctx, ResourceDescriptorHeapHandle p_resource_heap, InitialiserList<const uint32> p_heap_slots,
+															InitialiserList<const BufferHandle> p_buffers) -> void;
 	// Set p_mip_levels to c_all_mip_levels to access the entire texture's mip levels
+	auto TST_GPU_API resource_descriptor_heap_write_texture(GPUContext *p_ctx, ResourceDescriptorHeapHandle p_resource_heap, uint32 p_heap_slot, TextureHandle p_texture,
+															bool p_storage, uint32 p_mip = c_allMipLevels) -> void;
 	auto TST_GPU_API resource_descriptor_heap_write_textures(GPUContext *p_ctx, ResourceDescriptorHeapHandle p_resource_heap, InitialiserList<const uint32> p_heap_slots,
 															 InitialiserList<const TextureHandle> p_textures, InitialiserList<const bool> p_storage,
 															 InitialiserList<const uint32> p_mip_levels) -> void;
-
-	auto TST_GPU_API sampler_descriptor_heap_write_sampler(GPUContext *       p_ctx, SamplerDescriptorHeapHandle p_sampler_heap, uint32 p_heap_slot,
+	auto TST_GPU_API sampler_descriptor_heap_write_sampler(GPUContext *p_ctx, SamplerDescriptorHeapHandle p_sampler_heap, uint32 p_heap_slot,
 														   const SamplerDesc &p_sampler_desc) -> void;
+	auto TST_GPU_API sampler_descriptor_heap_write_samplers(GPUContext *p_ctx, SamplerDescriptorHeapHandle p_sampler_heap, InitialiserList<const uint32> p_heap_slots,
+															InitialiserList<const SamplerDesc> p_sampler_descs) -> void;
 
 	#pragma endregion
 
 	#pragma region buffer
 
 	[[nodiscard]] auto TST_GPU_API buffer_create(GPUContext *p_ctx, const BufferDesc &p_desc) -> BufferHandle;
-	auto TST_GPU_API               buffer_destroy(GPUContext *p_ctx, BufferHandle p_buffer) -> void;
+	// If p_out_buffers is > 1, then p_descs can be 1, in which case it will create N identical buffers, otherwise p_descs.size() has to equal p_out_buffers.size()
+	auto TST_GPU_API buffer_create_n(GPUContext *p_ctx, InitialiserList<const BufferDesc> p_descs, std::span<BufferHandle> p_out_buffers) -> void;
+
+	auto TST_GPU_API buffer_destroy(GPUContext *p_ctx, BufferHandle p_buffer) -> void;
+	auto TST_GPU_API buffer_destroy_n(GPUContext *p_ctx, InitialiserList<const BufferHandle> p_buffers) -> void;
 
 	auto TST_GPU_API buffer_write_data(GPUContext *p_ctx, BufferHandle p_buffer, const void *p_data, uint64 p_size, uint64 p_offset = 0u) -> void; // If host-visible
+
 	[[nodiscard]] auto TST_GPU_API buffer_get_mapped_data(GPUContext *p_ctx, BufferHandle p_buffer) -> void *;
+	auto TST_GPU_API buffer_get_mapped_data_n(GPUContext *p_ctx, InitialiserList<const BufferHandle> p_buffers, std::span<void *> p_out_mapped_data) -> void;
 
 	[[nodiscard]] auto TST_GPU_API buffer_get_address(GPUContext *p_ctx, BufferHandle p_buffer) -> DeviceAddress;
+	auto TST_GPU_API buffer_get_address_n(GPUContext *p_ctx, InitialiserList<const BufferHandle> p_buffers, std::span<DeviceAddress> p_out_device_addresses) -> void;
 
 	#pragma endregion
 
@@ -889,29 +904,40 @@ namespace toaster::gpu
 	// DirectX 12 side quest, I finally understood where all the hype around timeline semaphores came from.
 	// Now I am a proud advocate against the use of vk::Fences in favour of timeline semaphores
 	[[nodiscard]] auto TST_GPU_API semaphore_create(GPUContext *p_ctx, uint64 p_initial_value = 0u) -> SemaphoreHandle;
+	auto TST_GPU_API semaphore_create_n(GPUContext *p_ctx, InitialiserList<const uint64> p_initial_values, std::span<SemaphoreHandle> p_out_semaphores) -> void;
+
 	auto TST_GPU_API semaphore_destroy(GPUContext *p_ctx, SemaphoreHandle p_semaphore) -> void;
-	auto TST_GPU_API semaphore_wait_n(GPUContext *p_ctx, InitialiserList<const SemaphoreHandle> p_semaphores, InitialiserList<const uint64> p_values) -> void;
+	auto TST_GPU_API semaphore_destroy_n(GPUContext *p_ctx, InitialiserList<const SemaphoreHandle> p_semaphores) -> void;
+
 	// Waits for N semaphores
+	auto TST_GPU_API semaphore_wait_n(GPUContext *p_ctx, InitialiserList<const SemaphoreHandle> p_semaphores, InitialiserList<const uint64> p_values) -> void;
+
+	// Returns the current counter value of the semaphore
 	auto TST_GPU_API semaphore_get_value(GPUContext *p_ctx, SemaphoreHandle p_semaphore) -> uint64;
+	// Retrieves the values from N semaphores
+	auto TST_GPU_API semaphore_get_value_n(GPUContext *p_ctx, InitialiserList<const SemaphoreHandle> p_semaphores, std::span<uint64> p_out_values) -> void;
 
 	#pragma endregion
 
 	#pragma region texture
 
-	#ifndef NDEBUG
-	auto TST_GPU_API get_num_undefined_textures(GPUContext *p_ctx) -> uint64;
-	#endif
+	// I don't think you will ever need to use this...
+	auto TST_GPU_API _get_num_undefined_textures(GPUContext *p_ctx) -> uint64;
 
 	[[nodiscard]] auto TST_GPU_API texture_create(GPUContext *p_ctx, const TextureDesc &p_desc) -> TextureHandle;
 	auto TST_GPU_API               texture_create_n(GPUContext *p_ctx, InitialiserList<const TextureDesc> p_descs, std::span<TextureHandle> p_out_textures) -> void;
 
 	auto TST_GPU_API texture_destroy(GPUContext *p_ctx, TextureHandle p_texture) -> void;
+	auto TST_GPU_API texture_destroy_n(GPUContext *p_ctx, InitialiserList<const TextureHandle> p_textures) -> void;
+
 	// Register a texture (just returns a unique handle) no gpu logic will be executed.
 	// This is useful for multithreaded loading where you want to target a specific texture, but you have not yet created it...
 	[[nodiscard]] auto TST_GPU_API texture_register_null(GPUContext *p_ctx) -> TextureHandle;
+	auto TST_GPU_API               texture_register_null_n(GPUContext *p_ctx, std::span<TextureHandle> p_out_textures) -> void;
 	// This can only validly be called at some point after texture_register_null. This process is essentially just a deferred creation and is useful.
 	// Secretly, texture_create(...) is actually just texture_register_null(...) followed by texture_create_into(...)!
 	auto TST_GPU_API texture_create_into(GPUContext *p_ctx, TextureHandle p_dst_texture, const TextureDesc &p_desc) -> void;
+	auto TST_GPU_API texture_create_into_n(GPUContext *p_ctx, InitialiserList<const TextureDesc> p_descs, std::span<TextureHandle> p_dst_textures) -> void;
 
 	[[nodiscard]] auto TST_GPU_API texture_get_desc(GPUContext *p_ctx, TextureHandle p_texture) -> const TextureDesc &;
 
@@ -947,7 +973,12 @@ namespace toaster::gpu
 	#pragma region shader
 
 	[[nodiscard]] auto TST_GPU_API shader_create(GPUContext *p_ctx, const ShaderDesc &p_desc) -> ShaderHandle;
-	auto TST_GPU_API               shader_destroy(GPUContext *p_ctx, ShaderHandle p_shader) -> void;
+	// If p_link is true, the shaders will be linked together, see https://docs.vulkan.org/refpages/latest/refpages/source/vkCreateShadersEXT.html for more info.
+	auto TST_GPU_API shader_create_n(GPUContext *p_ctx, std::span<ShaderHandle> p_out_shaders, InitialiserList<const ShaderDesc> p_shader_descs,
+									 bool        p_link = false) -> void;
+
+	auto TST_GPU_API shader_destroy(GPUContext *p_ctx, ShaderHandle p_shader) -> void;
+	auto TST_GPU_API shader_destroy_n(GPUContext *p_ctx, InitialiserList<const ShaderHandle> p_shaders) -> void;
 
 	#pragma endregion
 }

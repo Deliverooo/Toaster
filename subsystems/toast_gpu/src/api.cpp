@@ -8,12 +8,9 @@
 #include "toast_lib/format.hpp"
 #include "toast_lib/freelist_allocator.hpp"
 #include "toast_lib/pool.hpp"
-#include "toast_lib/set.hpp"
 
 #include <volk.h>
 #include <vk_mem_alloc.h>
-
-#include "toast_lib/map.hpp"
 
 #undef min
 #undef max
@@ -22,10 +19,10 @@ namespace toaster::gpu
 {
 	struct ResourceDescriptorHeap
 	{
-		mtx_t bufferSlotMutex{};
-		mtx_t imageSlotMutex{};
+		mtx_t bufferSlotMutex;
+		mtx_t imageSlotMutex;
 
-		VkBindHeapInfoEXT bindInfo{};
+		VkBindHeapInfoEXT bindInfo;
 
 		VkBuffer      heapBuffer{nullptr};
 		VmaAllocation heapAllocation{nullptr};
@@ -34,20 +31,20 @@ namespace toaster::gpu
 		FreelistAllocator<uint32> bufferSlotAllocator;
 		FreelistAllocator<uint32> imageSlotAllocator;
 
-		VkDeviceSize bufferDescriptorSize{0u};
-		VkDeviceSize imageDescriptorSize{0u};
+		VkDeviceSize bufferDescriptorSize;
+		VkDeviceSize imageDescriptorSize;
 
-		VkDeviceSize bufferSegmentSize{0u};
+		VkDeviceSize bufferSegmentSize;
 
-		uint64       imageSegmentOffset{0u};
-		VkDeviceSize imageSegmentSize{0u};
+		uint64       imageSegmentOffset;
+		VkDeviceSize imageSegmentSize;
 	};
 
 	struct SamplerDescriptorHeap
 	{
-		mtx_t samplerSlotMutex{};
+		mtx_t samplerSlotMutex;
 
-		VkBindHeapInfoEXT bindInfo{};
+		VkBindHeapInfoEXT bindInfo;
 
 		VkBuffer      heapBuffer{nullptr};
 		VmaAllocation heapAllocation{nullptr};
@@ -55,7 +52,7 @@ namespace toaster::gpu
 
 		FreelistAllocator<uint32> samplerSlotAllocator;
 
-		VkDeviceSize samplerDescriptorSize{0u};
+		VkDeviceSize samplerDescriptorSize;
 	};
 
 	struct CommandAllocator
@@ -91,11 +88,10 @@ namespace toaster::gpu
 
 	struct Buffer
 	{
-		VkBuffer      buffer{nullptr};
-		VmaAllocation allocation{nullptr};
-		uint64        size{0u};
-
-		DeviceAddress     address{0u};
+		VkBuffer          buffer{nullptr};
+		VmaAllocation     allocation{nullptr};
+		uint64            size{0ull};
+		DeviceAddress     address{nullGpuPtr};
 		void *            mapped{nullptr};
 		EBufferUsageFlags usageFlags{0u};
 	};
@@ -136,7 +132,7 @@ namespace toaster::gpu
 		VkSwapchainKHR swapchain{nullptr};
 		SurfaceHandle  surface{nullptr};
 
-		SemaphoreHandle latencySemaphore{nullptr};
+		VkSemaphore latencySemaphore{nullptr};
 
 		uint64      frameId{0ull};
 		math::UInt2 extent{0u, 0u};
@@ -157,8 +153,6 @@ namespace toaster::gpu
 		VkShaderStageFlags    nextStage{0u};
 	};
 
-	#define TST_REGISTER_RESOURCE_POOL(__resourceType, __name) struct  Pool<__resourceType>  __name
-
 	struct GPUContext
 	{
 		VkAllocationCallbacks allocatorCallbacks{}; // Allows me to use rpmalloc for Vulkan host memory allocations
@@ -171,6 +165,7 @@ namespace toaster::gpu
 
 		VmaAllocator allocator{nullptr};
 
+		// Per queue things
 		Array<uint32, c_queueCount>        queueFamilyIndices;
 		Array<VkQueue, c_queueCount>       queues;
 		Array<mtx_t, c_queueCount>         queueMutexes;
@@ -198,7 +193,6 @@ namespace toaster::gpu
 		bool hasDedicatedTransferQueue{false};
 	};
 
-	// static APIImpl *p_ctx{nullptr};
 	auto to_string(VkDebugUtilsMessageTypeFlagsEXT p_message_type) -> String
 	{
 		switch (p_message_type)
@@ -1481,9 +1475,9 @@ namespace toaster::gpu
 			for (auto &semaphore: p_data->renderFinishedSemaphores)
 				vkDestroySemaphore(ctx->logicalDevice, semaphore, &ctx->allocatorCallbacks);
 
-			vkDestroySwapchainKHR(ctx->logicalDevice, p_data->swapchain, &ctx->allocatorCallbacks);
+			vkDestroySemaphore(ctx->logicalDevice, p_data->latencySemaphore, &ctx->allocatorCallbacks);
 
-			semaphore_destroy(ctx, p_data->latencySemaphore);
+			vkDestroySwapchainKHR(ctx->logicalDevice, p_data->swapchain, &ctx->allocatorCallbacks);
 
 			p_data->attachments.clear();
 			p_data->imageAvailableSemaphores.clear();
@@ -1594,15 +1588,14 @@ namespace toaster::gpu
 		p_ctx->commandLists.for_each(cmd_allocator.allocatedPrimaryLists, [](CommandList &p_list, uint32) -> void
 		{
 			p_list.flags &= ~EInternalCommandListFlagBits::eOpen;
-		});
-		p_ctx->commandLists.for_each(cmd_allocator.allocatedSecondaryLists, [](CommandList &p_list, uint32) -> void
+		}); p_ctx->commandLists.for_each(cmd_allocator.allocatedSecondaryLists, [](CommandList &p_list, uint32) -> void
 		{
 			p_list.flags &= ~EInternalCommandListFlagBits::eOpen;
 		});
 		#endif
 	}
 
-	auto cmd_list_allocate_n(GPUContext *p_ctx, std::span<CommandListHandle> p_out_cmd_lists, CommandAllocatorHandle p_cmd_allocator, bool p_secondary) -> void
+	auto cmd_list_allocate_n(GPUContext *p_ctx, CommandAllocatorHandle p_cmd_allocator, std::span<CommandListHandle> p_out_cmd_lists, bool p_secondary) -> void
 	{
 		CommandAllocator &cmd_allocator{p_ctx->commandAllocators[p_cmd_allocator]};
 
@@ -1649,8 +1642,9 @@ namespace toaster::gpu
 			return CommandList{command_buffers[p_index], p_secondary ? EInternalCommandListFlagBits::eSecondary : EInternalCommandListFlagBits{0u}};
 		});
 		#ifndef NDEBUG
-		auto &allocated_lists{p_secondary ? cmd_allocator.allocatedSecondaryLists : cmd_allocator.allocatedPrimaryLists};
-		allocated_lists.insert(allocated_lists.end(), remaining_lists.begin(), remaining_lists.end());
+		auto &allocated_lists{p_secondary ? cmd_allocator.allocatedSecondaryLists : cmd_allocator.allocatedPrimaryLists}; allocated_lists.insert(allocated_lists.end(),
+																																				 remaining_lists.begin(),
+																																				 remaining_lists.end());
 		#endif
 	}
 
@@ -1665,8 +1659,7 @@ namespace toaster::gpu
 
 		#ifndef NDEBUG
 		// Remove the command list from the allocated lists
-		auto &allocated_lists{secondary ? cmd_allocator.allocatedSecondaryLists : cmd_allocator.allocatedPrimaryLists};
-		std::erase(allocated_lists, p_cmd_list);
+		auto &allocated_lists{secondary ? cmd_allocator.allocatedSecondaryLists : cmd_allocator.allocatedPrimaryLists}; std::erase(allocated_lists, p_cmd_list);
 		#endif
 
 		// Add the command list to the free lists
@@ -1687,8 +1680,7 @@ namespace toaster::gpu
 
 		#ifndef NDEBUG
 		// Remove the command lists from the allocated lists
-		auto &allocated_lists{p_secondary ? cmd_allocator.allocatedSecondaryLists : cmd_allocator.allocatedPrimaryLists};
-		for (const CommandListHandle cmd: p_cmd_lists)
+		auto &allocated_lists{p_secondary ? cmd_allocator.allocatedSecondaryLists : cmd_allocator.allocatedPrimaryLists}; for (const CommandListHandle cmd: p_cmd_lists)
 			std::erase(allocated_lists, cmd);
 		#endif
 
@@ -1702,8 +1694,7 @@ namespace toaster::gpu
 		CommandList &cmd{p_ctx->commandLists[p_cmd_list]};
 
 		#ifndef NDEBUG
-		TST_ASSERT_MSG(!(cmd.flags & EInternalCommandListFlagBits::eOpen), "Command list is already open");
-		cmd.flags |= EInternalCommandListFlagBits::eOpen;
+		TST_ASSERT_MSG(!(cmd.flags & EInternalCommandListFlagBits::eOpen), "Command list is already open"); cmd.flags |= EInternalCommandListFlagBits::eOpen;
 		#endif
 
 		VkCommandBufferInheritanceDescriptorHeapInfoEXT descriptor_heap_inheritance_info{};
@@ -1714,11 +1705,17 @@ namespace toaster::gpu
 
 		if (is_secondary && p_inheritance_info)
 		{
-			const ResourceDescriptorHeap &resource_heap{p_ctx->resourceHeaps[p_inheritance_info->resourceHeap]};
-			const SamplerDescriptorHeap & sampler_heap{p_ctx->samplerHeaps[p_inheritance_info->samplerHeap]};
+			if (p_inheritance_info->resourceHeap.valid())
+			{
+				const ResourceDescriptorHeap &resource_heap{p_ctx->resourceHeaps[p_inheritance_info->resourceHeap]};
+				descriptor_heap_inheritance_info.pResourceHeapBindInfo = &resource_heap.bindInfo;
+			}
 
-			descriptor_heap_inheritance_info.pResourceHeapBindInfo = &resource_heap.bindInfo;
-			descriptor_heap_inheritance_info.pSamplerHeapBindInfo  = &sampler_heap.bindInfo;
+			if (p_inheritance_info->samplerHeap.valid())
+			{
+				const SamplerDescriptorHeap &sampler_heap{p_ctx->samplerHeaps[p_inheritance_info->samplerHeap]};
+				descriptor_heap_inheritance_info.pSamplerHeapBindInfo = &sampler_heap.bindInfo;
+			}
 		}
 
 		VkCommandBufferInheritanceRenderingInfo rendering_inheritance_info{};
@@ -1761,8 +1758,7 @@ namespace toaster::gpu
 		CommandList &cmd{p_ctx->commandLists[p_cmd_list]};
 
 		#ifndef NDEBUG
-		TST_ASSERT_MSG((cmd.flags & EInternalCommandListFlagBits::eOpen), "Command list must be open to close it");
-		cmd.flags &= ~EInternalCommandListFlagBits::eOpen;
+		TST_ASSERT_MSG((cmd.flags & EInternalCommandListFlagBits::eOpen), "Command list must be open to close it"); cmd.flags &= ~EInternalCommandListFlagBits::eOpen;
 		#endif
 		vkEndCommandBuffer(cmd.cmd);
 	}
@@ -2702,8 +2698,8 @@ namespace toaster::gpu
 		mtx_init(&resource_heap.bufferSlotMutex, mtx_plain);
 		mtx_init(&resource_heap.imageSlotMutex, mtx_plain);
 
-		resource_heap.bufferSlotAllocator = {p_desc.maxBufferDescriptors};
-		resource_heap.imageSlotAllocator  = {p_desc.maxImageDescriptors};
+		freelist_allocator_create(resource_heap.bufferSlotAllocator, p_desc.maxBufferDescriptors);
+		freelist_allocator_create(resource_heap.imageSlotAllocator, p_desc.maxImageDescriptors);
 
 		resource_heap.bufferDescriptorSize = TST_ALIGN(heap_props.bufferDescriptorSize, heap_props.bufferDescriptorAlignment);
 		resource_heap.imageDescriptorSize  = TST_ALIGN(heap_props.imageDescriptorSize, heap_props.imageDescriptorAlignment);
@@ -2713,7 +2709,7 @@ namespace toaster::gpu
 		resource_heap.imageSegmentOffset = TST_ALIGN(resource_heap.bufferSegmentSize, heap_props.imageDescriptorAlignment);
 		resource_heap.imageSegmentSize   = (p_desc.maxImageDescriptors * resource_heap.imageDescriptorSize);
 
-		VkDeviceSize resource_heap_size{
+		const VkDeviceSize resource_heap_size{
 			TST_ALIGN(resource_heap.bufferSegmentSize + resource_heap.imageSegmentSize + heap_props.minResourceHeapReservedRange, heap_props.resourceHeapAlignment)
 		};
 
@@ -2762,11 +2758,11 @@ namespace toaster::gpu
 
 		mtx_init(&sampler_heap.samplerSlotMutex, mtx_plain);
 
-		sampler_heap.samplerSlotAllocator = {p_desc.maxSamplerDescriptors};
+		freelist_allocator_create(sampler_heap.samplerSlotAllocator, p_desc.maxSamplerDescriptors);
 
 		sampler_heap.samplerDescriptorSize = TST_ALIGN(heap_props.samplerDescriptorSize, heap_props.samplerDescriptorAlignment);
 
-		VkDeviceSize sampler_heap_size{
+		const VkDeviceSize sampler_heap_size{
 			TST_ALIGN(p_desc.maxSamplerDescriptors * sampler_heap.samplerDescriptorSize + heap_props.minResourceHeapReservedRange, heap_props.resourceHeapAlignment)
 		};
 
@@ -2822,10 +2818,19 @@ namespace toaster::gpu
 		ResourceDescriptorHeap &resource_heap{p_ctx->resourceHeaps[p_resource_heap]};
 
 		mtx_lock(&resource_heap.bufferSlotMutex);
-		const uint32 slot{resource_heap.bufferSlotAllocator.allocSlot()};
+		const uint32 slot{freelist_allocator_alloc_slot(resource_heap.bufferSlotAllocator)};
 		mtx_unlock(&resource_heap.bufferSlotMutex);
 
 		return slot;
+	}
+
+	auto resource_descriptor_heap_alloc_buffer_slots(GPUContext *p_ctx, ResourceDescriptorHeapHandle p_resource_heap, std::span<uint32> p_out_heap_slots) -> void
+	{
+		ResourceDescriptorHeap &resource_heap{p_ctx->resourceHeaps[p_resource_heap]};
+
+		mtx_lock(&resource_heap.bufferSlotMutex);
+		freelist_allocator_alloc_slots(resource_heap.bufferSlotAllocator, p_out_heap_slots);
+		mtx_unlock(&resource_heap.bufferSlotMutex);
 	}
 
 	auto resource_descriptor_heap_alloc_texture_slot(GPUContext *p_ctx, ResourceDescriptorHeapHandle p_resource_heap) -> uint32
@@ -2833,7 +2838,7 @@ namespace toaster::gpu
 		ResourceDescriptorHeap &resource_heap{p_ctx->resourceHeaps[p_resource_heap]};
 
 		mtx_lock(&resource_heap.imageSlotMutex);
-		const uint32 slot{resource_heap.imageSlotAllocator.allocSlot()};
+		const uint32 slot{freelist_allocator_alloc_slot(resource_heap.imageSlotAllocator)};
 		mtx_unlock(&resource_heap.imageSlotMutex);
 
 		return get_texture_base_heap_slot(resource_heap, slot);
@@ -2844,8 +2849,14 @@ namespace toaster::gpu
 		ResourceDescriptorHeap &resource_heap{p_ctx->resourceHeaps[p_resource_heap]};
 
 		mtx_lock(&resource_heap.imageSlotMutex);
+
+		// Allocate the slots
+		freelist_allocator_alloc_slots(resource_heap.imageSlotAllocator, p_out_heap_slots);
+
+		// Convert the slots to be relative to the start of the heap
 		for (uint32 &slot: p_out_heap_slots)
-			slot = get_texture_base_heap_slot(resource_heap, resource_heap.imageSlotAllocator.allocSlot());
+			slot = get_texture_base_heap_slot(resource_heap, slot);
+
 		mtx_unlock(&resource_heap.imageSlotMutex);
 	}
 
@@ -2854,10 +2865,19 @@ namespace toaster::gpu
 		SamplerDescriptorHeap &sampler_heap{p_ctx->samplerHeaps[p_sampler_heap]};
 
 		mtx_lock(&sampler_heap.samplerSlotMutex);
-		const uint32 slot{sampler_heap.samplerSlotAllocator.allocSlot()};
+		const uint32 slot{freelist_allocator_alloc_slot(sampler_heap.samplerSlotAllocator)};
 		mtx_unlock(&sampler_heap.samplerSlotMutex);
 
 		return slot;
+	}
+
+	auto sampler_descriptor_heap_alloc_sampler_slots(GPUContext *p_ctx, SamplerDescriptorHeapHandle p_sampler_heap, std::span<uint32> p_out_heap_slots) -> void
+	{
+		SamplerDescriptorHeap &sampler_heap{p_ctx->samplerHeaps[p_sampler_heap]};
+
+		mtx_lock(&sampler_heap.samplerSlotMutex);
+		freelist_allocator_alloc_slots(sampler_heap.samplerSlotAllocator, p_out_heap_slots);
+		mtx_unlock(&sampler_heap.samplerSlotMutex);
 	}
 
 	auto resource_descriptor_heap_free_buffer_slot(GPUContext *p_ctx, ResourceDescriptorHeapHandle p_resource_heap, uint32 p_heap_slot) -> void
@@ -2865,7 +2885,16 @@ namespace toaster::gpu
 		ResourceDescriptorHeap &resource_heap{p_ctx->resourceHeaps[p_resource_heap]};
 
 		mtx_lock(&resource_heap.bufferSlotMutex);
-		resource_heap.bufferSlotAllocator.freeSlot(p_heap_slot);
+		freelist_allocator_free_slot(resource_heap.bufferSlotAllocator, p_heap_slot);
+		mtx_unlock(&resource_heap.bufferSlotMutex);
+	}
+
+	auto resource_descriptor_heap_free_buffer_slots(GPUContext *p_ctx, ResourceDescriptorHeapHandle p_resource_heap, InitialiserList<const uint32> p_heap_slots) -> void
+	{
+		ResourceDescriptorHeap &resource_heap{p_ctx->resourceHeaps[p_resource_heap]};
+
+		mtx_lock(&resource_heap.bufferSlotMutex);
+		freelist_allocator_free_slots(resource_heap.bufferSlotAllocator, p_heap_slots);
 		mtx_unlock(&resource_heap.bufferSlotMutex);
 	}
 
@@ -2874,7 +2903,7 @@ namespace toaster::gpu
 		ResourceDescriptorHeap &resource_heap{p_ctx->resourceHeaps[p_resource_heap]};
 
 		mtx_lock(&resource_heap.imageSlotMutex);
-		resource_heap.imageSlotAllocator.freeSlot(get_segment_relative_texture_heap_slot(resource_heap, p_heap_slot));
+		freelist_allocator_free_slot(resource_heap.imageSlotAllocator, p_heap_slot);
 		mtx_unlock(&resource_heap.imageSlotMutex);
 	}
 
@@ -2883,8 +2912,10 @@ namespace toaster::gpu
 		ResourceDescriptorHeap &resource_heap{p_ctx->resourceHeaps[p_resource_heap]};
 
 		mtx_lock(&resource_heap.imageSlotMutex);
-		for (const uint32 slot: p_heap_slots)
-			resource_heap.imageSlotAllocator.freeSlot(get_segment_relative_texture_heap_slot(resource_heap, slot));
+		freelist_allocator_free_slots_fn(resource_heap.imageSlotAllocator, p_heap_slots, [&resource_heap](const uint32 p_slot) -> uint32
+		{
+			return get_segment_relative_texture_heap_slot(resource_heap, p_slot);
+		});
 		mtx_unlock(&resource_heap.imageSlotMutex);
 	}
 
@@ -2893,7 +2924,16 @@ namespace toaster::gpu
 		SamplerDescriptorHeap &sampler_heap{p_ctx->samplerHeaps[p_sampler_heap]};
 
 		mtx_lock(&sampler_heap.samplerSlotMutex);
-		sampler_heap.samplerSlotAllocator.freeSlot(p_heap_slot);
+		freelist_allocator_free_slot(sampler_heap.samplerSlotAllocator, p_heap_slot);
+		mtx_unlock(&sampler_heap.samplerSlotMutex);
+	}
+
+	auto sampler_descriptor_heap_free_sampler_slots(GPUContext *p_ctx, SamplerDescriptorHeapHandle p_sampler_heap, InitialiserList<const uint32> p_heap_slots) -> void
+	{
+		SamplerDescriptorHeap &sampler_heap{p_ctx->samplerHeaps[p_sampler_heap]};
+
+		mtx_lock(&sampler_heap.samplerSlotMutex);
+		freelist_allocator_free_slots(sampler_heap.samplerSlotAllocator, p_heap_slots);
 		mtx_unlock(&sampler_heap.samplerSlotMutex);
 	}
 
@@ -2925,6 +2965,48 @@ namespace toaster::gpu
 		resource_info.type               = descriptor_type;
 		resource_info.data.pAddressRange = &device_address_range;
 		vkWriteResourceDescriptorsEXT(p_ctx->logicalDevice, 1u, &resource_info, &host_range);
+	}
+
+	auto resource_descriptor_heap_write_buffers(GPUContext *p_ctx, ResourceDescriptorHeapHandle p_resource_heap, InitialiserList<const uint32> p_heap_slots,
+												InitialiserList<const BufferHandle> p_buffers) -> void
+	{
+		ResourceDescriptorHeap &resource_heap{p_ctx->resourceHeaps[p_resource_heap]};
+		TST_ASSERT(p_heap_slots.size() == p_buffers.size());
+
+		const uint32 buffer_count{p_heap_slots.size()};
+
+		Vector<VkHostAddressRangeEXT>       host_ranges(buffer_count);
+		Vector<VkDeviceAddressRangeKHR>     device_address_ranges(buffer_count);
+		Vector<VkResourceDescriptorInfoEXT> resource_infos(buffer_count);
+
+		p_ctx->buffers.for_each(p_buffers, [&](const Buffer &p_buffer, uint32 p_index) -> void
+		{
+			VkDeviceAddressRangeKHR &device_address_range{device_address_ranges[p_index]};
+			device_address_range = VkDeviceAddressRangeKHR{p_buffer.address, p_buffer.size};
+
+			VkHostAddressRangeEXT &host_range{host_ranges[p_index]};
+			host_range.address = reinterpret_cast<void *>(reinterpret_cast<uint64>(resource_heap.mappedHeapMemory) + static_cast<uint64>(p_heap_slots[p_index]) *
+														  resource_heap.bufferDescriptorSize);
+			host_range.size = resource_heap.bufferDescriptorSize;
+
+			VkDescriptorType descriptor_type{}; // I won't allow a buffer that is both uniform and storage
+			if (p_buffer.usageFlags & EBufferUsageFlagBits::eUniformBuffer)
+				descriptor_type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			else if (p_buffer.usageFlags & EBufferUsageFlagBits::eStorageBuffer)
+				descriptor_type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+			else
+			{
+				TST_PERMA_ASSERT_MSG(false, "What type of buffer is ts?!");
+			}
+
+			VkResourceDescriptorInfoEXT &resource_info{resource_infos[p_index]};
+			resource_info.sType              = STYPE(RESOURCE_DESCRIPTOR_INFO_EXT);
+			resource_info.pNext              = nullptr;
+			resource_info.type               = descriptor_type;
+			resource_info.data.pAddressRange = &device_address_range;
+		});
+
+		vkWriteResourceDescriptorsEXT(p_ctx->logicalDevice, buffer_count, resource_infos.data(), host_ranges.data());
 	}
 
 	auto resource_descriptor_heap_write_texture(GPUContext *p_ctx, ResourceDescriptorHeapHandle p_resource_heap, uint32 p_heap_slot, TextureHandle p_texture,
@@ -2986,7 +3068,7 @@ namespace toaster::gpu
 												 InitialiserList<const uint32> p_mip_levels) -> void
 	{
 		ResourceDescriptorHeap &resource_heap{p_ctx->resourceHeaps[p_resource_heap]};
-		TST_ASSERT(p_heap_slots.size() == p_textures.size() == p_storage.size() == p_mip_levels.size());
+		TST_ASSERT((p_heap_slots.size() == p_textures.size()) && (p_storage.size() == p_mip_levels.size()));
 
 		const uint32 texture_count{p_heap_slots.size()};
 
@@ -2995,20 +3077,19 @@ namespace toaster::gpu
 		Vector<VkImageDescriptorInfoEXT>    image_infos(texture_count);
 		Vector<VkResourceDescriptorInfoEXT> resource_infos(texture_count);
 
-		for (uint32 i{0u}; i < texture_count; ++i)
+		p_ctx->textures.for_each(p_textures, [&](const Texture &p_texture, uint32 p_index) -> void
 		{
-			const Texture &    texture{p_ctx->textures[p_textures[i]]};
-			const TextureDesc &desc{texture.desc};
+			const TextureDesc &desc{p_texture.desc};
 
 			const VkImageViewType image_view_type{get_vk_image_view_type(desc.type)};
 			const VkFormat        image_format{get_vk_format(desc.format)};
 
-			const uint32 mip_level{p_mip_levels[i]};
+			const uint32 mip_level{p_mip_levels[p_index]};
 
-			VkImageViewCreateInfo &image_view_create_info{image_view_create_infos[i]};
+			VkImageViewCreateInfo &image_view_create_info{image_view_create_infos[p_index]};
 			image_view_create_info.sType      = STYPE(IMAGE_VIEW_CREATE_INFO);
 			image_view_create_info.pNext      = nullptr;
-			image_view_create_info.image      = texture.image;
+			image_view_create_info.image      = p_texture.image;
 			image_view_create_info.viewType   = image_view_type;
 			image_view_create_info.format     = image_format;
 			image_view_create_info.components = VkComponentMapping{
@@ -3024,28 +3105,28 @@ namespace toaster::gpu
 			subresource_range.baseArrayLayer = 0u;
 			subresource_range.layerCount     = desc.layerCount;
 
-			const uint32 real_heap_slot{get_segment_relative_texture_heap_slot(resource_heap, p_heap_slots[i])};
+			const uint32 real_heap_slot{get_segment_relative_texture_heap_slot(resource_heap, p_heap_slots[p_index])};
 
-			VkHostAddressRangeEXT &host_range{host_ranges[i]};
+			VkHostAddressRangeEXT &host_range{host_ranges[p_index]};
 			host_range.address = reinterpret_cast<void *>(reinterpret_cast<uint64>(resource_heap.mappedHeapMemory) + resource_heap.imageSegmentOffset + static_cast<
 															  uint64>(real_heap_slot) * resource_heap.imageDescriptorSize);
 			host_range.size = resource_heap.imageDescriptorSize;
 
-			VkImageDescriptorInfoEXT &image_info{image_infos[i]};
+			VkImageDescriptorInfoEXT &image_info{image_infos[p_index]};
 			image_info.sType  = STYPE(IMAGE_DESCRIPTOR_INFO_EXT);
 			image_info.pNext  = nullptr;
 			image_info.pView  = &image_view_create_info;
 			image_info.layout = VK_IMAGE_LAYOUT_GENERAL;
 
-			const bool             is_storage{p_storage[i]};
+			const bool             is_storage{p_storage[p_index]};
 			const VkDescriptorType descriptor_type{is_storage ? VK_DESCRIPTOR_TYPE_STORAGE_IMAGE : VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE};
 
-			VkResourceDescriptorInfoEXT &resource_info{resource_infos[i]};
+			VkResourceDescriptorInfoEXT &resource_info{resource_infos[p_index]};
 			resource_info.sType       = STYPE(RESOURCE_DESCRIPTOR_INFO_EXT);
 			resource_info.pNext       = nullptr;
 			resource_info.data.pImage = &image_info;
 			resource_info.type        = descriptor_type;
-		}
+		});
 
 		vkWriteResourceDescriptorsEXT(p_ctx->logicalDevice, texture_count, resource_infos.data(), host_ranges.data());
 	}
@@ -3086,6 +3167,52 @@ namespace toaster::gpu
 		vkWriteSamplerDescriptorsEXT(p_ctx->logicalDevice, 1u, &sampler_create_info, &host_range);
 	}
 
+	auto sampler_descriptor_heap_write_samplers(GPUContext *p_ctx, SamplerDescriptorHeapHandle p_sampler_heap, InitialiserList<const uint32> p_heap_slots,
+												InitialiserList<const SamplerDesc> p_sampler_descs) -> void
+	{
+		SamplerDescriptorHeap &sampler_heap{p_ctx->samplerHeaps[p_sampler_heap]};
+		TST_ASSERT(p_heap_slots.size() == p_sampler_descs.size());
+
+		const uint32 sampler_count{p_heap_slots.size()};
+
+		Vector<VkSamplerCreateInfo>   sampler_create_infos(sampler_count);
+		Vector<VkHostAddressRangeEXT> host_ranges(sampler_count);
+		for (uint32 i{0u}; i < sampler_count; ++i)
+		{
+			VkSamplerCreateInfo &sampler_create_info{sampler_create_infos[i]};
+			const SamplerDesc &  sampler_desc{p_sampler_descs[i]};
+
+			sampler_create_info.sType        = STYPE(SAMPLER_CREATE_INFO);
+			sampler_create_info.pNext        = nullptr;
+			sampler_create_info.minFilter    = sampler_desc.minFilter == EFilter::eLinear ? VK_FILTER_LINEAR : VK_FILTER_NEAREST;
+			sampler_create_info.magFilter    = sampler_desc.magFilter == EFilter::eLinear ? VK_FILTER_LINEAR : VK_FILTER_NEAREST;
+			sampler_create_info.mipmapMode   = sampler_desc.mipmapMode == ESamplerMipmapMode::eLinear ? VK_SAMPLER_MIPMAP_MODE_LINEAR : VK_SAMPLER_MIPMAP_MODE_NEAREST;
+			sampler_create_info.addressModeU = get_vk_address_mode(sampler_desc.addressModeU);
+			sampler_create_info.addressModeV = get_vk_address_mode(sampler_desc.addressModeV);
+			sampler_create_info.addressModeW = get_vk_address_mode(sampler_desc.addressModeW);
+
+			sampler_create_info.mipLodBias       = 0.0f;
+			sampler_create_info.anisotropyEnable = true;
+
+			sampler_create_info.maxAnisotropy = (sampler_desc.maxAnisotropy == -1.0f)
+													? p_ctx->deviceProperties.properties.limits.maxSamplerAnisotropy
+													: sampler_desc.maxAnisotropy;
+			sampler_create_info.compareEnable           = false;
+			sampler_create_info.compareOp               = VK_COMPARE_OP_NEVER;
+			sampler_create_info.minLod                  = sampler_desc.minLod;
+			sampler_create_info.maxLod                  = sampler_desc.maxLod;
+			sampler_create_info.borderColor             = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+			sampler_create_info.unnormalizedCoordinates = false;
+
+			VkHostAddressRangeEXT &host_range{host_ranges[i]};
+			host_range.address = reinterpret_cast<void *>(reinterpret_cast<uint64>(sampler_heap.mappedHeapMemory) + static_cast<uint64>(p_heap_slots[i]) * sampler_heap.
+														  samplerDescriptorSize);
+			host_range.size = sampler_heap.samplerDescriptorSize;
+		}
+
+		vkWriteSamplerDescriptorsEXT(p_ctx->logicalDevice, sampler_count, sampler_create_infos.data(), host_ranges.data());
+	}
+
 	auto buffer_create(GPUContext *p_ctx, const BufferDesc &p_desc) -> BufferHandle
 	{
 		const VkBufferUsageFlags buffer_usage_flags{get_vk_buffer_usage(p_desc.usage)};
@@ -3108,9 +3235,7 @@ namespace toaster::gpu
 			buffer_create_info.pQueueFamilyIndices   = queue_family_indices.data();
 		}
 		else
-		{
 			buffer_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-		}
 
 		VmaAllocationCreateInfo allocation_create_info{};
 		if (p_desc.memoryType == EMemoryType::eHostVisibleCoherent)
@@ -3123,12 +3248,11 @@ namespace toaster::gpu
 			allocation_create_info.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
 		}
 
-		VkBuffer      buffer{nullptr};
-		VmaAllocation allocation{nullptr};
+		VkBuffer      buffer;
+		VmaAllocation allocation;
 
 		VmaAllocationInfo allocation_info{};
-		vmaCreateBuffer(p_ctx->allocator, reinterpret_cast<const VkBufferCreateInfo *>(&buffer_create_info), &allocation_create_info,
-						reinterpret_cast<VkBuffer *>(&buffer), &allocation, &allocation_info);
+		vmaCreateBuffer(p_ctx->allocator, &buffer_create_info, &allocation_create_info, &buffer, &allocation, &allocation_info);
 
 		VkDeviceAddress device_address{nullGpuPtr};
 		if (buffer_usage_flags & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT)
@@ -3143,9 +3267,75 @@ namespace toaster::gpu
 		return p_ctx->buffers.emplace(Buffer{buffer, allocation, p_desc.size, device_address, allocation_info.pMappedData, p_desc.usage});
 	}
 
+	auto buffer_create_n(GPUContext *p_ctx, InitialiserList<const BufferDesc> p_descs, std::span<BufferHandle> p_out_buffers) -> void
+	{
+		TST_ASSERT((p_descs.size() != 1u) ? (p_descs.size() == p_out_buffers.size()) : true);
+
+		VkBufferCreateInfo buffer_create_info{};
+		buffer_create_info.sType = STYPE(BUFFER_CREATE_INFO);
+		buffer_create_info.pNext = nullptr;
+
+		if (p_ctx->hasDedicatedTransferQueue)
+		{
+			// For now, only use the graphics and transfer queue.
+			Array<uint32, 2u> queue_family_indices{
+				p_ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eGraphics)],
+				p_ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eTransfer)]
+			};
+			buffer_create_info.sharingMode           = VK_SHARING_MODE_CONCURRENT;
+			buffer_create_info.queueFamilyIndexCount = queue_family_indices.size();
+			buffer_create_info.pQueueFamilyIndices   = queue_family_indices.data();
+		}
+		else
+			buffer_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+		VmaAllocationCreateInfo allocation_create_info{};
+		p_ctx->buffers.emplace_n_fn(p_out_buffers, [&](uint32 p_index) -> Buffer
+		{
+			const BufferDesc &desc{p_descs.size() == 1u ? p_descs[0u] : p_descs[p_index]};
+
+			const VkBufferUsageFlags buffer_usage_flags{get_vk_buffer_usage(desc.usage)};
+			buffer_create_info.size  = desc.size;
+			buffer_create_info.usage = buffer_usage_flags;
+
+			if (desc.memoryType == EMemoryType::eHostVisibleCoherent)
+			{
+				allocation_create_info.usage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
+				allocation_create_info.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
+			}
+			else
+			{
+				allocation_create_info.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+			}
+
+			VkBuffer      buffer;
+			VmaAllocation allocation;
+
+			VmaAllocationInfo allocation_info{};
+			vmaCreateBuffer(p_ctx->allocator, &buffer_create_info, &allocation_create_info, &buffer, &allocation, &allocation_info);
+
+			VkDeviceAddress device_address{nullGpuPtr};
+			if (buffer_usage_flags & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT)
+			{
+				VkBufferDeviceAddressInfo device_address_info{};
+				device_address_info.sType  = STYPE(BUFFER_DEVICE_ADDRESS_INFO);
+				device_address_info.pNext  = nullptr;
+				device_address_info.buffer = buffer;
+				device_address             = vkGetBufferDeviceAddress(p_ctx->logicalDevice, &device_address_info);
+			}
+
+			return Buffer{buffer, allocation, desc.size, device_address, allocation_info.pMappedData, desc.usage};
+		});
+	}
+
 	auto buffer_destroy(GPUContext *p_ctx, BufferHandle p_buffer) -> void
 	{
 		p_ctx->buffers.destroy(p_buffer);
+	}
+
+	auto buffer_destroy_n(GPUContext *p_ctx, InitialiserList<const BufferHandle> p_buffers) -> void
+	{
+		p_ctx->buffers.destroy_n(p_buffers);
 	}
 
 	auto buffer_write_data(GPUContext *p_ctx, BufferHandle p_buffer, const void *p_data, uint64 p_size, uint64 p_offset) -> void
@@ -3158,15 +3348,34 @@ namespace toaster::gpu
 
 	auto buffer_get_mapped_data(GPUContext *p_ctx, BufferHandle p_buffer) -> void *
 	{
-		Buffer &buffer{p_ctx->buffers[p_buffer]};
-		TST_ASSERT_MSG(buffer.mapped != nullptr, "Buffer is not host visible");
+		const Buffer &buffer{p_ctx->buffers[p_buffer]};
+		TST_ASSERT_MSG(buffer.mapped != nullptr, "Unable to get mapped data from non host-visible buffer");
 		return buffer.mapped;
+	}
+
+	auto buffer_get_mapped_data_n(GPUContext *p_ctx, InitialiserList<const BufferHandle> p_buffers, std::span<void *> p_out_mapped_data) -> void
+	{
+		TST_ASSERT(p_buffers.size() == p_out_mapped_data.size());
+		p_ctx->buffers.for_each(p_buffers, [&p_out_mapped_data](const Buffer &p_buffer, uint32 p_index) -> void
+		{
+			TST_ASSERT_MSG(p_buffer.mapped != nullptr, "Unable to get mapped data from non host-visible buffer");
+			p_out_mapped_data[p_index] = p_buffer.mapped;
+		});
 	}
 
 	auto buffer_get_address(GPUContext *p_ctx, BufferHandle p_buffer) -> DeviceAddress
 	{
-		Buffer &buffer{p_ctx->buffers[p_buffer]};
+		const Buffer &buffer{p_ctx->buffers[p_buffer]};
 		return buffer.address;
+	}
+
+	auto buffer_get_address_n(GPUContext *p_ctx, InitialiserList<const BufferHandle> p_buffers, std::span<DeviceAddress> p_out_device_addresses) -> void
+	{
+		TST_ASSERT(p_buffers.size() == p_out_device_addresses.size());
+		p_ctx->buffers.for_each(p_buffers, [&p_out_device_addresses](const Buffer &p_buffer, uint32 p_index) -> void
+		{
+			p_out_device_addresses[p_index] = p_buffer.address;
+		});
 	}
 
 	auto surface_create(GPUContext *p_ctx, void *p_hwnd) -> SurfaceHandle
@@ -3215,9 +3424,37 @@ namespace toaster::gpu
 		return p_ctx->semaphores.emplace(Semaphore{semaphore});
 	}
 
+	auto semaphore_create_n(GPUContext *p_ctx, InitialiserList<const uint64> p_initial_values, std::span<SemaphoreHandle> p_out_semaphores) -> void
+	{
+		VkSemaphoreTypeCreateInfo timeline_semaphore_create_info{};
+		timeline_semaphore_create_info.sType         = STYPE(SEMAPHORE_TYPE_CREATE_INFO);
+		timeline_semaphore_create_info.pNext         = nullptr;
+		timeline_semaphore_create_info.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
+
+		VkSemaphoreCreateInfo create_info{};
+		create_info.sType = STYPE(SEMAPHORE_CREATE_INFO);
+		create_info.pNext = &timeline_semaphore_create_info;
+
+		p_ctx->semaphores.emplace_n_fn(p_out_semaphores, [p_ctx, &timeline_semaphore_create_info, &create_info, &p_initial_values](uint32 p_index) -> Semaphore
+		{
+			timeline_semaphore_create_info.initialValue = p_initial_values[p_index];
+
+			VkSemaphore semaphore;
+			TST_GPU_VK_CHECK_RESULT_MSG(vkCreateSemaphore(p_ctx->logicalDevice, &create_info, &p_ctx->allocatorCallbacks, &semaphore),
+										"Failed to create timeline semaphore");
+
+			return Semaphore{semaphore};
+		});
+	}
+
 	auto semaphore_destroy(GPUContext *p_ctx, SemaphoreHandle p_semaphore) -> void
 	{
 		p_ctx->semaphores.destroy(p_semaphore);
+	}
+
+	auto semaphore_destroy_n(GPUContext *p_ctx, InitialiserList<const SemaphoreHandle> p_semaphores) -> void
+	{
+		p_ctx->semaphores.destroy_n(p_semaphores);
 	}
 
 	auto semaphore_wait_n(GPUContext *p_ctx, InitialiserList<const SemaphoreHandle> p_semaphores, InitialiserList<const uint64> p_values) -> void
@@ -3225,8 +3462,10 @@ namespace toaster::gpu
 		TST_ASSERT(p_semaphores.size() == p_values.size());
 
 		Vector<VkSemaphore> semaphores(p_semaphores.size());
-		for (uint64 i{0u}; i < p_semaphores.size(); ++i)
-			semaphores[i] = p_ctx->semaphores.try_get(p_semaphores[i])->semaphore;
+		p_ctx->semaphores.for_each(p_semaphores, [&semaphores](const Semaphore &p_semaphore, uint32 p_index) -> void
+		{
+			semaphores[p_index] = p_semaphore.semaphore;
+		});
 
 		VkSemaphoreWaitInfo wait_info{};
 		wait_info.sType          = STYPE(SEMAPHORE_WAIT_INFO);
@@ -3240,16 +3479,24 @@ namespace toaster::gpu
 
 	auto semaphore_get_value(GPUContext *p_ctx, SemaphoreHandle p_semaphore) -> uint64
 	{
-		Semaphore *semaphore{p_ctx->semaphores.try_get(p_semaphore)};
-		TST_ASSERT(semaphore);
+		const Semaphore &semaphore{p_ctx->semaphores[p_semaphore]};
 
 		uint64 value;
-		TST_GPU_VK_CHECK_RESULT_MSG(vkGetSemaphoreCounterValue(p_ctx->logicalDevice, semaphore->semaphore, &value), "Failed to get semaphore counter value");
+		TST_GPU_VK_CHECK_RESULT_MSG(vkGetSemaphoreCounterValue(p_ctx->logicalDevice, semaphore.semaphore, &value), "Failed to get semaphore counter value");
 
 		return value;
 	}
 
-	auto get_num_undefined_textures(GPUContext *p_ctx) -> uint64
+	auto semaphore_get_value_n(GPUContext *p_ctx, InitialiserList<const SemaphoreHandle> p_semaphores, std::span<uint64> p_out_values) -> void
+	{
+		p_ctx->semaphores.for_each(p_semaphores, [p_ctx, &p_out_values](const Semaphore &p_semaphore, uint32 p_index) -> void
+		{
+			TST_GPU_VK_CHECK_RESULT_MSG(vkGetSemaphoreCounterValue(p_ctx->logicalDevice, p_semaphore.semaphore, &p_out_values[p_index]),
+										"Failed to get semaphore counter value");
+		});
+	}
+
+	auto _get_num_undefined_textures(GPUContext *p_ctx) -> uint64
 	{
 		mtx_lock(&p_ctx->undefinedTexturesMutex);
 		const uint64 count{p_ctx->undefinedTextures.size()};
@@ -3266,7 +3513,8 @@ namespace toaster::gpu
 
 	auto texture_create_n(GPUContext *p_ctx, InitialiserList<const TextureDesc> p_descs, std::span<TextureHandle> p_out_textures) -> void
 	{
-		// TODO:
+		texture_register_null_n(p_ctx, p_out_textures);
+		texture_create_into_n(p_ctx, p_descs, p_out_textures);
 	}
 
 	auto texture_destroy(GPUContext *p_ctx, TextureHandle p_texture) -> void
@@ -3278,9 +3526,25 @@ namespace toaster::gpu
 		mtx_unlock(&p_ctx->undefinedTexturesMutex);
 	}
 
+	auto texture_destroy_n(GPUContext *p_ctx, InitialiserList<const TextureHandle> p_textures) -> void
+	{
+		p_ctx->textures.destroy_n(p_textures);
+
+		mtx_lock(&p_ctx->undefinedTexturesMutex);
+		for (const TextureHandle texture: p_textures)
+			std::erase(p_ctx->undefinedTextures, texture);
+		mtx_unlock(&p_ctx->undefinedTexturesMutex);
+	}
+
 	auto texture_register_null(GPUContext *p_ctx) -> TextureHandle
 	{
 		return p_ctx->textures.emplace(Texture{nullptr, nullptr, nullptr, TextureDesc{}, EInternalTextureFlagBits::eNullRegistered});
+	}
+
+	auto texture_register_null_n(GPUContext *p_ctx, std::span<TextureHandle> p_out_textures) -> void
+	{
+		// All of the textures will be the same. Null
+		p_ctx->textures.emplace_n_same(p_out_textures, Texture{nullptr, nullptr, nullptr, TextureDesc{}, EInternalTextureFlagBits::eNullRegistered});
 	}
 
 	auto texture_create_into(GPUContext *p_ctx, TextureHandle p_dst_texture, const TextureDesc &p_desc) -> void
@@ -3323,9 +3587,7 @@ namespace toaster::gpu
 			image_create_info.pQueueFamilyIndices   = queue_family_indices.data();
 		}
 		else
-		{
 			image_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-		}
 
 		VmaAllocationCreateInfo allocation_create_info{};
 		allocation_create_info.usage = VMA_MEMORY_USAGE_AUTO;
@@ -3364,6 +3626,86 @@ namespace toaster::gpu
 		mtx_lock(&p_ctx->undefinedTexturesMutex);
 		p_ctx->undefinedTextures.push_back(p_dst_texture);
 		mtx_unlock(&p_ctx->undefinedTexturesMutex);
+	}
+
+	auto texture_create_into_n(GPUContext *p_ctx, InitialiserList<const TextureDesc> p_descs, std::span<TextureHandle> p_dst_textures) -> void
+	{
+		TST_ASSERT(p_dst_textures.size() == p_descs.size());
+
+		VkImageCreateInfo image_create_info{};
+		image_create_info.sType         = STYPE(IMAGE_CREATE_INFO);
+		image_create_info.pNext         = nullptr;
+		image_create_info.tiling        = VK_IMAGE_TILING_OPTIMAL;
+		image_create_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+		if (p_ctx->hasDedicatedTransferQueue)
+		{
+			// For now, only use the graphics and transfer queue.
+			Array<uint32, 2u> queue_family_indices{
+				p_ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eGraphics)],
+				p_ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eTransfer)]
+			};
+			image_create_info.sharingMode           = VK_SHARING_MODE_CONCURRENT;
+			image_create_info.queueFamilyIndexCount = queue_family_indices.size();
+			image_create_info.pQueueFamilyIndices   = queue_family_indices.data();
+		}
+		else
+			image_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+		VmaAllocationCreateInfo allocation_create_info{};
+		allocation_create_info.usage = VMA_MEMORY_USAGE_AUTO;
+
+		p_ctx->textures.for_each(p_dst_textures, [p_ctx, &p_descs, &image_create_info, &allocation_create_info](Texture &p_texture, uint32 p_index) -> void
+		{
+			const TextureDesc &desc{(p_texture.desc = p_descs[p_index])};
+
+			const VkImageType           image_type{get_vk_image_type(desc.type)};
+			const VkImageViewType       image_view_type{get_vk_image_view_type(desc.type)};
+			const VkImageCreateFlags    image_create_flags{desc.type == ETextureType::eCube ? VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT : 0u};
+			const VkFormat              image_format{get_vk_format(desc.format)};
+			const VkImageUsageFlags     image_usage_flags{get_vk_image_usage(desc.usage)};
+			const VkSampleCountFlagBits sample_count{get_vk_sample_count(desc.sampleCount)};
+
+			image_create_info.flags       = image_create_flags;
+			image_create_info.imageType   = image_type;
+			image_create_info.format      = image_format;
+			image_create_info.extent      = VkExtent3D{desc.extent.x, desc.extent.y, desc.extent.z};
+			image_create_info.mipLevels   = desc.mipCount;
+			image_create_info.arrayLayers = desc.layerCount;
+			image_create_info.samples     = sample_count;
+			image_create_info.usage       = image_usage_flags;
+
+			vmaCreateImage(p_ctx->allocator, &image_create_info, &allocation_create_info, &p_texture.image, &p_texture.allocation, nullptr);
+
+			// If the texture is a render target, it needs an image view
+			if (desc.usage & ETextureUsageFlagBits::eColourAttachment || desc.usage & ETextureUsageFlagBits::eDepthStencilAttachment)
+			{
+				VkImageViewCreateInfo image_view_create_info{};
+				image_view_create_info.sType      = STYPE(IMAGE_VIEW_CREATE_INFO);
+				image_view_create_info.pNext      = nullptr;
+				image_view_create_info.image      = p_texture.image;
+				image_view_create_info.viewType   = image_view_type;
+				image_view_create_info.format     = image_format;
+				image_view_create_info.components = VkComponentMapping{
+					VK_COMPONENT_SWIZZLE_IDENTITY,
+					VK_COMPONENT_SWIZZLE_IDENTITY,
+					VK_COMPONENT_SWIZZLE_IDENTITY,
+					VK_COMPONENT_SWIZZLE_IDENTITY
+				};
+				VkImageSubresourceRange &subresource_range{image_view_create_info.subresourceRange};
+				subresource_range.aspectMask     = get_vk_image_aspect_mask(desc.format);
+				subresource_range.baseMipLevel   = 0u;
+				subresource_range.levelCount     = desc.mipCount;
+				subresource_range.baseArrayLayer = 0u;
+				subresource_range.layerCount     = desc.layerCount;
+
+				TST_GPU_VK_CHECK_RESULT_MSG(vkCreateImageView(p_ctx->logicalDevice, &image_view_create_info, &p_ctx->allocatorCallbacks, &p_texture.imageView),
+											"Failed to create texture's image view");
+			}
+
+			// Remove the null registered flag because the texture is now valid for use
+			p_texture.flags &= ~EInternalTextureFlagBits::eNullRegistered;
+		});
 	}
 
 	auto texture_get_desc(GPUContext *p_ctx, TextureHandle p_texture) -> const TextureDesc &
@@ -3559,7 +3901,18 @@ namespace toaster::gpu
 		swapchain.surface = p_surface;
 		swapchain.extent  = p_initial_extent;
 
-		swapchain.latencySemaphore = semaphore_create(p_ctx, 0ull);
+		VkSemaphoreTypeCreateInfo latency_semaphore_create_info{};
+		latency_semaphore_create_info.sType         = STYPE(SEMAPHORE_TYPE_CREATE_INFO);
+		latency_semaphore_create_info.pNext         = nullptr;
+		latency_semaphore_create_info.initialValue  = 0ull;
+		latency_semaphore_create_info.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
+
+		VkSemaphoreCreateInfo semaphore_create_info{};
+		semaphore_create_info.sType = STYPE(SEMAPHORE_CREATE_INFO);
+		semaphore_create_info.pNext = &latency_semaphore_create_info;
+
+		TST_GPU_VK_CHECK_RESULT_MSG(vkCreateSemaphore(p_ctx->logicalDevice, &semaphore_create_info, &p_ctx->allocatorCallbacks, &swapchain.latencySemaphore),
+									"Failed to create swapchain's latency timeline semaphore");
 
 		swapchain.imageAvailableSemaphores.resize(p_ctx->maxConcurrentSwapchainWorkloads);
 		static constexpr VkSemaphoreCreateInfo c_semaphore_create_info{STYPE(SEMAPHORE_CREATE_INFO), nullptr, 0u};
@@ -3614,17 +3967,23 @@ namespace toaster::gpu
 
 	auto swapchain_wait_for_framerate(GPUContext *p_ctx, SwapchainHandle p_swapchain) -> void
 	{
-		Swapchain &      swapchain{p_ctx->swapchains[p_swapchain]};
-		const Semaphore &latency_semaphore{p_ctx->semaphores[swapchain.latencySemaphore]};
+		Swapchain &swapchain{p_ctx->swapchains[p_swapchain]};
 
 		VkLatencySleepInfoNV sleep_info{};
 		sleep_info.sType           = STYPE(LATENCY_SLEEP_INFO_NV);
 		sleep_info.pNext           = nullptr;
 		sleep_info.value           = swapchain.frameId;
-		sleep_info.signalSemaphore = latency_semaphore.semaphore;
+		sleep_info.signalSemaphore = swapchain.latencySemaphore;
 		TST_GPU_VK_CHECK_RESULT_MSG_DEBUG(vkLatencySleepNV(p_ctx->logicalDevice, swapchain.swapchain, &sleep_info), "Failed to latency sleep!");
 
-		semaphore_wait_n(p_ctx, swapchain.latencySemaphore, swapchain.frameId);
+		VkSemaphoreWaitInfo wait_info{};
+		wait_info.sType          = STYPE(SEMAPHORE_WAIT_INFO);
+		wait_info.pNext          = nullptr;
+		wait_info.semaphoreCount = 1u;
+		wait_info.pSemaphores    = &swapchain.latencySemaphore;
+		wait_info.pValues        = &swapchain.frameId;
+		wait_info.flags          = 0u;
+		TST_GPU_VK_CHECK_RESULT_MSG(vkWaitSemaphores(p_ctx->logicalDevice, &wait_info, INFINITE), "Failed to wait on swapchain latency semaphore");
 	}
 
 	auto swapchain_set_frame_marker(GPUContext *p_ctx, SwapchainHandle p_swapchain, EFrameMarker p_marker) -> void
@@ -3846,8 +4205,53 @@ namespace toaster::gpu
 		return p_ctx->shaders.emplace(Shader{shader, shader_stage, next_stage});
 	}
 
+	auto shader_create_n(GPUContext *p_ctx, std::span<ShaderHandle> p_out_shaders, InitialiserList<const ShaderDesc> p_shader_descs, bool p_link) -> void
+	{
+		TST_ASSERT(p_out_shaders.size() == p_shader_descs.size());
+
+		const uint32 shader_count{p_shader_descs.size()};
+
+		Vector<VkShaderCreateInfoEXT> shader_create_infos(shader_count);
+		Vector<VkShaderEXT>           shaders(shader_count);
+
+		for (uint32 i{0u}; i < shader_count; ++i)
+		{
+			const ShaderDesc &desc{p_shader_descs[i]};
+
+			const VkShaderStageFlagBits shader_stage{get_vk_shader_stage(desc.stage)};
+			const VkShaderStageFlags    next_stage{get_vk_shader_stages(desc.nextStage)};
+
+			VkShaderCreateInfoEXT &shader_create_info{shader_create_infos[i]};
+			shader_create_info.sType = STYPE(SHADER_CREATE_INFO_EXT);
+			shader_create_info.pNext = nullptr;
+			shader_create_info.flags = VK_SHADER_CREATE_DESCRIPTOR_HEAP_BIT_EXT | ((desc.noTaskShader && shader_stage == VK_SHADER_STAGE_MESH_BIT_EXT)
+																					   ? VK_SHADER_CREATE_NO_TASK_SHADER_BIT_EXT
+																					   : 0u);
+			shader_create_info.flags     |= (p_link ? VK_SHADER_CREATE_LINK_STAGE_BIT_EXT : 0u); // If linking, all shaders must use the flag
+			shader_create_info.stage     = shader_stage;
+			shader_create_info.nextStage = next_stage;
+			shader_create_info.codeType  = VK_SHADER_CODE_TYPE_SPIRV_EXT;
+			shader_create_info.codeSize  = desc.codeSizeWords * sizeof(uint32);
+			shader_create_info.pCode     = desc.code;
+			shader_create_info.pName     = desc.entryPointName;
+		}
+
+		TST_GPU_VK_CHECK_RESULT_MSG(vkCreateShadersEXT(p_ctx->logicalDevice, shader_count, shader_create_infos.data(), &p_ctx->allocatorCallbacks, shaders.data()),
+									"Failed to create shaders");
+
+		p_ctx->shaders.emplace_n_fn(p_out_shaders, [&shaders, &shader_create_infos](uint32 p_index) -> Shader
+		{
+			return Shader{shaders[p_index], shader_create_infos[p_index].stage, shader_create_infos[p_index].nextStage};
+		});
+	}
+
 	auto shader_destroy(GPUContext *p_ctx, ShaderHandle p_shader) -> void
 	{
 		p_ctx->shaders.destroy(p_shader);
+	}
+
+	auto shader_destroy_n(GPUContext *p_ctx, InitialiserList<const ShaderHandle> p_shaders) -> void
+	{
+		p_ctx->shaders.destroy_n(p_shaders);
 	}
 }

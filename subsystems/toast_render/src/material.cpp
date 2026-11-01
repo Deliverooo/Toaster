@@ -45,7 +45,7 @@ namespace toaster::rnd
 		mtx_t textureUploadMtx;
 	};
 
-	auto material_mngr_create(RenderContext *p_render_ctx, uint32 p_max_materials) -> MaterialManager *
+	auto material_mngr_create(RenderContext *p_render_ctx, uint16 p_max_gpu_materials) -> MaterialManager *
 	{
 		const auto mngr{new MaterialManager{}};
 
@@ -58,39 +58,19 @@ namespace toaster::rnd
 		gpu::UploadContext *upload_ctx{p_render_ctx->uploadCtx};
 
 		gpu::BufferDesc material_buffer_desc{};
-		material_buffer_desc.size       = sizeof(MaterialParams) * p_max_materials;
+		material_buffer_desc.size       = sizeof(MaterialParams) * static_cast<uint64>(p_max_gpu_materials);
 		material_buffer_desc.usage      = gpu::EBufferUsageFlagBits::eStorageBuffer;
 		material_buffer_desc.memoryType = gpu::EMemoryType::eHostVisibleCoherent;
 
 		mngr->materialSSBOs.resize(p_render_ctx->maxFramesInFlight);
 		mngr->bdas.resize(p_render_ctx->maxFramesInFlight);
-		for (uint32 i{0u}; i < p_render_ctx->maxFramesInFlight; ++i)
-		{
-			mngr->materialSSBOs[i] = gpu::buffer_create(gpu_ctx, material_buffer_desc);
-			mngr->bdas[i]          = gpu::buffer_get_address(gpu_ctx, mngr->materialSSBOs[i]);
-		}
+		gpu::buffer_create_n(gpu_ctx, material_buffer_desc, mngr->materialSSBOs);
+		gpu::buffer_get_address_n(gpu_ctx, mngr->materialSSBOs, mngr->bdas);
 
 		mngr->dirtyMaterials.resize(p_render_ctx->maxFramesInFlight);
 
 		// Helps by batching default uploads into one state to be tracked and waited on
 		const gpu::StateTrackerHandle default_resource_state_tracker{gpu::state_tracker_register(p_render_ctx->uploadCtx, 4u)};
-
-		gpu::TextureDesc default_texture_desc{};
-		default_texture_desc.extent      = {1u, 1u, 1u};
-		default_texture_desc.mipCount    = 1u;
-		default_texture_desc.layerCount  = 1u;
-		default_texture_desc.type        = gpu::ETextureType::e2D;
-		default_texture_desc.sampleCount = gpu::ESampleCount::e1;
-		default_texture_desc.usage       = gpu::ETextureUsageFlagBits::eTransferDst | gpu::ETextureUsageFlagBits::eSampled;
-
-		gpu::BufferTextureCopyRegion copy_region{};
-		copy_region.bufferOffset       = 0ull;
-		copy_region.textureOffset      = {0, 0, 0};
-		copy_region.textureExtent      = {0u, 0u, 0u};
-		copy_region.textureSubresource = gpu::TextureSubresource{0u, 0u, 1u};
-
-		gpu::TextureUploadDesc upload_desc{};
-		upload_desc.uploadRegions = copy_region;
 
 		Array<gpu::EFormat, c_maxMaterialTextures> default_texture_formats{
 			gpu::EFormat::eR8G8B8A8Srgb,
@@ -115,17 +95,36 @@ namespace toaster::rnd
 
 		const gpu::ResourceDescriptorHeapHandle resource_heap{p_render_ctx->resourceHeap};
 
+		Array<gpu::TextureDesc, c_maxMaterialTextures> default_texture_descs;
 		for (uint8 i{0u}; i < c_maxMaterialTextures; ++i)
 		{
-			default_texture_desc.format = default_texture_formats[i];
+			gpu::TextureDesc &default_texture_desc{default_texture_descs[i]};
+			default_texture_desc.extent      = {1u, 1u, 1u};
+			default_texture_desc.mipCount    = 1u;
+			default_texture_desc.layerCount  = 1u;
+			default_texture_desc.type        = gpu::ETextureType::e2D;
+			default_texture_desc.sampleCount = gpu::ESampleCount::e1;
+			default_texture_desc.usage       = gpu::ETextureUsageFlagBits::eTransferDst | gpu::ETextureUsageFlagBits::eSampled;
+			default_texture_desc.format      = default_texture_formats[i];
+		}
 
-			const gpu::TextureHandle texture{gpu::texture_create(gpu_ctx, default_texture_desc)};
-			mngr->defaultTextures[i] = texture;
+		gpu::texture_create_n(gpu_ctx, default_texture_descs, mngr->defaultTextures);
 
-			upload_desc.data = default_texture_upload_datas[i];
-			upload_desc.size = static_cast<uint64>(default_texture_upload_sizes[i]);
+		gpu::BufferTextureCopyRegion copy_region{};
+		copy_region.bufferOffset       = 0ull;
+		copy_region.textureOffset      = {0, 0, 0};
+		copy_region.textureExtent      = {0u, 0u, 0u};
+		copy_region.textureSubresource = gpu::TextureSubresource{0u, 0u, 1u};
 
-			gpu::upload_data_to_texture(upload_ctx, texture, upload_desc, default_resource_state_tracker);
+		Array<gpu::TextureUploadDesc, c_maxMaterialTextures> upload_descs;
+		for (uint8 i{0u}; i < c_maxMaterialTextures; ++i)
+		{
+			gpu::TextureUploadDesc &upload_desc{upload_descs[i]};
+			upload_desc.data          = default_texture_upload_datas[i];
+			upload_desc.size          = static_cast<uint64>(default_texture_upload_sizes[i]);
+			upload_desc.uploadRegions = copy_region;
+
+			gpu::upload_data_to_texture(upload_ctx, mngr->defaultTextures[i], upload_desc, default_resource_state_tracker);
 		}
 
 		gpu::resource_descriptor_heap_alloc_texture_slots(gpu_ctx, resource_heap, mngr->defaultTextureHeapSlots);
@@ -143,19 +142,17 @@ namespace toaster::rnd
 
 	auto material_mngr_destroy(MaterialManager *p_mngr) -> void
 	{
-		RenderContext *                         render_ctx{p_mngr->rndCtx};
+		const RenderContext *                   render_ctx{p_mngr->rndCtx};
 		gpu::GPUContext *                       gpu_ctx{render_ctx->gpuCtx};
 		gpu::FrameContext *                     frame_ctx{render_ctx->frameCtx};
 		const gpu::ResourceDescriptorHeapHandle resource_heap{render_ctx->resourceHeap};
 
-		for (const auto ssbo: p_mngr->materialSSBOs)
-			gpu::defer_buffer_deletion(frame_ctx, ssbo);
-
+		gpu::defer_buffer_deletion_n(frame_ctx, p_mngr->materialSSBOs);
 		p_mngr->materials.clear();
 
 		gpu::resource_descriptor_heap_free_texture_slots(gpu_ctx, resource_heap, p_mngr->defaultTextureHeapSlots);
 
-		// gpu::texture_(gpu_ctx, p_mngr->defaultTextures);
+		gpu::texture_destroy_n(gpu_ctx, p_mngr->defaultTextures);
 
 		mtx_destroy(&p_mngr->textureUploadMtx);
 		mtx_destroy(&p_mngr->dirtyMaterialMtx);

@@ -18,5 +18,5 @@ namespace toaster::rnd
 
 	auto TST_RENDER_API TST_MATH_CALLCONV transform_create(TransformManager *p_mngr, math::FMatrix p_matrix = XMMatrixIdentity()) -> TransformID;
 	auto TST_RENDER_API                   transform_destroy(TransformManager *p_mngr, TransformID p_transform) -> void;
-	auto TST_RENDER_API TST_MATH_CALLCONV transform_update(TransformManager *p_mngr, TransformID p_transform, uint32 p_frame_index, math::FMatrix p_matrix) -> void;
+	auto TST_RENDER_API TST_MATH_CALLCONV transform_update(TransformManager *p_mngr, uint32 p_frame_index,  TransformID p_transform,math::FMatrix p_matrix) -> void;
 }

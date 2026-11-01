@@ -29,10 +29,10 @@ namespace toaster::gpu
 
 	auto TST_GPU_API get_graphics_timeline_semaphore_current_value(FrameContext *p_ctx) -> uint64;
 
-	auto TST_GPU_API defer_buffer_deletion(FrameContext *p_ctx, BufferHandle p_buffer) -> void;
-	auto TST_GPU_API defer_texture_deletion(FrameContext *p_ctx, TextureHandle p_texture) -> void;
+	auto TST_GPU_API defer_buffer_deletion_n(FrameContext *p_ctx, InitialiserList<const BufferHandle> p_buffers) -> void;
+	auto TST_GPU_API defer_texture_deletion_n(FrameContext *p_ctx, InitialiserList<const TextureHandle> p_textures) -> void;
 
-	auto TST_GPU_API defer_buffer_heap_slot_freeing(FrameContext *p_ctx, ResourceDescriptorHeapHandle p_resource_heap, uint32 p_buffer_slot) -> void;
-	auto TST_GPU_API defer_texture_heap_slot_freeing(FrameContext *p_ctx, ResourceDescriptorHeapHandle p_resource_heap, uint32 p_texture_slot) -> void;
-	auto TST_GPU_API defer_sampler_Heap_slot_freeing(FrameContext *p_ctx, SamplerDescriptorHeapHandle p_sampler_heap, uint32 p_sampler_slot) -> void;
+	auto TST_GPU_API defer_buffer_heap_slot_freeing_n(FrameContext *p_ctx, ResourceDescriptorHeapHandle p_resource_heap, InitialiserList<const uint32> p_buffer_slots) -> void;
+	auto TST_GPU_API defer_texture_heap_slot_freeing_n(FrameContext *p_ctx, ResourceDescriptorHeapHandle p_resource_heap, InitialiserList<const uint32> p_texture_slots) -> void;
+	auto TST_GPU_API defer_sampler_Heap_slot_freeing_n(FrameContext *p_ctx, SamplerDescriptorHeapHandle p_sampler_heap, InitialiserList<const uint32> p_sampler_slots) -> void;
 }

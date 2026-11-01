@@ -11,7 +11,6 @@
 #include "toast_render/mesh.hpp"
 
 #include <print>
-#include <thread>
 
 #include "toast_render/material.hpp"
 
@@ -49,7 +48,7 @@ TST_OS_WINMAIN()
 
 		rnd::RenderContextDesc &render_ctx_desc{app_desc.renderCtxDesc};
 		render_ctx_desc.maxFramesInFlight = 3u;
-		render_ctx_desc.enableDebugInfo   = true;
+		render_ctx_desc.enableDebugInfo   = false;
 
 		knl::Application application{};
 		knl::application_create(&application, app_desc);
@@ -63,8 +62,10 @@ TST_OS_WINMAIN()
 
 		struct TestLayer
 		{
-			rnd::MeshManager *meshMngr;
-			RenderTexture     testTexture;
+			rnd::MaterialManager *materialMngr;
+			rnd::MeshManager *    meshMngr;
+
+			RenderTexture testTexture;
 
 			gpu::ShaderHandle meshShader;
 			gpu::ShaderHandle pixelShader;
@@ -84,7 +85,8 @@ TST_OS_WINMAIN()
 			gpu::GPUContext *   gpu_ctx{render_ctx->gpuCtx};
 			gpu::UploadContext *upload_ctx{render_ctx->uploadCtx};
 
-			layer->meshMngr = rnd::mesh_mngr_create(render_ctx);
+			layer->materialMngr = rnd::material_mngr_create(render_ctx, 128u);
+			layer->meshMngr     = rnd::mesh_mngr_create(render_ctx);
 
 			gpu::TextureDesc texture_desc{};
 			texture_desc.extent        = {10u, 10u, 1u};
@@ -135,27 +137,31 @@ TST_OS_WINMAIN()
 			gpu::sampler_descriptor_heap_write_sampler(gpu_ctx, render_ctx->samplerHeap, layer->samplerHeapId, sampler_desc);
 
 			{
-				gpu::ShaderDesc mesh_shader_desc{};
+				Array<gpu::ShaderDesc, 2u> shader_descs;
+
+				gpu::ShaderDesc &mesh_shader_desc{shader_descs[0u]};
 				mesh_shader_desc.entryPointName = "main";
 				mesh_shader_desc.code           = c_test_mesh_bytecode;
 				mesh_shader_desc.codeSizeWords  = sizeof(c_test_mesh_bytecode) / sizeof(uint32);
 				mesh_shader_desc.nextStage      = gpu::EShaderStageFlagBits::ePixel;
 				mesh_shader_desc.stage          = gpu::EShaderStageFlagBits::eMesh;
 				mesh_shader_desc.noTaskShader   = true;
-				layer->meshShader               = gpu::shader_create(gpu_ctx, mesh_shader_desc);
-			}
-			{
-				gpu::ShaderDesc pixel_shader_desc{};
+
+				gpu::ShaderDesc &pixel_shader_desc{shader_descs[1u]};
 				pixel_shader_desc.entryPointName = "main";
 				pixel_shader_desc.code           = c_test_frag_bytecode;
 				pixel_shader_desc.codeSizeWords  = sizeof(c_test_frag_bytecode) / sizeof(uint32);
 				pixel_shader_desc.nextStage      = gpu::EShaderStageFlagBits::eNone;
 				pixel_shader_desc.stage          = gpu::EShaderStageFlagBits::ePixel;
 				pixel_shader_desc.noTaskShader   = true;
-				layer->pixelShader               = gpu::shader_create(gpu_ctx, pixel_shader_desc);
+
+				Array<gpu::ShaderHandle, 2u> shaders;
+				gpu::shader_create_n(gpu_ctx, shaders, shader_descs, true);
+				layer->meshShader  = shaders[0u];
+				layer->pixelShader = shaders[1u];
 			}
 
-			rpmalloc_dump_statistics(stdout);
+			// rpmalloc_dump_statistics(stdout);
 		};
 		app_layer.destroyFn = +[](knl::Application *p_app, void *p_layer) mutable -> void
 		{
@@ -174,6 +180,7 @@ TST_OS_WINMAIN()
 			gpu::resource_descriptor_heap_free_texture_slot(gpu_ctx, render_ctx->resourceHeap, layer->testTexture.shaderReadHeapSlot);
 
 			rnd::mesh_mngr_destroy(layer->meshMngr);
+			rnd::material_mngr_destroy(layer->materialMngr);
 		};
 		app_layer.onUpdateFn = +[](knl::Application *p_app, void *p_layer, float32 p_dt) mutable -> void
 		{

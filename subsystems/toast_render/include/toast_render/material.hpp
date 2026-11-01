@@ -68,9 +68,12 @@ namespace toaster::rnd
 
 	struct MaterialManager;
 
+	// 2^14
 	constexpr uint32 c_max_materials{16'384u}; // There is a max of 16,384 materials allowed... This is more than enough. It only takes up (at maximum) ~2.1 Mb of RAM
 
-	auto TST_RENDER_API material_mngr_create(RenderContext *p_render_ctx) -> MaterialManager *;
+	// No, this is not a mistake, p_max_materials is for the max number of materials on the GPU, whereas c_max_materials is the size of the CPU material pool.
+	// Requires p_max_gpu_materials < c_max_materials
+	auto TST_RENDER_API material_mngr_create(RenderContext *p_render_ctx, uint16 p_max_gpu_materials) -> MaterialManager *;
 	auto TST_RENDER_API material_mngr_destroy(MaterialManager *p_mngr) -> void;
 	auto TST_RENDER_API material_mngr_poll_pending_textures(MaterialManager *p_mngr) -> void;
 	auto TST_RENDER_API material_mngr_update_dirty_materials(MaterialManager *p_mngr, uint32 p_frame_index) -> void;

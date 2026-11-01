@@ -6,9 +6,8 @@
 namespace toaster
 {
 	template<typename Type>
-	class Allocator
+	struct Allocator
 	{
-	public:
 		using value_type = Type;
 
 		Allocator() noexcept = default;
@@ -26,7 +25,7 @@ namespace toaster
 			void *ptr{rpmalloc(p_n * sizeof(Type))};
 			if (!ptr)
 			{
-				TST_PERMA_ASSERT_MSG(false, "Failed to allocate pointer");
+				TST_PERMA_ASSERT_MSG(false, "Failed to allocate pointer using standard library allocator");
 				return nullptr;
 			}
 
