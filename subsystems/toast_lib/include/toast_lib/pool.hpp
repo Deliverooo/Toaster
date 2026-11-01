@@ -451,7 +451,7 @@ namespace toaster
 
 		// Faster than manually iterating because there is a page caching setup
 		template<typename TFunc> requires std::is_invocable_r_v<void, TFunc, TData &, uint32>
-		auto for_each(std::span<const HandleType> p_range, TFunc &&p_func) -> void
+		auto for_each(InitialiserList<const HandleType> p_range, TFunc &&p_func) -> void
 		{
 			uint32    last_page_index{UINT32_MAX};
 			PageSlot *last_page{nullptr};
@@ -486,7 +486,7 @@ namespace toaster
 		}
 
 		template<typename TFunc> requires std::is_invocable_r_v<void, TFunc, const TData &, uint32>
-		auto for_each(std::span<const HandleType> p_range, TFunc &&p_func) const -> void
+		auto for_each(InitialiserList<const HandleType> p_range, TFunc &&p_func) const -> void
 		{
 			uint32    last_page_index{UINT32_MAX};
 			PageSlot *last_page{nullptr};
