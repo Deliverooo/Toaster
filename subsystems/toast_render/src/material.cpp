@@ -10,9 +10,20 @@
 #include "toast_gpu/upload.hpp"
 
 #include <algorithm>
+#include <bit>
 
 namespace toaster::rnd
 {
+	enum class EMaterialTextureTypeFlagBits : uint8
+	{
+		eAlbedoMap    = TST_BIT(0u),
+		eNormalMap    = TST_BIT(1u),
+		eRoughnessMap = TST_BIT(2u),
+		eMetalnessMap = TST_BIT(3u)
+	};
+
+	TST_SPECIALISE_FLAGS(EMaterialTextureTypeFlagBits, EMaterialTextureTypeFlags);
+
 	struct MaterialManager
 	{
 		RenderContext *rndCtx{nullptr};
@@ -25,10 +36,10 @@ namespace toaster::rnd
 		Vector<UnorderedSet<MaterialHandle> > dirtyMaterials; // Per frame
 
 		// List of materials which have textures that are not fully uploaded or created
-		UnorderedMap<MaterialHandle, UnorderedSet<EMaterialTextureType> > pendingMaterialTextureUploads;
+		UnorderedMap<MaterialHandle, EMaterialTextureTypeFlags> pendingMaterialTextureUploads;
 
-		Array<gpu::TextureHandle, c_max_material_textures> defaultTextures;
-		Array<uint32, c_max_material_textures>             defaultTextureHeapSlots;
+		Array<gpu::TextureHandle, c_maxMaterialTextures> defaultTextures;
+		Array<uint32, c_maxMaterialTextures>             defaultTextureHeapSlots;
 
 		mtx_t dirtyMaterialMtx;
 		mtx_t textureUploadMtx;
@@ -81,7 +92,7 @@ namespace toaster::rnd
 		gpu::TextureUploadDesc upload_desc{};
 		upload_desc.uploadRegions = copy_region;
 
-		Array<gpu::EFormat, c_max_material_textures> default_texture_formats{
+		Array<gpu::EFormat, c_maxMaterialTextures> default_texture_formats{
 			gpu::EFormat::eR8G8B8A8Srgb,
 			gpu::EFormat::eR8G8B8A8Unorm,
 			gpu::EFormat::eR8Unorm,
@@ -93,9 +104,9 @@ namespace toaster::rnd
 		constexpr uint8  roughness_data{0xFF};
 		constexpr uint8  metalness_data{0x00};
 
-		Array<const void *, c_max_material_textures> default_texture_upload_datas{&colour_data, &normal_data, &roughness_data, &metalness_data};
+		Array<const void *, c_maxMaterialTextures> default_texture_upload_datas{&colour_data, &normal_data, &roughness_data, &metalness_data};
 		// I don't want to mess anything up
-		Array<uint32, c_max_material_textures> default_texture_upload_sizes{
+		Array<uint32, c_maxMaterialTextures> default_texture_upload_sizes{
 			sizeof(decltype(colour_data)),
 			sizeof(decltype(normal_data)),
 			sizeof(decltype(roughness_data)),
@@ -104,7 +115,7 @@ namespace toaster::rnd
 
 		const gpu::ResourceDescriptorHeapHandle resource_heap{p_render_ctx->resourceHeap};
 
-		for (uint8 i{0u}; i < c_max_material_textures; ++i)
+		for (uint8 i{0u}; i < c_maxMaterialTextures; ++i)
 		{
 			default_texture_desc.format = default_texture_formats[i];
 
@@ -119,10 +130,10 @@ namespace toaster::rnd
 
 		gpu::resource_descriptor_heap_alloc_texture_slots(gpu_ctx, resource_heap, mngr->defaultTextureHeapSlots);
 		gpu::resource_descriptor_heap_write_textures(gpu_ctx, resource_heap, mngr->defaultTextureHeapSlots, mngr->defaultTextures, {false, false, false, false}, {
-														 gpu::c_all_mip_levels,
-														 gpu::c_all_mip_levels,
-														 gpu::c_all_mip_levels,
-														 gpu::c_all_mip_levels
+														 gpu::c_allMipLevels,
+														 gpu::c_allMipLevels,
+														 gpu::c_allMipLevels,
+														 gpu::c_allMipLevels
 													 });
 
 		gpu::state_tracker_wait_for(p_render_ctx->uploadCtx, default_resource_state_tracker);
@@ -160,14 +171,16 @@ namespace toaster::rnd
 			return;
 		}
 
-		for (auto &[handle, types]: p_mngr->pendingMaterialTextureUploads)
+		for (auto &[handle, type_mask]: p_mngr->pendingMaterialTextureUploads)
 		{
 			Material &mat{p_mngr->materials[handle]};
 
-			bool need_update{false};
-			for (auto type_it{types.begin()}; type_it != types.end();)
+			bool                      need_update{false};
+			EMaterialTextureTypeFlags mask_copy{type_mask};
+			while (static_cast<uint8>(mask_copy) > 0u)
 			{
-				const uint8 texture_index{TST_UT(*type_it)};
+				const int32 bit_index{std::countr_zero(static_cast<uint8>(mask_copy))};
+				const uint8 texture_index{static_cast<uint8>(bit_index)};
 
 				// If the state tracker was removed, the texture should be considered "ready"
 				const gpu::StateTrackerHandle state_tracker{mat.stateTrackers[texture_index]};
@@ -175,10 +188,11 @@ namespace toaster::rnd
 				{
 					mat.params.heapSlots[texture_index] = mat.shaderReadHeapSlots[texture_index];
 					need_update                         = true;
-					type_it                             = types.erase(type_it);
+					// Remove the bit from the type mask
+					type_mask &= ~static_cast<EMaterialTextureTypeFlagBits>(TST_BIT(bit_index));
 				}
-				else
-					++type_it;
+
+				mask_copy &= (EMaterialTextureTypeFlags) ((uint8) mask_copy - 1u);
 			}
 
 			if (need_update)
@@ -186,7 +200,11 @@ namespace toaster::rnd
 		}
 
 		// Erase all the uploads that are ready
-		std::erase_if(p_mngr->pendingMaterialTextureUploads, [](const auto &pair) -> bool { return pair.second.empty(); });
+		std::erase_if(p_mngr->pendingMaterialTextureUploads, [](const std::pair<MaterialHandle, EMaterialTextureTypeFlags> &p_pair) -> bool
+		{
+			// Returns true if the type flags are set to 0
+			return !p_pair.second;
+		});
 
 		mtx_unlock(&p_mngr->textureUploadMtx);
 	}
@@ -251,16 +269,23 @@ namespace toaster::rnd
 	auto material_destroy(MaterialManager *p_mngr, MaterialHandle p_material) -> void
 	{
 		p_mngr->materials.destroy(p_material);
+		mtx_lock(&p_mngr->textureUploadMtx);
+		// Remove the material from the pending texture uploads tracking map
+		std::erase_if(p_mngr->pendingMaterialTextureUploads, [p_material](const std::pair<MaterialHandle, EMaterialTextureTypeFlags> &p_pair) -> bool
+		{
+			return p_pair.first == p_material;
+		});
+		mtx_unlock(&p_mngr->textureUploadMtx);
 	}
 
-	auto material_get(MaterialManager *p_mngr, MaterialHandle p_material) -> Material *
+	auto material_get(MaterialManager *p_mngr, MaterialHandle p_material) -> Material &
 	{
-		return &p_mngr->materials[p_material];
+		return p_mngr->materials[p_material];
 	}
 
-	auto material_get(const MaterialManager *p_mngr, MaterialHandle p_material) -> const Material *
+	auto material_get(const MaterialManager *p_mngr, MaterialHandle p_material) -> const Material &
 	{
-		return &p_mngr->materials[p_material];;
+		return p_mngr->materials[p_material];;
 	}
 
 	auto material_try_get(MaterialManager *p_mngr, MaterialHandle p_material) -> Material *
@@ -315,7 +340,7 @@ namespace toaster::rnd
 		if (state_tracker && !gpu::state_tracker_is_ready(p_mngr->rndCtx->uploadCtx, state_tracker))
 		{
 			mtx_lock(&p_mngr->textureUploadMtx);
-			p_mngr->pendingMaterialTextureUploads[p_material].insert(p_type);
+			p_mngr->pendingMaterialTextureUploads[p_material] |= static_cast<EMaterialTextureTypeFlagBits>(TST_BIT(TST_UT(p_type)));
 			mtx_unlock(&p_mngr->textureUploadMtx);
 
 			material.params.heapSlots[texture_index] = p_mngr->defaultTextureHeapSlots[texture_index];

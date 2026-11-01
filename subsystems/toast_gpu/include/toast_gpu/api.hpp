@@ -41,6 +41,8 @@ namespace toaster::gpu
 		eMax      = 3u
 	};
 
+	constexpr uint8 c_queueCount{TST_ENUM_VAL(EQueueType::eMax)};
+
 	inline CString to_string(EQueueType p_queue_type)
 	{
 		switch (p_queue_type)
@@ -333,7 +335,7 @@ namespace toaster::gpu
 		ETextureUsageFlags usage{ETextureUsageFlagBits::eNone};
 	};
 
-	constexpr uint32 c_all_mip_levels{UINT32_MAX};
+	constexpr uint32 c_allMipLevels{UINT32_MAX};
 
 	#pragma endregion
 
@@ -689,22 +691,28 @@ namespace toaster::gpu
 	auto TST_GPU_API wait_idle(const GPUContext *p_ctx) -> void;
 	auto TST_GPU_API wait_queue_idle(const GPUContext *p_ctx, EQueueType p_queue_type) -> void;
 
-	#pragma region command list
+	#pragma region command allocator / command list
 
-	// If there is a command list in the free pool, returns that. Else returns a new one
-	[[nodiscard]] auto TST_GPU_API cmd_list_create(GPUContext *p_ctx, EQueueType p_queue_type, bool p_secondary = false) -> CommandListHandle;
-	// The allocated command lists are completely independent of eachother and don't share a pool, this function is just here to make batch creation more efficient.
-	auto TST_GPU_API cmd_list_create_n(GPUContext *p_ctx, std::span<CommandListHandle> p_out_cmd_lists, EQueueType p_queue_type, bool p_secondary = false) -> void;
+	// Command allocators are meant to be per-thread; therefore, they are not internally synchronised.
+	auto TST_GPU_API cmd_allocator_create(GPUContext *p_ctx, EQueueType p_queue_type) -> CommandAllocatorHandle;
+	auto TST_GPU_API cmd_allocator_destroy(GPUContext *p_ctx, CommandAllocatorHandle p_cmd_allocator) -> void;
+
+	// Resets the command list. Check out this image for when it is appropriate to call this: https://docs.vulkan.org/spec/latest/_images/commandbuffer_lifecycle.svg
+	auto TST_GPU_API cmd_allocator_reset(GPUContext *p_ctx, CommandAllocatorHandle p_cmd_allocator) -> void;
+
+	auto TST_GPU_API cmd_list_allocate_n(GPUContext *p_ctx, std::span<CommandListHandle> p_out_cmd_lists, CommandAllocatorHandle p_cmd_allocator,
+										 bool        p_secondary = false) -> void;
+
+	// Don't worry, this doesn't actually 'free' the command list. It just returns it to the allocator's free list, so when cmd_list_create is called, it is able to be returned
+	// instead of having to allocate a new one.
+	auto TST_GPU_API cmd_list_free(GPUContext *p_ctx, CommandAllocatorHandle p_cmd_allocator, CommandListHandle p_cmd_list) -> void;
+
+	// Requires p_cmd_lists to either be all primary or all secondary, dictated by p_secondary
+	auto TST_GPU_API cmd_list_free_n(GPUContext *p_ctx, CommandAllocatorHandle p_cmd_allocator, InitialiserList<const CommandListHandle> p_cmd_lists,
+									 bool        p_secondary) -> void;
 
 	auto TST_GPU_API cmd_list_open(GPUContext *p_ctx, CommandListHandle p_cmd_list, const CommandListInheritanceInfo *p_inheritance_info = nullptr) -> void;
 	auto TST_GPU_API cmd_list_close(GPUContext *p_ctx, CommandListHandle p_cmd_list) -> void;
-
-	// Don't worry, this doesn't actually 'free' the command list. It just returns it to the pool, so when getOrCreateCommandList is called, it is able to be returned
-	// instead of having to allocate a new one.
-	auto TST_GPU_API cmd_list_free(GPUContext *p_ctx, CommandListHandle p_cmd_list) -> void;
-
-	// Resets the command list. Check out this image for when it is appropriate to call this: https://docs.vulkan.org/spec/latest/_images/commandbuffer_lifecycle.svg
-	auto TST_GPU_API cmd_list_reset(GPUContext *p_ctx, CommandListHandle p_cmd_list) -> void; // Secretly resets the command pool because it is ¿better?
 
 	// After submitting a command list, remember to reset it so it can be recycled and used again
 	// Secretly performs a secret operation alongside submission...
@@ -726,7 +734,7 @@ namespace toaster::gpu
 	auto TST_GPU_API cmd_execute_cmd_lists(GPUContext *                             p_ctx, CommandListHandle p_primary_command_list,
 										   InitialiserList<const CommandListHandle> p_secondary_command_lists) -> void;
 
-	// Copy commands
+	// Copy command
 	auto TST_GPU_API cmd_copy_buffer(GPUContext *p_ctx, CommandListHandle  p_cmd_list, BufferHandle p_src_buffer, BufferHandle p_dst_buffer, uint64 p_size,
 									 uint64      p_src_offset = 0u, uint64 p_dst_offset = 0u) -> void;
 
@@ -834,7 +842,7 @@ namespace toaster::gpu
 														   BufferHandle p_buffer) -> void;
 
 	auto TST_GPU_API resource_descriptor_heap_write_texture(GPUContext *p_ctx, ResourceDescriptorHeapHandle p_resource_heap, uint32 p_heap_slot, TextureHandle p_texture,
-															bool        p_storage, uint32                   p_mip = c_all_mip_levels) -> void;
+															bool        p_storage, uint32                   p_mip = c_allMipLevels) -> void;
 
 	// Set p_mip_levels to c_all_mip_levels to access the entire texture's mip levels
 	auto TST_GPU_API resource_descriptor_heap_write_textures(GPUContext *p_ctx, ResourceDescriptorHeapHandle p_resource_heap, InitialiserList<const uint32> p_heap_slots,

@@ -54,10 +54,15 @@ namespace toaster::knl
 
 	auto application_run(Application *p_app, uint32 p_target_fps) -> void
 	{
-		gpu::GPUContext* gpu_ctx{p_app->renderCtx.gpuCtx};
+		gpu::GPUContext *gpu_ctx{p_app->renderCtx.gpuCtx};
 
-		Vector<gpu::CommandListHandle> command_lists(p_app->maxFramesInFlight);
-		gpu::cmd_list_create_n(gpu_ctx, command_lists, gpu::EQueueType::eGraphics, false);
+		Vector<gpu::CommandAllocatorHandle> command_allocators(p_app->maxFramesInFlight);
+		Vector<gpu::CommandListHandle>      command_lists(p_app->maxFramesInFlight);
+		for (uint32 i{0u}; i < p_app->maxFramesInFlight; ++i)
+		{
+			command_allocators[i] = gpu::cmd_allocator_create(gpu_ctx, gpu::EQueueType::eGraphics);
+			gpu::cmd_list_allocate_n(gpu_ctx, std::span<gpu::CommandListHandle>{&command_lists[i], 1ull}, command_allocators[i]);
+		}
 
 		auto last_time{std::chrono::steady_clock::now()};
 		gpu::swapchain_set_max_framerate(gpu_ctx, p_app->window.swapchain, p_target_fps);
@@ -80,12 +85,12 @@ namespace toaster::knl
 			last_time        = current_time;
 
 			gpu::CommandListHandle &cmd{command_lists[p_app->frameIndex]};
-			gpu::cmd_list_reset(gpu_ctx, cmd);
+			gpu::cmd_allocator_reset(gpu_ctx, command_allocators[p_app->frameIndex]);
 			gpu::cmd_list_open(gpu_ctx, cmd);
 
 			if (!window_begin_frame(&p_app->window, cmd)) // Attempts to acquire the image
 			{
-				gpu::cmd_list_reset(gpu_ctx, cmd);
+				gpu::cmd_allocator_reset(gpu_ctx, command_allocators[p_app->frameIndex]);
 				continue;
 			}
 
@@ -113,8 +118,9 @@ namespace toaster::knl
 			p_app->frameIndex = (p_app->frameIndex + 1u) % p_app->maxFramesInFlight;
 		}
 
-		for (auto &cmd: command_lists)
-			gpu::cmd_list_free(gpu_ctx, cmd);
+		gpu::wait_queue_idle(gpu_ctx, gpu::EQueueType::eGraphics); // Wait for the commands lists to finish before destroying the allocators
+		for (auto &alloc: command_allocators)
+			gpu::cmd_allocator_destroy(gpu_ctx, alloc);
 	}
 
 	auto application_close(Application *p_app) -> void

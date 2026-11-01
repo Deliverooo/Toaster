@@ -16,7 +16,7 @@ namespace toaster::rnd
 		// Total initial page size of 576 Mib. Unless you are loading the entire planet, pages won't really be added during runtime.
 		// For scale, the Sponza only uses ~60 Mib for its vertex data.
 		static constexpr uint64 vertexPageSize{256u * 1024u * 1024u};          // 256 Mib
-		static constexpr uint64 meshletPageSize{64u * 1024u * 1024u};          // 64 Mib.
+		static constexpr uint64 meshletPageSize{64u * 1024u * 1024u};          // 64 Mib
 		static constexpr uint64 meshletVertexPageSize{128u * 1024u * 1024u};   // 128 Mib
 		static constexpr uint64 meshletTrianglePageSize{128u * 1024u * 1024u}; // 128 Mib
 

@@ -9,13 +9,13 @@ namespace toaster::gpu
 
 	struct GPUContext;
 
+	TST_DECLARE_HANDLE(CommandAllocator);
 	TST_DECLARE_HANDLE(CommandList);
 	TST_DECLARE_HANDLE(ResourceDescriptorHeap);
 	TST_DECLARE_HANDLE(SamplerDescriptorHeap);
 	TST_DECLARE_HANDLE(Semaphore);
 	TST_DECLARE_HANDLE(Buffer);
 	TST_DECLARE_HANDLE(Texture);
-	TST_DECLARE_HANDLE(Sampler);
 	TST_DECLARE_HANDLE(Surface);
 	TST_DECLARE_HANDLE(Swapchain);
 	TST_DECLARE_HANDLE(Shader);

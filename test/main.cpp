@@ -49,7 +49,7 @@ TST_OS_WINMAIN()
 
 		rnd::RenderContextDesc &render_ctx_desc{app_desc.renderCtxDesc};
 		render_ctx_desc.maxFramesInFlight = 3u;
-		render_ctx_desc.enableDebugInfo   = false;
+		render_ctx_desc.enableDebugInfo   = true;
 
 		knl::Application application{};
 		knl::application_create(&application, app_desc);

@@ -49,7 +49,7 @@ namespace toaster
 		auto front() const noexcept -> const Type & { return *m_ptr; }
 		auto back() const noexcept -> const Type & { return *(m_ptr + m_count - 1); }
 
-		auto empty() const -> bool { return !m_count; }
+		auto is_empty() const -> bool { return !m_count; }
 		auto size() const -> uint32 { return m_count; }
 		auto data() const -> const Type * { return m_ptr; }
 

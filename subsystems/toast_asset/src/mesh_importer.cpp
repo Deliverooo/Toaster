@@ -5,8 +5,6 @@
 #include <fastgltf/core.hpp>
 #include <fastgltf/types.hpp>
 
-#include "../../../cmake-build-release-visual-studio/_deps/fastgltf-src/include/fastgltf/tools.hpp"
-
 namespace toaster::ast
 {
 	auto generate_geometry_data(const RawSubmeshData &p_submesh_data, Vector<rnd::StaticMeshVertex> &p_out_vertices, Vector<rnd::Meshlet> &p_out_meshlets,
@@ -56,7 +54,7 @@ namespace toaster::ast
 		local_meshlet_vertices.resize(meshlet_vertex_count);
 		local_meshlet_triangles.resize(meshlet_triangle_count);
 
-		uint32 global_vertex_offset{static_cast<uint32>(p_out_vertices.size())};
+		const uint32 global_vertex_offset{static_cast<uint32>(p_out_vertices.size())};
 		p_out_vertices.insert(p_out_vertices.end(), optimised_vertices.begin(), optimised_vertices.end());
 
 		uint64 global_meshlet_offset{p_out_meshlets.size()};

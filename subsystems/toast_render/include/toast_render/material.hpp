@@ -28,15 +28,15 @@ namespace toaster::rnd
 		eMax          = 4u
 	};
 
-	constexpr uint8 c_max_material_textures{TST_ENUM_VAL(EMaterialTextureType::eMax)};
+	constexpr uint8 c_maxMaterialTextures{TST_ENUM_VAL(EMaterialTextureType::eMax)};
 
 	struct TST_RENDER_API MaterialParams
 	{
-		math::Float4                           albedoColour{1.0f, 1.0f, 1.0f, 1.0f};
-		Array<uint32, c_max_material_textures> heapSlots;
-		float32                                roughness{0.0f};
-		float32                                metalness{0.0f};
-		EMaterialFlags                         flags{
+		math::Float4                         albedoColour{1.0f, 1.0f, 1.0f, 1.0f};
+		Array<uint32, c_maxMaterialTextures> heapSlots;
+		float32                              roughness{0.0f};
+		float32                              metalness{0.0f};
+		EMaterialFlags                       flags{
 			EMaterialFlagBits::eBackfaceCulling | EMaterialFlagBits::eNoNormalMap | EMaterialFlagBits::eNoRoughnessMap | EMaterialFlagBits::eNoMetalnessMap
 		};
 	};
@@ -52,10 +52,10 @@ namespace toaster::rnd
 
 	struct TST_RENDER_API Material // Sorry, this is maximising space efficiency (SOA vs AOS)
 	{
-		Array<gpu::TextureHandle, c_max_material_textures>      textures;
-		Array<gpu::StateTrackerHandle, c_max_material_textures> stateTrackers;
-		Array<uint32, c_max_material_textures>                  shaderReadHeapSlots;
-		MaterialParams                                          params; // Raw parameter data
+		Array<gpu::TextureHandle, c_maxMaterialTextures>      textures;
+		Array<gpu::StateTrackerHandle, c_maxMaterialTextures> stateTrackers;
+		Array<uint32, c_maxMaterialTextures>                  shaderReadHeapSlots;
+		MaterialParams                                        params; // Raw parameter data
 
 		// Utility function...
 		[[nodiscard]] auto getTexture(EMaterialTextureType p_type) const -> MaterialTexture
@@ -80,8 +80,8 @@ namespace toaster::rnd
 	auto TST_RENDER_API material_create(MaterialManager *p_mngr) -> MaterialHandle;
 	auto TST_RENDER_API material_destroy(MaterialManager *p_mngr, MaterialHandle p_material) -> void;
 
-	auto TST_RENDER_API material_get(MaterialManager *p_mngr, MaterialHandle p_material) -> Material *;
-	auto TST_RENDER_API material_get(const MaterialManager *p_mngr, MaterialHandle p_material) -> const Material *;
+	auto TST_RENDER_API material_get(MaterialManager *p_mngr, MaterialHandle p_material) -> Material &;
+	auto TST_RENDER_API material_get(const MaterialManager *p_mngr, MaterialHandle p_material) -> const Material &;
 	auto TST_RENDER_API material_try_get(MaterialManager *p_mngr, MaterialHandle p_material) -> Material *;
 	auto TST_RENDER_API material_try_get(const MaterialManager *p_mngr, MaterialHandle p_material) -> const Material *;
 

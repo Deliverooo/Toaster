@@ -20,25 +20,6 @@
 
 namespace toaster::gpu
 {
-	struct QueueFamilyIndices
-	{
-		[[nodiscard]] constexpr auto get(EQueueType p_queue_type) const -> uint32
-		{
-			switch (p_queue_type)
-			{
-				case EQueueType::eGraphics: return graphics;
-				case EQueueType::eCompute: return compute;
-				case EQueueType::eTransfer: return transfer;
-				case EQueueType::eMax: return UINT32_MAX;
-			}
-			return UINT32_MAX;
-		}
-
-		uint32 graphics{UINT32_MAX};
-		uint32 compute{UINT32_MAX};
-		uint32 transfer{UINT32_MAX};
-	};
-
 	struct ResourceDescriptorHeap
 	{
 		mtx_t bufferSlotMutex{};
@@ -77,16 +58,30 @@ namespace toaster::gpu
 		VkDeviceSize samplerDescriptorSize{0u};
 	};
 
+	struct CommandAllocator
+	{
+		VkCommandPool pool{nullptr};
+		// Only track the allocated lists in debug builds because they are only used to verify and set eOpen on command lists
+		#ifndef NDEGUG
+		Vector<CommandListHandle> allocatedPrimaryLists;
+		Vector<CommandListHandle> allocatedSecondaryLists;
+		#endif
+		Vector<CommandListHandle> freePrimaryLists;
+		Vector<CommandListHandle> freeSecondaryLists;
+	};
+
+	enum class EInternalCommandListFlagBits : uint8
+	{
+		// eOpen is only used in debug builds
+		eOpen = TST_BIT(0U), eSecondary = TST_BIT(1u)
+	};
+
+	TST_SPECIALISE_FLAGS(EInternalCommandListFlagBits, EInternalCommandListFlags);
+
 	struct CommandList
 	{
-		VkCommandBuffer cmd{nullptr};
-		VkCommandPool   pool{nullptr};
-
-		EQueueType queueType{EQueueType::eMax};
-
-		bool open{false};
-		bool secondary{false};
-		bool ownsPool{true};
+		VkCommandBuffer           cmd{nullptr};
+		EInternalCommandListFlags flags{0u};
 	};
 
 	struct Semaphore
@@ -166,46 +161,41 @@ namespace toaster::gpu
 
 	struct GPUContext
 	{
-		bool enableDebugInfo{true};
-		bool usingSwapchain{false}; // From the desc
+		VkAllocationCallbacks allocatorCallbacks{}; // Allows me to use rpmalloc for Vulkan host memory allocations
+		VkInstance            vulkanInstance{nullptr};
+		VkPhysicalDevice      physicalDevice{nullptr};
+		VkDevice              logicalDevice{nullptr};
 
-		uint32 maxConcurrentSwapchainWorkloads{3u};
-
-		VkInstance vulkanInstance{nullptr};
-
-		VkPhysicalDevice                            physicalDevice{nullptr};
 		VkPhysicalDeviceProperties2                 deviceProperties;
 		VkPhysicalDeviceDescriptorHeapPropertiesEXT descriptorHeapProperties;
 
-		VkDevice logicalDevice{nullptr};
-
-		QueueFamilyIndices                             queueFamilyIndices{};
-		Array<VkQueue, TST_ENUM_VAL(EQueueType::eMax)> queues;
-		mtx_t                                          queueMutexes[TST_ENUM_VAL(EQueueType::eMax)];
-
 		VmaAllocator allocator{nullptr};
 
-		FixedPool<CommandList, 32u, 32u> commandLists; // 1024
-
-		mtx_t                                                            freeCommandListMutex;
-		Array<Vector<CommandListHandle>, TST_ENUM_VAL(EQueueType::eMax)> freeCommandLists;   // Free command lists per queue type
-		Array<Vector<CommandListHandle>, TST_ENUM_VAL(EQueueType::eMax)> freeSecondaryLists; // Free command lists per queue type
-		Array<VkCommandPool, TST_ENUM_VAL(EQueueType::eMax)>             transientPools;     // Mostly used for allocating command buffers for image layout transitions
-
-		// The page size should be 1 because you will only ever have one of each type of heap
-		FixedPool<ResourceDescriptorHeap, 1u, 2u> resourceHeaps; // 2
-		FixedPool<SamplerDescriptorHeap, 1u, 2u>  samplerHeaps;  // 2
-
-		FixedPool<Texture, 64u, 64u> textures;          // 4096
-		UnorderedSet<TextureHandle>  undefinedTextures; // All the textures that are in the undefined format and are awaiting a layout transition
-		mtx_t                        undefinedTexturesMutex;
+		Array<uint32, c_queueCount>        queueFamilyIndices;
+		Array<VkQueue, c_queueCount>       queues;
+		Array<mtx_t, c_queueCount>         queueMutexes;
+		Array<VkCommandPool, c_queueCount> transientPools; // Used for allocating command buffers for image layout transitions
 
 		// These numbers are chosen completely arbitrarily...
-		FixedPool<Semaphore, 32u, 32u> semaphores; // 1024
-		FixedPool<Buffer, 32u, 32u>    buffers;    // 1024
-		FixedPool<Surface, 16u, 2u>    surfaces;   // 32
-		FixedPool<Swapchain, 1u, 2u>   swapchains; // 2
-		FixedPool<Shader, 32u, 16u>    shaders;    // 512
+		FixedPool<CommandAllocator, 32u, 16u>     commandAllocators; // 512
+		FixedPool<CommandList, 32u, 64u>          commandLists;      // 2048
+		FixedPool<ResourceDescriptorHeap, 1u, 2u> resourceHeaps;     // 2
+		FixedPool<SamplerDescriptorHeap, 1u, 2u>  samplerHeaps;      // 2
+		FixedPool<Semaphore, 32u, 32u>            semaphores;        // 1024
+		FixedPool<Buffer, 32u, 32u>               buffers;           // 1024
+		FixedPool<Texture, 64u, 64u>              textures;          // 4096
+		FixedPool<Surface, 16u, 2u>               surfaces;          // 32
+		FixedPool<Swapchain, 1u, 2u>              swapchains;        // 2
+		FixedPool<Shader, 32u, 16u>               shaders;           // 512
+
+		Vector<TextureHandle> undefinedTextures; // All the textures that are in the undefined format and are awaiting a layout transition
+		mtx_t                 undefinedTexturesMutex;
+
+		uint32 maxConcurrentSwapchainWorkloads{3u};
+
+		bool enableDebugInfo{true};
+		bool usingSwapchain{false}; // From the desc
+		bool hasDedicatedTransferQueue{false};
 	};
 
 	// static APIImpl *p_ctx{nullptr};
@@ -306,14 +296,14 @@ namespace toaster::gpu
 		return supports_all_required_device_extensions;
 	}
 
-	auto select_queue_family_indices(VkPhysicalDevice p_physical_device, bool p_use_present) -> QueueFamilyIndices
+	auto select_queue_family_indices(VkPhysicalDevice p_physical_device, Array<uint32, c_queueCount> &p_out_indices, bool p_use_present) -> void
 	{
 		uint32 queue_family_property_count;
 		vkGetPhysicalDeviceQueueFamilyProperties(p_physical_device, &queue_family_property_count, nullptr);
 		Vector<VkQueueFamilyProperties> queue_family_properties(queue_family_property_count);
 		vkGetPhysicalDeviceQueueFamilyProperties(p_physical_device, &queue_family_property_count, queue_family_properties.data());
 
-		QueueFamilyIndices queue_family_indices{};
+		p_out_indices.fill(UINT32_MAX);
 
 		for (uint32 i{0u}; i < queue_family_property_count; ++i)
 		{
@@ -324,16 +314,14 @@ namespace toaster::gpu
 																								  ? vkGetPhysicalDeviceWin32PresentationSupportKHR(p_physical_device, i)
 																								  : true))
 			{
-				queue_family_indices.graphics = i;
-				queue_family_indices.compute  = i;
+				p_out_indices[TST_ENUM_VAL(EQueueType::eGraphics)] = i;
+				p_out_indices[TST_ENUM_VAL(EQueueType::eCompute)]  = i;
 			}
 
 			// Dedicated transfer queue
 			if (queue_flags & VK_QUEUE_TRANSFER_BIT && !(queue_flags & VK_QUEUE_GRAPHICS_BIT) && !(queue_flags & VK_QUEUE_COMPUTE_BIT))
-				queue_family_indices.transfer = i;
+				p_out_indices[TST_ENUM_VAL(EQueueType::eTransfer)] = i;
 		}
-
-		return queue_family_indices;
 	}
 
 	#define TST_GPU_FLAG_COMBINE(__tst_type, __vk_type) out_flags |= (p_flags & __tst_type) ? __vk_type : 0u
@@ -928,12 +916,67 @@ namespace toaster::gpu
 		ctx->usingSwapchain                  = p_desc.usingSwapchain;
 		ctx->maxConcurrentSwapchainWorkloads = p_desc.maxConcurrentSwapchainWorkloads;
 
-		for (uint32 i{0u}; i < TST_ENUM_VAL(EQueueType::eMax); ++i)
+		for (uint32 i{0u}; i < c_queueCount; ++i)
 			mtx_init(&ctx->queueMutexes[i], mtx_plain);
-		mtx_init(&ctx->freeCommandListMutex, mtx_plain);
 		mtx_init(&ctx->undefinedTexturesMutex, mtx_plain);
 
 		volkInitialize(); // Load vkGetInstanceProcAddress from the dll
+
+		// Vulkan allows you to use your custom allocators when the driver requests host memory
+		#pragma region allocator callbacks
+
+		static PFN_vkAllocationFunction allocate_cb{
+			+[](void *p_user_data, size_t p_size, size_t p_alignment, VkSystemAllocationScope p_allocation_scope) -> void *
+			{
+				(void) p_user_data;
+				(void) p_allocation_scope;
+
+				if (p_alignment < alignof(std::max_align_t))
+					p_alignment = alignof(std::max_align_t);
+
+				return rpaligned_alloc(p_alignment, p_size);
+			}
+		};
+
+		static PFN_vkReallocationFunction reallocate_cb{
+			+[](void *p_user_data, void *p_original, size_t p_size, size_t p_alignment, VkSystemAllocationScope p_allocation_scope) -> void *
+			{
+				(void) p_user_data;
+				(void) p_allocation_scope;
+
+				if (!p_original)
+					return allocate_cb(p_user_data, p_size, p_alignment, p_allocation_scope);
+
+				if (p_size == 0ull)
+				{
+					rpfree(p_original);
+					return nullptr;
+				}
+
+				if (p_alignment < alignof(std::max_align_t))
+					p_alignment = alignof(std::max_align_t);
+
+				return rpaligned_realloc(p_original, p_alignment, p_size, 0ull, 0u);
+			}
+		};
+
+		static PFN_vkFreeFunction free_cb{
+			+[](void *p_user_data, void *p_memory) -> void
+			{
+				(void) p_user_data;
+				if (!p_memory)
+					return;
+
+				rpfree(p_memory);
+			}
+		};
+
+		ctx->allocatorCallbacks.pUserData       = nullptr;
+		ctx->allocatorCallbacks.pfnAllocation   = allocate_cb;
+		ctx->allocatorCallbacks.pfnReallocation = reallocate_cb;
+		ctx->allocatorCallbacks.pfnFree         = free_cb;
+
+		#pragma endregion
 
 		#pragma region instance
 		{
@@ -1047,7 +1090,7 @@ namespace toaster::gpu
 				instance_create_info.pNext               = &debug_messenger_create_info;
 			}
 
-			TST_GPU_VK_CHECK_RESULT_MSG(vkCreateInstance(&instance_create_info, nullptr, &ctx->vulkanInstance), "Failed to create Vulkan instance");
+			TST_GPU_VK_CHECK_RESULT_MSG(vkCreateInstance(&instance_create_info, &ctx->allocatorCallbacks, &ctx->vulkanInstance), "Failed to create Vulkan instance");
 
 			volkLoadInstance(ctx->vulkanInstance); // Load all the instance-level Vulkan functions
 		}
@@ -1096,6 +1139,16 @@ namespace toaster::gpu
 
 			ctx->physicalDevice = *device_it;
 
+			select_queue_family_indices(ctx->physicalDevice, ctx->queueFamilyIndices, p_desc.usingSwapchain);
+
+			if (ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eGraphics)] == UINT32_MAX)
+				TST_PERMA_ASSERT_MSG(false, "Failed to find a graphics queue family");
+
+			ctx->hasDedicatedTransferQueue = (ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eTransfer)] != UINT32_MAX);
+
+			if (!ctx->hasDedicatedTransferQueue) // Graphics queues are guaranteed to support transfer as well
+				ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eTransfer)] = ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eGraphics)];
+
 			ctx->descriptorHeapProperties.sType = STYPE(PHYSICAL_DEVICE_DESCRIPTOR_HEAP_PROPERTIES_EXT);
 			ctx->descriptorHeapProperties.pNext = nullptr;
 			ctx->deviceProperties.sType         = STYPE(PHYSICAL_DEVICE_PROPERTIES_2);
@@ -1107,16 +1160,6 @@ namespace toaster::gpu
 
 		#pragma region logical device
 
-		ctx->queueFamilyIndices = select_queue_family_indices(ctx->physicalDevice, p_desc.usingSwapchain);
-
-		if (ctx->queueFamilyIndices.graphics == UINT32_MAX)
-		{
-			TST_PERMA_ASSERT_MSG(false, "Failed to find a graphics queue family");
-		}
-
-		if (ctx->queueFamilyIndices.transfer == UINT32_MAX) // Graphics queues are guaranteed to support transfer as well
-			ctx->queueFamilyIndices.transfer = ctx->queueFamilyIndices.graphics;
-
 		constexpr float32 default_queue_priority{1.0f};
 
 		Array<VkDeviceQueueCreateInfo, 2u> queue_create_infos;
@@ -1127,9 +1170,9 @@ namespace toaster::gpu
 		graphics_queue_create_info.flags            = 0u;
 		graphics_queue_create_info.queueCount       = 1u;
 		graphics_queue_create_info.pQueuePriorities = &default_queue_priority;
-		graphics_queue_create_info.queueFamilyIndex = ctx->queueFamilyIndices.graphics;
+		graphics_queue_create_info.queueFamilyIndex = ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eGraphics)];
 
-		if (ctx->queueFamilyIndices.transfer != ctx->queueFamilyIndices.graphics)
+		if (ctx->hasDedicatedTransferQueue)
 		{
 			VkDeviceQueueCreateInfo &transfer_queue_create_info{queue_create_infos[1u]};
 			transfer_queue_create_info.sType            = STYPE(DEVICE_QUEUE_CREATE_INFO);
@@ -1137,10 +1180,11 @@ namespace toaster::gpu
 			transfer_queue_create_info.flags            = 0u;
 			transfer_queue_create_info.queueCount       = 1u;
 			transfer_queue_create_info.pQueuePriorities = &default_queue_priority;
-			transfer_queue_create_info.queueFamilyIndex = ctx->queueFamilyIndices.transfer;
+			transfer_queue_create_info.queueFamilyIndex = ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eTransfer)];
 		}
 
-		// This removes the need to transfer queue ownership for buffers. Not optimally tiles images though
+		// This removes the need to transfer queue ownership for buffers and linear images.
+		// For optimally tiled images, the need for queue ownership transfer is GPU-dependent.
 		VkPhysicalDeviceMaintenance9FeaturesKHR maintenance_9_features{};
 		maintenance_9_features.sType        = STYPE(PHYSICAL_DEVICE_MAINTENANCE_9_FEATURES_KHR);
 		maintenance_9_features.pNext        = nullptr;
@@ -1246,29 +1290,29 @@ namespace toaster::gpu
 		logical_device_create_info.ppEnabledExtensionNames = required_device_extensions.data();
 		logical_device_create_info.pNext                   = &features_2;
 
-		VkResult result{vkCreateDevice(ctx->physicalDevice, &logical_device_create_info, nullptr, &ctx->logicalDevice)};
-		TST_PERMA_ASSERT(result == VK_SUCCESS);
-		// TST_GPU_VK_CHECK_RESULT_MSG(vkCreateDevice(ctx->physicalDevice, &logical_device_create_info, nullptr, &ctx->logicalDevice), "Failed to create logical device");
+		TST_GPU_VK_CHECK_RESULT_MSG(vkCreateDevice(ctx->physicalDevice, &logical_device_create_info, &ctx->allocatorCallbacks, &ctx->logicalDevice),
+									"Failed to create logical device");
 
 		// Graphics queue
-		vkGetDeviceQueue(ctx->logicalDevice, ctx->queueFamilyIndices.graphics, 0u, &ctx->queues[TST_ENUM_VAL(EQueueType::eGraphics)]);
+		vkGetDeviceQueue(ctx->logicalDevice, ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eGraphics)], 0u, &ctx->queues[TST_ENUM_VAL(EQueueType::eGraphics)]);
 
 		// Not the compute queue
 		ctx->queues[TST_ENUM_VAL(EQueueType::eCompute)] = nullptr; // TODO: More queues
 
 		// Transfer queue
-		uint32 transfer_queue_index{(ctx->queueFamilyIndices.transfer == ctx->queueFamilyIndices.graphics) ? 1u : 0u};
-		vkGetDeviceQueue(ctx->logicalDevice, ctx->queueFamilyIndices.transfer, transfer_queue_index, &ctx->queues[TST_ENUM_VAL(EQueueType::eTransfer)]);
+		uint32 transfer_queue_index{ctx->hasDedicatedTransferQueue ? 0u : 1u};
+		vkGetDeviceQueue(ctx->logicalDevice, ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eTransfer)], transfer_queue_index,
+						 &ctx->queues[TST_ENUM_VAL(EQueueType::eTransfer)]);
 
-		for (uint32 queue_index{0u}; queue_index < TST_ENUM_VAL(EQueueType::eMax); ++queue_index)
+		VkCommandPoolCreateInfo transient_command_pool_create_info{};
+		transient_command_pool_create_info.sType = STYPE(COMMAND_POOL_CREATE_INFO);
+		transient_command_pool_create_info.pNext = nullptr;
+		transient_command_pool_create_info.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
+		for (uint32 queue_index{0u}; queue_index < c_queueCount; ++queue_index)
 		{
-			VkCommandPoolCreateInfo command_pool_create_info{};
-			command_pool_create_info.sType            = STYPE(COMMAND_POOL_CREATE_INFO);
-			command_pool_create_info.pNext            = nullptr;
-			command_pool_create_info.queueFamilyIndex = ctx->queueFamilyIndices.get(static_cast<EQueueType>(queue_index));
-			command_pool_create_info.flags            = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
-			TST_GPU_VK_CHECK_RESULT_MSG(vkCreateCommandPool(ctx->logicalDevice, &command_pool_create_info, nullptr, &ctx->transientPools[queue_index]),
-										"Failed to create transient command pool");
+			transient_command_pool_create_info.queueFamilyIndex = ctx->queueFamilyIndices[queue_index];
+			TST_GPU_VK_CHECK_RESULT_MSG(vkCreateCommandPool(ctx->logicalDevice, &transient_command_pool_create_info, &ctx->allocatorCallbacks, &ctx->transientPools[
+											queue_index]), "Failed to create transient command pool");
 		}
 
 		volkLoadDevice(ctx->logicalDevice); // Load all the device-level Vulkan functions
@@ -1307,58 +1351,6 @@ namespace toaster::gpu
 		vma_vulkan_functions.vkGetMemoryWin32HandleKHR               = vkGetMemoryWin32HandleKHR;
 		vma_vulkan_functions.vkGetPhysicalDeviceProperties2KHR       = vkGetPhysicalDeviceProperties2KHR;
 
-		static PFN_vkAllocationFunction allocate_cb{
-			+[](void *p_user_data, size_t p_size, size_t p_alignment, VkSystemAllocationScope p_allocation_scope) -> void *
-			{
-				(void) p_user_data;
-				(void) p_allocation_scope;
-
-				if (p_alignment < alignof(std::max_align_t))
-					p_alignment = alignof(std::max_align_t);
-
-				return rpaligned_alloc(p_alignment, p_size);
-			}
-		};
-
-		static PFN_vkReallocationFunction reallocate_cb{
-			+[](void *p_user_data, void *p_original, size_t p_size, size_t p_alignment, VkSystemAllocationScope p_allocation_scope) -> void *
-			{
-				(void) p_user_data;
-				(void) p_allocation_scope;
-
-				if (!p_original)
-					return allocate_cb(p_user_data, p_size, p_alignment, p_allocation_scope);
-
-				if (p_size == 0ull)
-				{
-					rpfree(p_original);
-					return nullptr;
-				}
-
-				if (p_alignment < alignof(std::max_align_t))
-					p_alignment = alignof(std::max_align_t);
-
-				return rpaligned_realloc(p_original, p_alignment, p_size, 0ull, 0u);
-			}
-		};
-
-		static PFN_vkFreeFunction free_cb{
-			+[](void *p_user_data, void *p_memory) -> void
-			{
-				(void) p_user_data;
-				if (!p_memory)
-					return;
-
-				rpfree(p_memory);
-			}
-		};
-
-		VkAllocationCallbacks allocation_callbacks{};
-		allocation_callbacks.pUserData       = nullptr;
-		allocation_callbacks.pfnAllocation   = allocate_cb;
-		allocation_callbacks.pfnReallocation = reallocate_cb;
-		allocation_callbacks.pfnFree         = free_cb;
-
 		VmaAllocatorCreateInfo allocator_create_info{};
 		allocator_create_info.instance             = ctx->vulkanInstance;
 		allocator_create_info.physicalDevice       = ctx->physicalDevice;
@@ -1366,7 +1358,7 @@ namespace toaster::gpu
 		allocator_create_info.vulkanApiVersion     = VK_API_VERSION_1_4;
 		allocator_create_info.flags                = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
 		allocator_create_info.pVulkanFunctions     = &vma_vulkan_functions;
-		allocator_create_info.pAllocationCallbacks = &allocation_callbacks;
+		allocator_create_info.pAllocationCallbacks = &ctx->allocatorCallbacks;
 
 		vmaCreateAllocator(&allocator_create_info, &ctx->allocator);
 
@@ -1374,15 +1366,30 @@ namespace toaster::gpu
 
 		#pragma region destroy callbacks
 
-		ctx->commandLists.setDestructorUserData(ctx);
-		ctx->commandLists.setDestructorFn(+[](CommandList *p_data, void *p_ctx) mutable noexcept -> void
+		ctx->commandAllocators.setDestructorUserData(ctx);
+		ctx->commandAllocators.setDestructorFn(+[](CommandAllocator *p_data, void *p_ctx) mutable noexcept -> void
 		{
 			const auto ctx{static_cast<GPUContext *>(p_ctx)};
 
-			vkDestroyCommandPool(ctx->logicalDevice, p_data->pool, nullptr);
+			#ifndef NDEGUG
+			ctx->commandLists.for_each(p_data->allocatedPrimaryLists, [](const CommandList &p_cmd, uint32) -> void
+			{
+				TST_ASSERT_MSG(!(p_cmd.flags & EInternalCommandListFlagBits::eOpen), "Attempted to destroy command allocator with open command lists");
+			});
+			ctx->commandLists.for_each(p_data->allocatedSecondaryLists, [](const CommandList &p_cmd, uint32) -> void
+			{
+				TST_ASSERT_MSG(!(p_cmd.flags & EInternalCommandListFlagBits::eOpen), "Attempted to destroy command allocator with open command lists");
+			});
+			ctx->commandLists.destroy_n(p_data->allocatedPrimaryLists);
+			ctx->commandLists.destroy_n(p_data->allocatedSecondaryLists);
+
+			#endif
+			ctx->commandLists.destroy_n(p_data->freePrimaryLists);
+			ctx->commandLists.destroy_n(p_data->freeSecondaryLists);
+
+			vkDestroyCommandPool(ctx->logicalDevice, p_data->pool, &ctx->allocatorCallbacks);
 
 			p_data->pool = nullptr;
-			p_data->cmd  = nullptr;
 		});
 
 		ctx->resourceHeaps.setDestructorUserData(ctx);
@@ -1417,7 +1424,7 @@ namespace toaster::gpu
 		{
 			const auto ctx{static_cast<GPUContext *>(p_ctx)};
 
-			vkDestroySemaphore(ctx->logicalDevice, p_data->semaphore, nullptr);
+			vkDestroySemaphore(ctx->logicalDevice, p_data->semaphore, &ctx->allocatorCallbacks);
 
 			p_data->semaphore = nullptr;
 		});
@@ -1441,7 +1448,7 @@ namespace toaster::gpu
 
 			// If the texture has not been created into, these other members will be nullptr anyway
 			if (p_data->imageView)
-				vkDestroyImageView(ctx->logicalDevice, p_data->imageView, nullptr);
+				vkDestroyImageView(ctx->logicalDevice, p_data->imageView, &ctx->allocatorCallbacks);
 
 			if (!(p_data->flags & EInternalTextureFlagBits::eSwapchainImage))
 				vmaDestroyImage(ctx->allocator, p_data->image, p_data->allocation);
@@ -1456,7 +1463,7 @@ namespace toaster::gpu
 		{
 			const auto ctx{static_cast<GPUContext *>(p_ctx)};
 
-			vkDestroySurfaceKHR(ctx->vulkanInstance, p_data->surface, nullptr);
+			vkDestroySurfaceKHR(ctx->vulkanInstance, p_data->surface, &ctx->allocatorCallbacks);
 
 			p_data->surface = nullptr;
 		});
@@ -1466,16 +1473,15 @@ namespace toaster::gpu
 		{
 			const auto ctx{static_cast<GPUContext *>(p_ctx)};
 
-			for (auto &attachment: p_data->attachments)
-				ctx->textures.destroy(attachment);
+			ctx->textures.destroy_n(p_data->attachments);
 
 			for (auto &semaphore: p_data->imageAvailableSemaphores)
-				vkDestroySemaphore(ctx->logicalDevice, semaphore, nullptr);
+				vkDestroySemaphore(ctx->logicalDevice, semaphore, &ctx->allocatorCallbacks);
 
 			for (auto &semaphore: p_data->renderFinishedSemaphores)
-				vkDestroySemaphore(ctx->logicalDevice, semaphore, nullptr);
+				vkDestroySemaphore(ctx->logicalDevice, semaphore, &ctx->allocatorCallbacks);
 
-			vkDestroySwapchainKHR(ctx->logicalDevice, p_data->swapchain, nullptr);
+			vkDestroySwapchainKHR(ctx->logicalDevice, p_data->swapchain, &ctx->allocatorCallbacks);
 
 			semaphore_destroy(ctx, p_data->latencySemaphore);
 
@@ -1490,7 +1496,7 @@ namespace toaster::gpu
 		{
 			const auto ctx{static_cast<GPUContext *>(p_ctx)};
 
-			vkDestroyShaderEXT(ctx->logicalDevice, p_data->shader, nullptr);
+			vkDestroyShaderEXT(ctx->logicalDevice, p_data->shader, &ctx->allocatorCallbacks);
 
 			p_data->shader = nullptr;
 		});
@@ -1514,16 +1520,15 @@ namespace toaster::gpu
 		p_ctx->semaphores.clear();
 		p_ctx->commandLists.clear();
 
-		for (uint32 queue_index{0u}; queue_index < TST_ENUM_VAL(EQueueType::eMax); ++queue_index)
-			vkDestroyCommandPool(p_ctx->logicalDevice, p_ctx->transientPools[queue_index], nullptr);
+		for (uint32 queue_index{0u}; queue_index < c_queueCount; ++queue_index)
+			vkDestroyCommandPool(p_ctx->logicalDevice, p_ctx->transientPools[queue_index], &p_ctx->allocatorCallbacks);
 
 		vmaDestroyAllocator(p_ctx->allocator);
-		vkDestroyDevice(p_ctx->logicalDevice, nullptr);
-		vkDestroyInstance(p_ctx->vulkanInstance, nullptr);
+		vkDestroyDevice(p_ctx->logicalDevice, &p_ctx->allocatorCallbacks);
+		vkDestroyInstance(p_ctx->vulkanInstance, &p_ctx->allocatorCallbacks);
 
-		for (uint32 i{0u}; i < TST_ENUM_VAL(EQueueType::eMax); ++i)
+		for (uint32 i{0u}; i < c_queueCount; ++i)
 			mtx_destroy(&p_ctx->queueMutexes[i]);
-		mtx_destroy(&p_ctx->freeCommandListMutex);
 		mtx_destroy(&p_ctx->undefinedTexturesMutex);
 
 		delete p_ctx;
@@ -1556,11 +1561,239 @@ namespace toaster::gpu
 
 	auto wait_queue_idle(const GPUContext *p_ctx, EQueueType p_queue_type) -> void
 	{
-		const VkQueue queue{p_ctx->queues[static_cast<uint32>(p_queue_type)]};
+		VkQueue queue{p_ctx->queues[static_cast<uint32>(p_queue_type)]};
 		vkQueueWaitIdle(queue);
 	}
 
-	auto get_pending_image_memory_barriers(GPUContext *p_ctx, EQueueType p_queue_type) -> VkCommandBuffer
+	auto cmd_allocator_create(GPUContext *p_ctx, EQueueType p_queue_type) -> CommandAllocatorHandle
+	{
+		VkCommandPoolCreateInfo command_pool_create_info{};
+		command_pool_create_info.sType            = STYPE(COMMAND_POOL_CREATE_INFO);
+		command_pool_create_info.pNext            = nullptr;
+		command_pool_create_info.queueFamilyIndex = p_ctx->queueFamilyIndices[TST_UT(p_queue_type)];
+
+		VkCommandPool command_pool;
+		TST_GPU_VK_CHECK_RESULT_MSG_DEBUG(vkCreateCommandPool(p_ctx->logicalDevice, &command_pool_create_info, &p_ctx->allocatorCallbacks, &command_pool),
+										  "Failed to create command pool");
+
+		return p_ctx->commandAllocators.emplace(CommandAllocator{.pool = command_pool});
+	}
+
+	auto cmd_allocator_destroy(GPUContext *p_ctx, CommandAllocatorHandle p_cmd_allocator) -> void
+	{
+		p_ctx->commandAllocators.destroy(p_cmd_allocator);
+	}
+
+	auto cmd_allocator_reset(GPUContext *p_ctx, CommandAllocatorHandle p_cmd_allocator) -> void
+	{
+		CommandAllocator &cmd_allocator{p_ctx->commandAllocators[p_cmd_allocator]};
+
+		vkResetCommandPool(p_ctx->logicalDevice, cmd_allocator.pool, 0u);
+
+		#ifndef NDEBUG
+		p_ctx->commandLists.for_each(cmd_allocator.allocatedPrimaryLists, [](CommandList &p_list, uint32) -> void
+		{
+			p_list.flags &= ~EInternalCommandListFlagBits::eOpen;
+		});
+		p_ctx->commandLists.for_each(cmd_allocator.allocatedSecondaryLists, [](CommandList &p_list, uint32) -> void
+		{
+			p_list.flags &= ~EInternalCommandListFlagBits::eOpen;
+		});
+		#endif
+	}
+
+	auto cmd_list_allocate_n(GPUContext *p_ctx, std::span<CommandListHandle> p_out_cmd_lists, CommandAllocatorHandle p_cmd_allocator, bool p_secondary) -> void
+	{
+		CommandAllocator &cmd_allocator{p_ctx->commandAllocators[p_cmd_allocator]};
+
+		const uint32 count{static_cast<uint32>(p_out_cmd_lists.size())};
+
+		auto &       free_lists{p_secondary ? cmd_allocator.freeSecondaryLists : cmd_allocator.freePrimaryLists};
+		const uint32 free_list_size{static_cast<uint32>(free_lists.size())};
+		// If there are a number of free command lists greater than or equal to the count, return them
+		if (free_list_size >= count)
+		{
+			for (CommandListHandle &cmd: p_out_cmd_lists)
+			{
+				cmd = free_lists.back();
+				free_lists.pop_back();
+			}
+
+			return;
+		}
+
+		// If the number of free lists is smaller than the required count, drain the free lists and then allocate the remaining ones
+		for (uint32 i{0u}; i < free_list_size; ++i)
+		{
+			p_out_cmd_lists[i] = free_lists.back();
+			free_lists.pop_back();
+		}
+
+		// The number of command lists that still need to be allocated
+		const uint32 remaining_allocation_count{count - free_list_size};
+
+		VkCommandBufferAllocateInfo command_buffer_alloc_info{};
+		command_buffer_alloc_info.sType              = STYPE(COMMAND_BUFFER_ALLOCATE_INFO);
+		command_buffer_alloc_info.pNext              = nullptr;
+		command_buffer_alloc_info.commandBufferCount = remaining_allocation_count;
+		command_buffer_alloc_info.level              = p_secondary ? VK_COMMAND_BUFFER_LEVEL_SECONDARY : VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+		command_buffer_alloc_info.commandPool        = cmd_allocator.pool;
+
+		Vector<VkCommandBuffer> command_buffers(remaining_allocation_count);
+		TST_GPU_VK_CHECK_RESULT_MSG_DEBUG(vkAllocateCommandBuffers(p_ctx->logicalDevice, &command_buffer_alloc_info, command_buffers.data()),
+										  "Failed to allocate command buffers");
+
+		std::span<CommandListHandle> remaining_lists{p_out_cmd_lists.begin() + free_list_size, p_out_cmd_lists.end()};
+		p_ctx->commandLists.emplace_n_fn(remaining_lists, [&command_buffers, p_secondary](uint32 p_index) -> CommandList
+		{
+			return CommandList{command_buffers[p_index], p_secondary ? EInternalCommandListFlagBits::eSecondary : EInternalCommandListFlagBits{0u}};
+		});
+		#ifndef NDEBUG
+		auto &allocated_lists{p_secondary ? cmd_allocator.allocatedSecondaryLists : cmd_allocator.allocatedPrimaryLists};
+		allocated_lists.insert(allocated_lists.end(), remaining_lists.begin(), remaining_lists.end());
+		#endif
+	}
+
+	auto cmd_list_free(GPUContext *p_ctx, CommandAllocatorHandle p_cmd_allocator, CommandListHandle p_cmd_list) -> void
+	{
+		CommandAllocator &cmd_allocator{p_ctx->commandAllocators[p_cmd_allocator]};
+		CommandList &     cmd_list{p_ctx->commandLists[p_cmd_list]};
+
+		TST_ASSERT_MSG(!(cmd_list.flags & EInternalCommandListFlagBits::eOpen), "Cannot free a command list that is open!");
+
+		const bool secondary{cmd_list.flags & EInternalCommandListFlagBits::eSecondary};
+
+		#ifndef NDEBUG
+		// Remove the command list from the allocated lists
+		auto &allocated_lists{secondary ? cmd_allocator.allocatedSecondaryLists : cmd_allocator.allocatedPrimaryLists};
+		std::erase(allocated_lists, p_cmd_list);
+		#endif
+
+		// Add the command list to the free lists
+		auto &free_lists{secondary ? cmd_allocator.freeSecondaryLists : cmd_allocator.freePrimaryLists};
+		free_lists.push_back(p_cmd_list);
+	}
+
+	auto cmd_list_free_n(GPUContext *p_ctx, CommandAllocatorHandle p_cmd_allocator, InitialiserList<const CommandListHandle> p_cmd_lists, bool p_secondary) -> void
+	{
+		CommandAllocator &cmd_allocator{p_ctx->commandAllocators[p_cmd_allocator]};
+
+		#ifndef NDEBUG
+		p_ctx->commandLists.for_each(p_cmd_lists, [](const CommandList &p_cmd, uint32) -> void
+		{
+			TST_ASSERT_MSG(!(p_cmd.flags & EInternalCommandListFlagBits::eOpen), "Cannot free a command list that is open!");
+		});
+		#endif
+
+		#ifndef NDEBUG
+		// Remove the command lists from the allocated lists
+		auto &allocated_lists{p_secondary ? cmd_allocator.allocatedSecondaryLists : cmd_allocator.allocatedPrimaryLists};
+		for (const CommandListHandle cmd: p_cmd_lists)
+			std::erase(allocated_lists, cmd);
+		#endif
+
+		// Add the command lists to the free lists
+		auto &free_lists{p_secondary ? cmd_allocator.freeSecondaryLists : cmd_allocator.freePrimaryLists};
+		free_lists.insert(free_lists.end(), p_cmd_lists.begin(), p_cmd_lists.end());
+	}
+
+	auto cmd_list_open(GPUContext *p_ctx, CommandListHandle p_cmd_list, const CommandListInheritanceInfo *p_inheritance_info) -> void
+	{
+		CommandList &cmd{p_ctx->commandLists[p_cmd_list]};
+
+		#ifndef NDEBUG
+		TST_ASSERT_MSG(!(cmd.flags & EInternalCommandListFlagBits::eOpen), "Command list is already open");
+		cmd.flags |= EInternalCommandListFlagBits::eOpen;
+		#endif
+
+		VkCommandBufferInheritanceDescriptorHeapInfoEXT descriptor_heap_inheritance_info{};
+		descriptor_heap_inheritance_info.sType = STYPE(COMMAND_BUFFER_INHERITANCE_DESCRIPTOR_HEAP_INFO_EXT);
+		descriptor_heap_inheritance_info.pNext = nullptr;
+
+		const bool is_secondary{(cmd.flags & EInternalCommandListFlagBits::eSecondary)};
+
+		if (is_secondary && p_inheritance_info)
+		{
+			const ResourceDescriptorHeap &resource_heap{p_ctx->resourceHeaps[p_inheritance_info->resourceHeap]};
+			const SamplerDescriptorHeap & sampler_heap{p_ctx->samplerHeaps[p_inheritance_info->samplerHeap]};
+
+			descriptor_heap_inheritance_info.pResourceHeapBindInfo = &resource_heap.bindInfo;
+			descriptor_heap_inheritance_info.pSamplerHeapBindInfo  = &sampler_heap.bindInfo;
+		}
+
+		VkCommandBufferInheritanceRenderingInfo rendering_inheritance_info{};
+		rendering_inheritance_info.sType = STYPE(COMMAND_BUFFER_INHERITANCE_RENDERING_INFO);
+		rendering_inheritance_info.pNext = nullptr;
+
+		Vector<VkFormat> colour_attachment_formats;
+		if (is_secondary && p_inheritance_info)
+		{
+			colour_attachment_formats.resize(p_inheritance_info->colourAttachmentFormats.size());
+			for (uint32 i{0u}; i < p_inheritance_info->colourAttachmentFormats.size(); ++i)
+				colour_attachment_formats[i] = get_vk_format(p_inheritance_info->colourAttachmentFormats[i]);
+
+			rendering_inheritance_info.colorAttachmentCount    = colour_attachment_formats.size();
+			rendering_inheritance_info.pColorAttachmentFormats = colour_attachment_formats.data();
+			rendering_inheritance_info.depthAttachmentFormat   = get_vk_format(p_inheritance_info->depthAttachmentFormat);
+			rendering_inheritance_info.stencilAttachmentFormat = get_vk_format(p_inheritance_info->stencilAttachmentFormat);
+			rendering_inheritance_info.rasterizationSamples    = get_vk_sample_count(p_inheritance_info->samples);
+			rendering_inheritance_info.pNext                   = &descriptor_heap_inheritance_info;
+		}
+
+		VkCommandBufferInheritanceInfo inheritance_info{};
+		inheritance_info.sType = STYPE(COMMAND_BUFFER_INHERITANCE_INFO);
+		inheritance_info.pNext = nullptr;
+		if (is_secondary && p_inheritance_info)
+			inheritance_info.pNext = &rendering_inheritance_info;
+
+		VkCommandBufferBeginInfo begin_info{};
+		begin_info.sType = STYPE(COMMAND_BUFFER_BEGIN_INFO);
+		begin_info.pNext = nullptr;
+		begin_info.flags = is_secondary ? VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT : VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+		if (is_secondary && p_inheritance_info)
+			begin_info.pInheritanceInfo = &inheritance_info;
+
+		vkBeginCommandBuffer(cmd.cmd, &begin_info);
+	}
+
+	auto cmd_list_close(GPUContext *p_ctx, CommandListHandle p_cmd_list) -> void
+	{
+		CommandList &cmd{p_ctx->commandLists[p_cmd_list]};
+
+		#ifndef NDEBUG
+		TST_ASSERT_MSG((cmd.flags & EInternalCommandListFlagBits::eOpen), "Command list must be open to close it");
+		cmd.flags &= ~EInternalCommandListFlagBits::eOpen;
+		#endif
+		vkEndCommandBuffer(cmd.cmd);
+	}
+
+	// auto cmd_list_free(GPUContext *p_ctx, CommandListHandle p_cmd_list) -> void
+	// {
+	// 	CommandList &cmd{p_ctx->commandLists[p_cmd_list]};
+	// 	TST_ASSERT_MSG(!(cmd.flags & EInternalCommandListFlagBits::eOpen), "Command buffer must not be open when being freed");
+	//
+	// 	mtx_lock(&p_ctx->freeCommandListMutex);
+	//
+	// 	if (cmd.secondary)
+	// 		p_ctx->freeSecondaryLists[static_cast<uint32>(cmd.queueType)].push_back(p_cmd_list);
+	// 	else
+	// 		p_ctx->freeCommandLists[static_cast<uint32>(cmd.queueType)].push_back(p_cmd_list);
+	//
+	// 	mtx_unlock(&p_ctx->freeCommandListMutex);
+	// }
+	//
+	// auto cmd_list_reset(GPUContext *p_ctx, CommandListHandle p_cmd_list) -> void
+	// {
+	// 	CommandList &cmd{p_ctx->commandLists[p_cmd_list]};
+	//
+	// 	#ifndef NDEBUG
+	// 	if ((cmd.flags & EInternalCommandListFlagBits::eOpen))
+	// 		(cmd.flags & EInternalCommandListFlagBits::eOpen) = false;
+	// 	#endif
+	// 	vkResetCommandPool(p_ctx->logicalDevice, cmd.pool, 0u);
+	// }
+
+	static auto get_pending_image_memory_barriers(GPUContext *p_ctx, EQueueType p_queue_type) -> VkCommandBuffer
 	{
 		mtx_lock(&p_ctx->undefinedTexturesMutex);
 
@@ -1571,14 +1804,11 @@ namespace toaster::gpu
 		}
 
 		Vector<VkImageMemoryBarrier2> image_memory_barriers(p_ctx->undefinedTextures.size());
-
-		// unordered sets can't be indexed normally
-		for (const auto [i, undef_tex]: std::views::enumerate(p_ctx->undefinedTextures))
+		p_ctx->textures.for_each(p_ctx->undefinedTextures, [&image_memory_barriers](const Texture &p_texture, uint32 p_index) -> void
 		{
-			const Texture *    texture{p_ctx->textures.try_get(undef_tex)};
-			const TextureDesc &desc{texture->desc};
+			const TextureDesc &desc{p_texture.desc};
 
-			VkImageMemoryBarrier2 &barrier{image_memory_barriers[i]};
+			VkImageMemoryBarrier2 &barrier{image_memory_barriers[p_index]};
 			barrier.sType               = STYPE(IMAGE_MEMORY_BARRIER_2);
 			barrier.pNext               = nullptr;
 			barrier.srcStageMask        = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
@@ -1589,7 +1819,7 @@ namespace toaster::gpu
 			barrier.newLayout           = VK_IMAGE_LAYOUT_GENERAL;
 			barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 			barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			barrier.image               = texture->image;
+			barrier.image               = p_texture.image;
 
 			VkImageSubresourceRange &subresource_range{barrier.subresourceRange};
 			subresource_range.aspectMask     = get_vk_image_aspect_mask(desc.format);
@@ -1597,7 +1827,7 @@ namespace toaster::gpu
 			subresource_range.levelCount     = desc.mipCount;
 			subresource_range.baseArrayLayer = 0u;
 			subresource_range.layerCount     = desc.layerCount;
-		}
+		});
 
 		// I forgot to clear this. I only realised when my RAM maxed out.
 		p_ctx->undefinedTextures.clear();
@@ -1613,7 +1843,7 @@ namespace toaster::gpu
 		dependency_info.memoryBarrierCount       = 0u;
 
 		// This command buffer will only live for this function call. So it is allocated using one of the transient pools
-		const VkCommandPool command_pool{p_ctx->transientPools[static_cast<uint32>(p_queue_type)]};
+		VkCommandPool command_pool{p_ctx->transientPools[static_cast<uint32>(p_queue_type)]};
 
 		VkCommandBufferAllocateInfo command_buffer_alloc_info{};
 		command_buffer_alloc_info.sType              = STYPE(COMMAND_BUFFER_ALLOCATE_INFO);
@@ -1650,223 +1880,6 @@ namespace toaster::gpu
 		return command_buffer;
 	}
 
-	auto cmd_list_create(GPUContext *p_ctx, EQueueType p_queue_type, bool p_secondary) -> CommandListHandle
-	{
-		mtx_lock(&p_ctx->freeCommandListMutex);
-
-		auto &free_lists{p_secondary ? p_ctx->freeSecondaryLists[static_cast<uint32>(p_queue_type)] : p_ctx->freeCommandLists[static_cast<uint32>(p_queue_type)]};
-		if (!free_lists.empty())
-		{
-			const CommandListHandle command_list_handle{free_lists.back()};
-			free_lists.pop_back();
-
-			mtx_unlock(&p_ctx->freeCommandListMutex);
-
-			return command_list_handle;
-		}
-
-		mtx_unlock(&p_ctx->freeCommandListMutex);
-
-		VkCommandPoolCreateInfo command_pool_create_info{};
-		command_pool_create_info.sType            = STYPE(COMMAND_POOL_CREATE_INFO);
-		command_pool_create_info.pNext            = nullptr;
-		command_pool_create_info.queueFamilyIndex = p_ctx->queueFamilyIndices.get(p_queue_type);
-
-		VkCommandPool command_pool;
-		TST_GPU_VK_CHECK_RESULT_MSG_DEBUG(vkCreateCommandPool(p_ctx->logicalDevice, &command_pool_create_info, nullptr, &command_pool), "Failed to create command pool");
-
-		VkCommandBufferAllocateInfo command_buffer_alloc_info{};
-		command_buffer_alloc_info.sType              = STYPE(COMMAND_BUFFER_ALLOCATE_INFO);
-		command_buffer_alloc_info.pNext              = nullptr;
-		command_buffer_alloc_info.commandPool        = command_pool;
-		command_buffer_alloc_info.commandBufferCount = 1u;
-		command_buffer_alloc_info.level              = p_secondary ? VK_COMMAND_BUFFER_LEVEL_SECONDARY : VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-
-		VkCommandBuffer command_buffer;
-		TST_GPU_VK_CHECK_RESULT_MSG_DEBUG(vkAllocateCommandBuffers(p_ctx->logicalDevice, &command_buffer_alloc_info, &command_buffer),
-										  "Failed to allocate command buffer");
-
-		if (p_ctx->enableDebugInfo)
-		{
-			VkDebugUtilsObjectNameInfoEXT debug_object_name_info{};
-			debug_object_name_info.sType        = STYPE(DEBUG_UTILS_OBJECT_NAME_INFO_EXT);
-			debug_object_name_info.pNext        = nullptr;
-			debug_object_name_info.objectHandle = reinterpret_cast<uint64>(command_buffer);
-			debug_object_name_info.objectType   = VK_OBJECT_TYPE_COMMAND_BUFFER;
-			debug_object_name_info.pObjectName  = to_string(p_queue_type);
-			vkSetDebugUtilsObjectNameEXT(p_ctx->logicalDevice, &debug_object_name_info);
-		}
-
-		return p_ctx->commandLists.emplace(CommandList{command_buffer, command_pool, p_queue_type, false, p_secondary});
-	}
-
-	auto cmd_list_create_n(GPUContext *p_ctx, std::span<CommandListHandle> p_out_cmd_lists, EQueueType p_queue_type, bool p_secondary) -> void
-	{
-		const uint32 count{static_cast<uint32>(p_out_cmd_lists.size())};
-
-		mtx_lock(&p_ctx->freeCommandListMutex);
-
-		auto &       free_lists{p_secondary ? p_ctx->freeSecondaryLists[static_cast<uint32>(p_queue_type)] : p_ctx->freeCommandLists[static_cast<uint32>(p_queue_type)]};
-		const uint32 free_list_size{static_cast<uint32>(free_lists.size())};
-
-		// If there are a number of free command lists greater than or equal to the count, return them
-		if (free_list_size >= count)
-		{
-			for (CommandListHandle &cmd: p_out_cmd_lists)
-			{
-				cmd = free_lists.back();
-				free_lists.pop_back();
-			}
-
-			mtx_unlock(&p_ctx->freeCommandListMutex);
-			return;
-		}
-
-		// If the number of free lists is smaller than the required count, drain the free lists and then allocate the remaining ones
-		for (uint32 i{0u}; i < free_list_size; ++i)
-		{
-			p_out_cmd_lists[i] = free_lists.back();
-			free_lists.pop_back();
-		}
-
-		// The number of command lists that still need to be allocated
-		const uint32 remaining_allocation_count{count - free_list_size};
-
-		mtx_unlock(&p_ctx->freeCommandListMutex);
-
-		VkCommandPoolCreateInfo command_pool_create_info{};
-		command_pool_create_info.sType            = STYPE(COMMAND_POOL_CREATE_INFO);
-		command_pool_create_info.pNext            = nullptr;
-		command_pool_create_info.queueFamilyIndex = p_ctx->queueFamilyIndices.get(p_queue_type);
-
-		VkCommandBufferAllocateInfo command_buffer_alloc_info{};
-		command_buffer_alloc_info.sType              = STYPE(COMMAND_BUFFER_ALLOCATE_INFO);
-		command_buffer_alloc_info.pNext              = nullptr;
-		command_buffer_alloc_info.commandBufferCount = 1u; // One pool per command buffer
-		command_buffer_alloc_info.level              = p_secondary ? VK_COMMAND_BUFFER_LEVEL_SECONDARY : VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-
-		Vector<VkCommandPool>   command_pools(remaining_allocation_count);
-		Vector<VkCommandBuffer> command_buffers(remaining_allocation_count);
-		for (uint32 i{0u}; i < remaining_allocation_count; ++i)
-		{
-			VkCommandPool &command_pool{command_pools[i]};
-			TST_GPU_VK_CHECK_RESULT_MSG_DEBUG(vkCreateCommandPool(p_ctx->logicalDevice, &command_pool_create_info, nullptr, &command_pool),
-											  "Failed to create command pool");
-
-			command_buffer_alloc_info.commandPool = command_pool;
-
-			VkCommandBuffer &command_buffer{command_buffers[i]};
-			TST_GPU_VK_CHECK_RESULT_MSG_DEBUG(vkAllocateCommandBuffers(p_ctx->logicalDevice, &command_buffer_alloc_info, &command_buffer),
-											  "Failed to allocate command buffer");
-
-			if (p_ctx->enableDebugInfo)
-			{
-				VkDebugUtilsObjectNameInfoEXT debug_object_name_info{};
-				debug_object_name_info.sType        = STYPE(DEBUG_UTILS_OBJECT_NAME_INFO_EXT);
-				debug_object_name_info.pNext        = nullptr;
-				debug_object_name_info.objectHandle = reinterpret_cast<uint64>(command_buffer);
-				debug_object_name_info.objectType   = VK_OBJECT_TYPE_COMMAND_BUFFER;
-				debug_object_name_info.pObjectName  = to_string(p_queue_type);
-				vkSetDebugUtilsObjectNameEXT(p_ctx->logicalDevice, &debug_object_name_info);
-			}
-		}
-
-		std::span<CommandListHandle> remaining_lists{p_out_cmd_lists.begin() + free_list_size, p_out_cmd_lists.end()};
-		p_ctx->commandLists.emplace_n_fn(remaining_lists, [&command_buffers, &command_pools, p_queue_type, p_secondary](uint32 p_index) -> CommandList
-		{
-			return CommandList{command_buffers[p_index], command_pools[p_index], p_queue_type, false, p_secondary};
-		});
-	}
-
-	auto cmd_list_open(GPUContext *p_ctx, CommandListHandle p_cmd_list, const CommandListInheritanceInfo *p_inheritance_info) -> void
-	{
-		CommandList &cmd{p_ctx->commandLists[p_cmd_list]};
-
-		TST_ASSERT_MSG(!cmd.open, "Command list is already open");
-		cmd.open = true;
-
-		VkCommandBufferInheritanceDescriptorHeapInfoEXT descriptor_heap_inheritance_info{};
-		descriptor_heap_inheritance_info.sType = STYPE(COMMAND_BUFFER_INHERITANCE_DESCRIPTOR_HEAP_INFO_EXT);
-		descriptor_heap_inheritance_info.pNext = nullptr;
-
-		if (cmd.secondary && p_inheritance_info)
-		{
-			const ResourceDescriptorHeap &resource_heap{p_ctx->resourceHeaps[p_inheritance_info->resourceHeap]};
-			const SamplerDescriptorHeap & sampler_heap{p_ctx->samplerHeaps[p_inheritance_info->samplerHeap]};
-
-			descriptor_heap_inheritance_info.pResourceHeapBindInfo = &resource_heap.bindInfo;
-			descriptor_heap_inheritance_info.pSamplerHeapBindInfo  = &sampler_heap.bindInfo;
-		}
-
-		VkCommandBufferInheritanceRenderingInfo rendering_inheritance_info{};
-		rendering_inheritance_info.sType = STYPE(COMMAND_BUFFER_INHERITANCE_RENDERING_INFO);
-		rendering_inheritance_info.pNext = nullptr;
-
-		Vector<VkFormat> colour_attachment_formats;
-		if (cmd.secondary && p_inheritance_info)
-		{
-			colour_attachment_formats.resize(p_inheritance_info->colourAttachmentFormats.size());
-			for (uint32 i{0u}; i < p_inheritance_info->colourAttachmentFormats.size(); ++i)
-				colour_attachment_formats[i] = get_vk_format(p_inheritance_info->colourAttachmentFormats[i]);
-
-			rendering_inheritance_info.colorAttachmentCount    = colour_attachment_formats.size();
-			rendering_inheritance_info.pColorAttachmentFormats = colour_attachment_formats.data();
-			rendering_inheritance_info.depthAttachmentFormat   = get_vk_format(p_inheritance_info->depthAttachmentFormat);
-			rendering_inheritance_info.stencilAttachmentFormat = get_vk_format(p_inheritance_info->stencilAttachmentFormat);
-			rendering_inheritance_info.rasterizationSamples    = get_vk_sample_count(p_inheritance_info->samples);
-			rendering_inheritance_info.pNext                   = &descriptor_heap_inheritance_info;
-		}
-
-		VkCommandBufferInheritanceInfo inheritance_info{};
-		inheritance_info.sType = STYPE(COMMAND_BUFFER_INHERITANCE_INFO);
-		inheritance_info.pNext = nullptr;
-		if (cmd.secondary && p_inheritance_info)
-			inheritance_info.pNext = &rendering_inheritance_info;
-
-		VkCommandBufferBeginInfo begin_info{};
-		begin_info.sType = STYPE(COMMAND_BUFFER_BEGIN_INFO);
-		begin_info.pNext = nullptr;
-		begin_info.flags = cmd.secondary ? VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT : VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-		if (cmd.secondary && p_inheritance_info)
-			begin_info.pInheritanceInfo = &inheritance_info;
-
-		vkBeginCommandBuffer(cmd.cmd, &begin_info);
-	}
-
-	auto cmd_list_close(GPUContext *p_ctx, CommandListHandle p_cmd_list) -> void
-	{
-		CommandList &cmd{p_ctx->commandLists[p_cmd_list]};
-
-		TST_ASSERT_MSG(cmd.open, "Command list must be open to close it");
-		cmd.open = false;
-		vkEndCommandBuffer(cmd.cmd);
-	}
-
-	auto cmd_list_free(GPUContext *p_ctx, CommandListHandle p_cmd_list) -> void
-	{
-		CommandList &cmd{p_ctx->commandLists[p_cmd_list]};
-		TST_ASSERT_MSG(!cmd.open, "Command buffer must not be open when being freed");
-
-		mtx_lock(&p_ctx->freeCommandListMutex);
-
-		if (cmd.secondary)
-			p_ctx->freeSecondaryLists[static_cast<uint32>(cmd.queueType)].push_back(p_cmd_list);
-		else
-			p_ctx->freeCommandLists[static_cast<uint32>(cmd.queueType)].push_back(p_cmd_list);
-
-		mtx_unlock(&p_ctx->freeCommandListMutex);
-	}
-
-	auto cmd_list_reset(GPUContext *p_ctx, CommandListHandle p_cmd_list) -> void
-	{
-		CommandList &cmd{p_ctx->commandLists[p_cmd_list]};
-
-		if (cmd.open)
-			cmd.open = false;
-
-		vkResetCommandPool(p_ctx->logicalDevice, cmd.pool, 0u);
-	}
-
 	// Accepts raw Vulkan semaphores
 	static auto submit(GPUContext *                                 p_ctx, EQueueType p_queue_type, InitialiserList<const CommandListHandle> p_cmd_lists,
 					   InitialiserList<const VkSemaphoreSubmitInfo> p_wait_semaphore_infos, InitialiserList<const VkSemaphoreSubmitInfo> p_signal_semaphore_infos) -> void
@@ -1875,13 +1888,13 @@ namespace toaster::gpu
 
 		Vector<VkCommandBufferSubmitInfo> command_buffer_submit_infos;
 		command_buffer_submit_infos.reserve(p_cmd_lists.size() + 1u); // Reserve for the image memory barrier
-		for (uint64 i{0u}; i < p_cmd_lists.size(); ++i)
+
+		p_ctx->commandLists.for_each(p_cmd_lists, [&command_buffer_submit_infos](const CommandList &p_cmd, uint32 p_index) -> void
 		{
-			const CommandList &cmd{p_ctx->commandLists[p_cmd_lists[i]]};
-			TST_ASSERT_MSG(!cmd.open, "Cannot submit a command buffer that is not open");
-			TST_ASSERT_MSG(!cmd.secondary, "Cannot submit a secondary command buffer!");
-			command_buffer_submit_infos.emplace_back(STYPE(COMMAND_BUFFER_SUBMIT_INFO), nullptr, cmd.cmd, 0u);
-		}
+			TST_ASSERT_MSG(!(p_cmd.flags & EInternalCommandListFlagBits::eOpen), "Cannot submit a command buffer that is not open");
+			TST_ASSERT_MSG(!(p_cmd.flags & EInternalCommandListFlagBits::eSecondary), "Cannot submit a secondary command buffer!");
+			command_buffer_submit_infos.emplace_back(STYPE(COMMAND_BUFFER_SUBMIT_INFO), nullptr, p_cmd.cmd, 0u);
+		});
 
 		if (image_memory_barrier_cmd) // I need to make sure that the image memory barriers are submitted first so they can clear properly
 		{
@@ -1903,7 +1916,7 @@ namespace toaster::gpu
 		submit_info.commandBufferInfoCount   = command_buffer_submit_infos.size();
 		submit_info.pCommandBufferInfos      = command_buffer_submit_infos.data();
 
-		const VkQueue queue{p_ctx->queues[static_cast<uint32>(p_queue_type)]};
+		VkQueue queue{p_ctx->queues[static_cast<uint32>(p_queue_type)]};
 
 		mtx_lock(&p_ctx->queueMutexes[static_cast<uint32>(p_queue_type)]); // Lock for the submit
 		vkQueueSubmit2(queue, 1u, &submit_info, nullptr);
@@ -1943,16 +1956,14 @@ namespace toaster::gpu
 	auto cmd_execute_cmd_lists(GPUContext *p_ctx, CommandListHandle p_primary_command_list, InitialiserList<const CommandListHandle> p_secondary_command_lists) -> void
 	{
 		CommandList &cmd{p_ctx->commandLists[p_primary_command_list]};
-		TST_ASSERT(!cmd.secondary && cmd.open);
+		TST_ASSERT(!(cmd.flags & EInternalCommandListFlagBits::eSecondary) && (cmd.flags & EInternalCommandListFlagBits::eOpen));
 
 		Vector<VkCommandBuffer> secondary_buffers(p_secondary_command_lists.size());
-		for (auto &&[i, secondary_buffer]: std::views::enumerate(secondary_buffers))
+		p_ctx->commandLists.for_each(p_secondary_command_lists, [&secondary_buffers](const CommandList &p_cmd, uint32 p_index) -> void
 		{
-			const CommandList &secondary{p_ctx->commandLists[p_secondary_command_lists[i]]};
-			TST_ASSERT(secondary.secondary && !secondary.open);
-			secondary_buffer = secondary.cmd;
-		}
-
+			TST_ASSERT((p_cmd.flags & EInternalCommandListFlagBits::eSecondary) && !(p_cmd.flags & EInternalCommandListFlagBits::eOpen));
+			secondary_buffers[p_index] = p_cmd.cmd;
+		});
 		vkCmdExecuteCommands(cmd.cmd, secondary_buffers.size(), secondary_buffers.data());
 	}
 
@@ -2036,7 +2047,7 @@ namespace toaster::gpu
 	auto cmd_fill_buffer(GPUContext *p_ctx, CommandListHandle p_cmd_list, BufferHandle p_buffer, uint64 p_dst_offset, uint64 p_size, uint32 p_data) -> void
 	{
 		CommandList &cmd{p_ctx->commandLists[p_cmd_list]};
-		TST_ASSERT(cmd.open);
+		TST_ASSERT((cmd.flags & EInternalCommandListFlagBits::eOpen));
 
 		Buffer &buffer{p_ctx->buffers[p_buffer]};
 
@@ -2047,7 +2058,7 @@ namespace toaster::gpu
 							  InitialiserList<const TextureMemoryBarrier> p_texture_memory_barriers) -> void
 	{
 		CommandList &cmd{p_ctx->commandLists[p_cmd_list]};
-		TST_ASSERT(cmd.open);
+		TST_ASSERT((cmd.flags & EInternalCommandListFlagBits::eOpen));
 
 		Vector<VkBufferMemoryBarrier2> buffer_barriers(p_buffer_memory_barriers.size());
 		for (auto &&[i, barrier]: std::views::enumerate(buffer_barriers))
@@ -2067,8 +2078,8 @@ namespace toaster::gpu
 			barrier.srcAccessMask = get_vk_access_flags(src_barrier.srcAccessMask);
 			barrier.dstAccessMask = get_vk_access_flags(src_barrier.dstAccessMask);
 
-			barrier.srcQueueFamilyIndex = p_ctx->queueFamilyIndices.get(src_barrier.srcQueue);
-			barrier.dstQueueFamilyIndex = p_ctx->queueFamilyIndices.get(src_barrier.dstQueue);
+			barrier.srcQueueFamilyIndex = p_ctx->queueFamilyIndices[TST_UT(src_barrier.srcQueue)];
+			barrier.dstQueueFamilyIndex = p_ctx->queueFamilyIndices[TST_UT(src_barrier.dstQueue)];
 		}
 
 		Vector<VkImageMemoryBarrier2> image_barriers(p_texture_memory_barriers.size());
@@ -2097,8 +2108,8 @@ namespace toaster::gpu
 			barrier.subresourceRange.layerCount     = (src_barrier.layerCount == UINT32_MAX) ? texture->desc.layerCount : src_barrier.layerCount;
 			barrier.subresourceRange.levelCount     = (src_barrier.mipCount == UINT32_MAX) ? texture->desc.mipCount : src_barrier.mipCount;
 
-			barrier.srcQueueFamilyIndex = p_ctx->queueFamilyIndices.get(src_barrier.srcQueue);
-			barrier.dstQueueFamilyIndex = p_ctx->queueFamilyIndices.get(src_barrier.dstQueue);
+			barrier.srcQueueFamilyIndex = p_ctx->queueFamilyIndices[TST_UT(src_barrier.srcQueue)];
+			barrier.dstQueueFamilyIndex = p_ctx->queueFamilyIndices[TST_UT(src_barrier.dstQueue)];
 		}
 
 		VkDependencyInfo dependency_info{};
@@ -2116,7 +2127,7 @@ namespace toaster::gpu
 	auto cmd_generate_mipmaps(GPUContext *p_ctx, CommandListHandle p_cmd_list, TextureHandle p_texture) -> void
 	{
 		CommandList &cmd{p_ctx->commandLists[p_cmd_list]};
-		TST_ASSERT(cmd.open);
+		TST_ASSERT((cmd.flags & EInternalCommandListFlagBits::eOpen));
 
 		Texture *dst_texture{p_ctx->textures.try_get(p_texture)};
 		TST_PERMA_ASSERT(dst_texture);
@@ -2253,6 +2264,7 @@ namespace toaster::gpu
 	auto cmd_begin_rendering(GPUContext *p_ctx, CommandListHandle p_cmd_list, const RenderingInfo &p_rendering_info) -> void
 	{
 		Vector<VkRenderingAttachmentInfo> colour_attachments(p_rendering_info.colourAttachments.size());
+
 		for (auto &&[i, attachment]: std::views::enumerate(colour_attachments))
 		{
 			auto &         src_attachment{p_rendering_info.colourAttachments[i]};
@@ -2386,19 +2398,31 @@ namespace toaster::gpu
 		Array<VkShaderEXT, c_shader_stage_count> shaders;
 		shaders.fill(nullptr);
 
-		for (const ShaderHandle handle: p_shaders)
-		{
-			const Shader &shader{p_ctx->shaders[handle]};
+		// for (const ShaderHandle handle: p_shaders)
+		// {
+		// 	const Shader &shader{p_ctx->shaders[handle]};
+		//
+		// 	for (uint32 i{0u}; i < c_shader_stage_count; ++i)
+		// 	{
+		// 		if (shader.stage == c_shader_stages[i])
+		// 		{
+		// 			shaders[i] = shader.shader;
+		// 			break;
+		// 		}
+		// 	}
+		// }
 
+		p_ctx->shaders.for_each(p_shaders, [&shaders](const Shader &p_shader, uint32 p_index) -> void
+		{
 			for (uint32 i{0u}; i < c_shader_stage_count; ++i)
 			{
-				if (shader.stage == c_shader_stages[i])
+				if (p_shader.stage == c_shader_stages[i])
 				{
-					shaders[i] = shader.shader;
+					shaders[i] = p_shader.shader;
 					break;
 				}
 			}
-		}
+		});
 
 		vkCmdBindShadersEXT(cmd.cmd, c_shader_stage_count, c_shader_stages.data(), shaders.data());
 	}
@@ -2563,9 +2587,6 @@ namespace toaster::gpu
 		Vector<VkColorComponentFlags> component_flags(p_masks.size());
 		for (uint32 i{0u}; i < p_masks.size(); ++i)
 			component_flags[i] = get_vk_colour_component_flags(p_masks[i]);
-
-		// VkColorComponentFlags flags{VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT};
-		// vkCmdSetColorWriteMaskEXT(cmd.cmd, p_first_attachment_index, 1u,&flags );
 
 		vkCmdSetColorWriteMaskEXT(cmd.cmd, p_first_attachment_index, component_flags.size(), component_flags.data());
 	}
@@ -2998,8 +3019,8 @@ namespace toaster::gpu
 			};
 			VkImageSubresourceRange &subresource_range{image_view_create_info.subresourceRange};
 			subresource_range.aspectMask     = get_vk_image_aspect_mask(desc.format);
-			subresource_range.baseMipLevel   = (mip_level == c_all_mip_levels) ? 0u : mip_level;
-			subresource_range.levelCount     = (mip_level == c_all_mip_levels) ? desc.mipCount : 1u;
+			subresource_range.baseMipLevel   = (mip_level == c_allMipLevels) ? 0u : mip_level;
+			subresource_range.levelCount     = (mip_level == c_allMipLevels) ? desc.mipCount : 1u;
 			subresource_range.baseArrayLayer = 0u;
 			subresource_range.layerCount     = desc.layerCount;
 
@@ -3075,9 +3096,13 @@ namespace toaster::gpu
 		buffer_create_info.size  = p_desc.size;
 		buffer_create_info.usage = buffer_usage_flags;
 
-		Array<uint32, 2u> queue_family_indices{p_ctx->queueFamilyIndices.graphics, p_ctx->queueFamilyIndices.transfer};
-		if (queue_family_indices[0u] != queue_family_indices[1u])
+		if (p_ctx->hasDedicatedTransferQueue)
 		{
+			// For now, only use the graphics and transfer queue.
+			Array<uint32, 2u> queue_family_indices{
+				p_ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eGraphics)],
+				p_ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eTransfer)]
+			};
 			buffer_create_info.sharingMode           = VK_SHARING_MODE_CONCURRENT;
 			buffer_create_info.queueFamilyIndexCount = queue_family_indices.size();
 			buffer_create_info.pQueueFamilyIndices   = queue_family_indices.data();
@@ -3161,7 +3186,8 @@ namespace toaster::gpu
 		surface_create_info.hinstance = GetModuleHandle(nullptr);
 
 		VkSurfaceKHR surface;
-		TST_GPU_VK_CHECK_RESULT_MSG(vkCreateWin32SurfaceKHR(p_ctx->vulkanInstance, &surface_create_info, nullptr, &surface), "Failed to create window surface!");
+		TST_GPU_VK_CHECK_RESULT_MSG(vkCreateWin32SurfaceKHR(p_ctx->vulkanInstance, &surface_create_info, &p_ctx->allocatorCallbacks, &surface),
+									"Failed to create window surface!");
 
 		return p_ctx->surfaces.emplace(Surface{surface, hwnd});
 	}
@@ -3184,7 +3210,7 @@ namespace toaster::gpu
 		create_info.pNext = &timeline_semaphore_create_info;
 
 		VkSemaphore semaphore;
-		TST_GPU_VK_CHECK_RESULT_MSG(vkCreateSemaphore(p_ctx->logicalDevice, &create_info, nullptr, &semaphore), "Failed to create timeline semaphore");
+		TST_GPU_VK_CHECK_RESULT_MSG(vkCreateSemaphore(p_ctx->logicalDevice, &create_info, &p_ctx->allocatorCallbacks, &semaphore), "Failed to create timeline semaphore");
 
 		return p_ctx->semaphores.emplace(Semaphore{semaphore});
 	}
@@ -3248,7 +3274,7 @@ namespace toaster::gpu
 		p_ctx->textures.destroy(p_texture);
 
 		mtx_lock(&p_ctx->undefinedTexturesMutex);
-		p_ctx->undefinedTextures.erase(p_texture);
+		std::erase(p_ctx->undefinedTextures, p_texture);
 		mtx_unlock(&p_ctx->undefinedTexturesMutex);
 	}
 
@@ -3285,9 +3311,13 @@ namespace toaster::gpu
 		image_create_info.usage         = image_usage_flags;
 		image_create_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-		Array<uint32, 2u> queue_family_indices{p_ctx->queueFamilyIndices.graphics, p_ctx->queueFamilyIndices.transfer}; // Again, I am not doin allat
-		if (queue_family_indices[0u] != queue_family_indices[1u])
+		if (p_ctx->hasDedicatedTransferQueue)
 		{
+			// For now, only use the graphics and transfer queue.
+			Array<uint32, 2u> queue_family_indices{
+				p_ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eGraphics)],
+				p_ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eTransfer)]
+			};
 			image_create_info.sharingMode           = VK_SHARING_MODE_CONCURRENT;
 			image_create_info.queueFamilyIndexCount = queue_family_indices.size();
 			image_create_info.pQueueFamilyIndices   = queue_family_indices.data();
@@ -3324,7 +3354,7 @@ namespace toaster::gpu
 			subresource_range.baseArrayLayer = 0u;
 			subresource_range.layerCount     = p_desc.layerCount;
 
-			TST_GPU_VK_CHECK_RESULT_MSG(vkCreateImageView(p_ctx->logicalDevice, &image_view_create_info, nullptr, &texture.imageView),
+			TST_GPU_VK_CHECK_RESULT_MSG(vkCreateImageView(p_ctx->logicalDevice, &image_view_create_info, &p_ctx->allocatorCallbacks, &texture.imageView),
 										"Failed to create texture's image view");
 		}
 
@@ -3332,7 +3362,7 @@ namespace toaster::gpu
 		texture.flags &= ~EInternalTextureFlagBits::eNullRegistered;
 
 		mtx_lock(&p_ctx->undefinedTexturesMutex);
-		p_ctx->undefinedTextures.insert(p_dst_texture);
+		p_ctx->undefinedTextures.push_back(p_dst_texture);
 		mtx_unlock(&p_ctx->undefinedTexturesMutex);
 	}
 
@@ -3440,7 +3470,7 @@ namespace toaster::gpu
 		swapchain_create_info.clipped          = true;
 		swapchain_create_info.oldSwapchain     = p_old_swapchain; // Performance improvement?
 
-		if (vkCreateSwapchainKHR(p_ctx->logicalDevice, &swapchain_create_info, nullptr, &p_swapchain.swapchain) != VK_SUCCESS)
+		if (vkCreateSwapchainKHR(p_ctx->logicalDevice, &swapchain_create_info, &p_ctx->allocatorCallbacks, &p_swapchain.swapchain) != VK_SUCCESS)
 		{
 			p_swapchain.swapchain = nullptr;
 			return false;
@@ -3489,7 +3519,8 @@ namespace toaster::gpu
 			subresource_range.layerCount     = 1u;
 
 			VkImageView image_view;
-			TST_GPU_VK_CHECK_RESULT_MSG(vkCreateImageView(p_ctx->logicalDevice, &image_view_create_info, nullptr, &image_view), "Failed to create swapchain image view!");
+			TST_GPU_VK_CHECK_RESULT_MSG(vkCreateImageView(p_ctx->logicalDevice, &image_view_create_info, &p_ctx->allocatorCallbacks, &image_view),
+										"Failed to create swapchain image view!");
 
 			// I don't know why I am providing this, as there is no reason to do so. But I guess now you can query the swapchain's texture desc?...
 			TextureDesc fake_desc{
@@ -3507,19 +3538,18 @@ namespace toaster::gpu
 		p_swapchain.renderFinishedSemaphores.resize(swapchain_image_count);
 		static constexpr VkSemaphoreCreateInfo c_semaphore_create_info{STYPE(SEMAPHORE_CREATE_INFO), nullptr, 0u};
 		for (auto &semaphore: p_swapchain.renderFinishedSemaphores)
-			vkCreateSemaphore(p_ctx->logicalDevice, &c_semaphore_create_info, nullptr, &semaphore);
+			vkCreateSemaphore(p_ctx->logicalDevice, &c_semaphore_create_info, &p_ctx->allocatorCallbacks, &semaphore);
 
 		return true;
 	}
 
 	static auto destroy_swapchain_objects(GPUContext *p_ctx, Swapchain &p_swapchain) -> void
 	{
-		for (auto &attachment: p_swapchain.attachments)
-			p_ctx->textures.destroy(attachment);
+		p_ctx->textures.destroy_n(p_swapchain.attachments);
 		p_swapchain.attachments.clear();
 
 		for (auto &semaphore: p_swapchain.renderFinishedSemaphores)
-			vkDestroySemaphore(p_ctx->logicalDevice, semaphore, nullptr);
+			vkDestroySemaphore(p_ctx->logicalDevice, semaphore, &p_ctx->allocatorCallbacks);
 		p_swapchain.renderFinishedSemaphores.clear();
 	}
 
@@ -3534,7 +3564,7 @@ namespace toaster::gpu
 		swapchain.imageAvailableSemaphores.resize(p_ctx->maxConcurrentSwapchainWorkloads);
 		static constexpr VkSemaphoreCreateInfo c_semaphore_create_info{STYPE(SEMAPHORE_CREATE_INFO), nullptr, 0u};
 		for (auto &semaphore: swapchain.imageAvailableSemaphores)
-			vkCreateSemaphore(p_ctx->logicalDevice, &c_semaphore_create_info, nullptr, &semaphore);
+			vkCreateSemaphore(p_ctx->logicalDevice, &c_semaphore_create_info, &p_ctx->allocatorCallbacks, &semaphore);
 
 		create_swapchain_objects(p_ctx, swapchain, p_initial_extent);
 
@@ -3554,7 +3584,7 @@ namespace toaster::gpu
 			return false;
 
 		if (old_swapchain)
-			vkDestroySwapchainKHR(p_ctx->logicalDevice, old_swapchain, nullptr);
+			vkDestroySwapchainKHR(p_ctx->logicalDevice, old_swapchain, &p_ctx->allocatorCallbacks);
 
 		return true;
 	}
@@ -3584,8 +3614,8 @@ namespace toaster::gpu
 
 	auto swapchain_wait_for_framerate(GPUContext *p_ctx, SwapchainHandle p_swapchain) -> void
 	{
-		Swapchain &swapchain{p_ctx->swapchains[p_swapchain]};
-		Semaphore &latency_semaphore{*p_ctx->semaphores.try_get(swapchain.latencySemaphore)};
+		Swapchain &      swapchain{p_ctx->swapchains[p_swapchain]};
+		const Semaphore &latency_semaphore{p_ctx->semaphores[swapchain.latencySemaphore]};
 
 		VkLatencySleepInfoNV sleep_info{};
 		sleep_info.sType           = STYPE(LATENCY_SLEEP_INFO_NV);
@@ -3635,7 +3665,7 @@ namespace toaster::gpu
 	auto swapchain_insert_pre_render_resource_barrier(GPUContext *p_ctx, CommandListHandle p_cmd_list, TextureHandle p_attachment_texture) -> void
 	{
 		CommandList &cmd{p_ctx->commandLists[p_cmd_list]};
-		TST_ASSERT(cmd.open);
+		TST_ASSERT((cmd.flags & EInternalCommandListFlagBits::eOpen));
 
 		Texture *attachment{p_ctx->textures.try_get(p_attachment_texture)};
 
@@ -3680,7 +3710,7 @@ namespace toaster::gpu
 	{
 		Swapchain &  swapchain{p_ctx->swapchains[p_swapchain]};
 		CommandList &cmd{p_ctx->commandLists[p_cmd_list]};
-		TST_ASSERT(cmd.open);
+		TST_ASSERT((cmd.flags & EInternalCommandListFlagBits::eOpen));
 
 		Texture *colour_attachment{p_ctx->textures.try_get(swapchain.attachments[swapchain.imageIndex])};
 
@@ -3731,7 +3761,7 @@ namespace toaster::gpu
 			VkSemaphoreSubmitInfo &wait_info{wait_infos.emplace_back()};
 			wait_info.sType       = STYPE(SEMAPHORE_SUBMIT_INFO);
 			wait_info.pNext       = nullptr;
-			wait_info.semaphore   = p_ctx->semaphores.try_get(wait.semaphore)->semaphore;
+			wait_info.semaphore   = p_ctx->semaphores[wait.semaphore].semaphore;
 			wait_info.value       = wait.value; // Timeline semaphore
 			wait_info.stageMask   = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
 			wait_info.deviceIndex = 0u;
@@ -3811,7 +3841,7 @@ namespace toaster::gpu
 		shader_create_info.pName     = p_desc.entryPointName;
 
 		VkShaderEXT shader;
-		TST_GPU_VK_CHECK_RESULT_MSG(vkCreateShadersEXT(p_ctx->logicalDevice, 1u, &shader_create_info, nullptr, &shader), "Failed to create shader");
+		TST_GPU_VK_CHECK_RESULT_MSG(vkCreateShadersEXT(p_ctx->logicalDevice, 1u, &shader_create_info, &p_ctx->allocatorCallbacks, &shader), "Failed to create shader");
 
 		return p_ctx->shaders.emplace(Shader{shader, shader_stage, next_stage});
 	}

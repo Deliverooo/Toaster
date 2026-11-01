@@ -98,9 +98,10 @@ namespace toaster::gpu
 		UnorderedSet<StateTrackerHandle>  aliveStateTrackers;
 		mtx_t                             aliveStateTrackerMtx;
 
-		uint32                    maxAllocationCommandLists{3u};
-		Vector<CommandListHandle> commandLists;
-		Vector<uint64>            uploadTimeline;
+		uint32                         maxAllocationCommandLists{3u};
+		Vector<CommandAllocatorHandle> commandAllocators;
+		Vector<CommandListHandle>      commandLists;
+		Vector<uint64>                 uploadTimeline;
 
 		thrd_t           uploadThrd;
 		std::atomic_bool threadRunning{true};
@@ -218,7 +219,7 @@ namespace toaster::gpu
 		if (current_value < p_ctx->uploadTimeline[p_cmd_index])
 			semaphore_wait_n(p_ctx->gpuCtx, p_ctx->transferTimelineSemaphore, p_ctx->uploadTimeline[p_cmd_index]);
 
-		cmd_list_reset(p_ctx->gpuCtx, cmd);
+		cmd_allocator_reset(p_ctx->gpuCtx, p_ctx->commandAllocators[p_cmd_index]);
 		cmd_list_open(p_ctx->gpuCtx, cmd);
 
 		LiveUploadBatch live_batch{};
@@ -325,12 +326,14 @@ namespace toaster::gpu
 
 		insertPage(ctx); // Default page
 
+		ctx->commandAllocators.resize(ctx->maxAllocationCommandLists);
 		ctx->commandLists.resize(ctx->maxAllocationCommandLists);
 		ctx->uploadTimeline.resize(ctx->maxAllocationCommandLists);
 		for (uint32 i{0u}; i < ctx->maxAllocationCommandLists; ++i)
 		{
-			ctx->uploadTimeline[i] = 0u;
-			ctx->commandLists[i]   = cmd_list_create(p_gpu_ctx, EQueueType::eTransfer);
+			ctx->uploadTimeline[i]    = 0u;
+			ctx->commandAllocators[i] = cmd_allocator_create(p_gpu_ctx, EQueueType::eTransfer);
+			cmd_list_allocate_n(p_gpu_ctx, std::span<CommandListHandle>{&ctx->commandLists[i], 1ull}, ctx->commandAllocators[i], false);
 		}
 
 		ctx->stateTrackers.setDestructorFn(+[](StateTracker *p_data, void *) -> void
@@ -365,6 +368,9 @@ namespace toaster::gpu
 
 		p_ctx->stateTrackers.clear();
 		p_ctx->aliveStateTrackers.clear(); // They are now all dead
+
+		for (uint32 i{0u}; i < p_ctx->maxAllocationCommandLists; ++i)
+			cmd_allocator_destroy(p_ctx->gpuCtx, p_ctx->commandAllocators[i]);
 
 		for (auto &page: p_ctx->stagingPages | std::views::values)
 			destroyPage(p_ctx, page);

@@ -264,6 +264,7 @@ namespace toaster
 			return *data;
 		}
 		#else
+		// Technically unsafe, but in release builds, speed matters more. If you are unsure about the validity of p_handle, just use try_get
 		auto operator[](HandleType p_handle) -> TData &
 		{
 			const uint32 id{p_handle.getId()};
@@ -280,6 +281,7 @@ namespace toaster
 			return *data;
 		}
 		#else
+		// Technically unsafe, but in release builds, speed matters more. If you are unsure about the validity of p_handle, just use try_get
 		auto operator[](HandleType p_handle) const -> const TData &
 		{
 			const uint32 id{p_handle.getId()};
@@ -334,7 +336,7 @@ namespace toaster
 				return;
 			}
 
-			const uint32 next_magic{((metadata_value & c_magicMask) + 1u) & c_magicMask};
+			const uint32 next_magic{((metadata_value & c_magicMask) + 1u) & c_magicMask}; // Increment the magic
 			slot.metadata.metadata.store(next_magic, std::memory_order_release); // Ignore the alive mask because the slot is now dead
 
 			auto data{reinterpret_cast<TData *>(&slot.storage)};
@@ -375,7 +377,7 @@ namespace toaster
 				if ((metadata_value & c_magicMask) != handle.getMagic() || !(metadata_value & c_aliveMask))
 					continue;
 
-				const uint32 next_magic{((metadata_value & c_magicMask) + 1u) & c_magicMask};
+				const uint32 next_magic{((metadata_value & c_magicMask) + 1u) & c_magicMask}; // Increment the magic
 				slot.metadata.metadata.store(next_magic, std::memory_order_release); // Ignore the alive mask because the slot is now dead
 
 				auto data{reinterpret_cast<TData *>(&slot.storage)};
@@ -447,6 +449,74 @@ namespace toaster
 			return true;
 		}
 
+		// Faster than manually iterating because there is a page caching setup
+		template<typename TFunc> requires std::is_invocable_r_v<void, TFunc, TData &, uint32>
+		auto for_each(std::span<const HandleType> p_range, TFunc &&p_func) -> void
+		{
+			uint32    last_page_index{UINT32_MAX};
+			PageSlot *last_page{nullptr};
+
+			for (uint32 i{0u}; i < p_range.size(); ++i)
+			{
+				const HandleType handle{p_range[i]};
+				const uint32     id{handle.getId()};
+				const uint32     page_index{_get_page_index(id)};
+
+				if (page_index != last_page_index)
+				{
+					last_page       = m_pages[page_index].load(std::memory_order_relaxed);
+					last_page_index = page_index;
+				}
+
+				if (!last_page)
+				{
+					TST_ASSERT(false);
+					continue;
+				}
+
+				PageSlot &   slot{last_page[_get_slot_index(id)]};
+				const uint32 metadata_value{slot.metadata.metadata.load(std::memory_order_relaxed)};
+				if ((metadata_value & c_magicMask) != handle.getMagic() || !(metadata_value & c_aliveMask))
+					continue;
+
+				auto data{reinterpret_cast<TData *>(&slot.storage)};
+
+				p_func(*data, i);
+			}
+		}
+
+		template<typename TFunc> requires std::is_invocable_r_v<void, TFunc, const TData &, uint32>
+		auto for_each(std::span<const HandleType> p_range, TFunc &&p_func) const -> void
+		{
+			uint32    last_page_index{UINT32_MAX};
+			PageSlot *last_page{nullptr};
+
+			for (uint32 i{0u}; i < p_range.size(); ++i)
+			{
+				const HandleType handle{p_range[i]};
+				const uint32     id{handle.getId()};
+				const uint32     page_index{_get_page_index(id)};
+
+				if (page_index != last_page_index)
+				{
+					last_page       = m_pages[page_index].load(std::memory_order_relaxed);
+					last_page_index = page_index;
+				}
+
+				if (!last_page) [[unlikely]] continue;
+
+				const PageSlot &slot{last_page[_get_slot_index(id)]};
+				const uint32    metadata_value{slot.metadata.metadata.load(std::memory_order_relaxed)};
+				if ((metadata_value & c_magicMask) != handle.getMagic() || !(metadata_value & c_aliveMask))
+					continue;
+
+				const auto data{reinterpret_cast<const TData *>(&slot.storage)};
+
+				p_func(*data, i);
+			}
+		}
+
+		// This is here because it may be useful, but it is not cache efficient...
 		template<typename TFunc>
 		auto for_each_alive(TFunc &&p_func) -> void
 		{
@@ -473,8 +543,8 @@ namespace toaster
 			alignas(alignof(TData)) uint8 bytes[sizeof(TData)];
 		};
 
-		static constexpr uint32 c_magicMask{~TST_BIT(31u)};
-		static constexpr uint32 c_aliveMask{~c_magicMask};
+		static constexpr uint32 c_magicMask{~TST_BIT(31u)}; // 01111111111111111111111111111111
+		static constexpr uint32 c_aliveMask{~c_magicMask};  // 10000000000000000000000000000000
 
 		struct Metadata
 		{

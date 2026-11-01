@@ -22,16 +22,22 @@ namespace toaster::rnd
 		math::Float2 texCoord;
 	};
 
+	// These can be packed into uint8s
+	constexpr uint8 c_maxMeshletVertices{64u};
+	constexpr uint8 c_maxMeshletTriangles{128u};
+
 	struct TST_RENDER_API Meshlet
 	{
-		uint32 materialIndex{0u}; // Index into the per-mesh material array
+		math::Float4 boundingSphere{0.0f, 0.0f, 0.0f, 1.0f};
 
 		uint32 vertexOffset{0u};
 		uint32 triangleOffset{0u};
-		uint32 vertexCount{0u};
-		uint32 triangleCount{0u};
 
-		math::Float4 boundingSphere{0.0f, 0.0f, 0.0f, 1.0f};
+		uint8 vertexCount{0u};
+		uint8 triangleCount{0u};
+
+		// Index into the per-mesh material array
+		uint16 materialIndex{0u}; // Unless your mesh has > 65,535 materials, you should be ok with a uint16
 	};
 
 	struct TST_RENDER_API StaticMeshMetadata
