@@ -20,6 +20,7 @@ namespace toaster::gpu
 	{
 		const void *data{nullptr};
 		uint64      size{0ull};
+
 		// The buffer offset in here must be < size
 		InitialiserList<const BufferCopyRegion> uploadRegions;
 	};
@@ -51,10 +52,10 @@ namespace toaster::gpu
 
 	auto TST_GPU_API poll_uploads(UploadContext *p_ctx) -> void; // Destroys any completed state trackers and cleans up staging memory if needed
 
-	auto TST_GPU_API upload_data_to_buffer(UploadContext *    p_ctx, BufferHandle p_dst_buffer, const BufferUploadDesc &p_upload_desc,
-										   StateTrackerHandle p_state_tracker) -> void;
-	auto TST_GPU_API upload_data_to_texture(UploadContext *    p_ctx, TextureHandle p_dst_texture, const TextureUploadDesc &p_upload_desc,
-											StateTrackerHandle p_state_tracker) -> void;
+	auto TST_GPU_API upload_data_to_buffers(UploadContext *                         p_ctx, InitialiserList<const BufferHandle> p_dst_buffers,
+											InitialiserList<const BufferUploadDesc> p_upload_descs, StateTrackerHandle         p_state_tracker) -> void;
+	auto TST_GPU_API upload_data_to_textures(UploadContext *                          p_ctx, InitialiserList<const TextureHandle> p_dst_textures,
+											 InitialiserList<const TextureUploadDesc> p_upload_descs, StateTrackerHandle          p_state_tracker) -> void;
 
 	// You should not really be calling these, but here...
 	[[nodiscard]] auto TST_GPU_API _get_transfer_timeline_semaphore(const UploadContext *p_ctx) -> SemaphoreHandle;

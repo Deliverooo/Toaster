@@ -69,9 +69,6 @@ namespace toaster::rnd
 
 		mngr->dirtyMaterials.resize(p_render_ctx->maxFramesInFlight);
 
-		// Helps by batching default uploads into one state to be tracked and waited on
-		const gpu::StateTrackerHandle default_resource_state_tracker{gpu::state_tracker_register(p_render_ctx->uploadCtx, 4u)};
-
 		Array<gpu::EFormat, c_maxMaterialTextures> default_texture_formats{
 			gpu::EFormat::eR8G8B8A8Srgb,
 			gpu::EFormat::eR8G8B8A8Unorm,
@@ -110,6 +107,9 @@ namespace toaster::rnd
 
 		gpu::texture_create_n(gpu_ctx, default_texture_descs, mngr->defaultTextures);
 
+		// Helps by batching default uploads into one state to be tracked and waited on
+		const gpu::StateTrackerHandle default_resource_state_tracker{gpu::state_tracker_register(p_render_ctx->uploadCtx, 1u)};
+
 		gpu::BufferTextureCopyRegion copy_region{};
 		copy_region.bufferOffset       = 0ull;
 		copy_region.textureOffset      = {0, 0, 0};
@@ -117,15 +117,15 @@ namespace toaster::rnd
 		copy_region.textureSubresource = gpu::TextureSubresource{0u, 0u, 1u};
 
 		Array<gpu::TextureUploadDesc, c_maxMaterialTextures> upload_descs;
+
 		for (uint8 i{0u}; i < c_maxMaterialTextures; ++i)
 		{
 			gpu::TextureUploadDesc &upload_desc{upload_descs[i]};
 			upload_desc.data          = default_texture_upload_datas[i];
 			upload_desc.size          = static_cast<uint64>(default_texture_upload_sizes[i]);
 			upload_desc.uploadRegions = copy_region;
-
-			gpu::upload_data_to_texture(upload_ctx, mngr->defaultTextures[i], upload_desc, default_resource_state_tracker);
 		}
+		gpu::upload_data_to_textures(upload_ctx, mngr->defaultTextures, upload_descs, default_resource_state_tracker);
 
 		gpu::resource_descriptor_heap_alloc_texture_slots(gpu_ctx, resource_heap, mngr->defaultTextureHeapSlots);
 		gpu::resource_descriptor_heap_write_textures(gpu_ctx, resource_heap, mngr->defaultTextureHeapSlots, mngr->defaultTextures, {false, false, false, false}, {

@@ -1,6 +1,7 @@
 #include "toast_gpu/upload.hpp"
 
 #include <algorithm>
+#include <numeric>
 #include <ranges>
 #include <threads.h>
 #include <variant>
@@ -57,21 +58,20 @@ namespace toaster::gpu
 
 	struct BufferUploadTask
 	{
-		BufferHandle dstBuffer{nullptr};
-		Vector<BufferCopyRegion> uploadRegions;
+		Vector<BufferHandle>              dstBuffers;
+		Vector<Vector<BufferCopyRegion> > uploadRegions;
 	};
 
 	struct TextureUploadTask
 	{
-		TextureHandle                   dstTexture{nullptr};
-		Vector<BufferTextureCopyRegion> uploadRegions;
+		Vector<TextureHandle>                    dstTextures;
+		Vector<Vector<BufferTextureCopyRegion> > uploadRegions;
 	};
 
 	struct UploadTask
 	{
-		UploadPageAllocation stagingAllocation{};
-		StateTrackerHandle   stateTracker{nullptr};
-
+		UploadPageAllocation                              stagingAllocation{};
+		StateTrackerHandle                                stateTracker{nullptr};
 		std::variant<BufferUploadTask, TextureUploadTask> task;
 	};
 
@@ -95,20 +95,20 @@ namespace toaster::gpu
 
 		FixedPool<StateTracker, 32u, 32u> stateTrackers; // 1024
 		UnorderedSet<StateTrackerHandle>  aliveStateTrackers;
-		mtx_t                             aliveStateTrackerMtx;
 
 		uint32                         maxAllocationCommandLists{3u};
 		Vector<CommandAllocatorHandle> commandAllocators;
 		Vector<CommandListHandle>      commandLists;
 		Vector<uint64>                 uploadTimeline;
 
-		thrd_t           uploadThrd;
-		std::atomic_bool threadRunning{true};
-		cnd_t            cnd;
-
+		mtx_t aliveStateTrackerMtx;
 		mtx_t pageMtx;
 		mtx_t uploadMtx;
 		mtx_t batchMtx;
+
+		thrd_t           uploadThrd;
+		std::atomic_bool threadRunning{true};
+		cnd_t            cnd;
 
 		Queue<UploadTask>       taskQueue;
 		Vector<LiveUploadBatch> liveBatches;
@@ -230,13 +230,21 @@ namespace toaster::gpu
 			std::visit(overloaded{
 						   [&task, p_ctx, cmd](const BufferUploadTask &p_buffer_task) -> void
 						   {
-							   TST_ASSERT(p_buffer_task.dstBuffer.valid());
-							   cmd_copy_buffer(p_ctx->gpuCtx, cmd, task.stagingAllocation.buffer, p_buffer_task.dstBuffer, p_buffer_task.uploadRegions);
+							   for (uint32 i{0u}; i < p_buffer_task.uploadRegions.size(); ++i)
+							   {
+								   BufferHandle dst_buffer{p_buffer_task.dstBuffers[i]};
+								   auto &       upload_regions{p_buffer_task.uploadRegions[i]};
+								   cmd_copy_buffer(p_ctx->gpuCtx, cmd, task.stagingAllocation.buffer, dst_buffer, upload_regions);
+							   }
 						   },
 						   [&task, p_ctx, cmd](const TextureUploadTask &p_texture_task) -> void
 						   {
-							   TST_ASSERT(p_texture_task.dstTexture.valid());
-							   cmd_copy_buffer_to_texture(p_ctx->gpuCtx, cmd, task.stagingAllocation.buffer, p_texture_task.dstTexture, p_texture_task.uploadRegions);
+							   for (uint32 i{0u}; i < p_texture_task.uploadRegions.size(); ++i)
+							   {
+								   TextureHandle dst_texture{p_texture_task.dstTextures[i]};
+								   auto &        upload_regions{p_texture_task.uploadRegions[i]};
+								   cmd_copy_buffer_to_texture(p_ctx->gpuCtx, cmd, task.stagingAllocation.buffer, dst_texture, upload_regions);
+							   }
 						   }
 					   }, task.task);
 		}
@@ -527,21 +535,43 @@ namespace toaster::gpu
 			p_ctx->stateTrackers.destroy_n(handles_to_remove);
 	}
 
-	auto upload_data_to_buffer(UploadContext *p_ctx, BufferHandle p_dst_buffer, const BufferUploadDesc &p_upload_desc, StateTrackerHandle p_state_tracker) -> void
+	auto upload_data_to_buffers(UploadContext *    p_ctx, InitialiserList<const BufferHandle> p_dst_buffers, InitialiserList<const BufferUploadDesc> p_upload_descs,
+								StateTrackerHandle p_state_tracker) -> void
 	{
-		TST_PERMA_ASSERT_MSG(p_ctx->stateTrackers.is_valid(p_state_tracker), "Attempted to upload data to buffer using invalid state tracker");
+		TST_PERMA_ASSERT_MSG(p_ctx->stateTrackers.is_valid(p_state_tracker), "Attempted to upload data to texture using invalid state tracker");
 
 		UploadTask upload_task{};
-		allocateAcrossPages(p_ctx, p_upload_desc.size, upload_task.stagingAllocation);
 
-		std::memcpy(upload_task.stagingAllocation.mapped, p_upload_desc.data, p_upload_desc.size);
+		uint64 total_size{0ull};
+		for (const BufferUploadDesc &desc: p_upload_descs)
+		{
+			total_size += desc.size;
+			total_size = TST_ALIGN(total_size, 16u);
+		}
 
-		Vector<BufferCopyRegion> regions;
-		regions.assign_range(p_upload_desc.uploadRegions);
-		for (auto &region: regions)
-			region.srcOffset += upload_task.stagingAllocation.offset; // The offset has to be relative to the staging allocation
+		allocateAcrossPages(p_ctx, total_size, upload_task.stagingAllocation);
 
-		upload_task.task.emplace<BufferUploadTask>(p_dst_buffer, std::move(regions));
+		BufferUploadTask &task{upload_task.task.emplace<BufferUploadTask>()};
+		task.dstBuffers.assign_range(p_dst_buffers);
+		task.uploadRegions.resize(p_upload_descs.size());
+
+		uintptr offset{0ull};
+		for (uint32 i{0u}; i < p_upload_descs.size(); ++i)
+		{
+			const BufferUploadDesc &desc{p_upload_descs[i]};
+
+			std::memcpy(reinterpret_cast<void *>(reinterpret_cast<uintptr>(upload_task.stagingAllocation.mapped) + offset), desc.data, desc.size);
+
+			auto &region_vec{task.uploadRegions[i]};
+			region_vec.assign_range(desc.uploadRegions);
+
+			for (auto &region: region_vec)
+				region.srcOffset += upload_task.stagingAllocation.offset + offset; // The offset has to be relative to the staging allocation
+
+			offset += desc.size;
+			offset = TST_ALIGN(offset, 16u); // Now it is "safe"
+		}
+
 		upload_task.stateTracker = p_state_tracker;
 
 		mtx_lock(&p_ctx->uploadMtx);
@@ -550,20 +580,43 @@ namespace toaster::gpu
 		mtx_unlock(&p_ctx->uploadMtx);
 	}
 
-	auto upload_data_to_texture(UploadContext *p_ctx, TextureHandle p_dst_texture, const TextureUploadDesc &p_upload_desc, StateTrackerHandle p_state_tracker) -> void
+	auto upload_data_to_textures(UploadContext *    p_ctx, InitialiserList<const TextureHandle> p_dst_textures, InitialiserList<const TextureUploadDesc> p_upload_descs,
+								 StateTrackerHandle p_state_tracker) -> void
 	{
 		TST_PERMA_ASSERT_MSG(p_ctx->stateTrackers.is_valid(p_state_tracker), "Attempted to upload data to texture using invalid state tracker");
 
 		UploadTask upload_task{};
-		allocateAcrossPages(p_ctx, p_upload_desc.size, upload_task.stagingAllocation);
 
-		std::memcpy(upload_task.stagingAllocation.mapped, p_upload_desc.data, p_upload_desc.size);
+		uint64 total_size{0ull};
+		for (const TextureUploadDesc &desc: p_upload_descs)
+		{
+			total_size += desc.size;
+			total_size = TST_ALIGN(total_size, 16u);
+		}
 
-		Vector<BufferTextureCopyRegion> regions;
-		regions.assign_range(p_upload_desc.uploadRegions);
-		for (auto &region: regions)
-			region.bufferOffset += upload_task.stagingAllocation.offset; // The offset has to be relative to the staging allocation
-		upload_task.task.emplace<TextureUploadTask>(p_dst_texture, std::move(regions));
+		allocateAcrossPages(p_ctx, total_size, upload_task.stagingAllocation);
+
+		TextureUploadTask &task{upload_task.task.emplace<TextureUploadTask>()};
+		task.dstTextures.assign_range(p_dst_textures);
+		task.uploadRegions.resize(p_upload_descs.size());
+
+		uintptr offset{0ull};
+		for (uint32 i{0u}; i < p_upload_descs.size(); ++i)
+		{
+			const TextureUploadDesc &desc{p_upload_descs[i]};
+
+			std::memcpy(reinterpret_cast<void *>(reinterpret_cast<uintptr>(upload_task.stagingAllocation.mapped) + offset), desc.data, desc.size);
+
+			auto &region_vec{task.uploadRegions[i]};
+			region_vec.assign_range(desc.uploadRegions);
+
+			for (auto &region: region_vec)
+				region.bufferOffset += upload_task.stagingAllocation.offset + offset; // The offset has to be relative to the staging allocation
+
+			offset += desc.size;
+			offset = TST_ALIGN(offset, 16u); // Now it is "safe"
+		}
+
 		upload_task.stateTracker = p_state_tracker;
 
 		mtx_lock(&p_ctx->uploadMtx);

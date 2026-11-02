@@ -142,7 +142,7 @@ namespace toaster::rnd
 		StaticMesh temp_mesh{};
 
 		// Vertex buffer, meshlet buffer, meshlet vertex buffer, meshlet triangle buffer, material indirection buffer and metadata buffer
-		temp_mesh.stateTracker = gpu::state_tracker_register(upload_ctx, 6u);
+		temp_mesh.stateTracker = gpu::state_tracker_register(upload_ctx, 1u);
 
 		return p_mngr->staticMeshes.emplace(std::move(temp_mesh));
 	}
@@ -163,7 +163,7 @@ namespace toaster::rnd
 		const uint64 meshlet_buffer_size{p_geometry_data.meshlets.size_bytes()};
 		const uint64 meshlet_vertex_buffer_size{p_geometry_data.meshletVertices.size_bytes()};
 		const uint64 meshlet_triangle_buffer_size{p_geometry_data.meshletIndices.size_bytes()};
-		const uint64 material_indirection_buffer_buffer_size{p_geometry_data.materials.size_bytes()};
+		const uint64 material_indirection_buffer_size{p_geometry_data.materials.size_bytes()};
 
 		mtx_lock(&p_mngr->pageMtx);
 
@@ -174,46 +174,43 @@ namespace toaster::rnd
 		gpu::page_allocator_allocate_across_pages(alloc_ctx, &p_mngr->meshletTrianglePager, meshlet_triangle_buffer_size, alignof(uint8),
 												  &static_mesh.meshletTriangleBufferAllocation);
 
-		static_mesh.materialIndirectionBufferAllocation = gpu::virtual_block_allocate(alloc_ctx, p_mngr->materialIndirectionBlock,
-																					  material_indirection_buffer_buffer_size, alignof(uint32));
+		static_mesh.materialIndirectionBufferAllocation = gpu::virtual_block_allocate(alloc_ctx, p_mngr->materialIndirectionBlock, material_indirection_buffer_size,
+																					  alignof(uint32));
 		static_mesh.materialIndirectionBufferOffset = gpu::virtual_allocation_get_offset(alloc_ctx, static_mesh.materialIndirectionBufferAllocation);
 
 		mtx_unlock(&p_mngr->pageMtx);
-
-		gpu::upload_data_to_buffer(upload_ctx, static_mesh.vertexBufferAllocation.buffer, gpu::BufferUploadDesc{
-									   p_geometry_data.vertices.data(),
-									   vertex_buffer_size,
-									   static_mesh.vertexBufferAllocation.offset
-								   }, static_mesh.stateTracker);
-
-		gpu::upload_data_to_buffer(upload_ctx, static_mesh.meshletBufferAllocation.buffer, gpu::BufferUploadDesc{
-									   p_geometry_data.meshlets.data(),
-									   meshlet_buffer_size,
-									   static_mesh.meshletBufferAllocation.offset
-								   }, static_mesh.stateTracker);
-
-		gpu::upload_data_to_buffer(upload_ctx, static_mesh.meshletVertexBufferAllocation.buffer, gpu::BufferUploadDesc{
-									   p_geometry_data.meshletVertices.data(),
-									   meshlet_vertex_buffer_size,
-									   static_mesh.meshletVertexBufferAllocation.offset
-								   }, static_mesh.stateTracker);
-
-		gpu::upload_data_to_buffer(upload_ctx, static_mesh.meshletTriangleBufferAllocation.buffer, gpu::BufferUploadDesc{
-									   p_geometry_data.meshletIndices.data(),
-									   meshlet_triangle_buffer_size,
-									   static_mesh.meshletTriangleBufferAllocation.offset
-								   }, static_mesh.stateTracker);
 
 		// The material ids are just the indices into the pool and also the gpu buffer
 		const Vector<uint32> material_indirection_buffer_data{
 			static_mesh.materials | std::views::transform([](const MaterialHandle p_handle) -> uint32 { return p_handle.getId(); }) | std::ranges::to<Vector<uint32> >()
 		};
 
-		gpu::upload_data_to_buffer(upload_ctx, p_mngr->materialIndirectionBuffer, gpu::BufferUploadDesc{
-									   material_indirection_buffer_data.data(),
-									   material_indirection_buffer_buffer_size,
-									   static_mesh.materialIndirectionBufferOffset
-								   }, static_mesh.stateTracker);
+		Array<gpu::BufferUploadDesc, 6u> upload_descs;
+
+		gpu::BufferUploadDesc &vertex_upload_desc{upload_descs[0u]};
+		vertex_upload_desc.size          = vertex_buffer_size;
+		vertex_upload_desc.data          = p_geometry_data.vertices.data();
+		vertex_upload_desc.uploadRegions = gpu::BufferCopyRegion{0ull, static_mesh.vertexBufferAllocation.offset, vertex_buffer_size};
+
+		gpu::BufferUploadDesc &meshlet_upload_desc{upload_descs[1u]};
+		meshlet_upload_desc.size          = meshlet_buffer_size;
+		meshlet_upload_desc.data          = p_geometry_data.meshlets.data();
+		meshlet_upload_desc.uploadRegions = gpu::BufferCopyRegion{0ull, static_mesh.meshletBufferAllocation.offset, meshlet_buffer_size};
+
+		gpu::BufferUploadDesc &meshlet_vertex_upload_desc{upload_descs[2u]};
+		meshlet_vertex_upload_desc.size          = meshlet_vertex_buffer_size;
+		meshlet_vertex_upload_desc.data          = p_geometry_data.meshletVertices.data();
+		meshlet_vertex_upload_desc.uploadRegions = gpu::BufferCopyRegion{0ull, static_mesh.meshletVertexBufferAllocation.offset, meshlet_vertex_buffer_size};
+
+		gpu::BufferUploadDesc &meshlet_index_upload_desc{upload_descs[3u]};
+		meshlet_index_upload_desc.size          = meshlet_triangle_buffer_size;
+		meshlet_index_upload_desc.data          = p_geometry_data.meshletIndices.data();
+		meshlet_index_upload_desc.uploadRegions = gpu::BufferCopyRegion{0ull, static_mesh.meshletTriangleBufferAllocation.offset, meshlet_triangle_buffer_size};
+
+		gpu::BufferUploadDesc &material_indirection_upload_desc{upload_descs[4u]};
+		material_indirection_upload_desc.size          = material_indirection_buffer_size;
+		material_indirection_upload_desc.data          = material_indirection_buffer_data.data();
+		material_indirection_upload_desc.uploadRegions = gpu::BufferCopyRegion{0ull, static_mesh.materialIndirectionBufferOffset, material_indirection_buffer_size};
 
 		StaticMeshMetadata metadata{};
 		metadata.boundingSphere = p_geometry_data.boundingSphere;
@@ -230,10 +227,21 @@ namespace toaster::rnd
 		metadata.meshletVertexBufferPageSlot   = static_cast<uint8>(static_mesh.meshletVertexBufferAllocation.heapSlot);
 		metadata.meshletTriangleBufferPageSlot = static_cast<uint8>(static_mesh.meshletTriangleBufferAllocation.heapSlot);
 
-		uint64 metadata_offset{p_static_mesh.getId() * sizeof(StaticMeshMetadata)};
+		const uint64 metadata_offset{p_static_mesh.getId() * sizeof(StaticMeshMetadata)};
 
-		gpu::upload_data_to_buffer(upload_ctx, p_mngr->staticMeshMetadataBuffer, gpu::BufferUploadDesc{&metadata, sizeof(StaticMeshMetadata), metadata_offset},
-								   static_mesh.stateTracker);
+		gpu::BufferUploadDesc &metadata_upload_desc{upload_descs[5u]};
+		metadata_upload_desc.size          = sizeof(StaticMeshMetadata);
+		metadata_upload_desc.data          = &metadata;
+		metadata_upload_desc.uploadRegions = gpu::BufferCopyRegion{0ull, metadata_offset, sizeof(StaticMeshMetadata)};
+
+		gpu::upload_data_to_buffers(upload_ctx, {
+										static_mesh.vertexBufferAllocation.buffer,
+										static_mesh.meshletBufferAllocation.buffer,
+										static_mesh.meshletVertexBufferAllocation.buffer,
+										static_mesh.meshletTriangleBufferAllocation.buffer,
+										p_mngr->materialIndirectionBuffer,
+										p_mngr->staticMeshMetadataBuffer
+									}, upload_descs, static_mesh.stateTracker);
 	}
 
 	auto static_mesh_create(MeshManager *p_mngr, const StaticMeshGeometryData &p_geometry_data) -> StaticMeshHandle

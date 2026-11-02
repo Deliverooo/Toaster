@@ -35,7 +35,6 @@ TST_OS_WINMAIN()
 		printf("rpmalloc Error: %s\n", p_message);
 	};
 	rpmalloc_initialize(&malloc_interface);
-
 	#if 1
 
 	{
@@ -66,6 +65,8 @@ TST_OS_WINMAIN()
 			// rnd::MaterialManager *materialMngr;
 			// rnd::MeshManager *    meshMngr;
 
+			Vector<gpu::TextureHandle> pendingMipmapGenerations;
+
 			RenderTexture testTexture;
 
 			gpu::ShaderHandle meshShader;
@@ -89,8 +90,13 @@ TST_OS_WINMAIN()
 			// layer->materialMngr = rnd::material_mngr_create(render_ctx, 128u);
 			// layer->meshMngr     = rnd::mesh_mngr_create(render_ctx);
 
-			layer->testTexture.texture            = gpu::texture_register_null(gpu_ctx);
-			layer->testTexture.stateTracker       = gpu::state_tracker_register(upload_ctx, 1u);
+			layer->testTexture.texture      = gpu::texture_register_null(gpu_ctx);
+			layer->testTexture.stateTracker = gpu::state_tracker_register(upload_ctx, 1u);
+
+			gpu::state_tracker_register_ready_callback(upload_ctx, layer->testTexture.stateTracker, [layer]() -> void
+			{
+				layer->pendingMipmapGenerations.push_back(layer->testTexture.texture);
+			});
 			layer->testTexture.shaderReadHeapSlot = gpu::resource_descriptor_heap_alloc_texture_slot(gpu_ctx, render_ctx->resourceHeap);
 
 			ast::texture_load_from_file(render_ctx, layer->testTexture.texture, layer->testTexture.shaderReadHeapSlot, layer->testTexture.stateTracker,
@@ -170,6 +176,13 @@ TST_OS_WINMAIN()
 
 			rnd::RenderContext *render_ctx{&p_app->renderCtx};
 			gpu::GPUContext *   gpu_ctx{render_ctx->gpuCtx};
+
+			if (!layer->pendingMipmapGenerations.empty())
+			{
+				for (const gpu::TextureHandle texture: layer->pendingMipmapGenerations)
+					gpu::cmd_generate_mipmaps(gpu_ctx, p_cmd, texture);
+				layer->pendingMipmapGenerations.clear();
+			}
 
 			gpu::cmd_bind_resource_heap(gpu_ctx, p_cmd, render_ctx->resourceHeap);
 			gpu::cmd_bind_sampler_heap(gpu_ctx, p_cmd, render_ctx->samplerHeap);

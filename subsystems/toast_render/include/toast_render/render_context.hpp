@@ -22,7 +22,7 @@ namespace toaster::rnd
 
 		gpu::ResourceDescriptorHeapHandle resourceHeap;
 		gpu::SamplerDescriptorHeapHandle  samplerHeap;
-		
+
 		uint32 maxFramesInFlight;
 	};
 

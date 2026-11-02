@@ -63,8 +63,8 @@ namespace toaster::ast
 		return image_data;
 	}
 
-	auto texture_load_from_file(const rnd::RenderContext *p_render_ctx, gpu::TextureHandle p_dst_texture, uint32 p_dst_heap_slot, gpu::StateTrackerHandle p_dst_state_tracker,
-								const std::filesystem::path &p_path, gpu::EFormat p_desired_format) -> void
+	auto texture_load_from_file(const rnd::RenderContext *p_render_ctx, gpu::TextureHandle                  p_dst_texture, uint32 p_dst_heap_slot,
+								gpu::StateTrackerHandle   p_dst_state_tracker, const std::filesystem::path &p_path, gpu::EFormat  p_desired_format) -> void
 	{
 		gpu::TextureDesc texture_desc{};
 		texture_desc.usage    = gpu::ETextureUsageFlagBits::eTransferSrc | gpu::ETextureUsageFlagBits::eTransferDst | gpu::ETextureUsageFlagBits::eSampled;
@@ -92,7 +92,7 @@ namespace toaster::ast
 		upload_desc.uploadRegions = copy_region;
 		upload_desc.data          = image_data.data();
 		upload_desc.size          = image_data.size();
-		gpu::upload_data_to_texture(upload_ctx, p_dst_texture, upload_desc, p_dst_state_tracker);
+		gpu::upload_data_to_textures(upload_ctx, p_dst_texture, upload_desc, p_dst_state_tracker);
 
 		image_data.release();
 	}
