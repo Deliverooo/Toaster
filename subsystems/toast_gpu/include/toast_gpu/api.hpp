@@ -641,6 +641,13 @@ namespace toaster::gpu
 
 	#pragma region transfer command
 
+	struct TST_GPU_API BufferCopyRegion
+	{
+		uint64 srcOffset{0ull};
+		uint64 dstOffset{0ull};
+		uint64 size{0ull};
+	};
+
 	struct TST_GPU_API TextureSubresource
 	{
 		uint32 mipLevel{0u};
@@ -734,8 +741,8 @@ namespace toaster::gpu
 										   InitialiserList<const CommandListHandle> p_secondary_command_lists) -> void;
 
 	// Copy command
-	auto TST_GPU_API cmd_copy_buffer(GPUContext *p_ctx, CommandListHandle  p_cmd_list, BufferHandle p_src_buffer, BufferHandle p_dst_buffer, uint64 p_size,
-									 uint64      p_src_offset = 0u, uint64 p_dst_offset = 0u) -> void;
+	auto TST_GPU_API cmd_copy_buffer(GPUContext *                            p_ctx, CommandListHandle p_cmd_list, BufferHandle p_src_buffer, BufferHandle p_dst_buffer,
+									 InitialiserList<const BufferCopyRegion> p_copy_regions) -> void;
 
 	auto TST_GPU_API cmd_copy_buffer_to_texture(GPUContext *p_ctx, CommandListHandle p_cmd_list, BufferHandle p_src_buffer, TextureHandle p_dst_texture,
 												InitialiserList<const BufferTextureCopyRegion> p_copy_regions) -> void;
@@ -838,9 +845,11 @@ namespace toaster::gpu
 	auto TST_GPU_API resource_descriptor_heap_free_buffer_slot(GPUContext *p_ctx, ResourceDescriptorHeapHandle p_resource_heap, uint32 p_heap_slot) -> void;
 	auto TST_GPU_API resource_descriptor_heap_free_buffer_slots(GPUContext *                  p_ctx, ResourceDescriptorHeapHandle p_resource_heap,
 																InitialiserList<const uint32> p_heap_slots) -> void;
+
 	auto TST_GPU_API resource_descriptor_heap_free_texture_slot(GPUContext *p_ctx, ResourceDescriptorHeapHandle p_resource_heap, uint32 p_heap_slot) -> void;
 	auto TST_GPU_API resource_descriptor_heap_free_texture_slots(GPUContext *                  p_ctx, ResourceDescriptorHeapHandle p_resource_heap,
 																 InitialiserList<const uint32> p_heap_slots) -> void;
+
 	auto TST_GPU_API sampler_descriptor_heap_free_sampler_slot(GPUContext *p_ctx, SamplerDescriptorHeapHandle p_sampler_heap, uint32 p_heap_slot) -> void;
 	auto TST_GPU_API sampler_descriptor_heap_free_sampler_slots(GPUContext *                  p_ctx, SamplerDescriptorHeapHandle p_sampler_heap,
 																InitialiserList<const uint32> p_heap_slots) -> void;
@@ -849,12 +858,16 @@ namespace toaster::gpu
 														   BufferHandle p_buffer) -> void;
 	auto TST_GPU_API resource_descriptor_heap_write_buffers(GPUContext *p_ctx, ResourceDescriptorHeapHandle p_resource_heap, InitialiserList<const uint32> p_heap_slots,
 															InitialiserList<const BufferHandle> p_buffers) -> void;
+
 	// Set p_mip_levels to c_all_mip_levels to access the entire texture's mip levels
 	auto TST_GPU_API resource_descriptor_heap_write_texture(GPUContext *p_ctx, ResourceDescriptorHeapHandle p_resource_heap, uint32 p_heap_slot, TextureHandle p_texture,
-															bool p_storage, uint32 p_mip = c_allMipLevels) -> void;
+															bool        p_storage, uint32                   p_mip = c_allMipLevels) -> void;
+	// If p_storage.size() or p_mip_levels.size() == 1, then all textures will be written with the same property.
+	// Else: p_heap_slots.size() == p_textures.size() == p_storage.size() == p_mip_levels.size()
 	auto TST_GPU_API resource_descriptor_heap_write_textures(GPUContext *p_ctx, ResourceDescriptorHeapHandle p_resource_heap, InitialiserList<const uint32> p_heap_slots,
 															 InitialiserList<const TextureHandle> p_textures, InitialiserList<const bool> p_storage,
 															 InitialiserList<const uint32> p_mip_levels) -> void;
+
 	auto TST_GPU_API sampler_descriptor_heap_write_sampler(GPUContext *p_ctx, SamplerDescriptorHeapHandle p_sampler_heap, uint32 p_heap_slot,
 														   const SamplerDesc &p_sampler_desc) -> void;
 	auto TST_GPU_API sampler_descriptor_heap_write_samplers(GPUContext *p_ctx, SamplerDescriptorHeapHandle p_sampler_heap, InitialiserList<const uint32> p_heap_slots,

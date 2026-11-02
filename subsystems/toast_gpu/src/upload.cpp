@@ -45,13 +45,6 @@ namespace toaster::gpu
 		uint32                  pageId{0u};
 	};
 
-	struct BufferUploadTask
-	{
-		BufferHandle dstBuffer{nullptr};
-		uint64       size{0ull};
-		uint64       dstOffset{0ull};
-	};
-
 	// "Standard" boilerplate for visiting variants
 	template<class... Ts>
 	struct overloaded : Ts...
@@ -61,6 +54,12 @@ namespace toaster::gpu
 
 	template<class... Ts>
 	overloaded(Ts...) -> overloaded<Ts...>;
+
+	struct BufferUploadTask
+	{
+		BufferHandle dstBuffer{nullptr};
+		Vector<BufferCopyRegion> uploadRegions;
+	};
 
 	struct TextureUploadTask
 	{
@@ -232,8 +231,7 @@ namespace toaster::gpu
 						   [&task, p_ctx, cmd](const BufferUploadTask &p_buffer_task) -> void
 						   {
 							   TST_ASSERT(p_buffer_task.dstBuffer.valid());
-							   cmd_copy_buffer(p_ctx->gpuCtx, cmd, task.stagingAllocation.buffer, p_buffer_task.dstBuffer, p_buffer_task.size,
-											   task.stagingAllocation.offset, p_buffer_task.dstBuffer);
+							   cmd_copy_buffer(p_ctx->gpuCtx, cmd, task.stagingAllocation.buffer, p_buffer_task.dstBuffer, p_buffer_task.uploadRegions);
 						   },
 						   [&task, p_ctx, cmd](const TextureUploadTask &p_texture_task) -> void
 						   {
@@ -538,7 +536,12 @@ namespace toaster::gpu
 
 		std::memcpy(upload_task.stagingAllocation.mapped, p_upload_desc.data, p_upload_desc.size);
 
-		upload_task.task.emplace<BufferUploadTask>(p_dst_buffer, p_upload_desc.size, p_upload_desc.dstOffset);
+		Vector<BufferCopyRegion> regions;
+		regions.assign_range(p_upload_desc.uploadRegions);
+		for (auto &region: regions)
+			region.srcOffset += upload_task.stagingAllocation.offset; // The offset has to be relative to the staging allocation
+
+		upload_task.task.emplace<BufferUploadTask>(p_dst_buffer, std::move(regions));
 		upload_task.stateTracker = p_state_tracker;
 
 		mtx_lock(&p_ctx->uploadMtx);

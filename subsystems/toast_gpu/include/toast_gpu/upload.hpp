@@ -19,14 +19,15 @@ namespace toaster::gpu
 	struct TST_GPU_API BufferUploadDesc
 	{
 		const void *data{nullptr};
-		uint64      size{0u};
-		uint64      dstOffset{0u};
+		uint64      size{0ull};
+		// The buffer offset in here must be < size
+		InitialiserList<const BufferCopyRegion> uploadRegions;
 	};
 
 	struct TST_GPU_API TextureUploadDesc
 	{
 		const void *data{nullptr};
-		uint64      size{0u};
+		uint64      size{0ull};
 
 		// The buffer offset in here must be < size
 		InitialiserList<const BufferTextureCopyRegion> uploadRegions;

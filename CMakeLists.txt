@@ -29,8 +29,9 @@ project(Toaster LANGUAGES C CXX)
 set(CXX_FLAGS)
 
 if (MSVC)
+
 	set(CXX_FLAGS
-			"/W3"
+			"/W3 /O2 /Oi /Ot /Gy /Gw"
 	)
 	add_compile_options("/experimental:c11atomics")
 	add_compile_definitions(_HAS_EXCEPTIONS=0)

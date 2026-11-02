@@ -13,7 +13,7 @@ namespace toaster::rnd
 		FreelistAllocator<uint32>  freeTransformList;
 		Vector<gpu::BufferHandle>  transformSSBOs;
 		Vector<gpu::DeviceAddress> transformBDAs;
-		Vector<math::Float4x4 *>   transformMapped;
+		Vector<void *>             transformMapped;
 	};
 
 	auto transform_mngr_create(RenderContext *p_render_ctx, uint32 p_max_transforms) -> TransformManager *
@@ -31,20 +31,16 @@ namespace toaster::rnd
 		mngr->transformSSBOs.resize(p_render_ctx->maxFramesInFlight);
 		mngr->transformBDAs.resize(p_render_ctx->maxFramesInFlight);
 		mngr->transformMapped.resize(p_render_ctx->maxFramesInFlight);
-		for (uint32 i{0u}; i < p_render_ctx->maxFramesInFlight; ++i)
-		{
-			mngr->transformSSBOs[i]  = gpu::buffer_create(p_render_ctx->gpuCtx, transform_buffer_desc);
-			mngr->transformBDAs[i]   = gpu::buffer_get_address(p_render_ctx->gpuCtx, mngr->transformSSBOs[i]);
-			mngr->transformMapped[i] = static_cast<math::Float4x4 *>(gpu::buffer_get_mapped_data(p_render_ctx->gpuCtx, mngr->transformSSBOs[i]));
-		}
+		gpu::buffer_create_n(p_render_ctx->gpuCtx, transform_buffer_desc, mngr->transformSSBOs);
+		gpu::buffer_get_address_n(p_render_ctx->gpuCtx, mngr->transformSSBOs, mngr->transformBDAs);
+		gpu::buffer_get_mapped_data_n(p_render_ctx->gpuCtx, mngr->transformSSBOs, mngr->transformMapped);
 
 		return mngr;
 	}
 
 	auto transform_mngr_destroy(TransformManager *p_mngr) -> void
 	{
-		for (const auto ssbo: p_mngr->transformSSBOs)
-			gpu::buffer_destroy(p_mngr->rndCtx->gpuCtx, ssbo);
+		gpu::buffer_destroy_n(p_mngr->rndCtx->gpuCtx, p_mngr->transformSSBOs);
 		p_mngr->transformSSBOs.clear();
 		p_mngr->transformBDAs.clear();
 
@@ -71,9 +67,9 @@ namespace toaster::rnd
 		freelist_allocator_free_slot(p_mngr->freeTransformList, p_transform);
 	}
 
-	auto TST_MATH_CALLCONV transform_update(TransformManager *p_mngr, TransformID p_transform, uint32 p_frame_index, math::FMatrix p_matrix) -> void
+	auto TST_MATH_CALLCONV transform_update(TransformManager *p_mngr, uint32 p_frame_index, TransformID p_transform, math::FMatrix p_matrix) -> void
 	{
-		math::Float4x4 *mapped{&p_mngr->transformMapped[p_frame_index][p_transform]};
+		math::Float4x4 *mapped{&static_cast<math::Float4x4 *>(p_mngr->transformMapped[p_frame_index])[p_transform]};
 		XMStoreFloat4x4(mapped, p_matrix);
 	}
 }

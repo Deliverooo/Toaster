@@ -254,14 +254,14 @@ namespace toaster::rnd
 		return gpu::state_tracker_is_ready(p_mngr->rndCtx->uploadCtx, mesh.stateTracker);
 	}
 
-	auto static_mesh_get(const MeshManager *p_mngr, StaticMeshHandle p_static_mesh) -> const StaticMesh *
+	auto static_mesh_get(const MeshManager *p_mngr, StaticMeshHandle p_static_mesh) -> const StaticMesh &
 	{
-		return &p_mngr->staticMeshes[p_static_mesh];
+		return p_mngr->staticMeshes[p_static_mesh];
 	}
 
-	auto static_mesh_get(MeshManager *p_mngr, StaticMeshHandle p_static_mesh) -> StaticMesh *
+	auto static_mesh_get(MeshManager *p_mngr, StaticMeshHandle p_static_mesh) -> StaticMesh &
 	{
-		return &p_mngr->staticMeshes[p_static_mesh];
+		return p_mngr->staticMeshes[p_static_mesh];
 	}
 
 	auto static_mesh_try_get(const MeshManager *p_mngr, StaticMeshHandle p_static_mesh) -> const StaticMesh *

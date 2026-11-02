@@ -12,6 +12,7 @@
 
 #include <print>
 
+#include "toast_asset/mesh_importer.hpp"
 #include "toast_render/material.hpp"
 
 namespace toaster::rnd
@@ -62,8 +63,8 @@ TST_OS_WINMAIN()
 
 		struct TestLayer
 		{
-			rnd::MaterialManager *materialMngr;
-			rnd::MeshManager *    meshMngr;
+			// rnd::MaterialManager *materialMngr;
+			// rnd::MeshManager *    meshMngr;
 
 			RenderTexture testTexture;
 
@@ -85,41 +86,16 @@ TST_OS_WINMAIN()
 			gpu::GPUContext *   gpu_ctx{render_ctx->gpuCtx};
 			gpu::UploadContext *upload_ctx{render_ctx->uploadCtx};
 
-			layer->materialMngr = rnd::material_mngr_create(render_ctx, 128u);
-			layer->meshMngr     = rnd::mesh_mngr_create(render_ctx);
+			// layer->materialMngr = rnd::material_mngr_create(render_ctx, 128u);
+			// layer->meshMngr     = rnd::mesh_mngr_create(render_ctx);
 
-			gpu::TextureDesc texture_desc{};
-			texture_desc.extent        = {10u, 10u, 1u};
-			texture_desc.format        = gpu::EFormat::eR8G8B8A8Srgb;
-			texture_desc.layerCount    = 1u;
-			texture_desc.sampleCount   = gpu::ESampleCount::e1;
-			texture_desc.mipCount      = 1u;
-			texture_desc.type          = gpu::ETextureType::e2D;
-			texture_desc.usage         = gpu::ETextureUsageFlagBits::eSampled | gpu::ETextureUsageFlagBits::eTransferDst | gpu::ETextureUsageFlagBits::eTransferSrc;
-			layer->testTexture.texture = gpu::texture_create(gpu_ctx, texture_desc);
-
+			layer->testTexture.texture            = gpu::texture_register_null(gpu_ctx);
+			layer->testTexture.stateTracker       = gpu::state_tracker_register(upload_ctx, 1u);
 			layer->testTexture.shaderReadHeapSlot = gpu::resource_descriptor_heap_alloc_texture_slot(gpu_ctx, render_ctx->resourceHeap);
-			gpu::resource_descriptor_heap_write_texture(gpu_ctx, render_ctx->resourceHeap, layer->testTexture.shaderReadHeapSlot, layer->testTexture.texture, false);
 
-			layer->testTexture.stateTracker = gpu::state_tracker_register(upload_ctx, 1u);
+			ast::texture_load_from_file(render_ctx, layer->testTexture.texture, layer->testTexture.shaderReadHeapSlot, layer->testTexture.stateTracker,
+										R"(C:\dev\Toaster-3.0\test\resources\textures\doorbell_pig.jpg)");
 
-			Array<uint32, 10u * 10u> data;
-			for (uint32 i{0u}; i < 10u; ++i)
-				for (uint32 j{0u}; j < 10u; ++j)
-					data[i * 10u + j] = (uint32) rand();
-
-			gpu::BufferTextureCopyRegion copy_region{};
-			copy_region.bufferOffset       = 0ull;
-			copy_region.textureOffset      = {0, 0, 0};
-			copy_region.textureExtent      = {0u, 0u, 0u};
-			copy_region.textureSubresource = gpu::TextureSubresource{0u, 0u, 1u};
-
-			gpu::TextureUploadDesc upload_desc{};
-			upload_desc.uploadRegions = copy_region;
-			upload_desc.data          = data.data();
-			upload_desc.size          = data.size_bytes();
-
-			gpu::upload_data_to_texture(upload_ctx, layer->testTexture.texture, upload_desc, layer->testTexture.stateTracker);
 			gpu::state_tracker_wait_for(upload_ctx, layer->testTexture.stateTracker);
 
 			layer->samplerHeapId = gpu::sampler_descriptor_heap_alloc_sampler_slot(gpu_ctx, render_ctx->samplerHeap);
@@ -179,8 +155,8 @@ TST_OS_WINMAIN()
 			gpu::texture_destroy(gpu_ctx, layer->testTexture.texture);
 			gpu::resource_descriptor_heap_free_texture_slot(gpu_ctx, render_ctx->resourceHeap, layer->testTexture.shaderReadHeapSlot);
 
-			rnd::mesh_mngr_destroy(layer->meshMngr);
-			rnd::material_mngr_destroy(layer->materialMngr);
+			// rnd::mesh_mngr_destroy(layer->meshMngr);
+			// rnd::material_mngr_destroy(layer->materialMngr);
 		};
 		app_layer.onUpdateFn = +[](knl::Application *p_app, void *p_layer, float32 p_dt) mutable -> void
 		{

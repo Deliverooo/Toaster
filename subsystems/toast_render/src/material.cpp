@@ -251,7 +251,6 @@ namespace toaster::rnd
 		material.shaderReadHeapSlots = p_mngr->defaultTextureHeapSlots;
 		material.params.heapSlots    = p_mngr->defaultTextureHeapSlots;
 		material.stateTrackers.fill(nullptr);
-
 		material.params.roughness = 0.0f;
 		material.params.metalness = 0.0f;
 		material.params.flags     = EMaterialFlagBits::eBackfaceCulling | EMaterialFlagBits::eNoNormalMap | EMaterialFlagBits::eNoRoughnessMap |

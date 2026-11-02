@@ -78,8 +78,9 @@ namespace toaster::ast
 		gpu::UploadContext *                    upload_ctx{p_render_ctx->uploadCtx};
 		const gpu::ResourceDescriptorHeapHandle resource_heap{p_render_ctx->resourceHeap};
 
-		gpu::resource_descriptor_heap_write_texture(gpu_ctx, resource_heap, p_dst_heap_slot, p_dst_texture, false);
 		gpu::texture_create_into(gpu_ctx, p_dst_texture, texture_desc);
+
+		gpu::resource_descriptor_heap_write_texture(gpu_ctx, resource_heap, p_dst_heap_slot, p_dst_texture, false);
 
 		gpu::BufferTextureCopyRegion copy_region{};
 		copy_region.bufferOffset       = 0ull;

@@ -114,8 +114,8 @@ namespace toaster::rnd
 
 	auto TST_RENDER_API static_mesh_is_ready(const MeshManager *p_mngr, StaticMeshHandle p_static_mesh) -> bool;
 
-	auto TST_RENDER_API static_mesh_get(const MeshManager *p_mngr, StaticMeshHandle p_static_mesh) -> const StaticMesh *;
-	auto TST_RENDER_API static_mesh_get(MeshManager *p_mngr, StaticMeshHandle p_static_mesh) -> StaticMesh *;
+	auto TST_RENDER_API static_mesh_get(const MeshManager *p_mngr, StaticMeshHandle p_static_mesh) -> const StaticMesh &;
+	auto TST_RENDER_API static_mesh_get(MeshManager *p_mngr, StaticMeshHandle p_static_mesh) -> StaticMesh &;
 	auto TST_RENDER_API static_mesh_try_get(const MeshManager *p_mngr, StaticMeshHandle p_static_mesh) -> const StaticMesh *;
 	auto TST_RENDER_API static_mesh_try_get(MeshManager *p_mngr, StaticMeshHandle p_static_mesh) -> StaticMesh *;
 

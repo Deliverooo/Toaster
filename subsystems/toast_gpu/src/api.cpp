@@ -1963,28 +1963,33 @@ namespace toaster::gpu
 		vkCmdExecuteCommands(cmd.cmd, secondary_buffers.size(), secondary_buffers.data());
 	}
 
-	auto cmd_copy_buffer(GPUContext *p_ctx, CommandListHandle p_cmd_list, BufferHandle p_src_buffer, BufferHandle p_dst_buffer, uint64 p_size, uint64 p_src_offset,
-						 uint64      p_dst_offset) -> void
+	auto cmd_copy_buffer(GPUContext *                            p_ctx, CommandListHandle p_cmd_list, BufferHandle p_src_buffer, BufferHandle p_dst_buffer,
+						 InitialiserList<const BufferCopyRegion> p_copy_regions) -> void
 	{
 		CommandList &cmd{p_ctx->commandLists[p_cmd_list]};
 
-		const Buffer &src_buffer{p_ctx->buffers[p_src_buffer]};
-		const Buffer &dst_buffer{p_ctx->buffers[p_dst_buffer]};
+		Vector<VkBufferCopy2> copy_regions(p_copy_regions.size());
+		for (auto &&[i, copy_region]: std::views::enumerate(copy_regions))
+		{
+			const auto &src_region{p_copy_regions[i]};
 
-		VkBufferCopy2 copy_region{};
-		copy_region.sType     = STYPE(BUFFER_COPY_2);
-		copy_region.pNext     = nullptr;
-		copy_region.size      = p_size;
-		copy_region.srcOffset = p_src_offset;
-		copy_region.dstOffset = p_dst_offset;
+			copy_region.sType     = STYPE(BUFFER_COPY_2);
+			copy_region.pNext     = nullptr;
+			copy_region.size      = src_region.size;
+			copy_region.srcOffset = src_region.srcOffset;
+			copy_region.dstOffset = src_region.dstOffset;
+		}
 
 		VkCopyBufferInfo2 copy_buffer_info{};
 		copy_buffer_info.sType       = STYPE(COPY_BUFFER_INFO_2);
 		copy_buffer_info.pNext       = nullptr;
-		copy_buffer_info.regionCount = 1u;
-		copy_buffer_info.pRegions    = &copy_region;
-		copy_buffer_info.srcBuffer   = src_buffer.buffer;
-		copy_buffer_info.dstBuffer   = dst_buffer.buffer;
+		copy_buffer_info.regionCount = p_copy_regions.size();
+		copy_buffer_info.pRegions    = copy_regions.data();
+
+		const Buffer &src_buffer{p_ctx->buffers[p_src_buffer]};
+		const Buffer &dst_buffer{p_ctx->buffers[p_dst_buffer]};
+		copy_buffer_info.srcBuffer = src_buffer.buffer;
+		copy_buffer_info.dstBuffer = dst_buffer.buffer;
 
 		vkCmdCopyBuffer2(cmd.cmd, &copy_buffer_info);
 	}
@@ -3068,6 +3073,9 @@ namespace toaster::gpu
 												 InitialiserList<const uint32> p_mip_levels) -> void
 	{
 		ResourceDescriptorHeap &resource_heap{p_ctx->resourceHeaps[p_resource_heap]};
+		TST_ASSERT(((p_storage.size() != 1u) || p_mip_levels.size() != 1u) ? (p_heap_slots.size() == p_textures.size()) && (p_storage.size() == p_mip_levels.size()) :
+				   true);
+
 		TST_ASSERT((p_heap_slots.size() == p_textures.size()) && (p_storage.size() == p_mip_levels.size()));
 
 		const uint32 texture_count{p_heap_slots.size()};
@@ -3084,7 +3092,7 @@ namespace toaster::gpu
 			const VkImageViewType image_view_type{get_vk_image_view_type(desc.type)};
 			const VkFormat        image_format{get_vk_format(desc.format)};
 
-			const uint32 mip_level{p_mip_levels[p_index]};
+			const uint32 mip_level{(p_mip_levels.size() == 1u) ? p_mip_levels[0u] : p_mip_levels[p_index]};
 
 			VkImageViewCreateInfo &image_view_create_info{image_view_create_infos[p_index]};
 			image_view_create_info.sType      = STYPE(IMAGE_VIEW_CREATE_INFO);
@@ -3118,7 +3126,7 @@ namespace toaster::gpu
 			image_info.pView  = &image_view_create_info;
 			image_info.layout = VK_IMAGE_LAYOUT_GENERAL;
 
-			const bool             is_storage{p_storage[p_index]};
+			const bool             is_storage{(p_storage.size() == 1u) ? p_storage[0u] : p_storage[p_index]};
 			const VkDescriptorType descriptor_type{is_storage ? VK_DESCRIPTOR_TYPE_STORAGE_IMAGE : VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE};
 
 			VkResourceDescriptorInfoEXT &resource_info{resource_infos[p_index]};
@@ -3706,6 +3714,10 @@ namespace toaster::gpu
 			// Remove the null registered flag because the texture is now valid for use
 			p_texture.flags &= ~EInternalTextureFlagBits::eNullRegistered;
 		});
+
+		mtx_lock(&p_ctx->undefinedTexturesMutex);
+		p_ctx->undefinedTextures.insert(p_ctx->undefinedTextures.end(), p_dst_textures.begin(), p_dst_textures.end());
+		mtx_unlock(&p_ctx->undefinedTexturesMutex);
 	}
 
 	auto texture_get_desc(GPUContext *p_ctx, TextureHandle p_texture) -> const TextureDesc &
