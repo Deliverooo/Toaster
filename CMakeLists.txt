@@ -10,11 +10,6 @@ set(CMAKE_C_EXTENSIONS OFF)
 
 set(CMAKE_DEBUG_POSTFIX "d" CACHE STRING "" FORCE) # The libraries will look like "ToastGPUd.dll"
 
-# Prevent in-source builds
-if (${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR})
-	message(FATAL_ERROR "In-source builds are not allowed. Please create a separate build directory.")
-endif ()
-
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin" CACHE STRING "" FORCE) # .exe
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin" CACHE STRING "" FORCE) # .dll
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib" CACHE STRING "" FORCE) # .lib
@@ -29,23 +24,20 @@ project(Toaster LANGUAGES C CXX)
 set(CXX_FLAGS)
 
 if (MSVC)
-
 	set(CXX_FLAGS
 			"/W3 /O2 /Oi /Ot /Gy /Gw"
 	)
-	add_compile_options("/experimental:c11atomics")
+	add_compile_options("/experimental:c11atomics" "/MP")
 	add_compile_definitions(_HAS_EXCEPTIONS=0)
 endif ()
 
 set(CMAKE_CXX_FLAGS ${CXX_FLAGS})
 
 option(TOASTER_INSTALL "Generate install targets for toaster" ON)
-option(TOASTER_BUILD_SHARED_LIBS "Generate install targets for toaster" ON)
 option(TOASTER_BUILD_TEST "Build the Toaster test (Requires the Vulkan SDK for glslangValidator shader compilation)" ON)
 
 add_compile_definitions(VK_USE_PLATFORM_WIN32_KHR)
 add_compile_definitions(NOMINMAX)
-
 
 include(GNUInstallDirs) # Allow subsystems to access CMAKE_INSTALL_XXX variables
 

@@ -47,7 +47,7 @@ namespace toaster::gpu
 		uint32 currentFrameIndex{0u};
 
 		SemaphoreHandle      graphicsTimelineSemaphore{nullptr};
-		std::atomic_uint64_t graphicsTimelineCounter{0u};
+		std::atomic_uint64_t graphicsTimelineCounter{0ull};
 		Vector<uint64>       graphicsTimelineValues;
 
 		Vector<DeferredDeletion> deferredDeletions;
@@ -130,7 +130,7 @@ namespace toaster::gpu
 		p_frame_index            %= p_ctx->maxFramesInFlight; // Wrap it to the max frames in flight
 		p_ctx->currentFrameIndex = p_frame_index;
 
-		if (p_ctx->graphicsTimelineValues[p_frame_index] > 0u)
+		if (p_ctx->graphicsTimelineValues[p_frame_index] > 0ull)
 			semaphore_wait_n(p_ctx->gpuCtx, p_ctx->graphicsTimelineSemaphore, p_ctx->graphicsTimelineValues[p_frame_index]);
 
 		process_deferred_deletions(p_ctx);
@@ -172,7 +172,7 @@ namespace toaster::gpu
 		mtx_lock(&p_ctx->deferredDeletionMutex);
 		p_ctx->deferredDeletions.emplace_back(DeferredDeletion{
 												  .handles = Vector<BufferHandle>{p_buffers.begin(), p_buffers.end()},
-												  .graphicsTimelineValue = p_ctx->graphicsTimelineCounter.load(),
+												  .graphicsTimelineValue = p_ctx->graphicsTimelineCounter.load(std::memory_order_relaxed),
 												  .type = DeferredDeletion::EDeferredDeletionType::eBuffer
 											  });
 		mtx_unlock(&p_ctx->deferredDeletionMutex);
@@ -183,7 +183,7 @@ namespace toaster::gpu
 		mtx_lock(&p_ctx->deferredDeletionMutex);
 		p_ctx->deferredDeletions.emplace_back(DeferredDeletion{
 												  .handles = Vector<TextureHandle>{p_textures.begin(), p_textures.end()},
-												  .graphicsTimelineValue = p_ctx->graphicsTimelineCounter.load(),
+												  .graphicsTimelineValue = p_ctx->graphicsTimelineCounter.load(std::memory_order_relaxed),
 												  .type = DeferredDeletion::EDeferredDeletionType::eTexture
 											  });
 		mtx_unlock(&p_ctx->deferredDeletionMutex);
@@ -192,13 +192,14 @@ namespace toaster::gpu
 	auto defer_buffer_heap_slot_freeing(FrameContext *p_ctx, ResourceDescriptorHeapHandle p_resource_heap, InitialiserList<const uint32> p_buffer_slots) -> void
 	{
 		#ifndef NDEBUG
-		for (const uint32 slot: p_buffer_slots) TST_ASSERT_MSG(slot != UINT32_MAX, "Attempted to defer deletion of invalid buffer heap slot");
+		for (const uint32 slot: p_buffer_slots)
+			TST_ASSERT_MSG(slot != UINT32_MAX, "Attempted to defer deletion of invalid buffer heap slot");
 		#endif
 
 		mtx_lock(&p_ctx->deferredDeletionMutex);
 		p_ctx->deferredDeletions.emplace_back(DeferredDeletion{
 												  .heapSlots = Vector<uint32>{p_buffer_slots.begin(), p_buffer_slots.end()},
-												  .graphicsTimelineValue = p_ctx->graphicsTimelineCounter.load(),
+												  .graphicsTimelineValue = p_ctx->graphicsTimelineCounter.load(std::memory_order_relaxed),
 												  .descriptorHeap = static_cast<uint64>(p_resource_heap),
 												  .type = DeferredDeletion::EDeferredDeletionType::eBufferHeapSlot
 											  });
@@ -208,13 +209,14 @@ namespace toaster::gpu
 	auto defer_texture_heap_slot_freeing(FrameContext *p_ctx, ResourceDescriptorHeapHandle p_resource_heap, InitialiserList<const uint32> p_texture_slots) -> void
 	{
 		#ifndef NDEBUG
-		for (const uint32 slot: p_texture_slots) TST_ASSERT_MSG(slot != UINT32_MAX, "Attempted to defer deletion of invalid texture heap slot");
+		for (const uint32 slot: p_texture_slots)
+			TST_ASSERT_MSG(slot != UINT32_MAX, "Attempted to defer deletion of invalid texture heap slot");
 		#endif
 
 		mtx_lock(&p_ctx->deferredDeletionMutex);
 		p_ctx->deferredDeletions.emplace_back(DeferredDeletion{
 												  .heapSlots = Vector<uint32>{p_texture_slots.begin(), p_texture_slots.end()},
-												  .graphicsTimelineValue = p_ctx->graphicsTimelineCounter.load(),
+												  .graphicsTimelineValue = p_ctx->graphicsTimelineCounter.load(std::memory_order_relaxed),
 												  .descriptorHeap = static_cast<uint64>(p_resource_heap),
 												  .type = DeferredDeletion::EDeferredDeletionType::eTextureHeapSlot
 											  });
@@ -224,13 +226,14 @@ namespace toaster::gpu
 	auto defer_sampler_Heap_slot_freeing(FrameContext *p_ctx, SamplerDescriptorHeapHandle p_sampler_heap, InitialiserList<const uint32> p_sampler_slots) -> void
 	{
 		#ifndef NDEBUG
-		for (const uint32 slot: p_sampler_slots) TST_ASSERT_MSG(slot != UINT32_MAX, "Attempted to defer deletion of invalid sampler heap slot");
+		for (const uint32 slot: p_sampler_slots)
+			TST_ASSERT_MSG(slot != UINT32_MAX, "Attempted to defer deletion of invalid sampler heap slot");
 		#endif
 
 		mtx_lock(&p_ctx->deferredDeletionMutex);
 		p_ctx->deferredDeletions.emplace_back(DeferredDeletion{
 												  .heapSlots = Vector<uint32>{p_sampler_slots.begin(), p_sampler_slots.end()},
-												  .graphicsTimelineValue = p_ctx->graphicsTimelineCounter.load(),
+												  .graphicsTimelineValue = p_ctx->graphicsTimelineCounter.load(std::memory_order_relaxed),
 												  .descriptorHeap = static_cast<uint64>(p_sampler_heap),
 												  .type = DeferredDeletion::EDeferredDeletionType::eSamplerHeapSlot
 											  });

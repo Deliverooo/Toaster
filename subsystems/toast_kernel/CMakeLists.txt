@@ -1,7 +1,5 @@
 set(KERNEL_SRC
-		${CMAKE_CURRENT_SOURCE_DIR}/src/application.cpp
 		${CMAKE_CURRENT_SOURCE_DIR}/src/input.cpp
-		${CMAKE_CURRENT_SOURCE_DIR}/src/layer.cpp
 		${CMAKE_CURRENT_SOURCE_DIR}/src/window.cpp
 		${CMAKE_CURRENT_SOURCE_DIR}/src/camera.cpp
 )

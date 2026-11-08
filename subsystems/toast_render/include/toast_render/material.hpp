@@ -1,13 +1,16 @@
 #pragma once
 
 #include "toast_render.hpp"
-#include "toast_gpu/allocation.hpp"
+
+#include "toast_gpu/fwd.hpp"
+
+#include "toast_lib/array.hpp"
+#include "toast_lib/bit.h"
+
 #include "toast_math/math_vector.hpp"
 
 namespace toaster::rnd
 {
-	struct RenderContext;
-
 	enum class EMaterialFlagBits : uint8
 	{
 		eBackfaceCulling = TST_BIT(0u),
@@ -28,15 +31,16 @@ namespace toaster::rnd
 		eMax          = 4u
 	};
 
-	constexpr uint8 c_maxMaterialTextures{TST_ENUM_VAL(EMaterialTextureType::eMax)};
+	template<typename Type>
+	using PerMaterialTextureArray = EArray<Type, EMaterialTextureType, EMaterialTextureType::eMax>;
 
 	struct TST_RENDER_API MaterialParams
 	{
-		math::Float4                         albedoColour{1.0f, 1.0f, 1.0f, 1.0f};
-		Array<uint32, c_maxMaterialTextures> heapSlots;
-		float32                              roughness{0.0f};
-		float32                              metalness{0.0f};
-		EMaterialFlags                       flags{
+		math::Float4                    albedoColour{1.0f, 1.0f, 1.0f, 1.0f};
+		PerMaterialTextureArray<uint32> heapSlots;
+		float32                         roughness{0.0f};
+		float32                         metalness{0.0f};
+		EMaterialFlags                  flags{
 			EMaterialFlagBits::eBackfaceCulling | EMaterialFlagBits::eNoNormalMap | EMaterialFlagBits::eNoRoughnessMap | EMaterialFlagBits::eNoMetalnessMap
 		};
 	};
@@ -52,15 +56,15 @@ namespace toaster::rnd
 
 	struct TST_RENDER_API Material // Sorry, this is maximising space efficiency (SOA vs AOS)
 	{
-		Array<gpu::TextureHandle, c_maxMaterialTextures>      textures;
-		Array<gpu::StateTrackerHandle, c_maxMaterialTextures> stateTrackers;
-		Array<uint32, c_maxMaterialTextures>                  shaderReadHeapSlots;
-		MaterialParams                                        params; // Raw parameter data
+		PerMaterialTextureArray<gpu::TextureHandle>      textures;
+		PerMaterialTextureArray<gpu::StateTrackerHandle> stateTrackers;
+		PerMaterialTextureArray<uint32>                  shaderReadHeapSlots;
+		MaterialParams                                   params; // Raw parameter data
 
 		// Utility function...
 		[[nodiscard]] auto getTexture(EMaterialTextureType p_type) const -> MaterialTexture
 		{
-			return {textures[TST_UT(p_type)], stateTrackers[TST_UT(p_type)], shaderReadHeapSlots[TST_UT(p_type)]};
+			return {textures[p_type], stateTrackers[p_type], shaderReadHeapSlots[p_type]};
 		}
 	};
 
@@ -71,9 +75,21 @@ namespace toaster::rnd
 	// 2^14
 	constexpr uint32 c_max_materials{16'384u}; // There is a max of 16,384 materials allowed... This is more than enough. It only takes up (at maximum) ~2.1 Mb of RAM
 
-	// No, this is not a mistake, p_max_materials is for the max number of materials on the GPU, whereas c_max_materials is the size of the CPU material pool.
-	// Requires p_max_gpu_materials < c_max_materials
-	auto TST_RENDER_API material_mngr_create(RenderContext *p_render_ctx, uint16 p_max_gpu_materials) -> MaterialManager *;
+	// All the context the material manager needs to operate
+	struct TST_RENDER_API MaterialManagerDesc
+	{
+		gpu::GPUContext *                 gpuCtx{nullptr};
+		gpu::AllocationContext *          allocCtx{nullptr};
+		gpu::UploadContext *              uploadCtx{nullptr};
+		gpu::FrameContext *               frameCtx{nullptr};
+		gpu::ResourceDescriptorHeapHandle resourceHeap{nullptr};
+		uint32                            maxFramesInFlight{0u};
+		// No, this is not a mistake, maxGPUMaterials is for the max number of materials on the GPU, whereas c_max_materials is the size of the CPU material pool.
+		// Requires maxGPUMaterials < c_max_materials
+		uint32 maxGPUMaterials{0u};
+	};
+
+	auto TST_RENDER_API material_mngr_create(const MaterialManagerDesc &p_desc) -> MaterialManager *;
 	auto TST_RENDER_API material_mngr_destroy(MaterialManager *p_mngr) -> void;
 	auto TST_RENDER_API material_mngr_poll_pending_textures(MaterialManager *p_mngr) -> void;
 	auto TST_RENDER_API material_mngr_update_dirty_materials(MaterialManager *p_mngr, uint32 p_frame_index) -> void;

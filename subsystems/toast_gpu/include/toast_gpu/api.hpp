@@ -4,6 +4,12 @@
 #include <span>
 
 #include "fwd.hpp"
+
+#include "toast_lib/bit.h"
+#include "toast_lib/initialiser_list.hpp"
+#include "toast_lib/string.hpp"
+#include "toast_lib/vector.hpp"
+
 #include "toast_math/math_vector.hpp"
 
 namespace toaster::gpu
@@ -285,7 +291,23 @@ namespace toaster::gpu
 		eS8Uint,
 		eD16UnormS8Uint,
 		eD24UnormS8Uint,
-		eD32SfloatS8Uint
+		eD32SfloatS8Uint,
+		eBC1RgbUnormBlock,
+		eBC1RgbSrgbBlock,
+		eBC1RgbaUnormBlock,
+		eBC1RgbaSrgbBlock,
+		eBC2UnormBlock,
+		eBC2SrgbBlock,
+		eBC3UnormBlock,
+		eBC3SrgbBlock,
+		eBC4UnormBlock,
+		eBC4SnormBlock,
+		eBC5UnormBlock,
+		eBC5SnormBlock,
+		eBC6HUfloatBlock,
+		eBC6HSnormBlock,
+		eBC7UnormBlock,
+		eBC7SrgbBlock
 	};
 
 	// Determines the vulkan image type as well as the image view type if applicable
@@ -683,6 +705,7 @@ namespace toaster::gpu
 		bool enableDebugInfo{true}; // Translates directly to whether validation layers are enabled.
 		bool usingSwapchain{true};  // If true, the GPUContext will use the required instance and device extensions
 
+		// I think this can differ from the max frames in flight, but I wouldn't risk it.
 		uint32 maxConcurrentSwapchainWorkloads{3u}; // Basically another name for the frame index. I don't want to mention the word 'frame' because there is <frame.hpp>
 	};
 
@@ -691,11 +714,14 @@ namespace toaster::gpu
 	auto TST_GPU_API gpu_ctx_create(const GPUContextDesc &p_desc) -> GPUContext *;
 	auto TST_GPU_API gpu_ctx_destroy(GPUContext *p_ctx) -> void;
 
-	auto TST_GPU_API gpu_ctx_print_allocation_statistics(const GPUContext *p_ctx) -> void;
-	auto TST_GPU_API gpu_ctx_dump_allocation_statistics_to_json(const GPUContext *p_ctx, StringView p_path) -> void;
-
 	auto TST_GPU_API wait_idle(const GPUContext *p_ctx) -> void;
 	auto TST_GPU_API wait_queue_idle(const GPUContext *p_ctx, EQueueType p_queue_type) -> void;
+
+	#pragma region utility
+
+	auto TST_GPU_API format_from_vk_format(uint32 p_vk_format) -> EFormat;
+
+	#pragma endregion
 
 	#pragma region command allocator / command list
 
@@ -958,10 +984,12 @@ namespace toaster::gpu
 
 	#pragma region swapchain
 
-	[[nodiscard]] auto TST_GPU_API swapchain_create(GPUContext *p_ctx, SurfaceHandle p_surface, math::UInt2 p_initial_extent) -> SwapchainHandle;
-	auto TST_GPU_API               swapchain_destroy(GPUContext *p_ctx, SwapchainHandle p_swapchain) -> void;
+	[[nodiscard]] auto TST_GPU_API swapchain_create(GPUContext *p_ctx, SurfaceHandle p_surface, math::UInt2 p_initial_extent,
+													uint32      p_target_min_image_count = 3u) -> SwapchainHandle;
+	auto TST_GPU_API swapchain_destroy(GPUContext *p_ctx, SwapchainHandle p_swapchain) -> void;
 
-	auto TST_GPU_API swapchain_set_max_framerate(GPUContext *p_ctx, SwapchainHandle p_swapchain, uint32 p_framerate = UINT32_MAX) -> void; // UINT32_MAX = uncapped
+	constexpr uint32 c_uncappedFramerate{UINT32_MAX};
+	auto TST_GPU_API swapchain_set_max_framerate(GPUContext *p_ctx, SwapchainHandle p_swapchain, uint32 p_framerate = c_uncappedFramerate) -> void;
 	auto TST_GPU_API swapchain_wait_for_framerate(GPUContext *p_ctx, SwapchainHandle p_swapchain) -> void;
 	auto TST_GPU_API swapchain_set_frame_marker(GPUContext *p_ctx, SwapchainHandle p_swapchain, EFrameMarker p_marker) -> void;
 

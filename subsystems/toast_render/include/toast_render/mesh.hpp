@@ -1,15 +1,18 @@
 #pragma once
 
 #include <span>
-#include <vector>
 
 #include "toast_render.hpp"
-#include "toast_gpu/allocation.hpp"
+
+#include "toast_gpu/fwd.hpp"
+
+#include "toast_lib/handle.hpp"
+#include "toast_lib/vector.hpp"
+
 #include "toast_math/math_vector.hpp"
 
 namespace toaster::rnd
 {
-	struct RenderContext;
 	struct Material;
 	TST_DECLARE_HANDLE(Material);
 
@@ -58,37 +61,45 @@ namespace toaster::rnd
 		uint8 meshletTriangleBufferPageSlot{0u};
 	};
 
+	struct TST_RENDER_API _PageAllocation
+	{
+		gpu::BufferHandle            buffer{nullptr};
+		gpu::VirtualAllocationHandle allocation{nullptr};
+		uint64                       offset{0u};
+		uint32                       pageId{0u};
+		uint32                       heapSlot{UINT32_MAX};
+	};
+
 	struct TST_RENDER_API StaticMesh
 	{
 		Vector<Meshlet>        meshlets;
 		Vector<MaterialHandle> materials; // The actual materials the meshlets hold indices to
 
-		gpu::PageAllocation          vertexBufferAllocation{};
-		gpu::PageAllocation          meshletBufferAllocation{};
-		gpu::PageAllocation          meshletVertexBufferAllocation{};
-		gpu::PageAllocation          meshletTriangleBufferAllocation{};
+		_PageAllocation              vertexBufferAllocation;
+		_PageAllocation              meshletBufferAllocation;
+		_PageAllocation              meshletVertexBufferAllocation;
+		_PageAllocation              meshletTriangleBufferAllocation;
 		gpu::VirtualAllocationHandle materialIndirectionBufferAllocation{nullptr};
 		uint32                       materialIndirectionBufferOffset{0u};
 
-		gpu::StateTrackerHandle stateTracker{nullptr};
-
 		math::Float4 boundingSphere{0.0f, 0.0f, 0.0f, 1.0f};
-
-		[[nodiscard]] auto vertexBufferOffset() const -> uint64 { return vertexBufferAllocation.offset / sizeof(StaticMeshVertex); }
-		[[nodiscard]] auto meshletBufferOffset() const -> uint64 { return meshletBufferAllocation.offset / sizeof(Meshlet); }
-		[[nodiscard]] auto meshletVertexBufferOffset() const -> uint64 { return meshletVertexBufferAllocation.offset / sizeof(uint32); }
-		[[nodiscard]] auto meshletTriangleBufferOffset() const -> uint64 { return meshletTriangleBufferAllocation.offset / sizeof(uint8); }
-	};
-
-	struct TST_RENDER_API Mesh
-	{
 	};
 
 	TST_DECLARE_HANDLE(StaticMesh);
 
 	struct MeshManager;
 
-	auto TST_RENDER_API mesh_mngr_create(RenderContext *p_render_ctx) -> MeshManager *;
+	// All the context the mesh manager needs to operate
+	struct TST_RENDER_API MeshManagerDesc
+	{
+		gpu::GPUContext *                 gpuCtx{nullptr};
+		gpu::AllocationContext *          allocCtx{nullptr};
+		gpu::UploadContext *              uploadCtx{nullptr};
+		gpu::FrameContext *               frameCtx{nullptr};
+		gpu::ResourceDescriptorHeapHandle resourceHeap{nullptr};
+	};
+
+	auto TST_RENDER_API mesh_mngr_create(const MeshManagerDesc &p_desc) -> MeshManager *;
 	auto TST_RENDER_API mesh_mngr_destroy(MeshManager *p_mngr) -> void;
 	auto TST_RENDER_API mesh_mngr_get_static_mesh_metadata_buffer_address(const MeshManager *p_mngr) -> gpu::DeviceAddress;
 	auto TST_RENDER_API mesh_mngr_get_material_indirection_buffer_address(const MeshManager *p_mngr) -> gpu::DeviceAddress;
@@ -108,11 +119,11 @@ namespace toaster::rnd
 	};
 
 	auto TST_RENDER_API static_mesh_register(MeshManager *p_mngr) -> StaticMeshHandle;
-	auto TST_RENDER_API static_mesh_upload_data(MeshManager *p_mngr, StaticMeshHandle p_static_mesh, const StaticMeshGeometryData &p_geometry_data) -> void;
-	auto TST_RENDER_API static_mesh_create(MeshManager *p_mngr, const StaticMeshGeometryData &p_geometry_data) -> StaticMeshHandle;
+	auto TST_RENDER_API static_mesh_upload_data(MeshManager *                 p_mngr, StaticMeshHandle p_static_mesh, gpu::StateTrackerHandle p_state_tracker,
+												const StaticMeshGeometryData &p_geometry_data) -> void;
+	auto TST_RENDER_API static_mesh_create(MeshManager *                 p_mngr, gpu::StateTrackerHandle p_state_tracker,
+										   const StaticMeshGeometryData &p_geometry_data) -> StaticMeshHandle;
 	auto TST_RENDER_API static_mesh_destroy(MeshManager *p_mngr, StaticMeshHandle p_static_mesh) -> void;
-
-	auto TST_RENDER_API static_mesh_is_ready(const MeshManager *p_mngr, StaticMeshHandle p_static_mesh) -> bool;
 
 	auto TST_RENDER_API static_mesh_get(const MeshManager *p_mngr, StaticMeshHandle p_static_mesh) -> const StaticMesh &;
 	auto TST_RENDER_API static_mesh_get(MeshManager *p_mngr, StaticMeshHandle p_static_mesh) -> StaticMesh &;

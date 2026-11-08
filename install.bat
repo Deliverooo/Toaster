@@ -16,7 +16,7 @@ setx TOASTER_SDK "C:\Program Files\ToasterSDK\3.0" /M
 
 echo %PATH%
 
-cmake -B build -S . --install-prefix "C:/Program Files/ToasterSDK/3.0/"
+cmake -B build -S . --install-prefix "C:/Program Files/ToasterSDK/3.0/" -DTOASTER_BUILD_TEST=OFF
 cmake --build build --config Debug
 cmake --install build --config Debug
 cmake --build build --config Release

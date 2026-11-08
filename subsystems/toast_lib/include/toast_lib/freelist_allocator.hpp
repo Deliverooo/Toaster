@@ -2,6 +2,7 @@
 
 #include <span>
 
+#include "initialiser_list.hpp"
 #include "toast_assert.hpp"
 #include "vector.hpp"
 
@@ -46,7 +47,7 @@ namespace toaster
 		TST_ASSERT_MSG(p_allocator.nextFreeSlot + required_new_slots < p_allocator.capacity,
 					   "Allocation capacity exceeded when attempting to allocate slot using freelist allocator");
 
-		if (free_slot_count >= required_new_slots)
+		if (count <= free_slot_count)
 		{
 			for (uint32 &slot: p_out_slots)
 			{

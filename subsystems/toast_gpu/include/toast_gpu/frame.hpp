@@ -1,6 +1,7 @@
 #pragma once
 
 #include "fwd.hpp"
+#include "toast_lib/initialiser_list.hpp"
 
 namespace toaster::gpu
 {
@@ -9,7 +10,7 @@ namespace toaster::gpu
 
 	struct TST_GPU_API FrameContextDesc
 	{
-		uint32 maxFramesInFlight{3u}; // Same as GPUContextDesc::maxConcurrentSwapchainWorkloads...
+		uint32 maxFramesInFlight{3u}; // Should be the same as GPUContextDesc::maxConcurrentSwapchainWorkloads
 	};
 
 	// Must be called after gpu_ctx_create(...)
@@ -32,7 +33,10 @@ namespace toaster::gpu
 	auto TST_GPU_API defer_buffer_deletion_n(FrameContext *p_ctx, InitialiserList<const BufferHandle> p_buffers) -> void;
 	auto TST_GPU_API defer_texture_deletion_n(FrameContext *p_ctx, InitialiserList<const TextureHandle> p_textures) -> void;
 
-	auto TST_GPU_API defer_buffer_heap_slot_freeing_n(FrameContext *p_ctx, ResourceDescriptorHeapHandle p_resource_heap, InitialiserList<const uint32> p_buffer_slots) -> void;
-	auto TST_GPU_API defer_texture_heap_slot_freeing_n(FrameContext *p_ctx, ResourceDescriptorHeapHandle p_resource_heap, InitialiserList<const uint32> p_texture_slots) -> void;
-	auto TST_GPU_API defer_sampler_Heap_slot_freeing_n(FrameContext *p_ctx, SamplerDescriptorHeapHandle p_sampler_heap, InitialiserList<const uint32> p_sampler_slots) -> void;
+	auto TST_GPU_API defer_buffer_heap_slot_freeing_n(FrameContext *                p_ctx, ResourceDescriptorHeapHandle p_resource_heap,
+													  InitialiserList<const uint32> p_buffer_slots) -> void;
+	auto TST_GPU_API defer_texture_heap_slot_freeing_n(FrameContext *                p_ctx, ResourceDescriptorHeapHandle p_resource_heap,
+													   InitialiserList<const uint32> p_texture_slots) -> void;
+	auto TST_GPU_API defer_sampler_Heap_slot_freeing_n(FrameContext *                p_ctx, SamplerDescriptorHeapHandle p_sampler_heap,
+													   InitialiserList<const uint32> p_sampler_slots) -> void;
 }

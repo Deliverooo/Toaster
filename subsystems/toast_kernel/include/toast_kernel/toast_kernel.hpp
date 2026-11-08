@@ -10,8 +10,6 @@
 #define TST_KERNEL_API
 #endif
 
-// Everyone should get the core stuff
-#include "toast_lib/core_basic.hpp"
 #include "toast_lib/enum.hpp"
 
 namespace toaster::knl

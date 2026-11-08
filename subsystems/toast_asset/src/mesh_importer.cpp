@@ -2,8 +2,8 @@
 
 #include <meshoptimizer.h>
 
-#include <fastgltf/core.hpp>
-#include <fastgltf/types.hpp>
+// #include <fastgltf/core.hpp>
+// #include <fastgltf/types.hpp>
 
 namespace toaster::ast
 {
@@ -91,6 +91,7 @@ namespace toaster::ast
 
 	auto load_static_mesh_from_file(const std::filesystem::path &p_path, rnd::StaticMeshHandle p_dst_mesh) -> void
 	{
+		#if 0
 		constexpr fastgltf::Options c_options{fastgltf::Options::AllowDouble | fastgltf::Options::LoadExternalBuffers};
 
 		auto gltf_file{fastgltf::GltfDataBuffer::FromPath(p_path)};
@@ -118,5 +119,6 @@ namespace toaster::ast
 		// 	{
 		// 	}
 		// });
+		#endif
 	}
 }

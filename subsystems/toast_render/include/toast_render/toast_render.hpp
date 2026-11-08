@@ -10,10 +10,9 @@
 #define TST_RENDER_API
 #endif
 
-#include "toast_lib/core_basic.hpp"
 #include "toast_lib/enum.hpp"
 
 namespace toaster::rnd
 {
-	TST_DECLARE_FLAGS_FOR_NAMESPACE()
+	TST_DECLARE_FLAGS_FOR_NAMESPACE();
 }

@@ -1,6 +1,5 @@
 set(RENDER_SRC
 		${CMAKE_CURRENT_SOURCE_DIR}/src/transform.cpp
-		${CMAKE_CURRENT_SOURCE_DIR}/src/render_context.cpp
 		${CMAKE_CURRENT_SOURCE_DIR}/src/mesh.cpp
 		${CMAKE_CURRENT_SOURCE_DIR}/src/material.cpp
 )

@@ -1,6 +1,8 @@
 #pragma once
 
 #include "toast_kernel.hpp"
+#include "toast_lib/bit.h"
+#include "toast_lib/system_types.h"
 #include "toast_math/math_vector.hpp"
 
 namespace toaster::knl
@@ -160,11 +162,11 @@ namespace toaster::knl
 	{
 		void *windowCtx; // GLFWwindow*
 
-		TST_BITSET(currentKeyStates, TST_ENUM_VAL(EKeyCode::eLast));
-		TST_BITSET(previousKeyStates, TST_ENUM_VAL(EKeyCode::eLast));
+		Bitset<TST_ENUM_VAL(EKeyCode::eLast)> currentKeyStates;
+		Bitset<TST_ENUM_VAL(EKeyCode::eLast)> previousKeyStates;
 
-		TST_BITSET(currentMouseStates, TST_ENUM_VAL(EMouseButton::eLast));
-		TST_BITSET(previousMouseStates, TST_ENUM_VAL(EMouseButton::eLast));
+		Bitset<TST_ENUM_VAL(EMouseButton::eLast)> currentMouseStates;
+		Bitset<TST_ENUM_VAL(EMouseButton::eLast)> previousMouseStates;
 
 		float32 mouseX;
 		float32 mouseY;

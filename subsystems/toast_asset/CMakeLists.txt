@@ -13,7 +13,7 @@ target_include_directories(ToastAsset PUBLIC
 target_sources(ToastAsset PRIVATE ${RENDER_SRC})
 
 target_link_libraries(ToastAsset PUBLIC Toaster::ToastRender)
-target_link_libraries(ToastAsset PRIVATE fastgltf::fastgltf meshoptimizer stb)
+target_link_libraries(ToastAsset PRIVATE meshoptimizer stb)
 
 add_compile_definitions(ToastAsset PUBLIC TST_ASSET_BUILD_DLL)
 add_compile_definitions(ToastAsset PRIVATE TST_ASSET_DLL_EXPORT)

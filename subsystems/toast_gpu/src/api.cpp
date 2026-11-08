@@ -1,19 +1,15 @@
 #include "toast_gpu/api.hpp"
 
 #include <algorithm>
-#include <print>
 #include <ranges>
 #include <threads.h>
 
-#include "toast_lib/format.hpp"
 #include "toast_lib/freelist_allocator.hpp"
 #include "toast_lib/pool.hpp"
+#include "toast_lib/util_defines.h"
 
 #include <volk.h>
 #include <vk_mem_alloc.h>
-
-#undef min
-#undef max
 
 namespace toaster::gpu
 {
@@ -127,20 +123,23 @@ namespace toaster::gpu
 	{
 		Vector<TextureHandle> attachments;
 		Vector<VkSemaphore>   imageAvailableSemaphores; // The max number of concurrent gpu swapchain workloads
+		Vector<uint64>        frameIds;                 // The max number of concurrent gpu swapchain workloads
 		Vector<VkSemaphore>   renderFinishedSemaphores; // PSI
 
 		VkSwapchainKHR swapchain{nullptr};
 		SurfaceHandle  surface{nullptr};
 
 		VkSemaphore latencySemaphore{nullptr};
+		uint64      frameCounter{0ull};
 
-		uint64      frameId{0ull};
 		math::UInt2 extent{0u, 0u};
 
 		uint32 acquisitonIndex{0u}; // This can be different from the frame index. But 99% of the time it will be the same
+		uint32 frameIndex{0u};      // This can be different from the frame index. But 99% of the time it will be the same
 		uint32 imageIndex{0u};
 
 		VkSurfaceFormatKHR surfaceFormat{};
+		uint32             targetMinImageCount{3u};
 		uint32             minImageCount{0u};
 		VkPresentModeKHR   presentMode{VK_PRESENT_MODE_FIFO_KHR};
 	};
@@ -405,6 +404,22 @@ namespace toaster::gpu
 			case EFormat::eD16UnormS8Uint: return VK_FORMAT_D16_UNORM_S8_UINT;
 			case EFormat::eD24UnormS8Uint: return VK_FORMAT_D24_UNORM_S8_UINT;
 			case EFormat::eD32SfloatS8Uint: return VK_FORMAT_D32_SFLOAT_S8_UINT;
+			case EFormat::eBC1RgbUnormBlock: return VK_FORMAT_BC1_RGB_UNORM_BLOCK;
+			case EFormat::eBC1RgbSrgbBlock: return VK_FORMAT_BC1_RGB_SRGB_BLOCK;
+			case EFormat::eBC1RgbaUnormBlock: return VK_FORMAT_BC1_RGBA_UNORM_BLOCK;
+			case EFormat::eBC1RgbaSrgbBlock: return VK_FORMAT_BC1_RGBA_SRGB_BLOCK;
+			case EFormat::eBC2UnormBlock: return VK_FORMAT_BC2_UNORM_BLOCK;
+			case EFormat::eBC2SrgbBlock: return VK_FORMAT_BC2_SRGB_BLOCK;
+			case EFormat::eBC3UnormBlock: return VK_FORMAT_BC3_UNORM_BLOCK;
+			case EFormat::eBC3SrgbBlock: return VK_FORMAT_BC3_SRGB_BLOCK;
+			case EFormat::eBC4UnormBlock: return VK_FORMAT_BC4_UNORM_BLOCK;
+			case EFormat::eBC4SnormBlock: return VK_FORMAT_BC4_SNORM_BLOCK;
+			case EFormat::eBC5UnormBlock: return VK_FORMAT_BC5_UNORM_BLOCK;
+			case EFormat::eBC5SnormBlock: return VK_FORMAT_BC5_SNORM_BLOCK;
+			case EFormat::eBC6HUfloatBlock: return VK_FORMAT_BC6H_UFLOAT_BLOCK;
+			case EFormat::eBC6HSnormBlock: return VK_FORMAT_BC6H_SFLOAT_BLOCK;
+			case EFormat::eBC7UnormBlock: return VK_FORMAT_BC7_UNORM_BLOCK;
+			case EFormat::eBC7SrgbBlock: return VK_FORMAT_BC7_SRGB_BLOCK;
 		}
 		return VK_FORMAT_UNDEFINED;
 	}
@@ -494,6 +509,22 @@ namespace toaster::gpu
 			case VK_FORMAT_D16_UNORM_S8_UINT: return EFormat::eD16UnormS8Uint;
 			case VK_FORMAT_D24_UNORM_S8_UINT: return EFormat::eD24UnormS8Uint;
 			case VK_FORMAT_D32_SFLOAT_S8_UINT: return EFormat::eD32SfloatS8Uint;
+			case VK_FORMAT_BC1_RGB_UNORM_BLOCK: return EFormat::eBC1RgbUnormBlock;
+			case VK_FORMAT_BC1_RGB_SRGB_BLOCK: return EFormat::eBC1RgbSrgbBlock;
+			case VK_FORMAT_BC1_RGBA_UNORM_BLOCK: return EFormat::eBC1RgbaUnormBlock;
+			case VK_FORMAT_BC1_RGBA_SRGB_BLOCK: return EFormat::eBC1RgbaSrgbBlock;
+			case VK_FORMAT_BC2_UNORM_BLOCK: return EFormat::eBC2UnormBlock;
+			case VK_FORMAT_BC2_SRGB_BLOCK: return EFormat::eBC2SrgbBlock;
+			case VK_FORMAT_BC3_UNORM_BLOCK: return EFormat::eBC3UnormBlock;
+			case VK_FORMAT_BC3_SRGB_BLOCK: return EFormat::eBC3SrgbBlock;
+			case VK_FORMAT_BC4_UNORM_BLOCK: return EFormat::eBC4UnormBlock;
+			case VK_FORMAT_BC4_SNORM_BLOCK: return EFormat::eBC4SnormBlock;
+			case VK_FORMAT_BC5_UNORM_BLOCK: return EFormat::eBC5UnormBlock;
+			case VK_FORMAT_BC5_SNORM_BLOCK: return EFormat::eBC5SnormBlock;
+			case VK_FORMAT_BC6H_UFLOAT_BLOCK: return EFormat::eBC6HUfloatBlock;
+			case VK_FORMAT_BC6H_SFLOAT_BLOCK: return EFormat::eBC6HSnormBlock;
+			case VK_FORMAT_BC7_UNORM_BLOCK: return EFormat::eBC7UnormBlock;
+			case VK_FORMAT_BC7_SRGB_BLOCK: return EFormat::eBC7SrgbBlock;
 			default: return EFormat::eUndefined;
 		}
 		return EFormat::eUndefined;
@@ -904,7 +935,10 @@ namespace toaster::gpu
 
 	auto gpu_ctx_create(const GPUContextDesc &p_desc) -> GPUContext *
 	{
-		GPUContext *ctx{new GPUContext{}};
+		GPUContext *ctx{nullptr};
+		{
+			ctx = new GPUContext{};
+		}
 
 		ctx->enableDebugInfo                 = p_desc.enableDebugInfo;
 		ctx->usingSwapchain                  = p_desc.usingSwapchain;
@@ -914,7 +948,9 @@ namespace toaster::gpu
 			mtx_init(&ctx->queueMutexes[i], mtx_plain);
 		mtx_init(&ctx->undefinedTexturesMutex, mtx_plain);
 
-		volkInitialize(); // Load vkGetInstanceProcAddress from the dll
+		{
+			volkInitialize(); // Load vkGetInstanceProcAddress from the dll
+		}
 
 		// Vulkan allows you to use your custom allocators when the driver requests host memory
 		#pragma region allocator callbacks
@@ -1083,10 +1119,11 @@ namespace toaster::gpu
 				instance_create_info.ppEnabledLayerNames = required_validation_layers.data();
 				instance_create_info.pNext               = &debug_messenger_create_info;
 			}
+			{
+				TST_GPU_VK_CHECK_RESULT_MSG(vkCreateInstance(&instance_create_info, &ctx->allocatorCallbacks, &ctx->vulkanInstance), "Failed to create Vulkan instance");
 
-			TST_GPU_VK_CHECK_RESULT_MSG(vkCreateInstance(&instance_create_info, &ctx->allocatorCallbacks, &ctx->vulkanInstance), "Failed to create Vulkan instance");
-
-			volkLoadInstance(ctx->vulkanInstance); // Load all the instance-level Vulkan functions
+				volkLoadInstance(ctx->vulkanInstance); // Load all the instance-level Vulkan functions
+			}
 		}
 		#pragma endregion
 
@@ -1100,6 +1137,7 @@ namespace toaster::gpu
 			VK_KHR_UNIFIED_IMAGE_LAYOUTS_EXTENSION_NAME,
 			VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME,
 			VK_EXT_MEMORY_BUDGET_EXTENSION_NAME,
+			VK_KHR_PRESENT_ID_EXTENSION_NAME,
 			VK_NV_LOW_LATENCY_2_EXTENSION_NAME,
 		};
 		if (p_desc.usingSwapchain)
@@ -1154,346 +1192,358 @@ namespace toaster::gpu
 
 		#pragma region logical device
 
-		constexpr float32 default_queue_priority{1.0f};
-
-		Array<VkDeviceQueueCreateInfo, 2u> queue_create_infos;
-
-		VkDeviceQueueCreateInfo &graphics_queue_create_info{queue_create_infos[0u]};
-		graphics_queue_create_info.sType            = STYPE(DEVICE_QUEUE_CREATE_INFO);
-		graphics_queue_create_info.pNext            = nullptr;
-		graphics_queue_create_info.flags            = 0u;
-		graphics_queue_create_info.queueCount       = 1u;
-		graphics_queue_create_info.pQueuePriorities = &default_queue_priority;
-		graphics_queue_create_info.queueFamilyIndex = ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eGraphics)];
-
-		if (ctx->hasDedicatedTransferQueue)
 		{
-			VkDeviceQueueCreateInfo &transfer_queue_create_info{queue_create_infos[1u]};
-			transfer_queue_create_info.sType            = STYPE(DEVICE_QUEUE_CREATE_INFO);
-			transfer_queue_create_info.pNext            = nullptr;
-			transfer_queue_create_info.flags            = 0u;
-			transfer_queue_create_info.queueCount       = 1u;
-			transfer_queue_create_info.pQueuePriorities = &default_queue_priority;
-			transfer_queue_create_info.queueFamilyIndex = ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eTransfer)];
+			constexpr float32 default_queue_priority{1.0f};
+
+			Array<VkDeviceQueueCreateInfo, 2u> queue_create_infos;
+
+			VkDeviceQueueCreateInfo &graphics_queue_create_info{queue_create_infos[0u]};
+			graphics_queue_create_info.sType            = STYPE(DEVICE_QUEUE_CREATE_INFO);
+			graphics_queue_create_info.pNext            = nullptr;
+			graphics_queue_create_info.flags            = 0u;
+			graphics_queue_create_info.queueCount       = 1u;
+			graphics_queue_create_info.pQueuePriorities = &default_queue_priority;
+			graphics_queue_create_info.queueFamilyIndex = ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eGraphics)];
+
+			if (ctx->hasDedicatedTransferQueue)
+			{
+				VkDeviceQueueCreateInfo &transfer_queue_create_info{queue_create_infos[1u]};
+				transfer_queue_create_info.sType            = STYPE(DEVICE_QUEUE_CREATE_INFO);
+				transfer_queue_create_info.pNext            = nullptr;
+				transfer_queue_create_info.flags            = 0u;
+				transfer_queue_create_info.queueCount       = 1u;
+				transfer_queue_create_info.pQueuePriorities = &default_queue_priority;
+				transfer_queue_create_info.queueFamilyIndex = ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eTransfer)];
+			}
+
+			VkPhysicalDevicePresentIdFeaturesKHR present_id_features{};
+			present_id_features.sType     = STYPE(PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR);
+			present_id_features.pNext     = nullptr;
+			present_id_features.presentId = true;
+
+			// This removes the need to transfer queue ownership for buffers and linear images.
+			// For optimally tiled images, the need for queue ownership transfer is GPU-dependent.
+			VkPhysicalDeviceMaintenance9FeaturesKHR maintenance_9_features{};
+			maintenance_9_features.sType        = STYPE(PHYSICAL_DEVICE_MAINTENANCE_9_FEATURES_KHR);
+			maintenance_9_features.pNext        = &present_id_features;
+			maintenance_9_features.maintenance9 = true;
+
+			// Apparently colour write enable is it's own extension for some reason
+			VkPhysicalDeviceColorWriteEnableFeaturesEXT colour_write_enable_features{};
+			colour_write_enable_features.sType            = STYPE(PHYSICAL_DEVICE_COLOR_WRITE_ENABLE_FEATURES_EXT);
+			colour_write_enable_features.pNext            = &maintenance_9_features;
+			colour_write_enable_features.colorWriteEnable = true;
+
+			// Allows for optimised OIT by using critical sections inside of the fragment shader.
+			VkPhysicalDeviceFragmentShaderInterlockFeaturesEXT fragment_shader_interlock_features{};
+			fragment_shader_interlock_features.sType                        = STYPE(PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT);
+			fragment_shader_interlock_features.pNext                        = &colour_write_enable_features;
+			fragment_shader_interlock_features.fragmentShaderPixelInterlock = true;
+
+			// Vertex shader + Compute shader + Geometry shader + Tess Control shader + Tess Eval shader = Holy pipeline.
+			VkPhysicalDeviceMeshShaderFeaturesEXT mesh_shader_features{};
+			mesh_shader_features.sType      = STYPE(PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT);
+			mesh_shader_features.pNext      = &fragment_shader_interlock_features;
+			mesh_shader_features.meshShader = true;
+			mesh_shader_features.taskShader = true;
+
+			// Essentially removes the hassle of transitioning image layouts by allowing for images to be in the GENERAL layout.
+			// The driver will automatically know the usage and optimise from there. The exception is swapchain images, as they are part of an extension.
+			VkPhysicalDeviceUnifiedImageLayoutsFeaturesKHR unified_image_layout_features{};
+			unified_image_layout_features.sType               = STYPE(PHYSICAL_DEVICE_UNIFIED_IMAGE_LAYOUTS_FEATURES_KHR);
+			unified_image_layout_features.pNext               = &mesh_shader_features;
+			unified_image_layout_features.unifiedImageLayouts = true;
+
+			// Allows for descriptor heaps to actually be declared inside of shaders
+			VkPhysicalDeviceShaderUntypedPointersFeaturesKHR shader_untyped_pointer_features{};
+			shader_untyped_pointer_features.sType                 = STYPE(PHYSICAL_DEVICE_SHADER_UNTYPED_POINTERS_FEATURES_KHR);
+			shader_untyped_pointer_features.pNext                 = &unified_image_layout_features;
+			shader_untyped_pointer_features.shaderUntypedPointers = true;
+
+			// Descriptor heaps allow for the complete bypassing of all VkDescriptorXXX state. Instead, using indices into global "resource" and "sampler" heaps.
+			VkPhysicalDeviceDescriptorHeapFeaturesEXT descriptor_heap_features{};
+			descriptor_heap_features.sType          = STYPE(PHYSICAL_DEVICE_DESCRIPTOR_HEAP_FEATURES_EXT);
+			descriptor_heap_features.pNext          = &shader_untyped_pointer_features;
+			descriptor_heap_features.descriptorHeap = true;
+
+			// Using shader objects allows for the complete bypassing of any VkPipeline objects. Meaning all state has to be set dynamically
+			VkPhysicalDeviceShaderObjectFeaturesEXT shader_object_features{};
+			shader_object_features.sType        = STYPE(PHYSICAL_DEVICE_SHADER_OBJECT_FEATURES_EXT);
+			shader_object_features.pNext        = &descriptor_heap_features;
+			shader_object_features.shaderObject = true;
+
+			VkPhysicalDeviceVulkan11Features vulkan_11_features{};
+			vulkan_11_features.sType                              = STYPE(PHYSICAL_DEVICE_VULKAN_1_1_FEATURES);
+			vulkan_11_features.pNext                              = &shader_object_features;
+			vulkan_11_features.storageBuffer16BitAccess           = true; // Allows storage buffers to have 16-bit members
+			vulkan_11_features.uniformAndStorageBuffer16BitAccess = true; // Allows uniform buffers to have 16-bit members
+			vulkan_11_features.storagePushConstant16              = true; // Allows push constants to have 16-bit members
+			vulkan_11_features.shaderDrawParameters               = true; // Fixes a validation error.
+
+			VkPhysicalDeviceVulkan12Features vulkan_12_features{};
+			vulkan_12_features.sType                             = STYPE(PHYSICAL_DEVICE_VULKAN_1_2_FEATURES);
+			vulkan_12_features.pNext                             = &vulkan_11_features;
+			vulkan_12_features.drawIndirectCount                 = true; // Used in MDI
+			vulkan_12_features.storageBuffer8BitAccess           = true; // Allows storage buffers to have 8-bit members
+			vulkan_12_features.uniformAndStorageBuffer8BitAccess = true; // Allows uniform buffers to have 8-bit members
+			vulkan_12_features.storagePushConstant8              = true; // Allows push constants to have 8-bit members
+			vulkan_12_features.bufferDeviceAddress               = true; // The best feature
+			vulkan_12_features.scalarBlockLayout                 = true; // Very useful to avoid having to use std140 / std430 alignment rules
+			vulkan_12_features.shaderInt8                        = true; // uint8_t. Used in meshlet triangle buffers
+			vulkan_12_features.timelineSemaphore                 = true; // SemaphoreHandles are just timeline semaphores
+
+			VkPhysicalDeviceVulkan13Features vulkan_13_features{};
+			vulkan_13_features.sType            = STYPE(PHYSICAL_DEVICE_VULKAN_1_3_FEATURES);
+			vulkan_13_features.pNext            = &vulkan_12_features;
+			vulkan_13_features.synchronization2 = true; // Better synchronization commands
+			vulkan_13_features.dynamicRendering = true; // Much better than render passes
+			vulkan_13_features.maintenance4     = true; // Fixes this: OpExecutionMode LocalSizeId is used but maintenance4 feature was not enabled.
+
+			VkPhysicalDeviceVulkan14Features vulkan_14_features{};
+			vulkan_14_features.sType          = STYPE(PHYSICAL_DEVICE_VULKAN_1_4_FEATURES);
+			vulkan_14_features.pNext          = &vulkan_13_features;
+			vulkan_14_features.indexTypeUint8 = true; // Allows index buffers to use 8-bit unsigned integers. used in meshlet triangle buffers
+
+			VkPhysicalDeviceFeatures2 features_2{};
+			features_2.sType = STYPE(PHYSICAL_DEVICE_FEATURES_2);
+			features_2.pNext = &vulkan_14_features;
+
+			VkPhysicalDeviceFeatures &core_features{features_2.features};
+			core_features.fullDrawIndexUint32               = true; // This means that index buffers can utilise the full range of 32 bit values (2^32 - 1)
+			core_features.multiDrawIndirect                 = true; // MDI is very useful
+			core_features.drawIndirectFirstInstance         = true; // The first instance member allows you to put custom instance ids in the draw command
+			core_features.fillModeNonSolid                  = true; // I want to support wireframe line rendering
+			core_features.samplerAnisotropy                 = true; // Obviously I want to be able to use anisotropic filtering
+			core_features.fragmentStoresAndAtomics          = true; // For interlock OIT, you need to store data in a fragment shader SSBO
+			core_features.shaderStorageImageExtendedFormats = true; // Docs says enabling this has no effect...
+			core_features.shaderInt64                       = true; // int64_t
+			core_features.shaderInt16                       = true; // int16_t
+			core_features.textureCompressionBC              = true; // compression
+
+			VkDeviceCreateInfo logical_device_create_info{};
+			logical_device_create_info.sType                   = STYPE(DEVICE_CREATE_INFO);
+			logical_device_create_info.flags                   = 0u;
+			logical_device_create_info.queueCreateInfoCount    = queue_create_infos.size();
+			logical_device_create_info.pQueueCreateInfos       = queue_create_infos.data();
+			logical_device_create_info.enabledExtensionCount   = required_device_extensions.size();
+			logical_device_create_info.ppEnabledExtensionNames = required_device_extensions.data();
+			logical_device_create_info.pNext                   = &features_2;
+
+			TST_GPU_VK_CHECK_RESULT_MSG(vkCreateDevice(ctx->physicalDevice, &logical_device_create_info, &ctx->allocatorCallbacks, &ctx->logicalDevice),
+										"Failed to create logical device");
+
+			// Graphics queue
+			vkGetDeviceQueue(ctx->logicalDevice, ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eGraphics)], 0u, &ctx->queues[TST_ENUM_VAL(EQueueType::eGraphics)]);
+
+			// Not the compute queue
+			ctx->queues[TST_ENUM_VAL(EQueueType::eCompute)] = nullptr; // TODO: More queues
+
+			// Transfer queue
+			uint32 transfer_queue_index{ctx->hasDedicatedTransferQueue ? 0u : 1u};
+			vkGetDeviceQueue(ctx->logicalDevice, ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eTransfer)], transfer_queue_index,
+							 &ctx->queues[TST_ENUM_VAL(EQueueType::eTransfer)]);
+
+			VkCommandPoolCreateInfo transient_command_pool_create_info{};
+			transient_command_pool_create_info.sType = STYPE(COMMAND_POOL_CREATE_INFO);
+			transient_command_pool_create_info.pNext = nullptr;
+			transient_command_pool_create_info.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
+			for (uint32 queue_index{0u}; queue_index < c_queueCount; ++queue_index)
+			{
+				transient_command_pool_create_info.queueFamilyIndex = ctx->queueFamilyIndices[queue_index];
+				TST_GPU_VK_CHECK_RESULT_MSG(vkCreateCommandPool(ctx->logicalDevice, &transient_command_pool_create_info, &ctx->allocatorCallbacks, &ctx->transientPools[
+												queue_index]), "Failed to create transient command pool");
+			}
+
+			volkLoadDevice(ctx->logicalDevice); // Load all the device-level Vulkan functions
 		}
-
-		// This removes the need to transfer queue ownership for buffers and linear images.
-		// For optimally tiled images, the need for queue ownership transfer is GPU-dependent.
-		VkPhysicalDeviceMaintenance9FeaturesKHR maintenance_9_features{};
-		maintenance_9_features.sType        = STYPE(PHYSICAL_DEVICE_MAINTENANCE_9_FEATURES_KHR);
-		maintenance_9_features.pNext        = nullptr;
-		maintenance_9_features.maintenance9 = true;
-
-		// Apparently colour write enable is it's own extension for some reason
-		VkPhysicalDeviceColorWriteEnableFeaturesEXT colour_write_enable_features{};
-		colour_write_enable_features.sType            = STYPE(PHYSICAL_DEVICE_COLOR_WRITE_ENABLE_FEATURES_EXT);
-		colour_write_enable_features.pNext            = &maintenance_9_features;
-		colour_write_enable_features.colorWriteEnable = true;
-
-		// Allows for optimised OIT by using critical sections inside of the fragment shader.
-		VkPhysicalDeviceFragmentShaderInterlockFeaturesEXT fragment_shader_interlock_features{};
-		fragment_shader_interlock_features.sType                        = STYPE(PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT);
-		fragment_shader_interlock_features.pNext                        = &colour_write_enable_features;
-		fragment_shader_interlock_features.fragmentShaderPixelInterlock = true;
-
-		// Vertex shader + Compute shader + Geometry shader + Tess Control shader + Tess Eval shader = Holy pipeline.
-		VkPhysicalDeviceMeshShaderFeaturesEXT mesh_shader_features{};
-		mesh_shader_features.sType      = STYPE(PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT);
-		mesh_shader_features.pNext      = &fragment_shader_interlock_features;
-		mesh_shader_features.meshShader = true;
-		mesh_shader_features.taskShader = true;
-
-		// Essentially removes the hassle of transitioning image layouts by allowing for images to be in the GENERAL layout.
-		// The driver will automatically know the usage and optimise from there. The exception is swapchain images, as they are part of an extension.
-		VkPhysicalDeviceUnifiedImageLayoutsFeaturesKHR unified_image_layout_features{};
-		unified_image_layout_features.sType               = STYPE(PHYSICAL_DEVICE_UNIFIED_IMAGE_LAYOUTS_FEATURES_KHR);
-		unified_image_layout_features.pNext               = &mesh_shader_features;
-		unified_image_layout_features.unifiedImageLayouts = true;
-
-		// Allows for descriptor heaps to actually be declared inside of shaders
-		VkPhysicalDeviceShaderUntypedPointersFeaturesKHR shader_untyped_pointer_features{};
-		shader_untyped_pointer_features.sType                 = STYPE(PHYSICAL_DEVICE_SHADER_UNTYPED_POINTERS_FEATURES_KHR);
-		shader_untyped_pointer_features.pNext                 = &unified_image_layout_features;
-		shader_untyped_pointer_features.shaderUntypedPointers = true;
-
-		// Descriptor heaps allow for the complete bypassing of all VkDescriptorXXX state. Instead, using indices into global "resource" and "sampler" heaps.
-		VkPhysicalDeviceDescriptorHeapFeaturesEXT descriptor_heap_features{};
-		descriptor_heap_features.sType          = STYPE(PHYSICAL_DEVICE_DESCRIPTOR_HEAP_FEATURES_EXT);
-		descriptor_heap_features.pNext          = &shader_untyped_pointer_features;
-		descriptor_heap_features.descriptorHeap = true;
-
-		// Using shader objects allows for the complete bypassing of any VkPipeline objects. Meaning all state has to be set dynamically
-		VkPhysicalDeviceShaderObjectFeaturesEXT shader_object_features{};
-		shader_object_features.sType        = STYPE(PHYSICAL_DEVICE_SHADER_OBJECT_FEATURES_EXT);
-		shader_object_features.pNext        = &descriptor_heap_features;
-		shader_object_features.shaderObject = true;
-
-		VkPhysicalDeviceVulkan11Features vulkan_11_features{};
-		vulkan_11_features.sType                              = STYPE(PHYSICAL_DEVICE_VULKAN_1_1_FEATURES);
-		vulkan_11_features.pNext                              = &shader_object_features;
-		vulkan_11_features.storageBuffer16BitAccess           = true; // Allows storage buffers to have 16-bit members
-		vulkan_11_features.uniformAndStorageBuffer16BitAccess = true; // Allows uniform buffers to have 16-bit members
-		vulkan_11_features.storagePushConstant16              = true; // Allows push constants to have 16-bit members
-		vulkan_11_features.shaderDrawParameters               = true; // Fixes a validation error.
-
-		VkPhysicalDeviceVulkan12Features vulkan_12_features{};
-		vulkan_12_features.sType                             = STYPE(PHYSICAL_DEVICE_VULKAN_1_2_FEATURES);
-		vulkan_12_features.pNext                             = &vulkan_11_features;
-		vulkan_12_features.drawIndirectCount                 = true; // Used in MDI
-		vulkan_12_features.storageBuffer8BitAccess           = true; // Allows storage buffers to have 8-bit members
-		vulkan_12_features.uniformAndStorageBuffer8BitAccess = true; // Allows uniform buffers to have 8-bit members
-		vulkan_12_features.storagePushConstant8              = true; // Allows push constants to have 8-bit members
-		vulkan_12_features.bufferDeviceAddress               = true; // The best feature
-		vulkan_12_features.scalarBlockLayout                 = true; // Very useful to avoid having to use std140 / std430 alignment rules
-		vulkan_12_features.shaderInt8                        = true; // uint8_t. Used in meshlet triangle buffers
-		vulkan_12_features.timelineSemaphore                 = true; // SemaphoreHandles are just timeline semaphores
-
-		VkPhysicalDeviceVulkan13Features vulkan_13_features{};
-		vulkan_13_features.sType            = STYPE(PHYSICAL_DEVICE_VULKAN_1_3_FEATURES);
-		vulkan_13_features.pNext            = &vulkan_12_features;
-		vulkan_13_features.synchronization2 = true; // Better synchronization commands
-		vulkan_13_features.dynamicRendering = true; // Much better than render passes
-		vulkan_13_features.maintenance4     = true; // Fixes this: OpExecutionMode LocalSizeId is used but maintenance4 feature was not enabled.
-
-		VkPhysicalDeviceVulkan14Features vulkan_14_features{};
-		vulkan_14_features.sType          = STYPE(PHYSICAL_DEVICE_VULKAN_1_4_FEATURES);
-		vulkan_14_features.pNext          = &vulkan_13_features;
-		vulkan_14_features.indexTypeUint8 = true; // Allows index buffers to use 8-bit unsigned integers. used in meshlet triangle buffers
-
-		VkPhysicalDeviceFeatures2 features_2{};
-		features_2.sType = STYPE(PHYSICAL_DEVICE_FEATURES_2);
-		features_2.pNext = &vulkan_14_features;
-
-		VkPhysicalDeviceFeatures &core_features{features_2.features};
-		core_features.fullDrawIndexUint32               = true; // This means that index buffers can utilise the full range of 32 bit values (2^32 - 1)
-		core_features.multiDrawIndirect                 = true; // MDI is very useful
-		core_features.drawIndirectFirstInstance         = true; // The first instance member allows you to put custom instance ids in the draw command
-		core_features.fillModeNonSolid                  = true; // I want to support wireframe line rendering
-		core_features.samplerAnisotropy                 = true; // Obviously I want to be able to use anisotropic filtering
-		core_features.fragmentStoresAndAtomics          = true; // For interlock OIT, you need to store data in a fragment shader SSBO
-		core_features.shaderStorageImageExtendedFormats = true; // Docs says enabling this has no effect...
-		core_features.shaderInt64                       = true; // int64_t
-		core_features.shaderInt16                       = true; // int16_t
-
-		VkDeviceCreateInfo logical_device_create_info{};
-		logical_device_create_info.sType                   = STYPE(DEVICE_CREATE_INFO);
-		logical_device_create_info.flags                   = 0u;
-		logical_device_create_info.queueCreateInfoCount    = queue_create_infos.size();
-		logical_device_create_info.pQueueCreateInfos       = queue_create_infos.data();
-		logical_device_create_info.enabledExtensionCount   = required_device_extensions.size();
-		logical_device_create_info.ppEnabledExtensionNames = required_device_extensions.data();
-		logical_device_create_info.pNext                   = &features_2;
-
-		TST_GPU_VK_CHECK_RESULT_MSG(vkCreateDevice(ctx->physicalDevice, &logical_device_create_info, &ctx->allocatorCallbacks, &ctx->logicalDevice),
-									"Failed to create logical device");
-
-		// Graphics queue
-		vkGetDeviceQueue(ctx->logicalDevice, ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eGraphics)], 0u, &ctx->queues[TST_ENUM_VAL(EQueueType::eGraphics)]);
-
-		// Not the compute queue
-		ctx->queues[TST_ENUM_VAL(EQueueType::eCompute)] = nullptr; // TODO: More queues
-
-		// Transfer queue
-		uint32 transfer_queue_index{ctx->hasDedicatedTransferQueue ? 0u : 1u};
-		vkGetDeviceQueue(ctx->logicalDevice, ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eTransfer)], transfer_queue_index,
-						 &ctx->queues[TST_ENUM_VAL(EQueueType::eTransfer)]);
-
-		VkCommandPoolCreateInfo transient_command_pool_create_info{};
-		transient_command_pool_create_info.sType = STYPE(COMMAND_POOL_CREATE_INFO);
-		transient_command_pool_create_info.pNext = nullptr;
-		transient_command_pool_create_info.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
-		for (uint32 queue_index{0u}; queue_index < c_queueCount; ++queue_index)
-		{
-			transient_command_pool_create_info.queueFamilyIndex = ctx->queueFamilyIndices[queue_index];
-			TST_GPU_VK_CHECK_RESULT_MSG(vkCreateCommandPool(ctx->logicalDevice, &transient_command_pool_create_info, &ctx->allocatorCallbacks, &ctx->transientPools[
-											queue_index]), "Failed to create transient command pool");
-		}
-
-		volkLoadDevice(ctx->logicalDevice); // Load all the device-level Vulkan functions
-
 		#pragma endregion
 
 		#pragma region allocator
 
-		VmaVulkanFunctions vma_vulkan_functions{};
-		vma_vulkan_functions.vkGetInstanceProcAddr                   = vkGetInstanceProcAddr;
-		vma_vulkan_functions.vkGetDeviceProcAddr                     = vkGetDeviceProcAddr;
-		vma_vulkan_functions.vkGetPhysicalDeviceProperties           = vkGetPhysicalDeviceProperties;
-		vma_vulkan_functions.vkGetPhysicalDeviceMemoryProperties     = vkGetPhysicalDeviceMemoryProperties;
-		vma_vulkan_functions.vkAllocateMemory                        = vkAllocateMemory;
-		vma_vulkan_functions.vkFreeMemory                            = vkFreeMemory;
-		vma_vulkan_functions.vkMapMemory                             = vkMapMemory;
-		vma_vulkan_functions.vkUnmapMemory                           = vkUnmapMemory;
-		vma_vulkan_functions.vkFlushMappedMemoryRanges               = vkFlushMappedMemoryRanges;
-		vma_vulkan_functions.vkInvalidateMappedMemoryRanges          = vkInvalidateMappedMemoryRanges;
-		vma_vulkan_functions.vkBindBufferMemory                      = vkBindBufferMemory;
-		vma_vulkan_functions.vkBindImageMemory                       = vkBindImageMemory;
-		vma_vulkan_functions.vkGetBufferMemoryRequirements           = vkGetBufferMemoryRequirements;
-		vma_vulkan_functions.vkGetImageMemoryRequirements            = vkGetImageMemoryRequirements;
-		vma_vulkan_functions.vkCreateBuffer                          = vkCreateBuffer;
-		vma_vulkan_functions.vkDestroyBuffer                         = vkDestroyBuffer;
-		vma_vulkan_functions.vkCreateImage                           = vkCreateImage;
-		vma_vulkan_functions.vkDestroyImage                          = vkDestroyImage;
-		vma_vulkan_functions.vkCmdCopyBuffer                         = vkCmdCopyBuffer;
-		vma_vulkan_functions.vkGetBufferMemoryRequirements2KHR       = vkGetBufferMemoryRequirements2KHR;
-		vma_vulkan_functions.vkGetImageMemoryRequirements2KHR        = vkGetImageMemoryRequirements2KHR;
-		vma_vulkan_functions.vkBindBufferMemory2KHR                  = vkBindBufferMemory2KHR;
-		vma_vulkan_functions.vkBindImageMemory2KHR                   = vkBindImageMemory2KHR;
-		vma_vulkan_functions.vkGetPhysicalDeviceMemoryProperties2KHR = vkGetPhysicalDeviceMemoryProperties2KHR;
-		vma_vulkan_functions.vkGetDeviceBufferMemoryRequirements     = vkGetDeviceBufferMemoryRequirements;
-		vma_vulkan_functions.vkGetDeviceImageMemoryRequirements      = vkGetDeviceImageMemoryRequirements;
-		vma_vulkan_functions.vkGetMemoryWin32HandleKHR               = vkGetMemoryWin32HandleKHR;
-		vma_vulkan_functions.vkGetPhysicalDeviceProperties2KHR       = vkGetPhysicalDeviceProperties2KHR;
+		{
+			VmaVulkanFunctions vma_vulkan_functions{};
+			vma_vulkan_functions.vkGetInstanceProcAddr                   = vkGetInstanceProcAddr;
+			vma_vulkan_functions.vkGetDeviceProcAddr                     = vkGetDeviceProcAddr;
+			vma_vulkan_functions.vkGetPhysicalDeviceProperties           = vkGetPhysicalDeviceProperties;
+			vma_vulkan_functions.vkGetPhysicalDeviceMemoryProperties     = vkGetPhysicalDeviceMemoryProperties;
+			vma_vulkan_functions.vkAllocateMemory                        = vkAllocateMemory;
+			vma_vulkan_functions.vkFreeMemory                            = vkFreeMemory;
+			vma_vulkan_functions.vkMapMemory                             = vkMapMemory;
+			vma_vulkan_functions.vkUnmapMemory                           = vkUnmapMemory;
+			vma_vulkan_functions.vkFlushMappedMemoryRanges               = vkFlushMappedMemoryRanges;
+			vma_vulkan_functions.vkInvalidateMappedMemoryRanges          = vkInvalidateMappedMemoryRanges;
+			vma_vulkan_functions.vkBindBufferMemory                      = vkBindBufferMemory;
+			vma_vulkan_functions.vkBindImageMemory                       = vkBindImageMemory;
+			vma_vulkan_functions.vkGetBufferMemoryRequirements           = vkGetBufferMemoryRequirements;
+			vma_vulkan_functions.vkGetImageMemoryRequirements            = vkGetImageMemoryRequirements;
+			vma_vulkan_functions.vkCreateBuffer                          = vkCreateBuffer;
+			vma_vulkan_functions.vkDestroyBuffer                         = vkDestroyBuffer;
+			vma_vulkan_functions.vkCreateImage                           = vkCreateImage;
+			vma_vulkan_functions.vkDestroyImage                          = vkDestroyImage;
+			vma_vulkan_functions.vkCmdCopyBuffer                         = vkCmdCopyBuffer;
+			vma_vulkan_functions.vkGetBufferMemoryRequirements2KHR       = vkGetBufferMemoryRequirements2KHR;
+			vma_vulkan_functions.vkGetImageMemoryRequirements2KHR        = vkGetImageMemoryRequirements2KHR;
+			vma_vulkan_functions.vkBindBufferMemory2KHR                  = vkBindBufferMemory2KHR;
+			vma_vulkan_functions.vkBindImageMemory2KHR                   = vkBindImageMemory2KHR;
+			vma_vulkan_functions.vkGetPhysicalDeviceMemoryProperties2KHR = vkGetPhysicalDeviceMemoryProperties2KHR;
+			vma_vulkan_functions.vkGetDeviceBufferMemoryRequirements     = vkGetDeviceBufferMemoryRequirements;
+			vma_vulkan_functions.vkGetDeviceImageMemoryRequirements      = vkGetDeviceImageMemoryRequirements;
+			vma_vulkan_functions.vkGetMemoryWin32HandleKHR               = vkGetMemoryWin32HandleKHR;
+			vma_vulkan_functions.vkGetPhysicalDeviceProperties2KHR       = vkGetPhysicalDeviceProperties2KHR;
 
-		VmaAllocatorCreateInfo allocator_create_info{};
-		allocator_create_info.instance             = ctx->vulkanInstance;
-		allocator_create_info.physicalDevice       = ctx->physicalDevice;
-		allocator_create_info.device               = ctx->logicalDevice;
-		allocator_create_info.vulkanApiVersion     = VK_API_VERSION_1_4;
-		allocator_create_info.flags                = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
-		allocator_create_info.pVulkanFunctions     = &vma_vulkan_functions;
-		allocator_create_info.pAllocationCallbacks = &ctx->allocatorCallbacks;
+			VmaAllocatorCreateInfo allocator_create_info{};
+			allocator_create_info.instance             = ctx->vulkanInstance;
+			allocator_create_info.physicalDevice       = ctx->physicalDevice;
+			allocator_create_info.device               = ctx->logicalDevice;
+			allocator_create_info.vulkanApiVersion     = VK_API_VERSION_1_4;
+			allocator_create_info.flags                = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
+			allocator_create_info.pVulkanFunctions     = &vma_vulkan_functions;
+			allocator_create_info.pAllocationCallbacks = &ctx->allocatorCallbacks;
 
-		vmaCreateAllocator(&allocator_create_info, &ctx->allocator);
+			vmaCreateAllocator(&allocator_create_info, &ctx->allocator);
+		}
 
 		#pragma endregion
 
 		#pragma region destroy callbacks
 
-		ctx->commandAllocators.setDestructorUserData(ctx);
-		ctx->commandAllocators.setDestructorFn(+[](CommandAllocator *p_data, void *p_ctx) mutable noexcept -> void
 		{
-			const auto ctx{static_cast<GPUContext *>(p_ctx)};
-
-			#ifndef NDEGUG
-			ctx->commandLists.for_each(p_data->allocatedPrimaryLists, [](const CommandList &p_cmd, uint32) -> void
+			ctx->commandAllocators.setDestructorUserData(ctx);
+			ctx->commandAllocators.setDestructorFn(+[](CommandAllocator *p_data, void *p_ctx) mutable noexcept -> void
 			{
-				TST_ASSERT_MSG(!(p_cmd.flags & EInternalCommandListFlagBits::eOpen), "Attempted to destroy command allocator with open command lists");
+				const auto ctx{static_cast<GPUContext *>(p_ctx)};
+
+				#ifndef NDEGUG
+				ctx->commandLists.for_each(p_data->allocatedPrimaryLists, [](const CommandList &p_cmd, uint32) -> void
+				{
+					TST_ASSERT_MSG(!(p_cmd.flags & EInternalCommandListFlagBits::eOpen), "Attempted to destroy command allocator with open command lists");
+				});
+				ctx->commandLists.for_each(p_data->allocatedSecondaryLists, [](const CommandList &p_cmd, uint32) -> void
+				{
+					TST_ASSERT_MSG(!(p_cmd.flags & EInternalCommandListFlagBits::eOpen), "Attempted to destroy command allocator with open command lists");
+				});
+				ctx->commandLists.destroy_n(p_data->allocatedPrimaryLists);
+				ctx->commandLists.destroy_n(p_data->allocatedSecondaryLists);
+
+				#endif
+				ctx->commandLists.destroy_n(p_data->freePrimaryLists);
+				ctx->commandLists.destroy_n(p_data->freeSecondaryLists);
+
+				vkDestroyCommandPool(ctx->logicalDevice, p_data->pool, &ctx->allocatorCallbacks);
+
+				p_data->pool = nullptr;
 			});
-			ctx->commandLists.for_each(p_data->allocatedSecondaryLists, [](const CommandList &p_cmd, uint32) -> void
+
+			ctx->resourceHeaps.setDestructorUserData(ctx);
+			ctx->resourceHeaps.setDestructorFn(+[](ResourceDescriptorHeap *p_data, void *p_ctx) mutable noexcept -> void
 			{
-				TST_ASSERT_MSG(!(p_cmd.flags & EInternalCommandListFlagBits::eOpen), "Attempted to destroy command allocator with open command lists");
+				const auto ctx{static_cast<GPUContext *>(p_ctx)};
+
+				vmaDestroyBuffer(ctx->allocator, p_data->heapBuffer, p_data->heapAllocation);
+				mtx_destroy(&p_data->imageSlotMutex);
+				mtx_destroy(&p_data->bufferSlotMutex);
+
+				p_data->heapBuffer       = nullptr;
+				p_data->heapAllocation   = nullptr;
+				p_data->mappedHeapMemory = nullptr;
 			});
-			ctx->commandLists.destroy_n(p_data->allocatedPrimaryLists);
-			ctx->commandLists.destroy_n(p_data->allocatedSecondaryLists);
 
-			#endif
-			ctx->commandLists.destroy_n(p_data->freePrimaryLists);
-			ctx->commandLists.destroy_n(p_data->freeSecondaryLists);
+			ctx->samplerHeaps.setDestructorUserData(ctx);
+			ctx->samplerHeaps.setDestructorFn(+[](SamplerDescriptorHeap *p_data, void *p_ctx) mutable noexcept -> void
+			{
+				const auto ctx{static_cast<GPUContext *>(p_ctx)};
 
-			vkDestroyCommandPool(ctx->logicalDevice, p_data->pool, &ctx->allocatorCallbacks);
+				vmaDestroyBuffer(ctx->allocator, p_data->heapBuffer, p_data->heapAllocation);
+				mtx_destroy(&p_data->samplerSlotMutex);
 
-			p_data->pool = nullptr;
-		});
+				p_data->heapBuffer       = nullptr;
+				p_data->heapAllocation   = nullptr;
+				p_data->mappedHeapMemory = nullptr;
+			});
 
-		ctx->resourceHeaps.setDestructorUserData(ctx);
-		ctx->resourceHeaps.setDestructorFn(+[](ResourceDescriptorHeap *p_data, void *p_ctx) mutable noexcept -> void
-		{
-			const auto ctx{static_cast<GPUContext *>(p_ctx)};
+			ctx->semaphores.setDestructorUserData(ctx);
+			ctx->semaphores.setDestructorFn(+[](Semaphore *p_data, void *p_ctx) mutable noexcept -> void
+			{
+				const auto ctx{static_cast<GPUContext *>(p_ctx)};
 
-			vmaDestroyBuffer(ctx->allocator, p_data->heapBuffer, p_data->heapAllocation);
-			mtx_destroy(&p_data->imageSlotMutex);
-			mtx_destroy(&p_data->bufferSlotMutex);
+				vkDestroySemaphore(ctx->logicalDevice, p_data->semaphore, &ctx->allocatorCallbacks);
 
-			p_data->heapBuffer       = nullptr;
-			p_data->heapAllocation   = nullptr;
-			p_data->mappedHeapMemory = nullptr;
-		});
+				p_data->semaphore = nullptr;
+			});
 
-		ctx->samplerHeaps.setDestructorUserData(ctx);
-		ctx->samplerHeaps.setDestructorFn(+[](SamplerDescriptorHeap *p_data, void *p_ctx) mutable noexcept -> void
-		{
-			const auto ctx{static_cast<GPUContext *>(p_ctx)};
+			ctx->buffers.setDestructorUserData(ctx);
+			ctx->buffers.setDestructorFn(+[](Buffer *p_data, void *p_ctx) mutable noexcept -> void
+			{
+				const auto ctx{static_cast<GPUContext *>(p_ctx)};
 
-			vmaDestroyBuffer(ctx->allocator, p_data->heapBuffer, p_data->heapAllocation);
-			mtx_destroy(&p_data->samplerSlotMutex);
+				vmaDestroyBuffer(ctx->allocator, p_data->buffer, p_data->allocation);
 
-			p_data->heapBuffer       = nullptr;
-			p_data->heapAllocation   = nullptr;
-			p_data->mappedHeapMemory = nullptr;
-		});
+				p_data->buffer     = nullptr;
+				p_data->allocation = nullptr;
+				p_data->mapped     = nullptr;
+			});
 
-		ctx->semaphores.setDestructorUserData(ctx);
-		ctx->semaphores.setDestructorFn(+[](Semaphore *p_data, void *p_ctx) mutable noexcept -> void
-		{
-			const auto ctx{static_cast<GPUContext *>(p_ctx)};
+			ctx->textures.setDestructorUserData(ctx);
+			ctx->textures.setDestructorFn(+[](Texture *p_data, void *p_ctx) mutable noexcept -> void
+			{
+				const auto ctx{static_cast<GPUContext *>(p_ctx)};
 
-			vkDestroySemaphore(ctx->logicalDevice, p_data->semaphore, &ctx->allocatorCallbacks);
+				// If the texture has not been created into, these other members will be nullptr anyway
+				if (p_data->imageView)
+					vkDestroyImageView(ctx->logicalDevice, p_data->imageView, &ctx->allocatorCallbacks);
 
-			p_data->semaphore = nullptr;
-		});
+				if (!(p_data->flags & EInternalTextureFlagBits::eSwapchainImage))
+					vmaDestroyImage(ctx->allocator, p_data->image, p_data->allocation);
 
-		ctx->buffers.setDestructorUserData(ctx);
-		ctx->buffers.setDestructorFn(+[](Buffer *p_data, void *p_ctx) mutable noexcept -> void
-		{
-			const auto ctx{static_cast<GPUContext *>(p_ctx)};
+				p_data->image      = nullptr;
+				p_data->allocation = nullptr;
+				p_data->imageView  = nullptr;
+			});
 
-			vmaDestroyBuffer(ctx->allocator, p_data->buffer, p_data->allocation);
+			ctx->surfaces.setDestructorUserData(ctx);
+			ctx->surfaces.setDestructorFn(+[](Surface *p_data, void *p_ctx) mutable noexcept -> void
+			{
+				const auto ctx{static_cast<GPUContext *>(p_ctx)};
 
-			p_data->buffer     = nullptr;
-			p_data->allocation = nullptr;
-			p_data->mapped     = nullptr;
-		});
+				vkDestroySurfaceKHR(ctx->vulkanInstance, p_data->surface, &ctx->allocatorCallbacks);
 
-		ctx->textures.setDestructorUserData(ctx);
-		ctx->textures.setDestructorFn(+[](Texture *p_data, void *p_ctx) mutable noexcept -> void
-		{
-			const auto ctx{static_cast<GPUContext *>(p_ctx)};
+				p_data->surface = nullptr;
+			});
 
-			// If the texture has not been created into, these other members will be nullptr anyway
-			if (p_data->imageView)
-				vkDestroyImageView(ctx->logicalDevice, p_data->imageView, &ctx->allocatorCallbacks);
+			ctx->swapchains.setDestructorUserData(ctx);
+			ctx->swapchains.setDestructorFn(+[](Swapchain *p_data, void *p_ctx) mutable noexcept -> void
+			{
+				const auto ctx{static_cast<GPUContext *>(p_ctx)};
 
-			if (!(p_data->flags & EInternalTextureFlagBits::eSwapchainImage))
-				vmaDestroyImage(ctx->allocator, p_data->image, p_data->allocation);
+				ctx->textures.destroy_n(p_data->attachments);
 
-			p_data->image      = nullptr;
-			p_data->allocation = nullptr;
-			p_data->imageView  = nullptr;
-		});
+				for (auto &semaphore: p_data->imageAvailableSemaphores)
+					vkDestroySemaphore(ctx->logicalDevice, semaphore, &ctx->allocatorCallbacks);
 
-		ctx->surfaces.setDestructorUserData(ctx);
-		ctx->surfaces.setDestructorFn(+[](Surface *p_data, void *p_ctx) mutable noexcept -> void
-		{
-			const auto ctx{static_cast<GPUContext *>(p_ctx)};
+				for (auto &semaphore: p_data->renderFinishedSemaphores)
+					vkDestroySemaphore(ctx->logicalDevice, semaphore, &ctx->allocatorCallbacks);
 
-			vkDestroySurfaceKHR(ctx->vulkanInstance, p_data->surface, &ctx->allocatorCallbacks);
+				vkDestroySemaphore(ctx->logicalDevice, p_data->latencySemaphore, &ctx->allocatorCallbacks);
 
-			p_data->surface = nullptr;
-		});
+				vkDestroySwapchainKHR(ctx->logicalDevice, p_data->swapchain, &ctx->allocatorCallbacks);
 
-		ctx->swapchains.setDestructorUserData(ctx);
-		ctx->swapchains.setDestructorFn(+[](Swapchain *p_data, void *p_ctx) mutable noexcept -> void
-		{
-			const auto ctx{static_cast<GPUContext *>(p_ctx)};
+				p_data->attachments.clear();
+				p_data->imageAvailableSemaphores.clear();
+				p_data->frameIds.clear();
+				p_data->swapchain        = nullptr;
+				p_data->latencySemaphore = nullptr;
+			});
 
-			ctx->textures.destroy_n(p_data->attachments);
+			ctx->shaders.setDestructorUserData(ctx);
+			ctx->shaders.setDestructorFn(+[](Shader *p_data, void *p_ctx) mutable noexcept -> void
+			{
+				const auto ctx{static_cast<GPUContext *>(p_ctx)};
 
-			for (auto &semaphore: p_data->imageAvailableSemaphores)
-				vkDestroySemaphore(ctx->logicalDevice, semaphore, &ctx->allocatorCallbacks);
+				vkDestroyShaderEXT(ctx->logicalDevice, p_data->shader, &ctx->allocatorCallbacks);
 
-			for (auto &semaphore: p_data->renderFinishedSemaphores)
-				vkDestroySemaphore(ctx->logicalDevice, semaphore, &ctx->allocatorCallbacks);
-
-			vkDestroySemaphore(ctx->logicalDevice, p_data->latencySemaphore, &ctx->allocatorCallbacks);
-
-			vkDestroySwapchainKHR(ctx->logicalDevice, p_data->swapchain, &ctx->allocatorCallbacks);
-
-			p_data->attachments.clear();
-			p_data->imageAvailableSemaphores.clear();
-			p_data->swapchain        = nullptr;
-			p_data->latencySemaphore = nullptr;
-		});
-
-		ctx->shaders.setDestructorUserData(ctx);
-		ctx->shaders.setDestructorFn(+[](Shader *p_data, void *p_ctx) mutable noexcept -> void
-		{
-			const auto ctx{static_cast<GPUContext *>(p_ctx)};
-
-			vkDestroyShaderEXT(ctx->logicalDevice, p_data->shader, &ctx->allocatorCallbacks);
-
-			p_data->shader = nullptr;
-		});
+				p_data->shader = nullptr;
+			});
+		}
 
 		#pragma endregion
 
@@ -1528,26 +1578,6 @@ namespace toaster::gpu
 		delete p_ctx;
 	}
 
-	auto gpu_ctx_print_allocation_statistics(const GPUContext *p_ctx) -> void
-	{
-		VmaTotalStatistics stats;
-		vmaCalculateStatistics(p_ctx->allocator, &stats);
-		std::println("Allocation byte size: {}", ByteSize{stats.total.statistics.allocationBytes});
-		std::println("VMA allocated from driver: {}", ByteSize{stats.total.statistics.blockBytes});
-	}
-
-	auto gpu_ctx_dump_allocation_statistics_to_json(const GPUContext *p_ctx, StringView p_path) -> void
-	{
-		char *stats_string;
-		vmaBuildStatsString(p_ctx->allocator, &stats_string, true);
-
-		FILE *out_file{fopen(p_path.data(), "w")};
-		fwrite(stats_string, sizeof(char), strlen(stats_string), out_file);
-		fclose(out_file);
-
-		vmaFreeStatsString(p_ctx->allocator, stats_string);
-	}
-
 	auto wait_idle(const GPUContext *p_ctx) -> void
 	{
 		vkDeviceWaitIdle(p_ctx->logicalDevice);
@@ -1557,6 +1587,11 @@ namespace toaster::gpu
 	{
 		VkQueue queue{p_ctx->queues[static_cast<uint32>(p_queue_type)]};
 		vkQueueWaitIdle(queue);
+	}
+
+	auto format_from_vk_format(uint32 p_vk_format) -> EFormat
+	{
+		return get_tst_format(static_cast<VkFormat>(p_vk_format));
 	}
 
 	auto cmd_allocator_create(GPUContext *p_ctx, EQueueType p_queue_type) -> CommandAllocatorHandle
@@ -1762,32 +1797,6 @@ namespace toaster::gpu
 		#endif
 		vkEndCommandBuffer(cmd.cmd);
 	}
-
-	// auto cmd_list_free(GPUContext *p_ctx, CommandListHandle p_cmd_list) -> void
-	// {
-	// 	CommandList &cmd{p_ctx->commandLists[p_cmd_list]};
-	// 	TST_ASSERT_MSG(!(cmd.flags & EInternalCommandListFlagBits::eOpen), "Command buffer must not be open when being freed");
-	//
-	// 	mtx_lock(&p_ctx->freeCommandListMutex);
-	//
-	// 	if (cmd.secondary)
-	// 		p_ctx->freeSecondaryLists[static_cast<uint32>(cmd.queueType)].push_back(p_cmd_list);
-	// 	else
-	// 		p_ctx->freeCommandLists[static_cast<uint32>(cmd.queueType)].push_back(p_cmd_list);
-	//
-	// 	mtx_unlock(&p_ctx->freeCommandListMutex);
-	// }
-	//
-	// auto cmd_list_reset(GPUContext *p_ctx, CommandListHandle p_cmd_list) -> void
-	// {
-	// 	CommandList &cmd{p_ctx->commandLists[p_cmd_list]};
-	//
-	// 	#ifndef NDEBUG
-	// 	if ((cmd.flags & EInternalCommandListFlagBits::eOpen))
-	// 		(cmd.flags & EInternalCommandListFlagBits::eOpen) = false;
-	// 	#endif
-	// 	vkResetCommandPool(p_ctx->logicalDevice, cmd.pool, 0u);
-	// }
 
 	static auto get_pending_image_memory_barriers(GPUContext *p_ctx, EQueueType p_queue_type) -> VkCommandBuffer
 	{
@@ -3231,13 +3240,13 @@ namespace toaster::gpu
 		buffer_create_info.size  = p_desc.size;
 		buffer_create_info.usage = buffer_usage_flags;
 
+		// For now, only use the graphics and transfer queue.
+		Array<uint32, 2u> queue_family_indices{
+			p_ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eGraphics)],
+			p_ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eTransfer)]
+		};
 		if (p_ctx->hasDedicatedTransferQueue)
 		{
-			// For now, only use the graphics and transfer queue.
-			Array<uint32, 2u> queue_family_indices{
-				p_ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eGraphics)],
-				p_ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eTransfer)]
-			};
 			buffer_create_info.sharingMode           = VK_SHARING_MODE_CONCURRENT;
 			buffer_create_info.queueFamilyIndexCount = queue_family_indices.size();
 			buffer_create_info.pQueueFamilyIndices   = queue_family_indices.data();
@@ -3283,13 +3292,13 @@ namespace toaster::gpu
 		buffer_create_info.sType = STYPE(BUFFER_CREATE_INFO);
 		buffer_create_info.pNext = nullptr;
 
+		// For now, only use the graphics and transfer queue.
+		Array<uint32, 2u> queue_family_indices{
+			p_ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eGraphics)],
+			p_ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eTransfer)]
+		};
 		if (p_ctx->hasDedicatedTransferQueue)
 		{
-			// For now, only use the graphics and transfer queue.
-			Array<uint32, 2u> queue_family_indices{
-				p_ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eGraphics)],
-				p_ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eTransfer)]
-			};
 			buffer_create_info.sharingMode           = VK_SHARING_MODE_CONCURRENT;
 			buffer_create_info.queueFamilyIndexCount = queue_family_indices.size();
 			buffer_create_info.pQueueFamilyIndices   = queue_family_indices.data();
@@ -3482,7 +3491,7 @@ namespace toaster::gpu
 		wait_info.pSemaphores    = semaphores.data();
 		wait_info.pValues        = p_values.data();
 		wait_info.flags          = 0u;
-		TST_GPU_VK_CHECK_RESULT_MSG(vkWaitSemaphores(p_ctx->logicalDevice, &wait_info, INFINITE), "Failed to wait on semaphores");
+		TST_GPU_VK_CHECK_RESULT_MSG(vkWaitSemaphores(p_ctx->logicalDevice, &wait_info, UINT32_MAX), "Failed to wait on semaphores");
 	}
 
 	auto semaphore_get_value(GPUContext *p_ctx, SemaphoreHandle p_semaphore) -> uint64
@@ -3583,13 +3592,13 @@ namespace toaster::gpu
 		image_create_info.usage         = image_usage_flags;
 		image_create_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
+		// For now, only use the graphics and transfer queue.
+		Array<uint32, 2u> queue_family_indices{
+			p_ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eGraphics)],
+			p_ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eTransfer)]
+		};
 		if (p_ctx->hasDedicatedTransferQueue)
 		{
-			// For now, only use the graphics and transfer queue.
-			Array<uint32, 2u> queue_family_indices{
-				p_ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eGraphics)],
-				p_ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eTransfer)]
-			};
 			image_create_info.sharingMode           = VK_SHARING_MODE_CONCURRENT;
 			image_create_info.queueFamilyIndexCount = queue_family_indices.size();
 			image_create_info.pQueueFamilyIndices   = queue_family_indices.data();
@@ -3646,13 +3655,13 @@ namespace toaster::gpu
 		image_create_info.tiling        = VK_IMAGE_TILING_OPTIMAL;
 		image_create_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
+		// For now, only use the graphics and transfer queue.
+		Array<uint32, 2u> queue_family_indices{
+			p_ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eGraphics)],
+			p_ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eTransfer)]
+		};
 		if (p_ctx->hasDedicatedTransferQueue)
 		{
-			// For now, only use the graphics and transfer queue.
-			Array<uint32, 2u> queue_family_indices{
-				p_ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eGraphics)],
-				p_ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eTransfer)]
-			};
 			image_create_info.sharingMode           = VK_SHARING_MODE_CONCURRENT;
 			image_create_info.queueFamilyIndexCount = queue_family_indices.size();
 			image_create_info.pQueueFamilyIndices   = queue_family_indices.data();
@@ -3753,7 +3762,7 @@ namespace toaster::gpu
 
 		// Ideally, we want the min image count to be at least 3. However, if your GPU is bad, it might not be able to handle that many images.
 		// So if 3 is greater than the max image count, we fall back to the max image count as the min image count... I don't know if that made sense...
-		uint32 min_image_count{std::max(3u, surface_capabilities.minImageCount)};
+		uint32 min_image_count{std::max(p_swapchain.targetMinImageCount, surface_capabilities.minImageCount)};
 
 		// Apparently, if the maxImageCount == 0, then there is no maximum (unlimited).
 		if ((surface_capabilities.maxImageCount > 0) && (surface_capabilities.maxImageCount < min_image_count))
@@ -3907,11 +3916,12 @@ namespace toaster::gpu
 		p_swapchain.renderFinishedSemaphores.clear();
 	}
 
-	auto swapchain_create(GPUContext *p_ctx, SurfaceHandle p_surface, math::UInt2 p_initial_extent) -> SwapchainHandle
+	auto swapchain_create(GPUContext *p_ctx, SurfaceHandle p_surface, math::UInt2 p_initial_extent, uint32 p_target_min_image_count) -> SwapchainHandle
 	{
 		Swapchain swapchain{};
-		swapchain.surface = p_surface;
-		swapchain.extent  = p_initial_extent;
+		swapchain.surface             = p_surface;
+		swapchain.extent              = p_initial_extent;
+		swapchain.targetMinImageCount = p_target_min_image_count;
 
 		VkSemaphoreTypeCreateInfo latency_semaphore_create_info{};
 		latency_semaphore_create_info.sType         = STYPE(SEMAPHORE_TYPE_CREATE_INFO);
@@ -3927,6 +3937,7 @@ namespace toaster::gpu
 									"Failed to create swapchain's latency timeline semaphore");
 
 		swapchain.imageAvailableSemaphores.resize(p_ctx->maxConcurrentSwapchainWorkloads);
+		swapchain.frameIds.resize(p_ctx->maxConcurrentSwapchainWorkloads);
 		static constexpr VkSemaphoreCreateInfo c_semaphore_create_info{STYPE(SEMAPHORE_CREATE_INFO), nullptr, 0u};
 		for (auto &semaphore: swapchain.imageAvailableSemaphores)
 			vkCreateSemaphore(p_ctx->logicalDevice, &c_semaphore_create_info, &p_ctx->allocatorCallbacks, &semaphore);
@@ -3969,7 +3980,7 @@ namespace toaster::gpu
 		sleep_mode_info.lowLatencyMode  = true;
 		sleep_mode_info.lowLatencyBoost = true;
 
-		if (p_framerate == UINT32_MAX)
+		if (p_framerate == c_uncappedFramerate)
 			sleep_mode_info.minimumIntervalUs = 0u;
 		else
 			sleep_mode_info.minimumIntervalUs = static_cast<uint32>(1'000'000.0 / static_cast<float64>(p_framerate));
@@ -3981,21 +3992,25 @@ namespace toaster::gpu
 	{
 		Swapchain &swapchain{p_ctx->swapchains[p_swapchain]};
 
-		VkLatencySleepInfoNV sleep_info{};
-		sleep_info.sType           = STYPE(LATENCY_SLEEP_INFO_NV);
-		sleep_info.pNext           = nullptr;
-		sleep_info.value           = swapchain.frameId;
-		sleep_info.signalSemaphore = swapchain.latencySemaphore;
-		TST_GPU_VK_CHECK_RESULT_MSG_DEBUG(vkLatencySleepNV(p_ctx->logicalDevice, swapchain.swapchain, &sleep_info), "Failed to latency sleep!");
+		const uint64 frame_id{swapchain.frameIds[swapchain.frameIndex]};
+		if (frame_id > 0ull)
+		{
+			VkLatencySleepInfoNV sleep_info{};
+			sleep_info.sType           = STYPE(LATENCY_SLEEP_INFO_NV);
+			sleep_info.pNext           = nullptr;
+			sleep_info.value           = frame_id;
+			sleep_info.signalSemaphore = swapchain.latencySemaphore;
+			TST_GPU_VK_CHECK_RESULT_MSG_DEBUG(vkLatencySleepNV(p_ctx->logicalDevice, swapchain.swapchain, &sleep_info), "Failed to latency sleep!");
 
-		VkSemaphoreWaitInfo wait_info{};
-		wait_info.sType          = STYPE(SEMAPHORE_WAIT_INFO);
-		wait_info.pNext          = nullptr;
-		wait_info.semaphoreCount = 1u;
-		wait_info.pSemaphores    = &swapchain.latencySemaphore;
-		wait_info.pValues        = &swapchain.frameId;
-		wait_info.flags          = 0u;
-		TST_GPU_VK_CHECK_RESULT_MSG(vkWaitSemaphores(p_ctx->logicalDevice, &wait_info, INFINITE), "Failed to wait on swapchain latency semaphore");
+			VkSemaphoreWaitInfo wait_info{};
+			wait_info.sType          = STYPE(SEMAPHORE_WAIT_INFO);
+			wait_info.pNext          = nullptr;
+			wait_info.semaphoreCount = 1u;
+			wait_info.pSemaphores    = &swapchain.latencySemaphore;
+			wait_info.pValues        = &frame_id;
+			wait_info.flags          = 0u;
+			TST_GPU_VK_CHECK_RESULT_MSG(vkWaitSemaphores(p_ctx->logicalDevice, &wait_info, UINT32_MAX), "Failed to wait on swapchain latency semaphore");
+		}
 	}
 
 	auto swapchain_set_frame_marker(GPUContext *p_ctx, SwapchainHandle p_swapchain, EFrameMarker p_marker) -> void
@@ -4005,7 +4020,7 @@ namespace toaster::gpu
 		VkSetLatencyMarkerInfoNV latency_marker{};
 		latency_marker.sType     = STYPE(SET_LATENCY_MARKER_INFO_NV);
 		latency_marker.pNext     = nullptr;
-		latency_marker.presentID = swapchain.frameId;
+		latency_marker.presentID = swapchain.frameIds[swapchain.frameIndex];
 		latency_marker.marker    = get_vk_nv_latency_marker(p_marker);
 
 		vkSetLatencyMarkerNV(p_ctx->logicalDevice, swapchain.swapchain, &latency_marker);
@@ -4023,7 +4038,7 @@ namespace toaster::gpu
 		acquire_info.sType      = STYPE(ACQUIRE_NEXT_IMAGE_INFO_KHR);
 		acquire_info.pNext      = nullptr;
 		acquire_info.swapchain  = swapchain.swapchain;
-		acquire_info.timeout    = INFINITE;
+		acquire_info.timeout    = UINT32_MAX;
 		acquire_info.semaphore  = swapchain.imageAvailableSemaphores[swapchain.acquisitonIndex];
 		acquire_info.fence      = nullptr;
 		acquire_info.deviceMask = 1u;
@@ -4164,14 +4179,14 @@ namespace toaster::gpu
 
 		submit(p_ctx, EQueueType::eGraphics, p_cmd_list, wait_infos, signal_infos);
 
-		VkLatencySubmissionPresentIdNV present_id_info{};
-		present_id_info.sType     = STYPE(LATENCY_SUBMISSION_PRESENT_ID_NV);
-		present_id_info.pNext     = nullptr;
-		present_id_info.presentID = swapchain.frameId;
+		VkLatencySubmissionPresentIdNV present_id_info_nv{};
+		present_id_info_nv.sType     = STYPE(LATENCY_SUBMISSION_PRESENT_ID_NV);
+		present_id_info_nv.pNext     = nullptr;
+		present_id_info_nv.presentID = swapchain.frameIds[swapchain.frameIndex];
 
 		VkPresentInfoKHR present_info{};
 		present_info.sType              = STYPE(PRESENT_INFO_KHR);
-		present_info.pNext              = &present_id_info;
+		present_info.pNext              = &present_id_info_nv;
 		present_info.waitSemaphoreCount = 1u; // Render finished semaphore
 		present_info.pWaitSemaphores    = &render_finished_semaphore;
 		present_info.swapchainCount     = 1u;
@@ -4181,7 +4196,9 @@ namespace toaster::gpu
 
 		const VkResult result{vkQueuePresentKHR(p_ctx->queues[static_cast<uint32>(EQueueType::eGraphics)], &present_info)};
 
-		++swapchain.frameId;
+		++swapchain.frameCounter;
+		swapchain.frameIds[swapchain.frameIndex] = swapchain.frameCounter;
+		swapchain.frameIndex                     = (swapchain.frameIndex + 1u) % p_ctx->maxConcurrentSwapchainWorkloads;
 
 		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
 			return false;

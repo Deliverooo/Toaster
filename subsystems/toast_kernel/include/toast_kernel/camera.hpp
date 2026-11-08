@@ -2,6 +2,8 @@
 
 #include "input.hpp"
 #include "toast_kernel.hpp"
+#include "toast_lib/array.hpp"
+#include "toast_lib/system_types.h"
 
 namespace toaster::knl
 {

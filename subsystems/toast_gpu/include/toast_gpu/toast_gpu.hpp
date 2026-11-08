@@ -10,7 +10,6 @@
 #define TST_GPU_API
 #endif
 
-#include "toast_lib/core_basic.hpp"
 #include "toast_lib/enum.hpp"
 
 namespace toaster::gpu

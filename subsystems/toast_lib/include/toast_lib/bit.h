@@ -1,18 +1,26 @@
 #pragma once
 
 #include <climits>
-#include "system_types.h"
+#include "array.hpp"
 
 #define TST_BIT(__n) (1u << __n)
 
-#define TST_BIT_CHAR_SIZE CHAR_BIT
-#define TST_BITSET_SIZE(__size) (((__size) + TST_BIT_CHAR_SIZE - 1u) / TST_BIT_CHAR_SIZE)
+namespace toaster
+{
+	template<uint64 Size>
+	struct Bitset
+	{
+		static constexpr uint64 c_bitSize{CHAR_BIT};
 
-#define TST_BIT_SET(__bitset, __index) ((__bitset)[(__index) / TST_BIT_CHAR_SIZE]) |= TST_BIT((__index % TST_BIT_CHAR_SIZE))
-#define TST_BIT_CLEAR(__bitset, __index) ((__bitset)[(__index) / TST_BIT_CHAR_SIZE]) &= ~TST_BIT((__index % TST_BIT_CHAR_SIZE))
-#define TST_BIT_TEST(__bitset, __index) (((__bitset)[(__index) / TST_BIT_CHAR_SIZE]) & TST_BIT(__index % TST_BIT_CHAR_SIZE))
+		static constexpr auto _bitset_size(const uint64 p_size) -> uint64 { return (p_size + c_bitSize - 1ull) / c_bitSize; }
 
-#define TST_BITSET_RESET(__bitset, __size) for (uint32 i = 0u; i < TST_BITSET_SIZE(__size); ++i)\
-													__bitset[i] = 0u
+		constexpr auto test(uint64 p_index) const -> bool { return _bits[p_index / c_bitSize] & TST_BIT(p_index % c_bitSize); }
+		constexpr auto set(uint64 p_index) -> void { _bits[p_index / c_bitSize] |= TST_BIT(p_index % c_bitSize); }
+		constexpr auto clear(uint64 p_index) -> void { _bits[p_index / c_bitSize] &= ~TST_BIT(p_index % c_bitSize); }
+		constexpr auto reset() -> void { _bits.fill(0u); }
 
-#define TST_BITSET(__name, __size) uint8 __name[TST_BITSET_SIZE(__size)]
+		constexpr auto operator[](uint64 p_index) const -> bool { return test(p_index); }
+
+		Array<uint8, _bitset_size(Size)> _bits;
+	};
+}

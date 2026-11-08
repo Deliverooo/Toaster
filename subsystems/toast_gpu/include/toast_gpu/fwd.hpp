@@ -1,6 +1,7 @@
 #pragma once
 
 #include "toast_gpu.hpp"
+#include "toast_lib/handle.hpp"
 
 namespace toaster::gpu
 {
@@ -26,4 +27,6 @@ namespace toaster::gpu
 
 	struct UploadContext;
 	TST_DECLARE_HANDLE(StateTracker);
+
+	struct FrameContext;
 }

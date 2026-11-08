@@ -13,6 +13,7 @@
 #include "toast_lib/pool.hpp"
 #include "toast_lib/queue.hpp"
 #include "toast_lib/set.hpp"
+#include "toast_lib/util_defines.h"
 
 namespace toaster::gpu
 {
@@ -87,14 +88,14 @@ namespace toaster::gpu
 		AllocationContext *allocCtx{nullptr};
 
 		SemaphoreHandle     transferTimelineSemaphore{nullptr};
-		std::atomic<uint64> transferTimelineCounter{0u};
+		std::atomic<uint64> transferTimelineCounter{0ull};
 
 		uint32                            nextPageId{0u};
 		uint32                            activePageId{0u};
 		UnorderedMap<uint32, StagingPage> stagingPages;
 
 		FixedPool<StateTracker, 32u, 32u> stateTrackers; // 1024
-		UnorderedSet<StateTrackerHandle>  aliveStateTrackers;
+		Vector<StateTrackerHandle>        aliveStateTrackers;
 
 		uint32                         maxAllocationCommandLists{3u};
 		Vector<CommandAllocatorHandle> commandAllocators;
@@ -280,16 +281,16 @@ namespace toaster::gpu
 
 		uint32 cmd_index{0u};
 
-		while (ctx->threadRunning)
+		while (ctx->threadRunning.load(std::memory_order_relaxed))
 		{
 			Vector<UploadTask> batch_tasks;
 
 			{
 				mtx_lock(&ctx->uploadMtx);
-				while (ctx->taskQueue.empty() && ctx->threadRunning.load())
+				while (ctx->taskQueue.empty() && ctx->threadRunning.load(std::memory_order_relaxed))
 					cnd_wait(&ctx->cnd, &ctx->uploadMtx);
 
-				if (ctx->taskQueue.empty() && !ctx->threadRunning.load())
+				if (ctx->taskQueue.empty() && !ctx->threadRunning.load(std::memory_order_relaxed))
 				{
 					mtx_unlock(&ctx->uploadMtx);
 					break;
@@ -361,7 +362,7 @@ namespace toaster::gpu
 
 	auto upload_ctx_destroy(UploadContext *p_ctx) -> void
 	{
-		p_ctx->threadRunning.store(false);
+		p_ctx->threadRunning.store(false, std::memory_order_relaxed);
 		cnd_signal(&p_ctx->cnd);
 
 		int32 _res;
@@ -399,7 +400,7 @@ namespace toaster::gpu
 		StateTrackerHandle out_handle{p_ctx->stateTrackers.emplace(std::move(state_tracker))};
 
 		mtx_lock(&p_ctx->aliveStateTrackerMtx);
-		p_ctx->aliveStateTrackers.insert(out_handle);
+		p_ctx->aliveStateTrackers.push_back(out_handle);
 		mtx_unlock(&p_ctx->aliveStateTrackerMtx);
 
 		return out_handle;
@@ -453,7 +454,7 @@ namespace toaster::gpu
 				p_ctx->stateTrackers.destroy(p_state_tracker);
 
 				mtx_lock(&p_ctx->aliveStateTrackerMtx);
-				p_ctx->aliveStateTrackers.erase(p_state_tracker);
+				std::erase(p_ctx->aliveStateTrackers, p_state_tracker);
 				mtx_unlock(&p_ctx->aliveStateTrackerMtx);
 
 				break;
@@ -499,6 +500,7 @@ namespace toaster::gpu
 		Vector<StateTrackerHandle> handles_to_remove;
 
 		mtx_lock(&p_ctx->aliveStateTrackerMtx);
+
 		for (auto it{p_ctx->aliveStateTrackers.begin()}; it != p_ctx->aliveStateTrackers.end();)
 		{
 			StateTracker &data{p_ctx->stateTrackers[*it]};
@@ -568,6 +570,7 @@ namespace toaster::gpu
 			for (auto &region: region_vec)
 				region.srcOffset += upload_task.stagingAllocation.offset + offset; // The offset has to be relative to the staging allocation
 
+			TST_PERMA_ASSERT(offset + desc.size < total_size);
 			offset += desc.size;
 			offset = TST_ALIGN(offset, 16u); // Now it is "safe"
 		}
@@ -637,6 +640,6 @@ namespace toaster::gpu
 
 	auto _get_transfer_timeline_counter_value(const UploadContext *p_ctx) -> uint64
 	{
-		return p_ctx->transferTimelineCounter.load();
+		return p_ctx->transferTimelineCounter.load(std::memory_order_relaxed);
 	}
 }

@@ -2,6 +2,8 @@
 
 #include "../toast_kernel.hpp"
 
+#include "toast_lib/string.hpp"
+
 namespace toaster::knl
 {
 	enum class EEventType : uint8

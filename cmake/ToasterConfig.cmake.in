@@ -6,7 +6,6 @@ list(APPEND CMAKE_PREFIX_PATH "${CMAKE_CURRENT_LIST_DIR}/../")
 list(APPEND CMAKE_PREFIX_PATH "${CMAKE_CURRENT_LIST_DIR}/../../")
 
 find_dependency(glfw3 REQUIRED)
-find_dependency(fastgltf REQUIRED)
 
 include("${CMAKE_CURRENT_LIST_DIR}/ToasterTargets.cmake") # include the generated Toaster targets file
 

@@ -4,7 +4,10 @@
 #include <span>
 #include <threads.h>
 
+#include "array.hpp"
+#include "bit.h"
 #include "handle.hpp"
+#include "initialiser_list.hpp"
 #include "toast_assert.hpp"
 #include "vector.hpp"
 

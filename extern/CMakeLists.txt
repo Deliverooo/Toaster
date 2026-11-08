@@ -71,16 +71,6 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(volk)
 #Volk ---
 
-#FastGLTF ---
-set(FASTGLTF_ENABLE_INSTALL ON CACHE BOOL "" FORCE)
-FetchContent_Declare(
-		fastgltf
-		GIT_REPOSITORY https://github.com/spnda/fastgltf.git
-		GIT_TAG v0.9.1
-)
-FetchContent_MakeAvailable(fastgltf)
-#FastGLTF ---
-
 #Meshoptimizer ---
 set(MESHOPT_INSTALL ON CACHE BOOL "" FORCE)
 FetchContent_Declare(
