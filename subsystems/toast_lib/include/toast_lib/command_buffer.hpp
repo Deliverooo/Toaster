@@ -1,5 +1,7 @@
 #pragma once
 
+#include <memory>
+
 #include "buffer.hpp"
 
 namespace toaster
@@ -10,32 +12,33 @@ namespace toaster
 		using Invoker    = void(*)(void *);
 		using Destructor = void(*)(void *);
 
+		static constexpr uint64 c_alignment{alignof(std::max_align_t)};
+
 		CommandBuffer(uint64 p_max_size_bytes = 10u * 1028u * 1028u /*10MB*/) : m_bufferCapacity(p_max_size_bytes)
 		{
-			m_buffer = static_cast<uint8 *>(alignedAlloc(m_bufferCapacity, maxAlignment));
+			m_buffer = static_cast<uint8 *>(rpaligned_alloc(alignof(std::max_align_t), m_bufferCapacity));
 			m_ptr    = m_buffer;
 		}
 
 		~CommandBuffer()
 		{
 			// Only call the destructors on the remaining functions
-			uint8 *          buffer{m_buffer};
-			constexpr uint64 alignment{alignof(std::max_align_t)};
+			uint8 *buffer{m_buffer};
 			for (uint32 i{0u}; i < m_commandCount; ++i)
 			{
 				uint64 space{static_cast<uintptr>(m_bufferCapacity - (buffer - m_buffer))};
 				void * aligned_ptr{buffer};
-				std::align(alignment, sizeof(Invoker), aligned_ptr, space);
+				std::align(c_alignment, sizeof(Invoker), aligned_ptr, space);
 				buffer = static_cast<uint8 *>(aligned_ptr);
 
 				buffer += sizeof(Invoker);
 
 				Destructor destructor{nullptr};
-				mi_memcpy(&destructor, buffer, sizeof(Destructor));
+				std::memcpy(&destructor, buffer, sizeof(Destructor));
 				buffer += sizeof(Destructor);
 
 				uint32 payload_size{0u};
-				mi_memcpy(&payload_size, buffer, sizeof(uint32));
+				std::memcpy(&payload_size, buffer, sizeof(uint32));
 				buffer += sizeof(uint32);
 
 				void *payload{buffer};
@@ -45,7 +48,7 @@ namespace toaster
 				buffer += payload_size;
 			}
 
-			alignedFree(m_buffer);
+			rpfree(m_buffer);
 		}
 
 		CommandBuffer(const CommandBuffer &)            = delete;
@@ -64,7 +67,7 @@ namespace toaster
 		{
 			if (this != &p_other)
 			{
-				alignedFree(m_buffer);
+				rpfree(m_buffer);
 				m_buffer         = p_other.m_buffer;
 				m_ptr            = p_other.m_ptr;
 				m_bufferCapacity = p_other.m_bufferCapacity;
@@ -83,13 +86,11 @@ namespace toaster
 		{
 			using DecayedFunc = std::decay_t<TFunc>;
 
-			constexpr uint64 alignment{alignof(std::max_align_t)};
-
 			uint8 *current_ptr{m_ptr};
 			uint64 space{static_cast<uintptr>(m_bufferCapacity - (current_ptr - m_buffer))};
 			void * aligned_ptr{current_ptr};
 
-			if (!std::align(alignment, sizeof(Invoker), aligned_ptr, space))
+			if (!std::align(c_alignment, sizeof(Invoker), aligned_ptr, space))
 			{
 				TST_PERMA_ASSERT_MSG(false, "Failed to align pointer!");
 			}
@@ -121,17 +122,17 @@ namespace toaster
 				}
 			};
 
-			mi_memcpy(m_ptr, &invoker, sizeof(Invoker));
+			std::memcpy(m_ptr, &invoker, sizeof(Invoker));
 			m_ptr += sizeof(Invoker);
 
-			mi_memcpy(m_ptr, &destructor, sizeof(Destructor));
+			std::memcpy(m_ptr, &destructor, sizeof(Destructor));
 			m_ptr += sizeof(Destructor);
 
 			const uint32 payload_size{sizeof(DecayedFunc)};
-			mi_memcpy(m_ptr, &payload_size, sizeof(uint32));
+			std::memcpy(m_ptr, &payload_size, sizeof(uint32));
 			m_ptr += sizeof(uint32);
 
-			::new(static_cast<void *>(m_ptr)) DecayedFunc{std::forward<TFunc>(p_func)};
+			std::construct_at<DecayedFunc>(static_cast<void *>(m_ptr), std::forward<TFunc>(p_func));
 			m_ptr += sizeof(DecayedFunc);
 
 			++m_commandCount;
@@ -139,25 +140,24 @@ namespace toaster
 
 		auto execute() -> void
 		{
-			uint8 *          buffer{m_buffer};
-			constexpr uint64 alignment{alignof(std::max_align_t)};
+			uint8 *buffer{m_buffer};
 			for (uint32 i{0u}; i < m_commandCount; ++i)
 			{
 				uint64 space{static_cast<uintptr>(m_bufferCapacity - (buffer - m_buffer))};
 				void * aligned_ptr{buffer};
-				std::align(alignment, sizeof(Invoker), aligned_ptr, space);
+				std::align(c_alignment, sizeof(Invoker), aligned_ptr, space);
 				buffer = static_cast<uint8 *>(aligned_ptr);
 
 				Invoker invoker{nullptr};
-				mi_memcpy(&invoker, buffer, sizeof(Invoker));
+				std::memcpy(&invoker, buffer, sizeof(Invoker));
 				buffer += sizeof(Invoker);
 
 				Destructor destructor{nullptr};
-				mi_memcpy(&destructor, buffer, sizeof(Destructor));
+				std::memcpy(&destructor, buffer, sizeof(Destructor));
 				buffer += sizeof(Destructor);
 
 				uint32 payload_size{0u};
-				mi_memcpy(&payload_size, buffer, sizeof(uint32));
+				std::memcpy(&payload_size, buffer, sizeof(uint32));
 				buffer += sizeof(uint32);
 
 				void *payload{buffer};

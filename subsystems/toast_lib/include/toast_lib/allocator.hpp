@@ -5,15 +5,35 @@
 
 namespace toaster
 {
-	template<typename Type>
+	using CString = const char *;
+
+	using AllocationFailedCB = void(CString);
+
 	struct Allocator
+	{
+		rpmalloc_interface_t mallocInterface;
+	};
+
+	inline auto allocator_create(Allocator &p_out_allocator, AllocationFailedCB p_allocation_failed_cb = nullptr) -> void
+	{
+		p_out_allocator.mallocInterface.error_callback = p_allocation_failed_cb;
+		rpmalloc_initialize(&p_out_allocator.mallocInterface);
+	}
+
+	inline auto allocator_destroy([[maybe_unused]] Allocator &p_allocator) -> void
+	{
+		rpmalloc_finalize();
+	}
+
+	template<typename Type>
+	struct STLAllocator
 	{
 		using value_type = Type;
 
-		Allocator() noexcept = default;
+		STLAllocator() noexcept = default;
 
 		template<typename TOther>
-		Allocator(const Allocator<TOther> &) noexcept
+		STLAllocator(const STLAllocator<TOther> &) noexcept
 		{
 		}
 
@@ -39,13 +59,13 @@ namespace toaster
 	};
 
 	template<typename Type, typename TOther>
-	auto operator==(const Allocator<Type> &, const Allocator<TOther> &) noexcept -> bool
+	auto operator==(const STLAllocator<Type> &, const STLAllocator<TOther> &) noexcept -> bool
 	{
 		return true;
 	}
 
 	template<typename Type, typename TOther>
-	auto operator!=(const Allocator<Type> &, const Allocator<TOther> &) noexcept -> bool
+	auto operator!=(const STLAllocator<Type> &, const STLAllocator<TOther> &) noexcept -> bool
 	{
 		return false;
 	}

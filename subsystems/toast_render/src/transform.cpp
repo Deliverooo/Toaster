@@ -19,7 +19,7 @@ namespace toaster::rnd
 	{
 		const auto mngr{new TransformManager{.desc = p_desc}};
 
-		freelist_allocator_create(mngr->freeTransformList, p_desc.maxTransforms);
+		mngr->freeTransformList.capacity = p_desc.maxTransforms;
 
 		gpu::BufferDesc transform_buffer_desc{};
 		transform_buffer_desc.size       = p_desc.maxTransforms * sizeof(math::Float4x4);
@@ -52,17 +52,17 @@ namespace toaster::rnd
 
 	auto TST_MATH_CALLCONV transform_create(TransformManager *p_mngr, math::FMatrix p_matrix) -> TransformID
 	{
-		const uint32 slot{freelist_allocator_alloc_slot(p_mngr->freeTransformList)};
+		const uint32 slot{p_mngr->freeTransformList.alloc_slot()};
 
 		for (uint32 i{0u}; i < p_mngr->desc.maxFramesInFlight; ++i)
-			transform_update(p_mngr, slot, i, p_matrix);
+			transform_update(p_mngr, i, slot, p_matrix);
 
 		return slot;
 	}
 
 	auto transform_destroy(TransformManager *p_mngr, TransformID p_transform) -> void
 	{
-		freelist_allocator_free_slot(p_mngr->freeTransformList, p_transform);
+		p_mngr->freeTransformList.free_slot(p_transform);
 	}
 
 	auto TST_MATH_CALLCONV transform_update(TransformManager *p_mngr, uint32 p_frame_index, TransformID p_transform, math::FMatrix p_matrix) -> void

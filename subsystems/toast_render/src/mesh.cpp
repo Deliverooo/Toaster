@@ -6,6 +6,7 @@
 #include "toast_gpu/allocation.hpp"
 #include "toast_gpu/api.hpp"
 #include "toast_gpu/upload.hpp"
+#include "toast_gpu/frame.hpp"
 
 #include "toast_lib/atomic.hpp"
 #include "toast_lib/freelist_allocator.hpp"
@@ -76,7 +77,7 @@ namespace toaster::rnd
 
 	auto _page_allocator_insert_page(MeshManager *p_mngr, PageAllocator *p_allocator) -> void
 	{
-		const uint32 page_id{freelist_allocator_alloc_slot(p_allocator->pageIdAllocator)};
+		const uint32 page_id{p_allocator->pageIdAllocator.alloc_slot()};
 
 		Page &page{p_allocator->pages.emplace_back()};
 		_page_allocator_create_page(p_mngr, p_allocator->pageSize, page_id, &page);
@@ -106,13 +107,13 @@ namespace toaster::rnd
 		virtual_block_destroy(p_mngr->desc.allocCtx, p_page->block);
 		buffer_destroy(p_mngr->desc.gpuCtx, p_page->buffer);
 		gpu::resource_descriptor_heap_free_buffer_slot(p_mngr->desc.gpuCtx, p_mngr->desc.resourceHeap, p_page->heapSlot);
-		freelist_allocator_free_slot(p_allocator->pageIdAllocator, p_page->id);
+		p_allocator->pageIdAllocator.free_slot(p_page->id);
 	}
 
 	auto page_allocator_create(MeshManager *p_mngr, PageAllocator *p_out_allocator, uint64 p_page_size) -> void
 	{
-		freelist_allocator_create(p_out_allocator->pageIdAllocator, 64u);
-		p_out_allocator->pageSize = p_page_size;
+		p_out_allocator->pageIdAllocator.capacity = 64u;
+		p_out_allocator->pageSize                 = p_page_size;
 		_page_allocator_insert_page(p_mngr, p_out_allocator); // Insert the default page
 	}
 
@@ -161,7 +162,7 @@ namespace toaster::rnd
 
 		if (p_size > p_allocator->pageSize) // Create a dedicated allocation
 		{
-			const uint32 page_id{freelist_allocator_alloc_slot(p_allocator->pageIdAllocator)};
+			const uint32 page_id{p_allocator->pageIdAllocator.alloc_slot()};
 
 			Page &page{p_allocator->pages.emplace_back()};
 			_page_allocator_create_page(p_mngr, p_size, page_id, &page);
@@ -220,6 +221,7 @@ namespace toaster::rnd
 			p_data->meshlets.clear();
 
 			// TODO: Freeing these allocations should be deferred (while under the mutex lock in the local deferred scope)
+			
 			mtx_lock(&mngr->pageMtx);
 
 			// If you just used static_mesh_register, you won't have allocated anything.

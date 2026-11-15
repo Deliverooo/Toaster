@@ -7,5 +7,5 @@
 namespace toaster
 {
 	template<typename TKey, typename TValue>
-	using UnorderedMap = std::unordered_map<TKey, TValue, std::hash<TKey>, std::equal_to<>, Allocator<std::pair<const TKey, TValue> > >;
+	using UnorderedMap = std::unordered_map<TKey, TValue, std::hash<TKey>, std::equal_to<>, STLAllocator<std::pair<const TKey, TValue> > >;
 }

@@ -192,8 +192,7 @@ namespace toaster::gpu
 	auto defer_buffer_heap_slot_freeing(FrameContext *p_ctx, ResourceDescriptorHeapHandle p_resource_heap, InitialiserList<const uint32> p_buffer_slots) -> void
 	{
 		#ifndef NDEBUG
-		for (const uint32 slot: p_buffer_slots)
-			TST_ASSERT_MSG(slot != UINT32_MAX, "Attempted to defer deletion of invalid buffer heap slot");
+		for (const uint32 slot: p_buffer_slots) TST_ASSERT_MSG(slot != UINT32_MAX, "Attempted to defer deletion of invalid buffer heap slot");
 		#endif
 
 		mtx_lock(&p_ctx->deferredDeletionMutex);
@@ -209,8 +208,7 @@ namespace toaster::gpu
 	auto defer_texture_heap_slot_freeing(FrameContext *p_ctx, ResourceDescriptorHeapHandle p_resource_heap, InitialiserList<const uint32> p_texture_slots) -> void
 	{
 		#ifndef NDEBUG
-		for (const uint32 slot: p_texture_slots)
-			TST_ASSERT_MSG(slot != UINT32_MAX, "Attempted to defer deletion of invalid texture heap slot");
+		for (const uint32 slot: p_texture_slots) TST_ASSERT_MSG(slot != UINT32_MAX, "Attempted to defer deletion of invalid texture heap slot");
 		#endif
 
 		mtx_lock(&p_ctx->deferredDeletionMutex);
@@ -226,8 +224,7 @@ namespace toaster::gpu
 	auto defer_sampler_Heap_slot_freeing(FrameContext *p_ctx, SamplerDescriptorHeapHandle p_sampler_heap, InitialiserList<const uint32> p_sampler_slots) -> void
 	{
 		#ifndef NDEBUG
-		for (const uint32 slot: p_sampler_slots)
-			TST_ASSERT_MSG(slot != UINT32_MAX, "Attempted to defer deletion of invalid sampler heap slot");
+		for (const uint32 slot: p_sampler_slots) TST_ASSERT_MSG(slot != UINT32_MAX, "Attempted to defer deletion of invalid sampler heap slot");
 		#endif
 
 		mtx_lock(&p_ctx->deferredDeletionMutex);

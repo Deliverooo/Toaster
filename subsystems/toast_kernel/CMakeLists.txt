@@ -4,7 +4,12 @@ set(KERNEL_SRC
 		${CMAKE_CURRENT_SOURCE_DIR}/src/camera.cpp
 )
 
-add_library(ToastKernel SHARED)
+if (TST_BUILD_SHARED_LIBS)
+	add_library(ToastKernel SHARED)
+else ()
+	add_library(ToastKernel STATIC)
+endif ()
+
 add_library(Toaster::ToastKernel ALIAS ToastKernel)
 
 target_include_directories(ToastKernel PUBLIC
@@ -16,8 +21,10 @@ target_sources(ToastKernel PRIVATE ${KERNEL_SRC})
 target_link_libraries(ToastKernel PUBLIC Toaster::ToastRender)
 target_link_libraries(ToastKernel PRIVATE dwmapi glfw)
 
-add_compile_definitions(ToastKernel PUBLIC TST_KERNEL_BUILD_DLL)
-add_compile_definitions(ToastKernel PRIVATE TST_KERNEL_DLL_EXPORT)
+if (TST_BUILD_SHARED_LIBS)
+	add_compile_definitions(ToastKernel PUBLIC TST_KERNEL_BUILD_DLL)
+	add_compile_definitions(ToastKernel PRIVATE TST_KERNEL_DLL_EXPORT)
+endif ()
 
 if (TOASTER_INSTALL)
 	install(TARGETS ToastKernel

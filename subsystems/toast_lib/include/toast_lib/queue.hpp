@@ -7,7 +7,7 @@
 namespace toaster
 {
 	template<typename Type>
-	using Deque = std::deque<Type, Allocator<Type>>;
+	using Deque = std::deque<Type, STLAllocator<Type>>;
 
 	template<typename Type>
 	using Queue = std::queue<Type, Deque<Type>>;

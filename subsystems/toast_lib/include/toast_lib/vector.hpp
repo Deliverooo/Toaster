@@ -7,5 +7,5 @@
 namespace toaster
 {
 	template<typename Type>
-	using Vector = std::vector<Type, Allocator<Type>>;
+	using Vector = std::vector<Type, STLAllocator<Type>>;
 }

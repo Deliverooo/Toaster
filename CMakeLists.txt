@@ -35,6 +35,7 @@ set(CMAKE_CXX_FLAGS ${CXX_FLAGS})
 
 option(TOASTER_INSTALL "Generate install targets for toaster" ON)
 option(TOASTER_BUILD_TEST "Build the Toaster test (Requires the Vulkan SDK for glslangValidator shader compilation)" ON)
+option(TST_BUILD_SHARED_LIBS "Compile ToastGPU, ToastRender and ToastKernel as shared libraries" OFF)
 
 add_compile_definitions(VK_USE_PLATFORM_WIN32_KHR)
 add_compile_definitions(NOMINMAX)
@@ -79,3 +80,5 @@ endif ()
 if (TOASTER_BUILD_TEST)
 	add_subdirectory(test)
 endif ()
+
+add_subdirectory(tstb)

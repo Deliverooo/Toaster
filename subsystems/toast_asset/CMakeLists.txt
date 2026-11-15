@@ -3,7 +3,11 @@ set(RENDER_SRC
 		${CMAKE_CURRENT_SOURCE_DIR}/src/mesh_importer.cpp
 )
 
-add_library(ToastAsset SHARED)
+#if (TST_BUILD_SHARED_LIBS)
+	add_library(ToastAsset SHARED)
+#else ()
+#	add_library(ToastAsset STATIC)
+#endif ()
 add_library(Toaster::ToastAsset ALIAS ToastAsset)
 
 target_include_directories(ToastAsset PUBLIC
@@ -15,8 +19,10 @@ target_sources(ToastAsset PRIVATE ${RENDER_SRC})
 target_link_libraries(ToastAsset PUBLIC Toaster::ToastRender)
 target_link_libraries(ToastAsset PRIVATE meshoptimizer stb)
 
-add_compile_definitions(ToastAsset PUBLIC TST_ASSET_BUILD_DLL)
-add_compile_definitions(ToastAsset PRIVATE TST_ASSET_DLL_EXPORT)
+#if (TST_BUILD_SHARED_LIBS)
+	add_compile_definitions(ToastAsset PUBLIC TST_ASSET_BUILD_DLL)
+	add_compile_definitions(ToastAsset PRIVATE TST_ASSET_DLL_EXPORT)
+#endif ()
 
 if (TOASTER_INSTALL)
 	install(TARGETS ToastAsset

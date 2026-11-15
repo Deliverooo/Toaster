@@ -1,0 +1,65 @@
+#version 460
+#define __COMP__
+
+#extension GL_GOOGLE_include_directive: require
+#include "common.glslh"
+
+layout (descriptor_heap, rgba16f) uniform writeonly imageCube o_Cubemap[];
+
+layout (push_constant) uniform PushData
+{
+    uint32 inEquirectangularMap;
+    uint32 outCubemap;
+    uint32 samplerId;
+} pcs;
+
+layout (local_size_x = WARP_SIZE, local_size_y = WARP_SIZE, local_size_y = 1u) in;
+
+float3 getCubemapDirection(float2 p_uv, uint32 p_face)
+{
+    float3 out_dir = float3(0.0f);
+
+    switch (p_face)
+    {
+        case 0u: out_dir = float3(1.0f, p_uv.y, -p_uv.x); break;
+        case 1u: out_dir = float3(-1.0f, p_uv.y, p_uv.x); break;
+        case 2u: out_dir = float3(p_uv.x, 1.0f, -p_uv.y); break;
+        case 3u: out_dir = float3(p_uv.x, -1.0f, p_uv.y); break;
+        case 4u: out_dir = float3(p_uv.x, p_uv.y, 1.0f); break;
+        case 5u: out_dir = float3(-p_uv.x, p_uv.y, -1.0f); break;
+    }
+
+    return normalize(out_dir);
+}
+
+void main()
+{
+    uint2 cubemap_size = imageSize(o_Cubemap[pcs.outCubemap]).xy;
+    uint3 pixel_coord = gl_GlobalInvocationID;
+
+    // I don't want to know what happens if you write outside of the cubemap texture
+    if (pixel_coord.x >= cubemap_size.x || pixel_coord.y >= cubemap_size.y)
+    {
+        return;
+    }
+
+    float2 ndc = float2(pixel_coord.xy) / float2(cubemap_size); // [0, 1]
+    ndc = 2.0f * ndc - float2(1.0f); // [-1, 1]
+    ndc.y *= -1.0f; // Vulkan is wierd
+
+    float3 cube_dir = getCubemapDirection(ndc, pixel_coord.z);
+
+    // Convert to spherical coordinates
+    float azmulith = atan(cube_dir.z, cube_dir.x);
+    float polar = asin(cube_dir.y);
+
+    // Map azmulith and polar angles from [-PI, PI] and [-PI/2, PI/2] to [0, 1]
+    float2 uv = float2(azmulith / (2.0f * PI) + 0.5f, polar / PI + 0.5f);
+    uv.y *= -1.0f; // Vulkan is wierd
+
+    float4 colour = SAMPLE_TEXTURE(pcs.inEquirectangularMap, pcs.samplerId, uv);
+
+    colour.rgb /= colour.rgb + float3(1.0f); // Colour correction
+
+    imageStore(o_Cubemap[pcs.outCubemap], int3(pixel_coord), colour);
+}

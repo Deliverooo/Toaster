@@ -32,7 +32,7 @@ namespace toaster::rnd
 	};
 
 	template<typename Type>
-	using PerMaterialTextureArray = EArray<Type, EMaterialTextureType, EMaterialTextureType::eMax>;
+	using PerMaterialTextureArray = TST_EARRAY(Type, EMaterialTextureType);
 
 	struct TST_RENDER_API MaterialParams
 	{

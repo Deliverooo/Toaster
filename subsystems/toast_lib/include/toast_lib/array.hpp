@@ -113,4 +113,6 @@ namespace toaster
 
 		Type _data[c_size];
 	};
+
+	#define TST_EARRAY(__type, __enum) EArray<__type, __enum, __enum::eMax>
 }

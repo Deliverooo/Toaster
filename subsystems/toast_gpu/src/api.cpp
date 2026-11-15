@@ -165,10 +165,10 @@ namespace toaster::gpu
 		VmaAllocator allocator{nullptr};
 
 		// Per queue things
-		Array<uint32, c_queueCount>        queueFamilyIndices;
-		Array<VkQueue, c_queueCount>       queues;
-		Array<mtx_t, c_queueCount>         queueMutexes;
-		Array<VkCommandPool, c_queueCount> transientPools; // Used for allocating command buffers for image layout transitions
+		TST_EARRAY(uint32, EQueueType)        queueFamilyIndices;
+		TST_EARRAY(VkQueue, EQueueType)       queues;
+		TST_EARRAY(mtx_t, EQueueType)         queueMutexes;
+		TST_EARRAY(VkCommandPool, EQueueType) transientPools; // Used for allocating command buffers for image layout transitions
 
 		// These numbers are chosen completely arbitrarily...
 		FixedPool<CommandAllocator, 32u, 16u>     commandAllocators; // 512
@@ -289,7 +289,7 @@ namespace toaster::gpu
 		return supports_all_required_device_extensions;
 	}
 
-	auto select_queue_family_indices(VkPhysicalDevice p_physical_device, Array<uint32, c_queueCount> &p_out_indices, bool p_use_present) -> void
+	auto select_queue_family_indices(VkPhysicalDevice p_physical_device, TST_EARRAY(uint32, EQueueType) &p_out_indices, bool p_use_present) -> void
 	{
 		uint32 queue_family_property_count;
 		vkGetPhysicalDeviceQueueFamilyProperties(p_physical_device, &queue_family_property_count, nullptr);
@@ -307,13 +307,13 @@ namespace toaster::gpu
 																								  ? vkGetPhysicalDeviceWin32PresentationSupportKHR(p_physical_device, i)
 																								  : true))
 			{
-				p_out_indices[TST_ENUM_VAL(EQueueType::eGraphics)] = i;
-				p_out_indices[TST_ENUM_VAL(EQueueType::eCompute)]  = i;
+				p_out_indices[EQueueType::eGraphics] = i;
+				p_out_indices[EQueueType::eCompute]  = i;
 			}
 
 			// Dedicated transfer queue
 			if (queue_flags & VK_QUEUE_TRANSFER_BIT && !(queue_flags & VK_QUEUE_GRAPHICS_BIT) && !(queue_flags & VK_QUEUE_COMPUTE_BIT))
-				p_out_indices[TST_ENUM_VAL(EQueueType::eTransfer)] = i;
+				p_out_indices[EQueueType::eTransfer] = i;
 		}
 	}
 
@@ -948,9 +948,7 @@ namespace toaster::gpu
 			mtx_init(&ctx->queueMutexes[i], mtx_plain);
 		mtx_init(&ctx->undefinedTexturesMutex, mtx_plain);
 
-		{
-			volkInitialize(); // Load vkGetInstanceProcAddress from the dll
-		}
+		volkInitialize(); // Load vkGetInstanceProcAddress from the dll
 
 		// Vulkan allows you to use your custom allocators when the driver requests host memory
 		#pragma region allocator callbacks
@@ -1136,12 +1134,14 @@ namespace toaster::gpu
 			VK_KHR_MAINTENANCE_9_EXTENSION_NAME,
 			VK_KHR_UNIFIED_IMAGE_LAYOUTS_EXTENSION_NAME,
 			VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME,
-			VK_EXT_MEMORY_BUDGET_EXTENSION_NAME,
-			VK_KHR_PRESENT_ID_EXTENSION_NAME,
-			VK_NV_LOW_LATENCY_2_EXTENSION_NAME,
+			VK_EXT_MEMORY_BUDGET_EXTENSION_NAME
 		};
 		if (p_desc.usingSwapchain)
+		{
 			required_device_extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+			required_device_extensions.push_back(VK_KHR_PRESENT_ID_EXTENSION_NAME);
+			required_device_extensions.push_back(VK_NV_LOW_LATENCY_2_EXTENSION_NAME);
+		}
 
 		#pragma region physical device
 		{
@@ -1173,13 +1173,13 @@ namespace toaster::gpu
 
 			select_queue_family_indices(ctx->physicalDevice, ctx->queueFamilyIndices, p_desc.usingSwapchain);
 
-			if (ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eGraphics)] == UINT32_MAX)
+			if (ctx->queueFamilyIndices[EQueueType::eGraphics] == UINT32_MAX)
 				TST_PERMA_ASSERT_MSG(false, "Failed to find a graphics queue family");
 
-			ctx->hasDedicatedTransferQueue = (ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eTransfer)] != UINT32_MAX);
+			ctx->hasDedicatedTransferQueue = (ctx->queueFamilyIndices[EQueueType::eTransfer] != UINT32_MAX);
 
 			if (!ctx->hasDedicatedTransferQueue) // Graphics queues are guaranteed to support transfer as well
-				ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eTransfer)] = ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eGraphics)];
+				ctx->queueFamilyIndices[EQueueType::eTransfer] = ctx->queueFamilyIndices[EQueueType::eGraphics];
 
 			ctx->descriptorHeapProperties.sType = STYPE(PHYSICAL_DEVICE_DESCRIPTOR_HEAP_PROPERTIES_EXT);
 			ctx->descriptorHeapProperties.pNext = nullptr;
@@ -1203,7 +1203,7 @@ namespace toaster::gpu
 			graphics_queue_create_info.flags            = 0u;
 			graphics_queue_create_info.queueCount       = 1u;
 			graphics_queue_create_info.pQueuePriorities = &default_queue_priority;
-			graphics_queue_create_info.queueFamilyIndex = ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eGraphics)];
+			graphics_queue_create_info.queueFamilyIndex = ctx->queueFamilyIndices[EQueueType::eGraphics];
 
 			if (ctx->hasDedicatedTransferQueue)
 			{
@@ -1213,19 +1213,22 @@ namespace toaster::gpu
 				transfer_queue_create_info.flags            = 0u;
 				transfer_queue_create_info.queueCount       = 1u;
 				transfer_queue_create_info.pQueuePriorities = &default_queue_priority;
-				transfer_queue_create_info.queueFamilyIndex = ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eTransfer)];
+				transfer_queue_create_info.queueFamilyIndex = ctx->queueFamilyIndices[EQueueType::eTransfer];
 			}
 
 			VkPhysicalDevicePresentIdFeaturesKHR present_id_features{};
-			present_id_features.sType     = STYPE(PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR);
-			present_id_features.pNext     = nullptr;
-			present_id_features.presentId = true;
+			if (p_desc.usingSwapchain)
+			{
+				present_id_features.sType     = STYPE(PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR);
+				present_id_features.pNext     = nullptr;
+				present_id_features.presentId = true;
+			}
 
 			// This removes the need to transfer queue ownership for buffers and linear images.
 			// For optimally tiled images, the need for queue ownership transfer is GPU-dependent.
 			VkPhysicalDeviceMaintenance9FeaturesKHR maintenance_9_features{};
 			maintenance_9_features.sType        = STYPE(PHYSICAL_DEVICE_MAINTENANCE_9_FEATURES_KHR);
-			maintenance_9_features.pNext        = &present_id_features;
+			maintenance_9_features.pNext        = p_desc.usingSwapchain ? &present_id_features : nullptr;
 			maintenance_9_features.maintenance9 = true;
 
 			// Apparently colour write enable is it's own extension for some reason
@@ -1333,15 +1336,14 @@ namespace toaster::gpu
 										"Failed to create logical device");
 
 			// Graphics queue
-			vkGetDeviceQueue(ctx->logicalDevice, ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eGraphics)], 0u, &ctx->queues[TST_ENUM_VAL(EQueueType::eGraphics)]);
+			vkGetDeviceQueue(ctx->logicalDevice, ctx->queueFamilyIndices[EQueueType::eGraphics], 0u, &ctx->queues[EQueueType::eGraphics]);
 
 			// Not the compute queue
-			ctx->queues[TST_ENUM_VAL(EQueueType::eCompute)] = nullptr; // TODO: More queues
+			ctx->queues[EQueueType::eCompute] = nullptr; // TODO: More queues
 
 			// Transfer queue
 			uint32 transfer_queue_index{ctx->hasDedicatedTransferQueue ? 0u : 1u};
-			vkGetDeviceQueue(ctx->logicalDevice, ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eTransfer)], transfer_queue_index,
-							 &ctx->queues[TST_ENUM_VAL(EQueueType::eTransfer)]);
+			vkGetDeviceQueue(ctx->logicalDevice, ctx->queueFamilyIndices[EQueueType::eTransfer], transfer_queue_index, &ctx->queues[EQueueType::eTransfer]);
 
 			VkCommandPoolCreateInfo transient_command_pool_create_info{};
 			transient_command_pool_create_info.sType = STYPE(COMMAND_POOL_CREATE_INFO);
@@ -1628,6 +1630,13 @@ namespace toaster::gpu
 			p_list.flags &= ~EInternalCommandListFlagBits::eOpen;
 		});
 		#endif
+	}
+
+	auto cmd_list_allocate(GPUContext *p_ctx, CommandAllocatorHandle p_cmd_allocator, bool p_secondary) -> CommandListHandle
+	{
+		CommandListHandle out_list;
+		cmd_list_allocate_n(p_ctx, p_cmd_allocator, std::span<CommandListHandle>{&out_list, 1ull}, p_secondary);
+		return out_list;
 	}
 
 	auto cmd_list_allocate_n(GPUContext *p_ctx, CommandAllocatorHandle p_cmd_allocator, std::span<CommandListHandle> p_out_cmd_lists, bool p_secondary) -> void
@@ -2712,8 +2721,8 @@ namespace toaster::gpu
 		mtx_init(&resource_heap.bufferSlotMutex, mtx_plain);
 		mtx_init(&resource_heap.imageSlotMutex, mtx_plain);
 
-		freelist_allocator_create(resource_heap.bufferSlotAllocator, p_desc.maxBufferDescriptors);
-		freelist_allocator_create(resource_heap.imageSlotAllocator, p_desc.maxImageDescriptors);
+		resource_heap.bufferSlotAllocator.capacity = p_desc.maxBufferDescriptors;
+		resource_heap.imageSlotAllocator.capacity  = p_desc.maxImageDescriptors;
 
 		resource_heap.bufferDescriptorSize = TST_ALIGN(heap_props.bufferDescriptorSize, heap_props.bufferDescriptorAlignment);
 		resource_heap.imageDescriptorSize  = TST_ALIGN(heap_props.imageDescriptorSize, heap_props.imageDescriptorAlignment);
@@ -2771,8 +2780,7 @@ namespace toaster::gpu
 		SamplerDescriptorHeap sampler_heap{};
 
 		mtx_init(&sampler_heap.samplerSlotMutex, mtx_plain);
-
-		freelist_allocator_create(sampler_heap.samplerSlotAllocator, p_desc.maxSamplerDescriptors);
+		sampler_heap.samplerSlotAllocator.capacity = p_desc.maxSamplerDescriptors;
 
 		sampler_heap.samplerDescriptorSize = TST_ALIGN(heap_props.samplerDescriptorSize, heap_props.samplerDescriptorAlignment);
 
@@ -2832,7 +2840,7 @@ namespace toaster::gpu
 		ResourceDescriptorHeap &resource_heap{p_ctx->resourceHeaps[p_resource_heap]};
 
 		mtx_lock(&resource_heap.bufferSlotMutex);
-		const uint32 slot{freelist_allocator_alloc_slot(resource_heap.bufferSlotAllocator)};
+		const uint32 slot{resource_heap.bufferSlotAllocator.alloc_slot()};
 		mtx_unlock(&resource_heap.bufferSlotMutex);
 
 		return slot;
@@ -2843,7 +2851,7 @@ namespace toaster::gpu
 		ResourceDescriptorHeap &resource_heap{p_ctx->resourceHeaps[p_resource_heap]};
 
 		mtx_lock(&resource_heap.bufferSlotMutex);
-		freelist_allocator_alloc_slots(resource_heap.bufferSlotAllocator, p_out_heap_slots);
+		resource_heap.bufferSlotAllocator.alloc_slots(p_out_heap_slots);
 		mtx_unlock(&resource_heap.bufferSlotMutex);
 	}
 
@@ -2852,7 +2860,7 @@ namespace toaster::gpu
 		ResourceDescriptorHeap &resource_heap{p_ctx->resourceHeaps[p_resource_heap]};
 
 		mtx_lock(&resource_heap.imageSlotMutex);
-		const uint32 slot{freelist_allocator_alloc_slot(resource_heap.imageSlotAllocator)};
+		const uint32 slot{resource_heap.imageSlotAllocator.alloc_slot()};
 		mtx_unlock(&resource_heap.imageSlotMutex);
 
 		return get_texture_base_heap_slot(resource_heap, slot);
@@ -2865,7 +2873,7 @@ namespace toaster::gpu
 		mtx_lock(&resource_heap.imageSlotMutex);
 
 		// Allocate the slots
-		freelist_allocator_alloc_slots(resource_heap.imageSlotAllocator, p_out_heap_slots);
+		resource_heap.imageSlotAllocator.alloc_slots(p_out_heap_slots);
 
 		// Convert the slots to be relative to the start of the heap
 		for (uint32 &slot: p_out_heap_slots)
@@ -2879,7 +2887,7 @@ namespace toaster::gpu
 		SamplerDescriptorHeap &sampler_heap{p_ctx->samplerHeaps[p_sampler_heap]};
 
 		mtx_lock(&sampler_heap.samplerSlotMutex);
-		const uint32 slot{freelist_allocator_alloc_slot(sampler_heap.samplerSlotAllocator)};
+		const uint32 slot{sampler_heap.samplerSlotAllocator.alloc_slot()};
 		mtx_unlock(&sampler_heap.samplerSlotMutex);
 
 		return slot;
@@ -2890,7 +2898,7 @@ namespace toaster::gpu
 		SamplerDescriptorHeap &sampler_heap{p_ctx->samplerHeaps[p_sampler_heap]};
 
 		mtx_lock(&sampler_heap.samplerSlotMutex);
-		freelist_allocator_alloc_slots(sampler_heap.samplerSlotAllocator, p_out_heap_slots);
+		sampler_heap.samplerSlotAllocator.alloc_slots(p_out_heap_slots);
 		mtx_unlock(&sampler_heap.samplerSlotMutex);
 	}
 
@@ -2899,7 +2907,7 @@ namespace toaster::gpu
 		ResourceDescriptorHeap &resource_heap{p_ctx->resourceHeaps[p_resource_heap]};
 
 		mtx_lock(&resource_heap.bufferSlotMutex);
-		freelist_allocator_free_slot(resource_heap.bufferSlotAllocator, p_heap_slot);
+		resource_heap.bufferSlotAllocator.free_slot(p_heap_slot);
 		mtx_unlock(&resource_heap.bufferSlotMutex);
 	}
 
@@ -2908,7 +2916,7 @@ namespace toaster::gpu
 		ResourceDescriptorHeap &resource_heap{p_ctx->resourceHeaps[p_resource_heap]};
 
 		mtx_lock(&resource_heap.bufferSlotMutex);
-		freelist_allocator_free_slots(resource_heap.bufferSlotAllocator, p_heap_slots);
+		resource_heap.bufferSlotAllocator.free_slots(p_heap_slots);
 		mtx_unlock(&resource_heap.bufferSlotMutex);
 	}
 
@@ -2917,7 +2925,7 @@ namespace toaster::gpu
 		ResourceDescriptorHeap &resource_heap{p_ctx->resourceHeaps[p_resource_heap]};
 
 		mtx_lock(&resource_heap.imageSlotMutex);
-		freelist_allocator_free_slot(resource_heap.imageSlotAllocator, p_heap_slot);
+		resource_heap.imageSlotAllocator.free_slot(p_heap_slot);
 		mtx_unlock(&resource_heap.imageSlotMutex);
 	}
 
@@ -2926,7 +2934,8 @@ namespace toaster::gpu
 		ResourceDescriptorHeap &resource_heap{p_ctx->resourceHeaps[p_resource_heap]};
 
 		mtx_lock(&resource_heap.imageSlotMutex);
-		freelist_allocator_free_slots_fn(resource_heap.imageSlotAllocator, p_heap_slots, [&resource_heap](const uint32 p_slot) -> uint32
+
+		resource_heap.imageSlotAllocator.free_slots_fn(p_heap_slots, [&resource_heap](const uint32 p_slot) -> uint32
 		{
 			return get_segment_relative_texture_heap_slot(resource_heap, p_slot);
 		});
@@ -2938,7 +2947,7 @@ namespace toaster::gpu
 		SamplerDescriptorHeap &sampler_heap{p_ctx->samplerHeaps[p_sampler_heap]};
 
 		mtx_lock(&sampler_heap.samplerSlotMutex);
-		freelist_allocator_free_slot(sampler_heap.samplerSlotAllocator, p_heap_slot);
+		sampler_heap.samplerSlotAllocator.free_slot(p_heap_slot);
 		mtx_unlock(&sampler_heap.samplerSlotMutex);
 	}
 
@@ -2947,7 +2956,7 @@ namespace toaster::gpu
 		SamplerDescriptorHeap &sampler_heap{p_ctx->samplerHeaps[p_sampler_heap]};
 
 		mtx_lock(&sampler_heap.samplerSlotMutex);
-		freelist_allocator_free_slots(sampler_heap.samplerSlotAllocator, p_heap_slots);
+		sampler_heap.samplerSlotAllocator.free_slots(p_heap_slots);
 		mtx_unlock(&sampler_heap.samplerSlotMutex);
 	}
 
@@ -3241,10 +3250,7 @@ namespace toaster::gpu
 		buffer_create_info.usage = buffer_usage_flags;
 
 		// For now, only use the graphics and transfer queue.
-		Array<uint32, 2u> queue_family_indices{
-			p_ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eGraphics)],
-			p_ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eTransfer)]
-		};
+		Array<uint32, 2u> queue_family_indices{p_ctx->queueFamilyIndices[EQueueType::eGraphics], p_ctx->queueFamilyIndices[EQueueType::eTransfer]};
 		if (p_ctx->hasDedicatedTransferQueue)
 		{
 			buffer_create_info.sharingMode           = VK_SHARING_MODE_CONCURRENT;
@@ -3293,10 +3299,7 @@ namespace toaster::gpu
 		buffer_create_info.pNext = nullptr;
 
 		// For now, only use the graphics and transfer queue.
-		Array<uint32, 2u> queue_family_indices{
-			p_ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eGraphics)],
-			p_ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eTransfer)]
-		};
+		Array<uint32, 2u> queue_family_indices{p_ctx->queueFamilyIndices[EQueueType::eGraphics], p_ctx->queueFamilyIndices[EQueueType::eTransfer]};
 		if (p_ctx->hasDedicatedTransferQueue)
 		{
 			buffer_create_info.sharingMode           = VK_SHARING_MODE_CONCURRENT;
@@ -3593,10 +3596,7 @@ namespace toaster::gpu
 		image_create_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
 		// For now, only use the graphics and transfer queue.
-		Array<uint32, 2u> queue_family_indices{
-			p_ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eGraphics)],
-			p_ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eTransfer)]
-		};
+		Array<uint32, 2u> queue_family_indices{p_ctx->queueFamilyIndices[EQueueType::eGraphics], p_ctx->queueFamilyIndices[EQueueType::eTransfer]};
 		if (p_ctx->hasDedicatedTransferQueue)
 		{
 			image_create_info.sharingMode           = VK_SHARING_MODE_CONCURRENT;
@@ -3656,10 +3656,7 @@ namespace toaster::gpu
 		image_create_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
 		// For now, only use the graphics and transfer queue.
-		Array<uint32, 2u> queue_family_indices{
-			p_ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eGraphics)],
-			p_ctx->queueFamilyIndices[TST_ENUM_VAL(EQueueType::eTransfer)]
-		};
+		Array<uint32, 2u> queue_family_indices{p_ctx->queueFamilyIndices[EQueueType::eGraphics], p_ctx->queueFamilyIndices[EQueueType::eTransfer]};
 		if (p_ctx->hasDedicatedTransferQueue)
 		{
 			image_create_info.sharingMode           = VK_SHARING_MODE_CONCURRENT;

@@ -3,8 +3,7 @@ include(FetchContent)
 #rpmalloc ---
 FetchContent_Declare(
 		rpmalloc
-		GIT_REPOSITORY https://github.com/mjansson/rpmalloc.git
-		GIT_TAG develop
+		URL https://github.com/mjansson/rpmalloc/archive/refs/heads/develop.zip
 )
 FetchContent_MakeAvailable(rpmalloc)
 
@@ -44,8 +43,7 @@ set(VULKAN_HEADERS_ENABLE_MODULE OFF CACHE BOOL "" FORCE)
 set(VULKAN_HEADERS_ENABLE_TESTS OFF CACHE BOOL "" FORCE)
 FetchContent_Declare(
 		vulkan_headers
-		GIT_REPOSITORY https://github.com/KhronosGroup/Vulkan-Headers.git
-		GIT_TAG main
+		URL https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/heads/main.zip
 )
 FetchContent_MakeAvailable(vulkan_headers)
 #Vulkan Headers ---
@@ -56,8 +54,7 @@ set(VULKAN_HEADERS_INSTALL_DIR ${vulkan_headers_SOURCE_DIR})
 set(VMA_BUILD_SAMPLES OFF CACHE BOOL "" FORCE)
 FetchContent_Declare(
 		vma_headers
-		GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
-		GIT_TAG master
+		URL https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator/archive/refs/heads/master.zip
 )
 FetchContent_MakeAvailable(vma_headers)
 #Vma Headers ---
@@ -65,29 +62,29 @@ FetchContent_MakeAvailable(vma_headers)
 #Volk ---
 FetchContent_Declare(
 		volk
-		GIT_REPOSITORY https://github.com/zeux/volk.git
-		GIT_TAG master
+		URL https://github.com/zeux/volk/archive/refs/heads/master.zip
 )
 FetchContent_MakeAvailable(volk)
 #Volk ---
-
-#Meshoptimizer ---
-set(MESHOPT_INSTALL ON CACHE BOOL "" FORCE)
-FetchContent_Declare(
-		meshopt
-		GIT_REPOSITORY https://github.com/zeux/meshoptimizer.git
-		GIT_TAG master
-)
-FetchContent_MakeAvailable(meshopt)
-#Meshoptimizer ---
 
 #GLFW ---
 set(GLFW_INSTALL ON CACHE BOOL "" FORCE)
 set(BUILD_SHARED_LIBS ON CACHE BOOL "" FORCE)
 FetchContent_Declare(
 		glfw
-		GIT_REPOSITORY https://github.com/glfw/glfw.git
-		GIT_TAG master
+		URL https://github.com/glfw/glfw/archive/refs/heads/master.zip
 )
 FetchContent_MakeAvailable(glfw)
 #GLFW ---
+
+#KTX ---
+set(KTX_FEATURE_TESTS OFF CACHE BOOL "" FORCE)
+set(KTX_FEATURE_JS OFF CACHE BOOL "" FORCE)
+set(KTX_FEATURE_TOOLS OFF CACHE BOOL "" FORCE)
+FetchContent_Declare(
+		ktx
+		GIT_REPOSITORY https://github.com/KhronosGroup/KTX-Software.git
+		GIT_TAG main
+)
+FetchContent_MakeAvailable(ktx)
+#KTX ---

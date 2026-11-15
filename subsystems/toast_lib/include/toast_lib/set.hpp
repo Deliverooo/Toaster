@@ -7,5 +7,5 @@
 namespace toaster
 {
 	template<typename Type>
-	using UnorderedSet = std::unordered_set<Type, std::hash<Type>, std::equal_to<>, Allocator<Type> >;
+	using UnorderedSet = std::unordered_set<Type, std::hash<Type>, std::equal_to<>, STLAllocator<Type> >;
 }

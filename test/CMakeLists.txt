@@ -1,16 +1,3 @@
-
-#KTX ---
-set(KTX_FEATURE_TESTS OFF CACHE BOOL "" FORCE)
-set(KTX_FEATURE_JS OFF CACHE BOOL "" FORCE)
-set(KTX_FEATURE_TOOLS OFF CACHE BOOL "" FORCE)
-FetchContent_Declare(
-		ktx
-		GIT_REPOSITORY https://github.com/KhronosGroup/KTX-Software.git
-		GIT_TAG main
-)
-FetchContent_MakeAvailable(ktx)
-#KTX ---
-
 set(SRC
 		main.cpp
 )
@@ -21,7 +8,6 @@ target_link_libraries(toaster_test PRIVATE
 		Toaster::ToastLib
 		Toaster::ToastOS
 		Toaster::ToastKernel
-		Toaster::ToastAsset
 		ktx
 )
 

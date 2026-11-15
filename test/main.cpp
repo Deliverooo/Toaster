@@ -1,3 +1,4 @@
+#include <filesystem>
 #include <iostream>
 #include <toast_os/console.hpp>
 #include <toast_os/entry_points.hpp>
@@ -6,8 +7,6 @@
 #include <toast_gpu/upload.hpp>
 
 #include "toast_render/mesh.hpp"
-#include "toast_asset/mesh_importer.hpp"
-#include "toast_asset/texture_importer.hpp"
 #include "toast_gpu/allocation.hpp"
 #include "toast_gpu/frame.hpp"
 #include "toast_kernel/window.hpp"
@@ -272,6 +271,7 @@ TST_OS_WINMAIN()
 			layer->meshMngr     = rnd::mesh_mngr_create({gpu_ctx, p_app.allocCtx, upload_ctx, p_app.frameCtx, resource_heap});
 			layer->materialMngr = rnd::material_mngr_create({gpu_ctx, p_app.allocCtx, upload_ctx, p_app.frameCtx, resource_heap, c_max_frames_in_flight, 128u});
 
+			#if 0
 			{
 				ast::RawSubmeshData raw_data{};
 				raw_data.materialIndex = 0u;
@@ -325,6 +325,7 @@ TST_OS_WINMAIN()
 				rnd::StaticMeshHandle   static_mesh{rnd::static_mesh_create(layer->meshMngr, static_mesh_state_tracker, geometry_data)};
 				gpu::state_tracker_wait_for(upload_ctx, static_mesh_state_tracker);
 			}
+			#endif
 		};
 		app_layer.destroyFn = +[](Application &p_app, void *p_layer) mutable -> void
 		{

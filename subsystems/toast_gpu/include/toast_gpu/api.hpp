@@ -179,10 +179,7 @@ namespace toaster::gpu
 
 	#pragma region buffer
 
-	enum class EMemoryType : uint8
-	{
-		eDeviceLocal, eHostVisibleCoherent
-	};
+	enum class EMemoryType : uint8 { eDeviceLocal, eHostVisibleCoherent };
 
 	enum class EBufferUsageFlagBits : uint8
 	{
@@ -362,15 +359,9 @@ namespace toaster::gpu
 
 	#pragma region sampler
 
-	enum class EFilter : uint8
-	{
-		eNearest, eLinear
-	};
+	enum class EFilter : uint8 { eNearest, eLinear };
 
-	enum class ESamplerMipmapMode : uint8
-	{
-		eNearest, eLinear
-	};
+	enum class ESamplerMipmapMode : uint8 { eNearest, eLinear };
 
 	enum class ESamplerAddressMode :uint8
 	{
@@ -515,10 +506,7 @@ namespace toaster::gpu
 		ePatchList
 	};
 
-	enum class EPolygonMode : uint8
-	{
-		eFill, eLine, ePoint
-	};
+	enum class EPolygonMode : uint8 { eFill, eLine, ePoint };
 
 	enum class ECullMode : uint8
 	{
@@ -528,10 +516,7 @@ namespace toaster::gpu
 		eFrontAndBack
 	};
 
-	enum class EFrontFace : uint8
-	{
-		eCW, eCCW
-	};
+	enum class EFrontFace : uint8 { eCW, eCCW };
 
 	enum class ECompareOp : uint8
 	{
@@ -598,10 +583,7 @@ namespace toaster::gpu
 		EBlendOp     alphaBlendOp{EBlendOp::eAdd};
 	};
 
-	enum class EIndexType : uint8
-	{
-		eUint8, eUint16, eUint32
-	};
+	enum class EIndexType : uint8 { eUint8, eUint16, eUint32 };
 
 	struct TST_GPU_API DrawIndirectCommand
 	{
@@ -732,6 +714,7 @@ namespace toaster::gpu
 	// Resets the command list. Check out this image for when it is appropriate to call this: https://docs.vulkan.org/spec/latest/_images/commandbuffer_lifecycle.svg
 	auto TST_GPU_API cmd_allocator_reset(GPUContext *p_ctx, CommandAllocatorHandle p_cmd_allocator) -> void;
 
+	auto TST_GPU_API cmd_list_allocate(GPUContext *p_ctx, CommandAllocatorHandle p_cmd_allocator, bool p_secondary = false) -> CommandListHandle;
 	auto TST_GPU_API cmd_list_allocate_n(GPUContext *p_ctx, CommandAllocatorHandle p_cmd_allocator, std::span<CommandListHandle> p_out_cmd_lists,
 										 bool        p_secondary = false) -> void;
 

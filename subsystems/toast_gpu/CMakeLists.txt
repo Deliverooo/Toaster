@@ -7,6 +7,7 @@ set(GPU_SRC
 )
 
 add_library(ToastGPU SHARED)
+
 add_library(Toaster::ToastGPU ALIAS ToastGPU)
 
 target_include_directories(ToastGPU PUBLIC
